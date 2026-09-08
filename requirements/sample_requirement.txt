@@ -1,0 +1,3 @@
+Allow a customer to update their email address.
+The email must be valid and unique.
+Return 404 if the customer does not exist and 409 if the email is already used.
