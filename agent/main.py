@@ -1,8 +1,9 @@
 """
-Week 1 planning agent.
+Ticket-to-implementation-plan agent (V2, repository-aware).
 
-Reads a plain-text software requirement and asks Claude to produce a
-numbered implementation plan. It does not read the Java repository and
+Reads a plain-text software requirement, collects a compact summary of the
+actual local repository (Java source structure + docs), and asks Claude to
+produce a numbered implementation plan grounded in that real context. It
 does not modify any files.
 """
 
@@ -12,6 +13,8 @@ import sys
 from dotenv import load_dotenv
 from anthropic import Anthropic
 
+from repo_context import build_repository_context
+
 load_dotenv()
 
 DEFAULT_MODEL = "claude-sonnet-5"
@@ -20,17 +23,36 @@ MODEL = os.environ.get("CLAUDE_MODEL", DEFAULT_MODEL)
 PROMPT_TEMPLATE = """You are a senior software engineer helping plan a change to an \
 existing Spring Boot (Java 17) application.
 
-Given the following requirement, produce a numbered implementation plan with \
-these sections:
+You are given (1) a repository context extracted directly from the actual \
+codebase, and (2) a change ticket. Treat the repository context as ground \
+truth about what already exists. Do not invent files, classes, methods, or \
+endpoints that are not shown in it — if something you would expect is \
+missing, say so explicitly using the exact phrase "not found in repository \
+context" instead of guessing or assuming it exists.
 
-1. What needs to change
-2. Likely files/classes affected
-3. Order of implementation
-4. Tests that should be added
-5. Risks or edge cases
+Repository context:
+{repo_context}
 
-Requirement:
+Ticket:
 {requirement}
+
+Produce a numbered implementation plan with these sections:
+
+1. Existing components (verified from repository context)
+   - List the actual existing files/classes relevant to this ticket, using \
+their real package and class names as shown in the repository context above. \
+If something relevant to the ticket is not present (e.g. an update-email \
+endpoint), state plainly that it was "not found in repository context".
+2. Required changes (from the ticket)
+   - What must change to satisfy the ticket, referencing existing files/classes \
+by their real names where possible.
+3. Recommended changes / assumptions needing confirmation
+   - Anything you are recommending or assuming beyond the literal ticket text \
+(e.g. normalization rules, error response shape) that should be confirmed \
+with the team before implementation.
+4. Order of implementation
+5. Tests that should be added
+6. Risks or edge cases
 """
 
 
@@ -60,14 +82,13 @@ def get_api_key() -> str:
     return api_key
 
 
-def build_plan(requirement: str, api_key: str) -> str:
+def build_plan(requirement: str, repo_context: str, api_key: str) -> str:
     client = Anthropic(api_key=api_key)
+    prompt = PROMPT_TEMPLATE.format(repo_context=repo_context, requirement=requirement)
     message = client.messages.create(
         model=MODEL,
         max_tokens=6000,
-        messages=[
-            {"role": "user", "content": PROMPT_TEMPLATE.format(requirement=requirement)}
-        ],
+        messages=[{"role": "user", "content": prompt}],
     )
 
     text_blocks = [block.text for block in message.content if block.type == "text"]
@@ -90,8 +111,9 @@ def main() -> None:
     requirement_path = sys.argv[1]
     requirement = read_requirement(requirement_path)
     api_key = get_api_key()
+    repo_context = build_repository_context()
 
-    plan = build_plan(requirement, api_key)
+    plan = build_plan(requirement, repo_context, api_key)
     print(plan)
 
 
