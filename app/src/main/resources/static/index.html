@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Customer App</title>
+<style>
+  body {
+    font-family: system-ui, sans-serif;
+    max-width: 640px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+    color: #1a1a1a;
+    background: #fafafa;
+  }
+  h1 {
+    margin-bottom: 0.25rem;
+  }
+  .subtitle {
+    color: #666;
+    margin-top: 0;
+    margin-bottom: 2rem;
+    font-size: 0.9rem;
+  }
+  section {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+  }
+  section h2 {
+    margin-top: 0;
+    font-size: 1.1rem;
+  }
+  label {
+    display: block;
+    font-size: 0.85rem;
+    margin-bottom: 0.25rem;
+    margin-top: 0.75rem;
+  }
+  input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.4rem 0.5rem;
+    font-size: 0.95rem;
+  }
+  button {
+    margin-top: 1rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.95rem;
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+  .result {
+    margin-top: 0.75rem;
+    padding: 0.6rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    white-space: pre-wrap;
+  }
+  .result.success {
+    background: #e6f4ea;
+    color: #1e4620;
+    border: 1px solid #b7dfc0;
+  }
+  .result.error {
+    background: #fdecea;
+    color: #611a15;
+    border: 1px solid #f5c6c2;
+  }
+  .not-implemented {
+    color: #8a6d3b;
+    background: #fcf3e3;
+    border: 1px solid #f0dca0;
+    padding: 0.6rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+  }
+  ul.capabilities {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+    font-size: 0.9rem;
+  }
+  ul.capabilities li {
+    padding: 0.2rem 0;
+  }
+  .status-ok { color: #1e7a34; }
+  .status-pending { color: #b06a00; }
+</style>
+</head>
+<body>
+
+<h1>Customer App</h1>
+<p class="subtitle">Target application used by our Agentic Software Delivery System.</p>
+
+<section>
+  <h2>Find Customer</h2>
+  <label for="find-id">Customer ID</label>
+  <input type="text" id="find-id" placeholder="e.g. 1">
+  <button id="find-btn">Find</button>
+  <div id="find-result"></div>
+</section>
+
+<section>
+  <h2>Create Customer</h2>
+  <label for="create-name">Name</label>
+  <input type="text" id="create-name" placeholder="e.g. Grace Hopper">
+  <label for="create-email">Email</label>
+  <input type="email" id="create-email" placeholder="e.g. grace@example.com">
+  <button id="create-btn">Create</button>
+  <div id="create-result"></div>
+</section>
+
+<section>
+  <h2>Update Email</h2>
+  <p class="not-implemented">Not implemented yet — current agent ticket.</p>
+</section>
+
+<section>
+  <h2>Current Capabilities</h2>
+  <ul class="capabilities">
+    <li>Find customer: <span class="status-ok">available</span></li>
+    <li>Create customer: <span class="status-ok">available</span></li>
+    <li>Update email: <span class="status-pending">not implemented</span></li>
+  </ul>
+</section>
+
+<script>
+  function showResult(el, message, isError) {
+    el.textContent = message;
+    el.className = 'result ' + (isError ? 'error' : 'success');
+  }
+
+  document.getElementById('find-btn').addEventListener('click', async () => {
+    const id = document.getElementById('find-id').value.trim();
+    const resultEl = document.getElementById('find-result');
+
+    if (!id) {
+      showResult(resultEl, 'Please enter a customer ID.', true);
+      return;
+    }
+
+    try {
+      const response = await fetch(`/customers/${encodeURIComponent(id)}`);
+      if (response.status === 404) {
+        showResult(resultEl, `No customer found with ID ${id}.`, true);
+        return;
+      }
+      if (!response.ok) {
+        showResult(resultEl, `Request failed (HTTP ${response.status}).`, true);
+        return;
+      }
+      const customer = await response.json();
+      showResult(resultEl, `Found: ${customer.name} <${customer.email}>`, false);
+    } catch (err) {
+      showResult(resultEl, `Network error: ${err.message}`, true);
+    }
+  });
+
+  document.getElementById('create-btn').addEventListener('click', async () => {
+    const name = document.getElementById('create-name').value.trim();
+    const email = document.getElementById('create-email').value.trim();
+    const resultEl = document.getElementById('create-result');
+
+    if (!name || !email) {
+      showResult(resultEl, 'Please enter both name and email.', true);
+      return;
+    }
+
+    try {
+      const response = await fetch('/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email })
+      });
+      if (!response.ok) {
+        showResult(resultEl, `Create failed (HTTP ${response.status}).`, true);
+        return;
+      }
+      const customer = await response.json();
+      showResult(
+        resultEl,
+        `Created (HTTP ${response.status}): ${customer.name} <${customer.email}> (id ${customer.id})`,
+        false
+      );
+    } catch (err) {
+      showResult(resultEl, `Network error: ${err.message}`, true);
+    }
+  });
+</script>
+
+</body>
+</html>
