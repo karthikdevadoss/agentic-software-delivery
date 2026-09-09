@@ -179,6 +179,36 @@ function renderCapabilityMatrix(d) {
   return section("G. Capability Matrix", html);
 }
 
+function renderEconomics(d) {
+  const e = d.economics;
+  const html = `
+    <div class="econ-grid">
+      <div class="econ-card">
+        <div class="econ-label">Token usage</div>
+        <div class="econ-value">${badge(e.token_usage)}</div>
+      </div>
+      <div class="econ-card">
+        <div class="econ-label">Estimated API cost</div>
+        <div class="econ-value">${badge(e.api_cost)}</div>
+      </div>
+    </div>
+    <div class="econ-note"><strong>Why:</strong> ${esc(e.token_usage_note)}<br><br><strong>Cost:</strong> ${esc(e.cost_note)}<br><br><strong>Next step:</strong> ${esc(e.next_instrumentation_step)}</div>
+  `;
+  return section("Economics / Consumption", html);
+}
+
+function renderVerifiedActivity(d) {
+  const a = d.verified_activity;
+  const html = `<div class="activity-note">
+    <div class="activity-kicker">${esc(a.evidence_type)}</div>
+    <div class="kv"><span class="k">Environment</span><span class="v">${esc(a.environment)}</span></div>
+    <div class="kv"><span class="k">Action</span><span class="v">${esc(a.action)}</span></div>
+    <div class="kv"><span class="k">Result</span><span class="v">${esc(a.result)}</span></div>
+    <div class="kv"><span class="k">Observed at</span><span class="v">${esc(a.observed_at)}</span></div>
+  </div>`;
+  return section("Latest Verified Product Runtime Activity", html);
+}
+
 function renderLimitations(d) {
   const items = d.known_limitations.map(l => `<li>${esc(l)}</li>`).join("");
   return section("H. Known Limitations", `<ul class="limits">${items}</ul>`);
@@ -208,6 +238,8 @@ async function load() {
     renderMcp(data),
     renderSecurity(data),
     renderQuality(data),
+    renderVerifiedActivity(data),
+    renderEconomics(data),
     renderCapabilityMatrix(data),
     renderLimitations(data),
     renderNextMvp(data),

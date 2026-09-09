@@ -87,6 +87,18 @@ function renderToday(d) {
   return section("Today", html);
 }
 
+function renderCoverageExplainer() {
+  return section("What Does \"Coverage\" Mean?", `
+    <p class="hint" style="margin-top:0;">Coverage tells you how much of a session's score is backed by <strong>captured evidence</strong>, not how good the code is.</p>
+    <ul class="limits">
+      <li>It is <strong>not</strong> code coverage (no relation to tests).</li>
+      <li>It is <strong>not</strong> a measure of model quality or output quality.</li>
+      <li><strong>Lower coverage</strong> means more of the session had to be reconstructed from partial evidence (e.g. Git commit timestamps only).</li>
+      <li><strong>Higher coverage</strong> means more dimensions were directly measured/captured (e.g. real verification status, real corrections found).</li>
+    </ul>
+  `);
+}
+
 function renderAllSessions(d) {
   const html = d.sessions.map((s, i) => renderSessionRow(s, i)).join("");
   return section("All Sessions", html || '<p class="hint">No sessions recorded yet.</p>');
@@ -168,6 +180,7 @@ async function load() {
   main.innerHTML = [
     renderDevSessionControls(),
     renderToday(data),
+    renderCoverageExplainer(),
     renderValueLedger(data),
     renderImprovement(data),
     renderAllSessions(data),

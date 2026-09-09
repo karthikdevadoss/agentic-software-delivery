@@ -4,35 +4,68 @@
 <meta charset="UTF-8">
 <title>Agentic Software Delivery</title>
 <link rel="stylesheet" href="style.css">
+<style>
+  .hero-cta { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1.25rem; }
+  .hero-cta a.btn { display: inline-block; background: var(--accent); color: #fff; text-decoration: none; padding: 0.6rem 1.1rem; border-radius: 8px; font-weight: 700; font-size: 0.88rem; }
+  .hero-cta a.btn.secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  .hero-cta a.btn:hover { filter: brightness(1.08); }
+  .proof-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.9rem; margin-top: 0.5rem; }
+  .proof-card { border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.1rem; background: rgba(255,255,255,0.015); }
+  .proof-card .proof-label { color: var(--accent); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem; }
+  .proof-card p { margin: 0; font-size: 0.87rem; line-height: 1.55; color: var(--text); }
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+  @media (max-width: 700px) { .split { grid-template-columns: 1fr; } }
+</style>
 </head>
 <body>
 
 <header>
   <h1>Agentic Software Delivery <span class="sub">— Public Overview</span></h1>
-  <p class="tagline">An AI agent that safely proposes and verifies real code changes — with a human approval boundary the agent structurally cannot bypass.</p>
+  <p class="tagline">An AI agent that safely proposes and verifies real code changes to a real application — with a human approval boundary the agent is structurally unable to bypass.</p>
   <nav class="top-nav">
-    <a href="/"><strong>Overview</strong></a> &middot;
-    <a href="/dashboard">Dashboard</a> &middot;
+    <a href="/"><strong>Overview</strong></a>
+    <a href="/dashboard">Dashboard</a>
     <a href="/sessions">Sessions</a>
+    <a href="https://agentic-delivery-customer-app-production.up.railway.app/" target="_blank" rel="noopener">Customer App ↗</a>
   </nav>
+  <div class="hero-cta">
+    <a class="btn" href="/dashboard">See the Evidence Dashboard</a>
+    <a class="btn secondary" href="/sessions">See Session Intelligence</a>
+    <a class="btn secondary" href="https://agentic-delivery-customer-app-production.up.railway.app/" target="_blank" rel="noopener">Open the Live Customer App</a>
+  </div>
 </header>
 
 <main>
   <section class="panel">
     <h2>What is this?</h2>
-    <p>This system takes a business requirement, investigates a real Spring Boot codebase using retrieval-augmented search, proposes a specific code change, and only applies it after a human explicitly approves — a boundary enforced outside the model's own tool access, not just by policy. Once approved, the change is compiled and tested with real, controlled tools before being reported as verified.</p>
+    <p>This system takes a business requirement, investigates a real Spring Boot codebase using retrieval-augmented search, proposes a specific code change, and applies it only after a human explicitly approves — a boundary enforced <em>outside</em> the model's own tool access, not merely by prompt or policy. Once approved, the change is compiled and tested with real, controlled tools before ever being reported as verified.</p>
   </section>
 
   <section class="panel">
-    <h2>What you can see here</h2>
-    <p><strong><a href="/dashboard">Dashboard</a></strong> — real architecture, capability, and verification evidence for this system: what's implemented, what's tested, what's still a known gap. No fabricated status — unavailable data is always labeled, never invented.</p>
-    <p><strong><a href="/sessions">Sessions</a></strong> — how human and AI time/tokens were actually used to produce this system, including a scored (and honestly-coverage-labeled) effectiveness assessment of each build session.</p>
+    <h2>Why the approval boundary matters</h2>
+    <p>Capability does not imply authority. This agent can read, reason about, and propose changes to real code — but <code>approve</code>/<code>reject</code> are plain functions that are never registered as callable tools and never reachable through the dispatch layer, verified by exact-match tests, not string matching. If no human is present, the system fails <em>closed</em> (rejects) rather than silently proceeding. That distinction — proven with tests, not just described — is the core engineering claim of this project.</p>
   </section>
 
   <section class="panel">
-    <h2>What's not here yet</h2>
-    <p>The interactive Control Plane (submit a requirement, click Approve/Reject, watch a live build/test run) is <strong>not exposed publicly</strong> in this release — it currently requires the operator to run it locally, since anonymous visitors do not have production release authority and the current architecture doesn't yet have a safe public write boundary. The Dashboard and Sessions pages here are a real snapshot published from that local system, not a live connection.</p>
-    <p>The actual Spring Boot business application (the target the agent modifies) is a separate system from this control/evidence surface — see the Dashboard for its current public deployment status.</p>
+    <h2>What's public today, and why</h2>
+    <div class="split">
+      <div>
+        <p><strong>Public:</strong> the <a href="/dashboard">Dashboard</a> (architecture, capability, and verification evidence), <a href="/sessions">Sessions</a> (how human + AI time was actually used, honestly scored), and the real <a href="https://agentic-delivery-customer-app-production.up.railway.app/" target="_blank" rel="noopener">Customer application</a> the agent operates on.</p>
+      </div>
+      <div>
+        <p><strong>Not public:</strong> the interactive Control Plane (submit a requirement, click Approve/Reject, watch a live build/test run). It runs locally only — anonymous visitors do not have production release authority, and a safe public write boundary doesn't exist yet. The Dashboard/Sessions pages here are a real snapshot published from that local system, not a live connection to it.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Proof, not promises</h2>
+    <div class="proof-grid">
+      <div class="proof-card"><div class="proof-label">Tested</div><p>60 automated tests, 59 passing, 1 documented platform skip — re-verified live, not a stale claim.</p></div>
+      <div class="proof-card"><div class="proof-label">Real deployment</div><p>Both the control/evidence surfaces and the actual target application are independently, externally reachable right now.</p></div>
+      <div class="proof-card"><div class="proof-label">Security-tested</div><p>Multiple real vulnerabilities were found and closed during development — see the Dashboard's Security panel for specifics, not just claims.</p></div>
+      <div class="proof-card"><div class="proof-label">Honest by design</div><p>Every page distinguishes what's captured from what isn't. Nothing here is fabricated to look more finished than it is.</p></div>
+    </div>
   </section>
 </main>
 

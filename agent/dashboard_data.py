@@ -85,7 +85,7 @@ CAPABILITY_MATRIX = [
 KNOWN_LIMITATIONS = [
     "No compile/test self-correction loop — a failure is reported, not automatically retried.",
     "No automated browser/UI test suite — the two Control UI fixes were verified by code inspection, HTTP-level mock replay, and the creator's own manual visual check, not CI.",
-    "No production deployment pipeline.",
+    "No automated CI/CD deployment pipeline — today's public deploys (Vercel + Railway) were run manually from this machine, not triggered by a Git push.",
     "No multi-agent architecture — one reasoning agent plus deterministic tools, by design, until a measured need justifies more.",
     "No enterprise-scale RAG benchmark — local index is sized for this repo (21 files / 56 chunks); would need a real vector DB at scale.",
     "No real customer pilot yet (YogaCRM is a future strategic target, not started).",
@@ -94,6 +94,29 @@ KNOWN_LIMITATIONS = [
     "Token usage and API cost are NOT captured — no instrumentation exists; Claude Code's own context display was deliberately not used as a substitute, since it is not a reliable per-run cost source.",
     "The Dashboard's own data layer (agent/dashboard_data.py) has no automated tests yet — it was verified this session via live curl checks against the real endpoints, not a unit test suite.",
 ]
+
+# Honest, explicit economics status — never a computed number without a
+# real, versioned source. See KNOWN_LIMITATIONS for the reasoning.
+ECONOMICS = {
+    "token_usage": "NOT CAPTURED YET",
+    "token_usage_note": "Real capture code exists (agent_loop.py reads response.usage from the Anthropic SDK directly — never estimated) but has not yet been exercised by a live API call, since real runs were deliberately avoided today to control cost.",
+    "api_cost": "NOT CALCULATED YET",
+    "cost_note": "No versioned, sourced pricing table exists in this system. A cost figure will only be shown once one is added and dated — never inferred from a UI counter.",
+    "next_instrumentation_step": "Run one real (non-mock) Control UI session end-to-end, confirm response.usage populates agent/web_run_history.jsonl's model_usage field, then add a dated pricing table to compute cost from real tokens.",
+}
+
+# A single manually-observed fact about the live public Customer app,
+# captured by directly querying the deployed instance — NOT a durable
+# audit event (no persistent event store exists yet). Update this by hand
+# when a new observation is made; do not let it silently go stale-looking
+# — the "observed_at" field says exactly when this was true.
+VERIFIED_ACTIVITY = {
+    "environment": "customer_production (public Railway deployment)",
+    "action": "POST /customers (create) then GET /customers/{id} (find) against the live app",
+    "result": "Customer id=2 created and independently re-verified reachable",
+    "observed_at": "2026-09-09 (manual curl verification against the live Railway URL)",
+    "evidence_type": "MANUALLY VERIFIED OBSERVATION — not a durably captured audit event. H2 is in-memory, so this record will not survive a redeploy/restart.",
+}
 
 
 def _read_json(path: Path):
@@ -235,6 +258,8 @@ def build_dashboard_snapshot() -> dict:
         "last_documented_milestone": _milestone_from_state(state),
         "run_history": _read_run_history(),
         "session_metrics": _session_metrics(),
+        "economics": ECONOMICS,
+        "verified_activity": VERIFIED_ACTIVITY,
         "rag": _rag_index_summary(),
         "mcp": _mcp_summary(state),
         "security": _security_summary(state),
