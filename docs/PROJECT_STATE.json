@@ -29,16 +29,18 @@
     "deployment"
   ],
   "verification_state": {
-    "planner_v2": true,
-    "planner_v3": true,
-    "spring_app": true,
-    "find_customer_ui": true,
-    "create_customer_ui": true,
-    "update_email": false,
-    "v3_tool_budget_enforced": true,
-    "v3_thinking_tool_use_roundtrip": true,
-    "v3_safe_trace": true,
-    "v3_security_protections": true
+    "_status_values": ["not_verified", "implemented", "unit_tested", "runtime_verified", "ui_verified"],
+    "_note": "as_of_commit is when this was last actually verified, not necessarily when the code last changed. If files it depends on changed after as_of_commit, treat it as due for re-verification rather than trusting it blindly.",
+    "planner_v2": {"status": "runtime_verified", "as_of_commit": "c40d1e8", "evidence": "python agent/main.py ... --mode v2 rerun during V3 regression check"},
+    "planner_v3": {"status": "runtime_verified", "as_of_commit": "c40d1e8", "evidence": "agent/test_agent_loop.py (4/4 pass) + multiple live CLI runs incl. tool-budget-cap and max_tokens edge cases"},
+    "spring_app": {"status": "runtime_verified", "as_of_commit": "a979075", "evidence": "mvnw compile + spring-boot:run + curl GET/POST checks"},
+    "find_customer_ui": {"status": "ui_verified", "as_of_commit": "a979075", "evidence": "manual browser check per user confirmation"},
+    "create_customer_ui": {"status": "ui_verified", "as_of_commit": "a979075", "evidence": "manual browser check per user confirmation"},
+    "update_email": {"status": "not_verified", "as_of_commit": null, "evidence": "not implemented"},
+    "v3_tool_budget_enforced": {"status": "runtime_verified", "as_of_commit": "c40d1e8", "evidence": "live run showed 9th tool call in one batch correctly SKIPPED at cap=8"},
+    "v3_thinking_tool_use_roundtrip": {"status": "unit_tested", "as_of_commit": "c40d1e8", "evidence": "agent/test_agent_loop.py ThinkingBlockPassthroughTest"},
+    "v3_safe_trace": {"status": "runtime_verified", "as_of_commit": "c40d1e8", "evidence": "stderr trace inspected line-by-line, confirmed no file content/secrets"},
+    "v3_security_protections": {"status": "runtime_verified", "as_of_commit": "c40d1e8", "evidence": "empirical path-traversal/symlink/absolute-path probes + grep for subprocess/write calls"}
   },
   "next_phase": "V4 controlled code-writing agent with compile feedback loop",
   "next_action": "Design V4 write-tool boundaries (propose-diff-then-apply pattern, explicit human approval before any file write, restricted target paths) and a controlled compile tool, before implementing V4 against the Update Email ticket",

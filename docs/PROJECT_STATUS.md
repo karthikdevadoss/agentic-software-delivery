@@ -105,14 +105,12 @@ This is intentionally our before-state so future agent-driven code changes can b
 
 # Git history
 
-```
-c40d1e8 Add controlled tool-using V3 agent
-bf9f747 Add durable project session state
-162c8a4 Add project status checkpoint
-943648e Make planner repository-aware
-a979075 Add customer app browser UI
-4ef1aef Scaffold ticket-to-implementation-plan agent
-```
+Do not trust a hardcoded log snapshot here — it goes stale the moment a new
+commit is made (this file can't know its own commit's hash in advance).
+Run `git log --oneline` for the real current history. For the single fact
+that matters most (the last commit containing verified code, as opposed to
+docs-only commits), see `last_verified_code_commit` in
+`docs/PROJECT_STATE.json`.
 
 # Secrets
 - agent/.env contains the Anthropic API key

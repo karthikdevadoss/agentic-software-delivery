@@ -5,11 +5,13 @@ Before modifying anything:
 1. Read docs/PROJECT_STATE.json.
 2. Read docs/PROJECT_STATUS.md.
 3. Read docs/DECISIONS.md when architectural context is needed.
-4. Run git status --short.
-5. Run git log -5 --oneline.
-6. Inspect only files relevant to the next task.
-7. Report current version, current ticket, verified state and exact next action.
-8. Do not modify code until explicitly asked.
+4. Read docs/LESSONS.md when working on tool-use loops, thinking blocks, path/security logic, or build tooling — skip otherwise.
+5. Run git status --short.
+6. Run git log -5 --oneline.
+7. Inspect only files relevant to the next task.
+8. If a documentation/state claim actually matters for the task, verify it against the real source/Git rather than trusting it — actual repository state wins on conflict; correct the stale doc after verifying.
+9. Report current version, current ticket, verified state and exact next action.
+10. Do not modify code until explicitly asked.
 
 ## Durable-state rules
 - Repository files and Git are authoritative; conversation history is supplementary.
@@ -19,6 +21,8 @@ Before modifying anything:
 - Keep PROJECT_STATE.json synchronized after meaningful verified work.
 - Update PROJECT_STATUS.md for meaningful project progress.
 - Record important architecture decisions and WHY in DECISIONS.md.
+- Record durable, reusable technical gotchas (not decisions, not status) in LESSONS.md.
+- For fast-moving external tech (Claude/Anthropic API, MCP, model names, tool-use behavior), verify against current official docs when available rather than trusting older notes — record version-sensitive decisions with enough context to revisit later.
 - Never expose, print, stage or commit agent/.env or API keys.
 - Never weaken tests/verification just to make something pass.
 - Before stopping or when context is becoming constrained, leave a verified checkpoint and explicit next_action.
