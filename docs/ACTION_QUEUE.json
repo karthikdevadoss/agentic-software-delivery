@@ -42,7 +42,7 @@
       "evidence": "agent/mcp_server.py's docstring documents the streamable-http invocation; no test or run has exercised it in this session.",
       "safe_to_auto_execute": false,
       "verification_required": "Start the server with transport='streamable-http' and confirm a real HTTP-based MCP client (not just in-process) can discover and invoke tools, before this transport is relied on for hosting.",
-      "created_at_commit": "uncommitted",
+      "created_at_commit": "d312dd1",
       "resolved_at_commit": null
     }
   ]

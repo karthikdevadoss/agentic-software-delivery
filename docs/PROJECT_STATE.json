@@ -1,7 +1,7 @@
 {
   "project": "Agentic Software Delivery System",
   "current_version": "V3+MCP+RAG foundations",
-  "last_verified_code_commit": "c40d1e8",
+  "last_verified_code_commit": "d312dd1",
   "current_ticket": "Update customer email",
   "current_ticket_implemented": false,
   "completed_capabilities": [
@@ -48,18 +48,18 @@
     "v3_safe_trace": {"status": "runtime_verified", "as_of_commit": "c40d1e8", "evidence": "stderr trace inspected line-by-line, confirmed no file content/secrets"},
     "v3_security_protections": {"status": "runtime_verified", "as_of_commit": "c40d1e8", "evidence": "empirical path-traversal/symlink/absolute-path probes + grep for subprocess/write calls"},
     "continuity_feedback_loop": {"status": "runtime_verified", "as_of_commit": "8cd4083", "evidence": "synthetic ACTION_QUEUE.json item run through open -> failed check -> fixed -> re-verified -> resolved/removed lifecycle; no residue left in the file"},
-    "mcp_tool_discovery": {"status": "unit_tested", "as_of_commit": "uncommitted", "evidence": "agent/test_mcp_server.py test_discovery_lists_all_four_tools (official mcp SDK in-process Client) + manual agent/mcp_demo.py run"},
-    "mcp_tool_invocation": {"status": "unit_tested", "as_of_commit": "uncommitted", "evidence": "agent/test_mcp_server.py test_invocation_returns_real_result + manual agent/mcp_demo.py run"},
-    "mcp_security_passthrough": {"status": "unit_tested", "as_of_commit": "uncommitted", "evidence": "agent/test_mcp_server.py test_unsafe_path_rejected_safely_not_crashed + test_mcp_error_surfaces_specific_reason_not_generic: traversal rejected via MCP, specific RepoToolError message (not a generic one) reaches the client via ToolError"},
-    "mcp_no_duplicated_security_logic": {"status": "unit_tested", "as_of_commit": "uncommitted", "evidence": "agent/test_mcp_server.py test_read_file_delegates_to_tools_not_reimplemented / test_search_code_delegates_to_tools_not_reimplemented: mock tools.py functions and assert the MCP layer calls them directly"},
-    "rag_ingestion": {"status": "unit_tested", "as_of_commit": "uncommitted", "evidence": "python agent/rag_index.py live run (19 real files, .env/.git/target/.claude/self-index excluded) + agent/test_rag_index.py exclusion/redaction tests"},
-    "rag_semantic_retrieval_quality": {"status": "runtime_verified", "as_of_commit": "uncommitted", "evidence": "live queries against the real fastembed model ('customer email...', 'H2 database configuration', 'HTTP status codes...') returned genuinely relevant files (application.properties, Customer.java, ENGINEERING_RULES.md) without exact keyword overlap — not covered by automated tests, which mock embeddings for speed/determinism"},
-    "rag_hybrid_verification": {"status": "runtime_verified", "as_of_commit": "uncommitted", "evidence": "live V3 run treated an unread semantic-search hit (index.html) as unverified rather than asserting facts about it"},
-    "rag_incremental_indexing": {"status": "unit_tested", "as_of_commit": "uncommitted", "evidence": "agent/test_rag_index.py (7 incremental tests) + live proof: build->0 unnecessary embeds on rebuild, fixture add/modify/delete each triggered exactly the expected single-file change, corrupt/missing index handled safely"},
-    "v3_new_tool_integration": {"status": "runtime_verified", "as_of_commit": "uncommitted", "evidence": "agent_loop.py required zero core-loop changes; V3 autonomously chose semantic_repository_search then verified with read_file, unprompted"},
-    "metrics_hooks": {"status": "runtime_verified", "as_of_commit": "uncommitted", "evidence": "direct test: metrics.get_tool_call_events() returned correct structured records (tool, duration_ms, result_size, blocked_unsafe) after real MCP calls, including correct blocked_unsafe=True classification for a traversal rejection"}
+    "mcp_tool_discovery": {"status": "unit_tested", "as_of_commit": "d312dd1", "evidence": "agent/test_mcp_server.py test_discovery_lists_all_four_tools (official mcp SDK in-process Client) + manual agent/mcp_demo.py run"},
+    "mcp_tool_invocation": {"status": "unit_tested", "as_of_commit": "d312dd1", "evidence": "agent/test_mcp_server.py test_invocation_returns_real_result + manual agent/mcp_demo.py run"},
+    "mcp_security_passthrough": {"status": "unit_tested", "as_of_commit": "d312dd1", "evidence": "agent/test_mcp_server.py test_unsafe_path_rejected_safely_not_crashed + test_mcp_error_surfaces_specific_reason_not_generic: traversal rejected via MCP, specific RepoToolError message (not a generic one) reaches the client via ToolError"},
+    "mcp_no_duplicated_security_logic": {"status": "unit_tested", "as_of_commit": "d312dd1", "evidence": "agent/test_mcp_server.py test_read_file_delegates_to_tools_not_reimplemented / test_search_code_delegates_to_tools_not_reimplemented: mock tools.py functions and assert the MCP layer calls them directly"},
+    "rag_ingestion": {"status": "unit_tested", "as_of_commit": "d312dd1", "evidence": "python agent/rag_index.py live run (19 real files, .env/.git/target/.claude/self-index excluded) + agent/test_rag_index.py exclusion/redaction tests"},
+    "rag_semantic_retrieval_quality": {"status": "runtime_verified", "as_of_commit": "d312dd1", "evidence": "live queries against the real fastembed model ('customer email...', 'H2 database configuration', 'HTTP status codes...') returned genuinely relevant files (application.properties, Customer.java, ENGINEERING_RULES.md) without exact keyword overlap — not covered by automated tests, which mock embeddings for speed/determinism"},
+    "rag_hybrid_verification": {"status": "runtime_verified", "as_of_commit": "d312dd1", "evidence": "live V3 run treated an unread semantic-search hit (index.html) as unverified rather than asserting facts about it"},
+    "rag_incremental_indexing": {"status": "unit_tested", "as_of_commit": "d312dd1", "evidence": "agent/test_rag_index.py (7 incremental tests) + live proof: build->0 unnecessary embeds on rebuild, fixture add/modify/delete each triggered exactly the expected single-file change, corrupt/missing index handled safely"},
+    "v3_new_tool_integration": {"status": "runtime_verified", "as_of_commit": "d312dd1", "evidence": "agent_loop.py required zero core-loop changes; V3 autonomously chose semantic_repository_search then verified with read_file, unprompted"},
+    "metrics_hooks": {"status": "runtime_verified", "as_of_commit": "d312dd1", "evidence": "direct test: metrics.get_tool_call_events() returned correct structured records (tool, duration_ms, result_size, blocked_unsafe) after real MCP calls, including correct blocked_unsafe=True classification for a traversal rejection"}
   },
   "next_phase": "V4 controlled code-writing agent with compile feedback loop",
-  "next_action": "Commit this verified MCP+RAG foundation checkpoint, then resume V4 write-tool boundary design (propose-diff-then-apply pattern, explicit human approval before any file write, restricted target paths) and a controlled compile tool, before implementing V4 against the Update Email ticket",
+  "next_action": "Resume V4 write-tool boundary design (propose-diff-then-apply pattern, explicit human approval before any file write, restricted target paths) and a controlled compile tool, before implementing V4 against the Update Email ticket",
   "blocked_on": null
 }
