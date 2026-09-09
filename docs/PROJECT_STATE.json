@@ -1,7 +1,7 @@
 {
   "project": "Agentic Software Delivery System",
-  "current_version": "V4.1 + browser Control UI",
-  "last_verified_code_commit": "11f4429",
+  "current_version": "V4.1 + browser Control UI + Evidence Dashboard",
+  "last_verified_code_commit": "35889a0",
   "current_ticket": "Update customer email",
   "current_ticket_implemented": false,
   "completed_capabilities": [
@@ -41,7 +41,9 @@
     "review agent",
     "GitHub PR automation",
     "deployment",
-    "dashboard MVP using real telemetry (in progress this session)"
+    "session intelligence / value ledger (not started)",
+    "product-agent token/cost usage capture (not started — Anthropic API responses not yet inspected for usage fields)",
+    "development-session time tracking (not started — no start/stop capture mechanism yet)"
   ],
   "verification_state": {
     "_status_values": ["not_verified", "implemented", "unit_tested", "runtime_verified", "ui_verified"],
@@ -81,9 +83,11 @@
     "control_ui_build_test_panel_fixed": {"status": "ui_verified", "as_of_commit": "11f4429", "evidence": "backend now emits a bounded real-output 'summary' field on run_controlled_compile/run_controlled_tests tool_result events; frontend renders PASS/FAIL + duration + summary into the verification panel; final banner now derived from real structured compile/test/apply/approval state, not text-sniffing the agent's prose — verified via curl against both the live real run's actual numbers (15327ms/18972ms) and the mock endpoint; creator personally confirmed in-browser: Build PASS + duration, Tests PASS + duration, output summary visible, VERIFIED SUCCESS banner readable and stable"},
     "control_ui_bugfixes_creator_visually_confirmed": {"status": "ui_verified", "as_of_commit": "11f4429", "evidence": "creator personally reloaded the Control UI in their own browser and confirmed, in their own words: (1) page no longer forces scroll back after COMPLETED, scroll position stays where the creator leaves it, (2) Build/Test Verification panel shows Build PASS + duration, Tests PASS + duration, and a visible output summary, (3) final VERIFIED SUCCESS result is readable and stable. Both previously-reported UI defects are closed end to end (code-level root-cause fix + HTTP-level mock verification + real creator visual confirmation)."},
     "control_ui_mock_demo_leaves_no_file_residue": {"status": "runtime_verified", "as_of_commit": "11f4429", "evidence": "post-verification git status showed no new untracked files beyond the real-run artifacts after the Mock Demo was run multiple times — confirms by observation, not just by design, that _run_mock_thread never touches the filesystem (it bypasses write_tools.propose_edit entirely, fabricating an in-memory-only proposal)"},
-    "control_ui_proof_artifact_cleaned": {"status": "runtime_verified", "as_of_commit": "11f4429", "evidence": "app/src/test/java/com/example/customer/V41BoundaryDemoTest.java (the harmless placeholder test file created by the first browser-approved run) deleted before commit per creator's explicit approval — it had served its purpose as runtime evidence and had no continuing business value; requirements/demo_v41_boundary_check.txt kept as the reproducible benchmark requirement; historical proof now lives in Git history + this file + test/metrics evidence, not in junk Customer-application code. Verified post-delete: no related fixture remains, app/src/main/ diff empty, no updateEmail references."}
+    "control_ui_proof_artifact_cleaned": {"status": "runtime_verified", "as_of_commit": "11f4429", "evidence": "app/src/test/java/com/example/customer/V41BoundaryDemoTest.java (the harmless placeholder test file created by the first browser-approved run) deleted before commit per creator's explicit approval — it had served its purpose as runtime evidence and had no continuing business value; requirements/demo_v41_boundary_check.txt kept as the reproducible benchmark requirement; historical proof now lives in Git history + this file + test/metrics evidence, not in junk Customer-application code. Verified post-delete: no related fixture remains, app/src/main/ diff empty, no updateEmail references."},
+    "dashboard_mvp_real_evidence_only": {"status": "ui_verified", "as_of_commit": "35889a0", "evidence": "agent/dashboard_data.py reads only docs/PROJECT_STATE.json, the real persisted RAG index (21 files/56 chunks), a small local run-history log, and live agent/metrics.py counters — no fabricated values, unavailable data explicitly labeled NOT CAPTURED YET; creator visually verified the rendered /dashboard page in-browser and confirmed via 'DASHBOARD VISUALLY VERIFIED' before this commit"},
+    "dashboard_run_history_persists_across_restart": {"status": "runtime_verified", "as_of_commit": "35889a0", "evidence": "agent/web_run_history.jsonl (gitignored) appended on every run's terminal state; verified live: one mock run's record survived a full server restart and was correctly re-read by /api/dashboard"}
   },
-  "next_phase": "Dashboard MVP (evidence/intelligence surface at /dashboard, distinct from the operational Control UI) — approved and in progress",
-  "next_action": "Build /dashboard using real data only (metrics.py, run/event history, this file) with a small local JSON/JSONL run-history store if persistence is needed; no new database",
+  "next_phase": "Session Intelligence / Value Ledger MVP (evidence/intelligence surface at /sessions, distinct from Control UI and Dashboard) — creator-approved, in progress",
+  "next_action": "Build /sessions using only real/labeled data (git+durable-state reconstruction for history, a new small session-record store for going forward); explicitly label NOT CAPTURED fields (tokens, cost, human active time) rather than inferring them",
   "blocked_on": null
 }
