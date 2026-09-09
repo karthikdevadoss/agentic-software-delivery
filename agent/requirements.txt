@@ -1,2 +1,6 @@
 anthropic
 python-dotenv
+mcp
+fastembed
+numpy
+requests

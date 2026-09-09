@@ -42,3 +42,56 @@ surprising verified behavior would otherwise get rediscovered later.
   (the wrapper plugin itself, then the actual Maven distribution zip on
   first `mvnw` invocation). Don't assume `mvnw` is fully offline-capable
   out of the box in a fresh environment.
+
+- **MCP's Python ecosystem naming is unstable across 2026 — verify current
+  import paths every time, don't reuse a remembered one (including your own
+  earlier answer in the same project).** Problem: an older tutorial's
+  `from mcp.server.fastmcp import FastMCP` would already be wrong; picking
+  standalone `fastmcp` instead (this session's first pass) wasn't wrong, but
+  wasn't re-checked against the actual spec-owner SDK either. Evidence:
+  re-verifying (via WebFetch + direct empirical testing of the installed
+  `mcp` package) showed the official SDK's `MCPServer` now provides every
+  capability that motivated choosing `fastmcp` — including an in-process
+  test `Client`, which earlier research hadn't confirmed either way. Root
+  cause: fast-moving ecosystems can make a reasonable choice stale within
+  the same session; "current" needs re-checking at the point of committing
+  to it, not just once at the start. Correction: migrated to the official
+  `mcp` package while the surface was still 2 files. Future rule: for a
+  Tier-1/spec-owned protocol, give the official SDK a real empirical trial
+  (not just a docs skim) before choosing a third-party alternative, and be
+  willing to migrate early rather than defend an earlier choice by inertia.
+
+- **Incremental/differential systems should key entries by a stable ID, not
+  positional array index.** Context: the RAG index needed to support
+  add/update/remove of individual files without rebuilding everything.
+  An early array-of-chunks design would make "remove chunk 7" fragile once
+  other chunks are added/removed around it (indices shift). Correction:
+  used a dict keyed by `f"{path}#{start_line}-{end_line}"` instead, so
+  reuse/update/removal are plain dict operations regardless of what else
+  changed. Future rule: whenever a system needs partial/incremental
+  updates, design the storage keyed by stable identity from the start —
+  retrofitting it after an array-based design is in place costs more.
+
+- **A newly built local index/artifact directory must exclude itself from
+  its own ingestion sweep.** Problem: the first RAG index rebuild indexed
+  its own prior output file (`agent/.rag_index/index.json`), which would
+  have compounded in size on every rebuild. Evidence: file count jumped by
+  exactly one non-source file after the first build; confirmed by listing
+  indexed paths. Root cause: the ingestion step reused the generic
+  repository file listing without excluding its own output directory.
+  Correction: added the index's own output path to a small ingestion-only
+  ignore list. Future rule: any pipeline that both reads "everything in
+  the repo" and writes its own output into the repo must explicitly
+  exclude its own output path from the read side.
+
+- **HuggingFace Hub's default local caching uses symlinks, which can fail
+  on first use on Windows without Developer Mode/admin rights.** Problem:
+  first `fastembed` model download raised `WinError 1314` (privilege not
+  held) while creating a cache symlink. Evidence: observed directly during
+  the first embedding-model load on this machine; the library
+  automatically retried via a non-symlink fallback and succeeded ~24s
+  later. Root cause: Windows restricts symlink creation by default.
+  Correction: none needed — treated as expected first-run behavior, not a
+  bug. Future rule: don't treat a Windows symlink warning/retry from
+  HF-Hub-backed libraries as a failure; only investigate if it doesn't
+  eventually succeed.

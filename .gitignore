@@ -9,6 +9,9 @@ venv/
 .venv/
 .pytest_cache/
 
+# RAG index (derived/build data, regenerate with: python agent/rag_index.py)
+agent/.rag_index/
+
 # Java / Maven
 target/
 *.class

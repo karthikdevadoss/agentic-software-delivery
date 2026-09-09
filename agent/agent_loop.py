@@ -16,10 +16,12 @@ tool-use round trip. Only the final text is ever extracted for display.
 
 import os
 import sys
+import time
 
 from anthropic import Anthropic
 
 from tools import TOOL_SCHEMAS, dispatch_tool_call
+import metrics
 
 DEFAULT_MODEL = "claude-sonnet-5"
 MODEL = os.environ.get("CLAUDE_MODEL", DEFAULT_MODEL)
@@ -98,6 +100,8 @@ def _sanitize_tool_input(name: str, tool_input) -> str:
         if glob and glob != "**/*.java":
             return f"{query!r}, glob={glob!r}"
         return f"{query!r}"
+    if name == "semantic_repository_search":
+        return f"{tool_input.get('query', '')!r}, top_k={tool_input.get('top_k', 5)}"
     return repr(tool_input)
 
 
@@ -123,6 +127,15 @@ def _result_note(tool_name: str, result_text: str, is_error: bool) -> str:
         else:
             count = sum(1 for line in result_text.splitlines() if line and not line.startswith("..."))
             note = f"{count} matches"
+    elif tool_name == "semantic_repository_search":
+        if result_text == "(no semantic matches found)":
+            note = "0 candidates"
+        else:
+            count = sum(
+                1 for line in result_text.splitlines()
+                if line and ":" in line and "score=" in line
+            )
+            note = f"{count} candidates"
     else:
         note = f"{len(result_text)} chars"
 
@@ -204,10 +217,18 @@ def run_agent_loop(ticket: str, api_key: str) -> str:
                 continue
 
             tool_call_count += 1
+            call_start = time.monotonic()
             result_text, is_error = dispatch_tool_call(block.name, block.input)
+            duration_ms = round((time.monotonic() - call_start) * 1000, 1)
             status = "ERROR" if is_error else "OK"
             note = _result_note(block.name, result_text, is_error)
             _trace(tool_call_count, f"{block.name}({sanitized}) -> {status}, {note}")
+            metrics.record_tool_call(
+                tool=block.name, input_summary=sanitized, success=not is_error,
+                duration_ms=duration_ms, result_size=len(result_text),
+                truncated="truncated" in note or "omitted" in note or "stopped at" in note,
+                blocked_unsafe=is_error and metrics.is_security_block(result_text),
+            )
 
             tool_results.append({
                 "type": "tool_result",

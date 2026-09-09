@@ -216,6 +216,37 @@ def search_code(query: str, glob: str = "**/*.java") -> str:
     return result
 
 
+def semantic_repository_search(query: str, top_k: int = 5) -> str:
+    """Candidate-finding only (Phase B RAG). Never authoritative on its own —
+    callers must confirm with read_file/search_code before relying on results."""
+    if not query:
+        raise RepoToolError("query is required")
+    if len(query) < 2:
+        raise RepoToolError("query is too short")
+    top_k = max(1, min(int(top_k), 20))
+
+    import rag_index  # local import: rag_index.py imports from this module
+
+    try:
+        results = rag_index.semantic_search(query, top_k=top_k)
+    except RuntimeError as exc:
+        raise RepoToolError(str(exc))
+
+    if not results:
+        return "(no semantic matches found)"
+
+    lines = [
+        f"{r['path']}:{r['start_line']}-{r['end_line']} (score={r['score']})"
+        for r in results
+    ]
+    lines.append(
+        "Note: these are candidate matches by semantic similarity only — "
+        "use read_file or search_code to verify actual current content "
+        "before relying on them."
+    )
+    return "\n".join(lines)
+
+
 TOOL_SCHEMAS = [
     {
         "name": "list_repository_files",
@@ -281,6 +312,31 @@ TOOL_SCHEMAS = [
             "required": ["query"],
         },
     },
+    {
+        "name": "semantic_repository_search",
+        "description": (
+            "Semantic (meaning-based) search over an index of repository files/docs. "
+            "Finds likely-relevant candidates even without exact keyword matches — "
+            "e.g. a query about 'customer email uniqueness' can surface relevant code "
+            "even if it doesn't contain that exact phrase. Candidates only: always "
+            "confirm with read_file or search_code before relying on results, since "
+            "this reflects a snapshot index that may be stale relative to current files."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Natural-language description of what you're looking for.",
+                },
+                "top_k": {
+                    "type": "integer",
+                    "description": "Maximum number of candidates to return (default 5, max 20).",
+                },
+            },
+            "required": ["query"],
+        },
+    },
 ]
 
 
@@ -294,6 +350,8 @@ def dispatch_tool_call(name: str, tool_input: dict):
             return read_file(tool_input.get("path")), False
         if name == "search_code":
             return search_code(tool_input.get("query"), tool_input.get("glob", "**/*.java")), False
+        if name == "semantic_repository_search":
+            return semantic_repository_search(tool_input.get("query"), tool_input.get("top_k", 5)), False
         return f"unknown tool: {name!r}", True
     except RepoToolError as exc:
         return f"tool error: {exc}", True

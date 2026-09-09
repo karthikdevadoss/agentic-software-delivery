@@ -30,6 +30,20 @@
       "verification_required": "New test file exists, covers traversal/symlink/absolute-path/redaction cases, and passes.",
       "created_at_commit": "8cd4083",
       "resolved_at_commit": null
+    },
+    {
+      "id": "ACT-005",
+      "source": "architecture",
+      "title": "MCP Streamable HTTP transport has never actually been run/tested (only coded/documented)",
+      "priority": "low",
+      "status": "open",
+      "scope": "agent/mcp_server.py only, no production code changes",
+      "reason": "mcp.run(transport='streamable-http', ...) is the documented path for a future hosted multi-tenant platform, but only stdio has been exercised so far (via mcp_demo.py's in-process Client). An untested code path could be silently wrong when we actually try to host it.",
+      "evidence": "agent/mcp_server.py's docstring documents the streamable-http invocation; no test or run has exercised it in this session.",
+      "safe_to_auto_execute": false,
+      "verification_required": "Start the server with transport='streamable-http' and confirm a real HTTP-based MCP client (not just in-process) can discover and invoke tools, before this transport is relied on for hosting.",
+      "created_at_commit": "uncommitted",
+      "resolved_at_commit": null
     }
   ]
 }
