@@ -102,6 +102,12 @@ def _sanitize_tool_input(name: str, tool_input) -> str:
         return f"{query!r}"
     if name == "semantic_repository_search":
         return f"{tool_input.get('query', '')!r}, top_k={tool_input.get('top_k', 5)}"
+    if name == "propose_source_change":
+        return repr(tool_input.get("path", ""))
+    if name == "apply_approved_source_change":
+        return repr(tool_input.get("edit_id", ""))
+    if name in ("run_controlled_compile", "run_controlled_tests"):
+        return "()"
     return repr(tool_input)
 
 
@@ -148,7 +154,23 @@ def _trace(iteration: int, message: str) -> None:
     print(f"Iteration {iteration}: {message}", file=sys.stderr)
 
 
-def run_agent_loop(ticket: str, api_key: str) -> str:
+def run_agent_loop(
+    ticket: str,
+    api_key: str,
+    tool_schemas=None,
+    dispatch_fn=None,
+    system_prompt_suffix: str = "",
+) -> str:
+    """tool_schemas/dispatch_fn default to the read-only V3 tool set (safe,
+    unchanged behavior for existing callers). Passing an expanded schema
+    list + dispatcher (e.g. execution_tools.EXECUTION_TOOL_SCHEMAS /
+    dispatch_execution_tool_call) is how V4.1 grants write/build capability
+    — this loop has no idea which tools it's running and never hardcodes
+    their names beyond the cosmetic trace-formatting helpers above."""
+    tool_schemas = tool_schemas if tool_schemas is not None else TOOL_SCHEMAS
+    dispatch_fn = dispatch_fn if dispatch_fn is not None else dispatch_tool_call
+    system_prompt = SYSTEM_PROMPT + system_prompt_suffix
+
     client = Anthropic(api_key=api_key)
     messages = [{"role": "user", "content": f"Ticket:\n{ticket}"}]
     tool_call_count = 0
@@ -159,11 +181,11 @@ def run_agent_loop(ticket: str, api_key: str) -> str:
         create_kwargs = {
             "model": MODEL,
             "max_tokens": MAX_TOKENS,
-            "system": SYSTEM_PROMPT,
+            "system": system_prompt,
             "messages": messages,
         }
         if tools_enabled:
-            create_kwargs["tools"] = TOOL_SCHEMAS
+            create_kwargs["tools"] = tool_schemas
 
         response = client.messages.create(**create_kwargs)
 
@@ -218,7 +240,7 @@ def run_agent_loop(ticket: str, api_key: str) -> str:
 
             tool_call_count += 1
             call_start = time.monotonic()
-            result_text, is_error = dispatch_tool_call(block.name, block.input)
+            result_text, is_error = dispatch_fn(block.name, block.input)
             duration_ms = round((time.monotonic() - call_start) * 1000, 1)
             status = "ERROR" if is_error else "OK"
             note = _result_note(block.name, result_text, is_error)

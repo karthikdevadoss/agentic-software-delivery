@@ -24,17 +24,18 @@
     "V4 write boundary foundation (agent/write_tools.py): propose/approve/apply flow, repo-bound, scope-restricted to app/src/{main,test}/java .java files, reuses tools.py path-security (no duplication), unapproved/duplicate/rejected applies all blocked",
     "approval-binding integrity: approve_edit() hashes (path, content) at approval time; apply_edit() refuses if either changed since — closes a real gap found via testing (see LESSONS.md)",
     "V4 controlled compile/test tool (agent/build_tools.py): allowlist-only (compile, test), no shell, verified live against the real Customer app (mvnw compile ~15s, mvnw test ~11s, both succeeded)",
-    "security fix: tools._resolve_safe_path now blocks secret-like filenames even for not-yet-existing files (previously only checked existing files — a real gap for any write path)"
+    "security fix: tools._resolve_safe_path now blocks secret-like filenames even for not-yet-existing files (previously only checked existing files — a real gap for any write path)",
+    "V4.1 live execution wiring (agent/execution_tools.py, agent/execution_agent.py): agent_loop.py made generic (tool_schemas/dispatch_fn params, default-compatible with V3); propose_source_change/apply_approved_source_change/run_controlled_compile/run_controlled_tests exposed to the model; approve_edit/reject_edit confirmed NOT reachable by any model-callable name; real live demo run proved a genuine Claude reasoning session correctly investigates, proposes exactly the requested safe file, and cannot bypass rejection when no human is present"
   ],
   "missing_capabilities": [
     "MCP write/build/deploy tool exposure (only read-only tools exposed so far, by design)",
     "MCP Streamable HTTP transport exercised for real (documented/coded path, not yet run over real HTTP — only stdio and in-process Client have been tested; tracked as ACTION_QUEUE ACT-005)",
     "production-grade code embeddings (Voyage AI voyage-code-4 implemented but unusable without VOYAGE_API_KEY; local fastembed is what's actually verified)",
     "vector DB at scale (current local-JSON+numpy index is sized for this repo; would need Qdrant/pgvector for a much larger one)",
-    "V4 write/build tools wired into the live Claude tool-calling loop (foundation exists and is tested in isolation; agent_loop.py cannot call them yet)",
-    "any actual ticket implemented through V4 (Update Email remains the planned first proof)",
+    "a genuinely human-approved live run (this session's demo correctly fails closed with no TTY attached — a real approval requires a developer running agent/execution_agent.py at their own interactive terminal)",
+    "any actual ticket implemented through V4/V4.1 (Update Email remains the planned first proof)",
     "autonomous code modification",
-    "compile-test-self-correction loop (compile/test tool exists; no loop wiring failures back to the agent yet)",
+    "compile-test-self-correction loop (compile/test tools exist and are wired in; no automatic retry-on-failure loop yet)",
     "review agent",
     "GitHub PR automation",
     "deployment"
@@ -68,9 +69,12 @@
     "v4_write_boundary_scope_and_secret_rejection": {"status": "unit_tested", "as_of_commit": "b724035", "evidence": "traversal/absolute/out-of-scope/wrong-extension/secret-named-new-file all rejected; secret-name case caught a real pre-existing gap in tools.py, fixed and re-verified (see LESSONS.md)"},
     "v4_write_boundary_shared_security_reuse": {"status": "unit_tested", "as_of_commit": "b724035", "evidence": "agent/test_write_tools.py test_write_scope_check_delegates_to_shared_tools_path_validation: mocks tools._resolve_safe_path and asserts write_tools calls it directly, no reimplementation"},
     "v4_build_tool_allowlist": {"status": "unit_tested", "as_of_commit": "b724035", "evidence": "agent/test_build_tools.py (6 tests): unknown/injection-shaped goals rejected before subprocess is touched, shell=False confirmed, argv-list form confirmed, output size-bounded"},
-    "v4_build_tool_real_execution": {"status": "runtime_verified", "as_of_commit": "b724035", "evidence": "real run_maven('compile') and run_maven('test') against the actual Customer app both returned success=True (15.5s and 10.9s respectively; test succeeded trivially since no test classes exist yet)"}
+    "v4_build_tool_real_execution": {"status": "runtime_verified", "as_of_commit": "b724035", "evidence": "real run_maven('compile') and run_maven('test') against the actual Customer app both returned success=True (15.5s and 10.9s respectively; test succeeded trivially since no test classes exist yet)"},
+    "v41_approval_not_model_callable": {"status": "unit_tested", "as_of_commit": "uncommitted", "evidence": "test_approval_not_present_in_tool_schemas_by_exact_name (exact set membership, not substring) + test_approval_not_reachable_through_dispatch_by_any_name + test_model_supplied_approval_field_is_ignored_not_honored"},
+    "v41_live_agent_end_to_end": {"status": "runtime_verified", "as_of_commit": "uncommitted", "evidence": "real agent/execution_agent.py run (real Claude API call) against a safe demo ticket: investigated the real repo, proposed exactly the one safe additive test file requested, respected explicit do-not-touch constraints, and correctly reported the human rejection without attempting to bypass it. File confirmed never written to disk."},
+    "v41_fail_closed_without_human": {"status": "unit_tested", "as_of_commit": "uncommitted", "evidence": "input() confirmed to raise EOFError in this non-interactive tool environment; _default_approval_prompt now catches it and returns False (reject), never crashes and never silently approves — test_default_prompt_fails_closed_on_eof_not_crash + reproduced live in the real demo run above"}
   },
   "next_phase": "V4 controlled code-writing agent with compile feedback loop",
-  "next_action": "Wire write_tools/build_tools into agent_loop.py's live tool-calling loop (read-only tools already work this way), then use the Update Email ticket as the first real end-to-end proof of the full propose->approve->apply->compile/test loop",
+  "next_action": "Have a developer run 'python agent/execution_agent.py <ticket>' at their own interactive terminal to complete a genuinely human-approved live run (this session's sandboxed demo correctly cannot provide real approval), then use the Update Email ticket as the first real end-to-end business proof of propose->approve->apply->compile/test",
   "blocked_on": null
 }

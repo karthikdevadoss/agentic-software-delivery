@@ -128,3 +128,13 @@ surprising verified behavior would otherwise get rediscovered later.
   step and the action it authorizes are separated in time, bind the
   approval to a hash/snapshot of exactly what was shown, not to a mutable
   reference that could change underneath it.
+
+- **A substring check for "is this forbidden name present" can produce a
+  false positive that masks whether the real invariant holds.** Problem:
+  an ad-hoc check `any('approve' in n for n in tool_names)` reported `True`
+  because `apply_approved_source_change` contains the substring "approve" —
+  not because `approve_edit` was actually exposed. Correction: verify
+  forbidden-name exclusions with exact set membership (`"approve_edit" in
+  names`), not substring search. Future rule: when writing any check whose
+  job is "prove X is absent," use exact matching — a substring/regex check
+  can silently turn a real security-boundary test into theater.
