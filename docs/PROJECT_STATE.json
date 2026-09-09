@@ -1,22 +1,27 @@
 {
   "project": "Agentic Software Delivery System",
-  "current_version": "V2",
-  "last_verified_code_commit": "943648e",
+  "current_version": "V3",
+  "last_verified_code_commit": "c40d1e8",
   "current_ticket": "Update customer email",
   "current_ticket_implemented": false,
   "completed_capabilities": [
     "Spring Boot target application",
     "browser UI",
-    "ticket-to-plan Claude API integration",
-    "repository-aware planning",
-    "architecture and engineering-rule context"
+    "ticket-to-plan Claude API integration (V1)",
+    "static repository-aware planning (V2, still available via --mode v2)",
+    "controlled read-only tool-using planning agent (V3, default via --mode v3)",
+    "safe repository tools: list_repository_files, read_file, search_code",
+    "thinking/tool_use round-tripping verified correct",
+    "strict, accurately-named tool-call budget enforcement",
+    "safe trace/observability (tool name, sanitized input, status, size, truncation only)",
+    "path traversal / symlink / secret-filename / redaction security protections"
   ],
   "missing_capabilities": [
     "RAG",
     "embeddings",
     "vector database",
-    "tool-using coding agent",
     "MCP integration",
+    "code-writing / file-modifying agent",
     "autonomous code modification",
     "compile-test-self-correction loop",
     "review agent",
@@ -25,12 +30,17 @@
   ],
   "verification_state": {
     "planner_v2": true,
+    "planner_v3": true,
     "spring_app": true,
     "find_customer_ui": true,
     "create_customer_ui": true,
-    "update_email": false
+    "update_email": false,
+    "v3_tool_budget_enforced": true,
+    "v3_thinking_tool_use_roundtrip": true,
+    "v3_safe_trace": true,
+    "v3_security_protections": true
   },
-  "next_phase": "V3 controlled tool-using agent",
-  "next_action": "Review direct Anthropic tool calling versus MCP architecture before implementing V3",
+  "next_phase": "V4 controlled code-writing agent with compile feedback loop",
+  "next_action": "Design V4 write-tool boundaries (propose-diff-then-apply pattern, explicit human approval before any file write, restricted target paths) and a controlled compile tool, before implementing V4 against the Update Email ticket",
   "blocked_on": null
 }
