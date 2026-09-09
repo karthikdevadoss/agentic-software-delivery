@@ -145,7 +145,7 @@ V3 + MCP + RAG foundations (this checkpoint):
   rewritten; verified real events are recorded with correct blocked_unsafe
   classification
 
-V4 write/execution boundary foundation (this checkpoint, not committed yet):
+V4 write/execution boundary foundation (committed: b724035, 30da5ee):
 - agent/write_tools.py: strict propose -> approve -> apply flow (never direct
   writes). Reuses tools._resolve_safe_path for traversal/absolute/symlink/
   secret-name checks (no duplicated security policy); adds a write-only scope
@@ -166,6 +166,44 @@ V4 write/execution boundary foundation (this checkpoint, not committed yet):
   separate from first real usage
 - Customer application source: unchanged (git diff empty); Update Email
   ticket: still not implemented
+- approval-integrity gap found and fixed before commit: PendingEdit's
+  `approved` was a plain boolean with nothing binding it to the exact
+  (path, content) approved. Fixed via a sha256(path, content) hash captured
+  at approval time and re-verified at apply time — target/content
+  substitution after approval is now provably rejected
+
+V4.1 live execution wiring (committed: e90eb0c):
+- agent_loop.py made generic (tool_schemas/dispatch_fn/system_prompt_suffix
+  params, all optional, defaulting to unchanged V3 behavior — re-verified
+  identical --mode v2/v3 output)
+- agent/execution_tools.py wires write_tools.py/build_tools.py into the live
+  model-facing tool surface: propose_source_change, apply_approved_source_change,
+  run_controlled_compile, run_controlled_tests. approve_edit/reject_edit are
+  NOT tool schemas and NOT reachable via dispatch by any name — verified by
+  exact set-membership checks (a substring check gave a false positive first;
+  corrected, see LESSONS.md)
+- agent/execution_agent.py: new CLI entry point (separate from main.py) for
+  the write/build-capable agent
+- fixed a real crash risk found via testing: input() raises EOFError in a
+  non-interactive environment; the approval prompt now fails closed
+  (rejects) instead of crashing or silently approving
+- full regression: 60 tests total, 59 passed, 1 legitimate skip (Windows
+  symlink creation privilege) — across test_agent_loop, test_rag_index,
+  test_mcp_server, test_write_tools, test_build_tools, test_execution_tools
+- **real live demonstration performed**: agent/execution_agent.py run for
+  real (genuine Claude API call) against a safe demo ticket. The agent
+  investigated the real repo, proposed exactly the one safe additive file
+  requested, and correctly reported the rejection when the approval gate
+  failed closed (no interactive terminal available in this environment) —
+  unprompted, it stated "I cannot approve my own proposals and there is no
+  mechanism to override that decision." The proposed file was confirmed
+  never written to disk.
+- **IMPORTANT — NOT YET PROVEN**: a genuinely human-approved end-to-end run
+  (a real person typing "y" at a real terminal) has NOT happened yet. The
+  live demo above proves the boundary holds when no human is present; it
+  does not yet prove the full approve-and-apply path with a real approval.
+  That is the explicit next action (see PROJECT_STATE.json).
+- Customer application source: unchanged; Update Email: still not implemented
 
 # Important learning
 V2 is NOT RAG. V3's tool-calling alone was NOT RAG either.
@@ -205,8 +243,8 @@ docs-only commits), see `last_verified_code_commit` in
 - MCP Streamable HTTP actually run (stdio is what's verified; HTTP path is coded/documented for a future hosted platform)
 - production-grade code embeddings (Voyage AI implemented but blocked on VOYAGE_API_KEY; fastembed is what's actually verified)
 - vector DB at scale (current index is local JSON + numpy, sized for this repo)
-- code-writing / file-modifying agent wired into the live tool-calling loop (V4's write/build tools exist and are tested in isolation, but agent_loop.py cannot call them yet)
-- any ticket actually implemented through V4 (Update Email remains the planned first proof)
+- a genuinely human-approved live execution cycle (V4.1 is wired into the live loop and proven to fail closed without a real human; a real person has not yet typed a real approval)
+- any ticket actually implemented through V4/V4.1 (Update Email remains the planned first proof, after the human-approved cycle above)
 - test agent
 - reviewer agent
 - autonomous file modification by our Python system (the mechanism exists behind an approval gate; nothing calls it autonomously)
@@ -232,13 +270,21 @@ then run a controlled compile tool (no arbitrary shell/Maven access) to
 verify the change and support self-correction — still with no autonomous
 Git writes, PR creation, or deployment at this stage.
 
-Next action:
-The V4 write/build safety boundary (propose->approve->apply, scope-
-restricted write tool, allowlist-only compile/test tool) is now built and
-verified in isolation (see above) — not yet committed, not yet wired into
-the live agent loop. Next: wire write_tools/build_tools into
-agent_loop.py's TOOL_SCHEMAS/dispatch, then use the Update Email ticket as
-the first real end-to-end proof.
+Next action (exact, small, first when resuming):
+V4 and V4.1 are both committed and verified in isolation/simulation, but a
+genuinely human-approved live run has NOT happened yet — the one live demo
+this session correctly failed closed with no real terminal attached. First
+action on return: personally run
+`python agent/execution_agent.py <a safe fixture ticket>` at a real
+interactive terminal, using a harmless fixture/test target (NOT Update
+Email), and personally type the real approval. Prove: investigation ->
+proposal -> pause -> real APPROVE -> exact approved change applies ->
+compile/test -> verified result. Clean the fixture afterward. Only after
+that proof should the next MVP be chosen — expected to be a small
+browser-based control UI (Requirement -> Start -> status/evidence -> View
+Diff -> Approve/Reject -> build/test -> result), then a small dashboard MVP
+using only real telemetry — but re-prioritize if the live proof shows
+otherwise.
 
 # Useful commands
 

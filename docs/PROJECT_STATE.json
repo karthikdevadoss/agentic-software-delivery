@@ -1,7 +1,7 @@
 {
   "project": "Agentic Software Delivery System",
   "current_version": "V3+MCP+RAG foundations",
-  "last_verified_code_commit": "b724035",
+  "last_verified_code_commit": "e90eb0c",
   "current_ticket": "Update customer email",
   "current_ticket_implemented": false,
   "completed_capabilities": [
@@ -70,9 +70,9 @@
     "v4_write_boundary_shared_security_reuse": {"status": "unit_tested", "as_of_commit": "b724035", "evidence": "agent/test_write_tools.py test_write_scope_check_delegates_to_shared_tools_path_validation: mocks tools._resolve_safe_path and asserts write_tools calls it directly, no reimplementation"},
     "v4_build_tool_allowlist": {"status": "unit_tested", "as_of_commit": "b724035", "evidence": "agent/test_build_tools.py (6 tests): unknown/injection-shaped goals rejected before subprocess is touched, shell=False confirmed, argv-list form confirmed, output size-bounded"},
     "v4_build_tool_real_execution": {"status": "runtime_verified", "as_of_commit": "b724035", "evidence": "real run_maven('compile') and run_maven('test') against the actual Customer app both returned success=True (15.5s and 10.9s respectively; test succeeded trivially since no test classes exist yet)"},
-    "v41_approval_not_model_callable": {"status": "unit_tested", "as_of_commit": "uncommitted", "evidence": "test_approval_not_present_in_tool_schemas_by_exact_name (exact set membership, not substring) + test_approval_not_reachable_through_dispatch_by_any_name + test_model_supplied_approval_field_is_ignored_not_honored"},
-    "v41_live_agent_end_to_end": {"status": "runtime_verified", "as_of_commit": "uncommitted", "evidence": "real agent/execution_agent.py run (real Claude API call) against a safe demo ticket: investigated the real repo, proposed exactly the one safe additive test file requested, respected explicit do-not-touch constraints, and correctly reported the human rejection without attempting to bypass it. File confirmed never written to disk."},
-    "v41_fail_closed_without_human": {"status": "unit_tested", "as_of_commit": "uncommitted", "evidence": "input() confirmed to raise EOFError in this non-interactive tool environment; _default_approval_prompt now catches it and returns False (reject), never crashes and never silently approves — test_default_prompt_fails_closed_on_eof_not_crash + reproduced live in the real demo run above"}
+    "v41_approval_not_model_callable": {"status": "unit_tested", "as_of_commit": "e90eb0c", "evidence": "test_approval_not_present_in_tool_schemas_by_exact_name (exact set membership, not substring) + test_approval_not_reachable_through_dispatch_by_any_name + test_model_supplied_approval_field_is_ignored_not_honored"},
+    "v41_live_agent_end_to_end": {"status": "runtime_verified", "as_of_commit": "e90eb0c", "evidence": "real agent/execution_agent.py run (real Claude API call) against a safe demo ticket: investigated the real repo, proposed exactly the one safe additive test file requested, respected explicit do-not-touch constraints, and correctly reported the human rejection without attempting to bypass it. File confirmed never written to disk."},
+    "v41_fail_closed_without_human": {"status": "unit_tested", "as_of_commit": "e90eb0c", "evidence": "input() confirmed to raise EOFError in this non-interactive tool environment; _default_approval_prompt now catches it and returns False (reject), never crashes and never silently approves — test_default_prompt_fails_closed_on_eof_not_crash + reproduced live in the real demo run above"}
   },
   "next_phase": "V4 controlled code-writing agent with compile feedback loop",
   "next_action": "Have a developer run 'python agent/execution_agent.py <ticket>' at their own interactive terminal to complete a genuinely human-approved live run (this session's sandboxed demo correctly cannot provide real approval), then use the Update Email ticket as the first real end-to-end business proof of propose->approve->apply->compile/test",
