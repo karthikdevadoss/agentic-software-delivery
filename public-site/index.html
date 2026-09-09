@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Agentic Software Delivery</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <h1>Agentic Software Delivery <span class="sub">— Public Overview</span></h1>
+  <p class="tagline">An AI agent that safely proposes and verifies real code changes — with a human approval boundary the agent structurally cannot bypass.</p>
+  <nav class="top-nav">
+    <a href="/"><strong>Overview</strong></a> &middot;
+    <a href="/dashboard">Dashboard</a> &middot;
+    <a href="/sessions">Sessions</a>
+  </nav>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>What is this?</h2>
+    <p>This system takes a business requirement, investigates a real Spring Boot codebase using retrieval-augmented search, proposes a specific code change, and only applies it after a human explicitly approves — a boundary enforced outside the model's own tool access, not just by policy. Once approved, the change is compiled and tested with real, controlled tools before being reported as verified.</p>
+  </section>
+
+  <section class="panel">
+    <h2>What you can see here</h2>
+    <p><strong><a href="/dashboard">Dashboard</a></strong> — real architecture, capability, and verification evidence for this system: what's implemented, what's tested, what's still a known gap. No fabricated status — unavailable data is always labeled, never invented.</p>
+    <p><strong><a href="/sessions">Sessions</a></strong> — how human and AI time/tokens were actually used to produce this system, including a scored (and honestly-coverage-labeled) effectiveness assessment of each build session.</p>
+  </section>
+
+  <section class="panel">
+    <h2>What's not here yet</h2>
+    <p>The interactive Control Plane (submit a requirement, click Approve/Reject, watch a live build/test run) is <strong>not exposed publicly</strong> in this release — it currently requires the operator to run it locally, since anonymous visitors do not have production release authority and the current architecture doesn't yet have a safe public write boundary. The Dashboard and Sessions pages here are a real snapshot published from that local system, not a live connection.</p>
+    <p>The actual Spring Boot business application (the target the agent modifies) is a separate system from this control/evidence surface — see the Dashboard for its current public deployment status.</p>
+  </section>
+</main>
+
+</body>
+</html>

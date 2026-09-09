@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Agentic Software Delivery — Sessions</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="dashboard.css">
+<link rel="stylesheet" href="sessions.css">
+</head>
+<body>
+
+<header>
+  <h1>Agentic Software Delivery <span class="sub">— Session Intelligence</span></h1>
+  <p class="tagline">How human + AI resources were used to produce verified value. Real values only — unavailable data is labeled, never invented.</p>
+  <nav class="top-nav">
+    <a href="/">Overview</a> &middot;
+    <a href="/dashboard">Dashboard</a> &middot;
+    <a href="/sessions"><strong>Sessions</strong></a>
+  </nav>
+  <p class="hint" id="snapshot-notice">STATIC SNAPSHOT — published at deploy time from the real local system, not a live connection. START/END SESSION below is disabled on this public copy (it only works against the local Control Plane).</p>
+</header>
+
+<main id="sessions-main">
+  <p class="hint">Loading session evidence from Git history, run history, and dev-session records…</p>
+</main>
+
+<script src="sessions.js"></script>
+<script>
+  // Public static copy: dev-session start/stop has no backend here.
+  // Disable it rather than let it silently 404 when clicked.
+  window.addEventListener("DOMContentLoaded", () => {
+    const disable = () => {
+      const btn = document.getElementById("dev-start-btn");
+      if (btn) { btn.disabled = true; btn.title = "Not available on the public static snapshot — run locally against the Control Plane."; }
+      else { setTimeout(disable, 200); }
+    };
+    disable();
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+main#sessions-main { max-width: 1100px; }
+
+.session-row {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.7rem 0.9rem;
+  margin-bottom: 0.6rem;
+  cursor: pointer;
+}
+.session-row:hover { border-color: var(--accent); }
+.session-row .row-top { display: flex; justify-content: space-between; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.session-row .goal { font-size: 0.88rem; color: var(--text); margin-top: 0.35rem; }
+.session-row .meta { display: flex; flex-wrap: wrap; gap: 0.8rem; color: var(--muted); font-size: 0.8rem; margin-top: 0.35rem; }
+.session-row .score { font-weight: 700; }
+.session-row .score.high { color: var(--green); }
+.session-row .score.mid { color: var(--amber); }
+.session-row .score.low { color: var(--red); }
+.session-row .score.none { color: var(--muted); }
+
+.session-detail {
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+  border-top: 1px dashed var(--border);
+  font-size: 0.85rem;
+  display: none;
+}
+.session-row.expanded .session-detail { display: block; }
+
+.score-breakdown { list-style: none; margin: 0.3rem 0; padding: 0; }
+.score-breakdown li { display: flex; justify-content: space-between; padding: 0.2rem 0; border-bottom: 1px solid var(--border); }
+.score-breakdown li:last-child { border-bottom: none; }
+
+.tag-type { padding: 0.1rem 0.5rem; border-radius: 4px; font-size: 0.7rem; background: #2a2e3a; color: var(--muted); }
+.tag-type.product_runtime { background: #1e3a5f; color: #7db4ff; }
+.tag-type.benchmark { background: #2a2e3a; color: var(--muted); }
+.tag-type.development { background: #124a35; color: var(--green); }
+
+.value-ledger { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+.value-ledger .vl-item { border: 1px solid var(--border); border-radius: 6px; padding: 0.6rem 0.8rem; }
+.value-ledger .vl-level { font-weight: 700; font-size: 0.8rem; }
+.value-ledger .vl-level.high { color: var(--green); }
+.value-ledger .vl-level.medium { color: var(--amber); }
+.value-ledger .vl-level.low { color: var(--red); }
+.value-ledger .vl-level.not-assessed { color: var(--muted); }
+.value-ledger .vl-reason { color: var(--muted); font-size: 0.8rem; margin-top: 0.3rem; }
+
+.dev-session-form { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.75rem; }
+.dev-session-form input[type=text] { flex: 1; min-width: 200px; background: #0d0f14; color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem 0.7rem; }

@@ -1,0 +1,9 @@
+{
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/api/dashboard", "destination": "/dashboard.json" },
+    { "source": "/api/sessions", "destination": "/sessions.json" },
+    { "source": "/dashboard", "destination": "/dashboard.html" },
+    { "source": "/sessions", "destination": "/sessions.html" }
+  ]
+}
