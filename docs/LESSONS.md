@@ -138,3 +138,25 @@ surprising verified behavior would otherwise get rediscovered later.
   names`), not substring search. Future rule: when writing any check whose
   job is "prove X is absent," use exact matching — a substring/regex check
   can silently turn a real security-boundary test into theater.
+
+- **An interactive approval prompt must fail closed, not crash, when no
+  real terminal is attached.** Problem: `input()` raises `EOFError` in a
+  non-interactive tool-calling environment (confirmed empirically).
+  `_default_approval_prompt` didn't catch it, so a live run in such an
+  environment would have crashed instead of safely refusing. Correction:
+  catch `EOFError` and return `False` (reject) — absence of a human is not
+  the same as an approving one. Future rule: any human-gate function must
+  treat "cannot reach a human" as equivalent to "rejected," never to
+  "approved" or "crash."
+
+- **Temporary test/demo fixtures must actually be cleaned up, or they
+  contaminate real agent observations later.** Problem: a cleanup command
+  used a relative path after a preceding `cd`, so `rm -rf app/src/test/...`
+  silently targeted a nonexistent path and did nothing; the leftover
+  fixture file was then picked up and reported by a *real* V3 agent run's
+  tool trace in a later step, momentarily looking like a real anomaly.
+  Correction: re-ran cleanup with a correct path, verified with `find`
+  before trusting it. Future rule: verify a cleanup actually removed the
+  target (don't just trust the command exited 0) before treating the
+  workspace as clean, especially right before a run whose output you're
+  about to inspect for signal.
