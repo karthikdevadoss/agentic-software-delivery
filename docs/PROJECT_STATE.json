@@ -1,7 +1,7 @@
 {
   "project": "Agentic Software Delivery System",
-  "current_version": "V4.1 + browser Control UI + Evidence Dashboard",
-  "last_verified_code_commit": "35889a0",
+  "current_version": "V4.1 + browser Control UI + Evidence Dashboard + Session Intelligence",
+  "last_verified_code_commit": "da50a4f",
   "current_ticket": "Update customer email",
   "current_ticket_implemented": false,
   "completed_capabilities": [
@@ -85,9 +85,10 @@
     "control_ui_mock_demo_leaves_no_file_residue": {"status": "runtime_verified", "as_of_commit": "11f4429", "evidence": "post-verification git status showed no new untracked files beyond the real-run artifacts after the Mock Demo was run multiple times — confirms by observation, not just by design, that _run_mock_thread never touches the filesystem (it bypasses write_tools.propose_edit entirely, fabricating an in-memory-only proposal)"},
     "control_ui_proof_artifact_cleaned": {"status": "runtime_verified", "as_of_commit": "11f4429", "evidence": "app/src/test/java/com/example/customer/V41BoundaryDemoTest.java (the harmless placeholder test file created by the first browser-approved run) deleted before commit per creator's explicit approval — it had served its purpose as runtime evidence and had no continuing business value; requirements/demo_v41_boundary_check.txt kept as the reproducible benchmark requirement; historical proof now lives in Git history + this file + test/metrics evidence, not in junk Customer-application code. Verified post-delete: no related fixture remains, app/src/main/ diff empty, no updateEmail references."},
     "dashboard_mvp_real_evidence_only": {"status": "ui_verified", "as_of_commit": "35889a0", "evidence": "agent/dashboard_data.py reads only docs/PROJECT_STATE.json, the real persisted RAG index (21 files/56 chunks), a small local run-history log, and live agent/metrics.py counters — no fabricated values, unavailable data explicitly labeled NOT CAPTURED YET; creator visually verified the rendered /dashboard page in-browser and confirmed via 'DASHBOARD VISUALLY VERIFIED' before this commit"},
-    "dashboard_run_history_persists_across_restart": {"status": "runtime_verified", "as_of_commit": "35889a0", "evidence": "agent/web_run_history.jsonl (gitignored) appended on every run's terminal state; verified live: one mock run's record survived a full server restart and was correctly re-read by /api/dashboard"}
+    "dashboard_run_history_persists_across_restart": {"status": "runtime_verified", "as_of_commit": "35889a0", "evidence": "agent/web_run_history.jsonl (gitignored) appended on every run's terminal state; verified live: one mock run's record survived a full server restart and was correctly re-read by /api/dashboard"},
+    "session_intelligence_mvp": {"status": "ui_verified", "as_of_commit": "da50a4f", "evidence": "creator visually reviewed /sessions before this commit; real API token capture (response.usage) wired into agent_loop.py but NOT YET runtime-verified with a live API call (only unit/syntax-checked + full 60-test regression pass); dev-session start/stop endpoints exercised live end to end (real 2s wall-clock span recorded and re-read)"}
   },
-  "next_phase": "Session Intelligence / Value Ledger MVP (evidence/intelligence surface at /sessions, distinct from Control UI and Dashboard) — creator-approved, in progress",
-  "next_action": "Build /sessions using only real/labeled data (git+durable-state reconstruction for history, a new small session-record store for going forward); explicitly label NOT CAPTURED fields (tokens, cost, human active time) rather than inferring them",
+  "next_phase": "Public deployment (Control/Dashboard/Sessions surfaces to Vercel; actual Spring Boot Customer app to a JVM-capable host) — in progress",
+  "next_action": "See docs/DECISIONS.md public-deployment entry for exact architecture and blockers; local Session Intelligence MVP (commit da50a4f) is done and creator-verified",
   "blocked_on": null
 }
