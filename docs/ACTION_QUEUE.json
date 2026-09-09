@@ -1,0 +1,35 @@
+{
+  "_purpose": "Current actionable work discovered during verified sessions — not project history. Resolved items are removed here (their resolution is recorded via the commit that removes them + PROJECT_STATUS.md/LESSONS.md if reusable), not accumulated forever. This is separate from PROJECT_STATE.json's next_phase/next_action, which tracks the one current phase-level priority, not the backlog of smaller items surfaced along the way.",
+  "_status_values": ["open", "in_progress", "blocked", "verified", "deferred"],
+  "_priority_values": ["critical", "high", "medium", "low"],
+  "items": [
+    {
+      "id": "ACT-001",
+      "source": "security",
+      "title": "_resolve_safe_path() gives a misleading error for foreign-drive-letter paths (e.g. 'D:foo')",
+      "priority": "low",
+      "status": "open",
+      "scope": "agent/tools.py only",
+      "reason": "During V3 correctness review, a path like 'D:foo' (different drive than REPO_ROOT) was correctly rejected but reported as 'symlinks are not allowed', which is factually wrong even though the security boundary holds.",
+      "evidence": "Empirical probe during V3 review: tools._resolve_safe_path('D:foo') raised RepoToolError('symlinks are not allowed') instead of a drive/traversal-specific message.",
+      "safe_to_auto_execute": false,
+      "verification_required": "Re-run the same empirical probe and confirm the new error message accurately describes the rejection reason; confirm the path is still rejected either way.",
+      "created_at_commit": "8cd4083",
+      "resolved_at_commit": null
+    },
+    {
+      "id": "ACT-002",
+      "source": "verification",
+      "title": "No automated regression tests for agent/tools.py security boundaries",
+      "priority": "medium",
+      "status": "open",
+      "scope": "new test file under agent/, no production code changes",
+      "reason": "Path traversal, symlink rejection, absolute-path rejection, and secret redaction were all verified empirically with one-off scripts during the V3 review, not committed as permanent tests. A future change to tools.py could silently regress these protections with nothing to catch it.",
+      "evidence": "V3 correctness review (this session) used ad-hoc python -c probes, not committed test code, to verify path-safety behavior.",
+      "safe_to_auto_execute": false,
+      "verification_required": "New test file exists, covers traversal/symlink/absolute-path/redaction cases, and passes.",
+      "created_at_commit": "8cd4083",
+      "resolved_at_commit": null
+    }
+  ]
+}

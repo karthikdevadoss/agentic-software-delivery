@@ -14,7 +14,8 @@
     "thinking/tool_use round-tripping verified correct",
     "strict, accurately-named tool-call budget enforcement",
     "safe trace/observability (tool name, sanitized input, status, size, truncation only)",
-    "path traversal / symlink / secret-filename / redaction security protections"
+    "path traversal / symlink / secret-filename / redaction security protections",
+    "adaptive project memory / continuity system (CLAUDE.md startup+action rules, PROJECT_STATE.json, LESSONS.md, docs/ACTION_QUEUE.json)"
   ],
   "missing_capabilities": [
     "RAG",
@@ -40,7 +41,8 @@
     "v3_tool_budget_enforced": {"status": "runtime_verified", "as_of_commit": "c40d1e8", "evidence": "live run showed 9th tool call in one batch correctly SKIPPED at cap=8"},
     "v3_thinking_tool_use_roundtrip": {"status": "unit_tested", "as_of_commit": "c40d1e8", "evidence": "agent/test_agent_loop.py ThinkingBlockPassthroughTest"},
     "v3_safe_trace": {"status": "runtime_verified", "as_of_commit": "c40d1e8", "evidence": "stderr trace inspected line-by-line, confirmed no file content/secrets"},
-    "v3_security_protections": {"status": "runtime_verified", "as_of_commit": "c40d1e8", "evidence": "empirical path-traversal/symlink/absolute-path probes + grep for subprocess/write calls"}
+    "v3_security_protections": {"status": "runtime_verified", "as_of_commit": "c40d1e8", "evidence": "empirical path-traversal/symlink/absolute-path probes + grep for subprocess/write calls"},
+    "continuity_feedback_loop": {"status": "runtime_verified", "as_of_commit": "8cd4083", "evidence": "synthetic ACTION_QUEUE.json item run through open -> failed check -> fixed -> re-verified -> resolved/removed lifecycle; no residue left in the file"}
   },
   "next_phase": "V4 controlled code-writing agent with compile feedback loop",
   "next_action": "Design V4 write-tool boundaries (propose-diff-then-apply pattern, explicit human approval before any file write, restricted target paths) and a controlled compile tool, before implementing V4 against the Update Email ticket",
