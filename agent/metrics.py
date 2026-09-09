@@ -18,6 +18,7 @@ _SECURITY_MARKERS = (
 _tool_call_events = []
 _rag_index_events = []
 _retrieval_events = []
+_model_usage_events = []
 
 
 def is_security_block(error_message: str) -> bool:
@@ -55,6 +56,23 @@ def record_retrieval(*, query, top_k, candidates_count, duration_ms):
     })
 
 
+def record_model_usage(*, provider, model, input_tokens, output_tokens,
+                        cache_creation_input_tokens=None, cache_read_input_tokens=None):
+    """Captured directly from the API response's own `.usage` field
+    (Anthropic SDK's Usage type) — never estimated, never scraped from a
+    UI counter. cache_* fields are None when the SDK response doesn't
+    report them, not silently coerced to 0, so callers can distinguish
+    "no cache activity" from "not reported by this response"."""
+    _model_usage_events.append({
+        "provider": provider,
+        "model": model,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "cache_creation_input_tokens": cache_creation_input_tokens,
+        "cache_read_input_tokens": cache_read_input_tokens,
+    })
+
+
 def get_tool_call_events() -> list:
     return list(_tool_call_events)
 
@@ -67,8 +85,13 @@ def get_retrieval_events() -> list:
     return list(_retrieval_events)
 
 
+def get_model_usage_events() -> list:
+    return list(_model_usage_events)
+
+
 def reset():
     """Test-only: clear all in-memory events."""
     _tool_call_events.clear()
     _rag_index_events.clear()
     _retrieval_events.clear()
+    _model_usage_events.clear()

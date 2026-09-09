@@ -189,6 +189,16 @@ def run_agent_loop(
 
         response = client.messages.create(**create_kwargs)
 
+        # Real usage straight from the API response's own `.usage` field —
+        # never estimated, never scraped from a UI counter.
+        metrics.record_model_usage(
+            provider="anthropic", model=MODEL,
+            input_tokens=response.usage.input_tokens,
+            output_tokens=response.usage.output_tokens,
+            cache_creation_input_tokens=getattr(response.usage, "cache_creation_input_tokens", None),
+            cache_read_input_tokens=getattr(response.usage, "cache_read_input_tokens", None),
+        )
+
         # Preserve the assistant turn EXACTLY as returned by Anthropic.
         # Do not filter thinking blocks, reconstruct them, reorder them,
         # or extract only text/tool_use before sending this turn back —

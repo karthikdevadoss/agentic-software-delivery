@@ -105,8 +105,13 @@ def _read_json(path: Path):
         return None
 
 
-def _project_state() -> dict:
+def read_project_state() -> dict:
+    """Public: also used by sessions_data.py so both modules read the one
+    real durable-state file the same way, instead of duplicating parsing."""
     return _read_json(PROJECT_STATE_PATH) or {}
+
+
+_project_state = read_project_state  # internal alias, unchanged call sites below
 
 
 def _rag_index_summary() -> dict:

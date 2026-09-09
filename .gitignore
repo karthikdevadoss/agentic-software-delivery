@@ -15,6 +15,9 @@ agent/.rag_index/
 # Local Control UI run-history telemetry (derived/local, not source)
 agent/web_run_history.jsonl
 
+# Local development-session start/stop records (derived/local, not source)
+agent/dev_sessions.json
+
 # Java / Maven
 target/
 *.class

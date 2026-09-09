@@ -47,6 +47,8 @@ from agent_loop import run_agent_loop
 from execution_agent import EXECUTION_SYSTEM_PROMPT_SUFFIX
 import dashboard_data
 import execution_tools
+import metrics
+import sessions_data
 import write_tools
 
 WEB_DIR = Path(__file__).resolve().parent / "web"
@@ -118,17 +120,33 @@ def _bounded_summary(result_text: str) -> str:
     return "...\n" + text[-MAX_SUMMARY_CHARS:]
 
 
-def _persist_run_history(run: Run) -> None:
+def _persist_run_history(run: Run, usage_start_index: int = None) -> None:
     """Append one compact, real record of this run to a small local JSONL
     log — the smallest persistence that survives a server restart, so the
-    Dashboard has something to show beyond in-memory state. Never touches
-    Customer app files; this is our own product's operational log."""
+    Dashboard/Sessions pages have something to show beyond in-memory
+    state. Never touches Customer app files; this is our own product's
+    operational log."""
     tool_calls = [e for e in run.events if e["type"] == "tool_call"]
     approval = next((e for e in run.events if e["type"] == "approval_decision"), None)
     apply_result = next((e for e in run.events if e["type"] == "tool_result" and e.get("tool") == "apply_approved_source_change"), None)
     compile_result = next((e for e in run.events if e["type"] == "tool_result" and e.get("tool") == "run_controlled_compile"), None)
     test_result = next((e for e in run.events if e["type"] == "tool_result" and e.get("tool") == "run_controlled_tests"), None)
     error = next((e for e in run.events if e["type"] == "error"), None)
+
+    model_usage = None
+    if usage_start_index is not None:
+        # Real API-reported usage for exactly the model calls this run made
+        # (metrics.py is process-global, so slice to this run's window).
+        # None for mock runs, which never call the Anthropic API at all.
+        events = metrics.get_model_usage_events()[usage_start_index:]
+        if events:
+            model_usage = {
+                "provider": events[0]["provider"],
+                "model": events[0]["model"],
+                "api_calls": len(events),
+                "input_tokens": sum(e["input_tokens"] for e in events),
+                "output_tokens": sum(e["output_tokens"] for e in events),
+            }
 
     record = {
         "run_id": run.id,
@@ -143,6 +161,7 @@ def _persist_run_history(run: Run) -> None:
         "compile": {"success": compile_result["success"], "duration_ms": compile_result["duration_ms"]} if compile_result else None,
         "test": {"success": test_result["success"], "duration_ms": test_result["duration_ms"]} if test_result else None,
         "backend_error": error["message"] if error else None,
+        "model_usage": model_usage,
     }
     try:
         with RUN_HISTORY_PATH.open("a", encoding="utf-8") as f:
@@ -193,6 +212,7 @@ def _web_approval_prompt_factory(run: Run):
 
 def _run_agent_thread(run: Run) -> None:
     execution_tools.set_approval_prompt(_web_approval_prompt_factory(run))
+    usage_start_index = len(metrics.get_model_usage_events())
     try:
         run.status = "PLANNING"
         run.emit("stage", {"stage": "PLANNING"})
@@ -212,7 +232,7 @@ def _run_agent_thread(run: Run) -> None:
         run.emit("error", {"message": str(exc)})
     finally:
         execution_tools.set_approval_prompt(execution_tools._default_approval_prompt)
-        _persist_run_history(run)
+        _persist_run_history(run, usage_start_index=usage_start_index)
 
 
 def _run_mock_thread(run: Run) -> None:
@@ -390,14 +410,46 @@ async def dashboard_page(request: Request):
     return FileResponse(str(WEB_DIR / "dashboard.html"))
 
 
+async def get_sessions_data(request: Request):
+    return JSONResponse(sessions_data.build_sessions_snapshot())
+
+
+async def sessions_page(request: Request):
+    return FileResponse(str(WEB_DIR / "sessions.html"))
+
+
+async def start_dev_session_route(request: Request):
+    body = await request.json()
+    goal = (body.get("goal") or "").strip()
+    if not goal:
+        return JSONResponse({"error": "goal is required"}, status_code=400)
+    rec = sessions_data.start_dev_session(
+        goal, ai_assistant=body.get("ai_assistant"), model=body.get("model"))
+    return JSONResponse(rec)
+
+
+async def stop_dev_session_route(request: Request):
+    body = await request.json()
+    session_id = body.get("session_id")
+    if not session_id:
+        return JSONResponse({"error": "session_id is required"}, status_code=400)
+    rec = sessions_data.stop_dev_session(session_id)
+    status_code = 404 if "error" in rec else 200
+    return JSONResponse(rec, status_code=status_code)
+
+
 routes = [
     Route("/api/runs", start_run, methods=["POST"]),
     Route("/api/runs/mock", start_mock_run, methods=["POST"]),
     Route("/api/dashboard", get_dashboard_data, methods=["GET"]),
+    Route("/api/sessions", get_sessions_data, methods=["GET"]),
+    Route("/api/dev-sessions/start", start_dev_session_route, methods=["POST"]),
+    Route("/api/dev-sessions/stop", stop_dev_session_route, methods=["POST"]),
     Route("/api/runs/{run_id}", get_run, methods=["GET"]),
     Route("/api/runs/{run_id}/events", stream_events, methods=["GET"]),
     Route("/api/runs/{run_id}/decide", decide, methods=["POST"]),
     Route("/dashboard", dashboard_page, methods=["GET"]),
+    Route("/sessions", sessions_page, methods=["GET"]),
     Mount("/", app=StaticFiles(directory=str(WEB_DIR), html=True), name="static"),
 ]
 
