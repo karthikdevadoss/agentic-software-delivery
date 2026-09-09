@@ -1,7 +1,7 @@
 {
   "project": "Agentic Software Delivery System",
-  "current_version": "V4.1 + browser Control UI + Evidence Dashboard + Session Intelligence",
-  "last_verified_code_commit": "da50a4f",
+  "current_version": "V4.1 + browser Control UI + Evidence Dashboard + Session Intelligence + public Dashboard/Sessions snapshot",
+  "last_verified_code_commit": "755f4f3",
   "current_ticket": "Update customer email",
   "current_ticket_implemented": false,
   "completed_capabilities": [
@@ -28,7 +28,8 @@
     "V4.1 live execution wiring (agent/execution_tools.py, agent/execution_agent.py): agent_loop.py made generic (tool_schemas/dispatch_fn params, default-compatible with V3); propose_source_change/apply_approved_source_change/run_controlled_compile/run_controlled_tests exposed to the model; approve_edit/reject_edit confirmed NOT reachable by any model-callable name; real live demo run proved a genuine Claude reasoning session correctly investigates, proposes exactly the requested safe file, and cannot bypass rejection when no human is present",
     "Agentic Delivery Control Plane browser MVP (agent/web_server.py + agent/web/): Starlette+SSE backend (zero new dependencies — already-installed transitive deps), separate port (8420) from the Customer app (8080), browser Approve/Reject calls a plain HTTP endpoint outside TOOL_SCHEMAS, real-time stage/tool/RAG/proposal/build/test events streamed live",
     "FIRST REAL BROWSER HUMAN-APPROVED END-TO-END RUN: real Claude call, real repository investigation, real proposal, human clicked APPROVE in the browser, exact approved change applied, mvnw compile succeeded (~15.3s), mvnw test succeeded (~19.0s), VERIFIED SUCCESS reached — stronger evidence than the earlier CLI-only fail-closed demo",
-    "2 real Control UI bugs found and fixed during the live run: (1) EventSource never closed on terminal state, causing browser auto-reconnect to replay the full event history and repeatedly re-trigger scroll/DOM changes; (2) Build/Test Verification panel was never populated, and the final banner was guessing success/failure by regex-sniffing the agent's prose instead of using real structured compile/test state"
+    "2 real Control UI bugs found and fixed during the live run: (1) EventSource never closed on terminal state, causing browser auto-reconnect to replay the full event history and repeatedly re-trigger scroll/DOM changes; (2) Build/Test Verification panel was never populated, and the final banner was guessing success/failure by regex-sniffing the agent's prose instead of using real structured compile/test state",
+    "PUBLIC deployment of Dashboard + Sessions (public-site/, Vercel project 'agentic-software-delivery', live at https://agentic-software-delivery.vercel.app): reuses agent/web/{dashboard,sessions}.{html,js,css} unmodified, real committed JSON snapshot (not fabricated, matches local commit at publish time), interactive Control Plane deliberately NOT exposed publicly (no safe public write boundary yet)"
   ],
   "missing_capabilities": [
     "MCP write/build/deploy tool exposure (only read-only tools exposed so far, by design)",
@@ -88,7 +89,7 @@
     "dashboard_run_history_persists_across_restart": {"status": "runtime_verified", "as_of_commit": "35889a0", "evidence": "agent/web_run_history.jsonl (gitignored) appended on every run's terminal state; verified live: one mock run's record survived a full server restart and was correctly re-read by /api/dashboard"},
     "session_intelligence_mvp": {"status": "ui_verified", "as_of_commit": "da50a4f", "evidence": "creator visually reviewed /sessions before this commit; real API token capture (response.usage) wired into agent_loop.py but NOT YET runtime-verified with a live API call (only unit/syntax-checked + full 60-test regression pass); dev-session start/stop endpoints exercised live end to end (real 2s wall-clock span recorded and re-read)"}
   },
-  "next_phase": "Public deployment (Control/Dashboard/Sessions surfaces to Vercel; actual Spring Boot Customer app to a JVM-capable host) — in progress",
-  "next_action": "See docs/DECISIONS.md public-deployment entry for exact architecture and blockers; local Session Intelligence MVP (commit da50a4f) is done and creator-verified",
+  "next_phase": "Live public data (KV/Blob-backed, no-redeploy publish) + actual Spring Boot app deployment to a JVM-capable host",
+  "next_action": "Blocked on creator's own one-time `railway login` browser authorization (device code presented at end of 2026-09-09 session) before the actual Customer app can be deployed anywhere; Dashboard/Sessions public static snapshot is live at https://agentic-software-delivery.vercel.app as of commit 755f4f3",
   "blocked_on": null
 }

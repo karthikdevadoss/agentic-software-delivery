@@ -61,3 +61,34 @@ substitution vulnerability found and closed by hashing `(path, content)`,
 and (b) the SSE auto-reconnect scroll bug — both are concrete "describe a
 bug you found and fixed" answers backed by real code and tests, not
 hypotheticals.
+
+## Addendum — Session Intelligence + first public deployment (same build day)
+Commits `da50a4f` (Session Intelligence + value ledger), `2c370a2`
+(checkpoint), `755f4f3` (public Dashboard/Sessions deployment). Full
+architecture reasoning is in docs/DECISIONS.md rather than duplicated
+here. Key facts:
+- Real Anthropic API token usage is now captured directly from
+  `response.usage` in `agent_loop.py` (never estimated) — implemented and
+  regression-tested, but **not yet exercised by a real API call**, since a
+  real Claude run was deliberately avoided today to save cost.
+- Historical sessions are reconstructed from Git commit clustering
+  (90-minute gap heuristic), labeled `RECONSTRUCTED FROM PROJECT
+  EVIDENCE`, with real commit timestamps but `NOT CAPTURED` human/token
+  data — this is a *lower bound estimate of session existence*, not a
+  claim of exact working hours.
+- First public URL: `https://agentic-software-delivery.vercel.app`
+  (new Vercel project, existing `portfolio` project untouched) — a
+  **static snapshot** of real Dashboard/Sessions data, not a live
+  connection. The interactive Control Plane was deliberately NOT deployed
+  publicly: Vercel serverless functions can't host the existing
+  background-thread/SSE/in-memory-approval architecture, and more
+  importantly, a public write boundary with real production-release
+  authority does not exist yet (see CONSTITUTION.md — capability does not
+  equal authority).
+- The actual Spring Boot Customer app (Java 17, Spring Boot 4.1.1, H2
+  in-memory) cannot run on Vercel at all (no JVM runtime). Railway was
+  selected as the smallest-fit alternative (free tier, Maven
+  auto-detection, no local Docker needed) but deployment is blocked on
+  the creator's own one-time browser authorization of the Railway CLI —
+  a device code was generated and handed to the creator; this agent
+  cannot complete that step itself.
