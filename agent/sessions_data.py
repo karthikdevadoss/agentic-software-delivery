@@ -226,8 +226,9 @@ def _run_history_sessions() -> list:
     for r in _read_run_history():
         started = r.get("started_ts")
         ended = r.get("ended_ts")
-        session_type = "benchmark" if r["is_mock"] else "product_runtime"
-        goal = r["requirement_excerpt"] or "(no requirement text captured)"
+        is_trainer = r.get("session_type") == "trainer_demo" or str(r["run_id"]).startswith("trainer-")
+        session_type = "trainer_demo" if is_trainer else ("benchmark" if r["is_mock"] else "product_runtime")
+        goal = r.get("requirement") or r["requirement_excerpt"] or "(no requirement text captured)"
         status = "COMPLETED" if r["final_status"] == "COMPLETED" else "FAILED"
 
         compile_ok = r.get("compile", {}).get("success") if r.get("compile") else None
@@ -238,6 +239,9 @@ def _run_history_sessions() -> list:
             verification_quality = round(100 * sum(1 for c in checks if c) / len(checks))
 
         corrections = []  # run-history entries don't carry correction narratives (that's session-level, not run-level)
+        commits = []
+        if r.get("production_commit"):
+            commits.append({"sha": r["production_commit"], "subject": f"Trainer demo deploy: {goal[:80]}"})
 
         dims = {
             "goal_completion": 100 if status == "COMPLETED" else 0,
@@ -262,7 +266,10 @@ def _run_history_sessions() -> list:
             "wall_clock_label": f"{(ended - started):.1f}s real run wall-clock" if started and ended else "NOT CAPTURED",
             "human_active_time": "NOT CAPTURED",
             "model_usage": r.get("model_usage"),
-            "commits": [],
+            "risk_assessment": r.get("risk_assessment"),
+            "production_commit": r.get("production_commit"),
+            "deployment": r.get("deployment"),
+            "commits": commits,
             "corrections": corrections,
             "dims": dims,
         })

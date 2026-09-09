@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Agentic Software Delivery — Live Requirement Workbench</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="dashboard.css">
+<link rel="stylesheet" href="trainer.css">
+</head>
+<body>
+
+<header>
+  <h1>Agentic Software Delivery <span class="sub">— Live Requirement Workbench</span></h1>
+  <p class="tagline">Enter a real requirement. Small, low-risk changes are implemented, tested, and deployed automatically — no human approval needed for this demo tier. Larger or riskier requests are safely refused, with reasons and smaller alternatives.</p>
+  <nav class="top-nav">
+    <a href="/">Control Plane</a>
+    <a href="/dashboard">Dashboard</a>
+    <a href="/sessions">Sessions</a>
+    <a href="/trainer"><strong>Trainer</strong></a>
+  </nav>
+</header>
+
+<main>
+
+  <section class="panel" id="requirement-panel">
+    <h2>1. What would you like to change?</h2>
+    <textarea id="requirement-input" rows="3" placeholder="e.g. Add a small status badge near the page title"></textarea>
+    <button id="submit-btn">SUBMIT REQUIREMENT</button>
+    <span id="status-badge" class="status-badge status-idle">IDLE</span>
+    <div id="examples-box">
+      <p class="hint">Or try one of these:</p>
+      <div id="examples-list"></div>
+    </div>
+  </section>
+
+  <section class="panel" id="assessment-panel" hidden>
+    <h2>2. Requirement Assessment</h2>
+    <div id="assessment-body"></div>
+  </section>
+
+  <section class="panel" id="activity-panel" hidden>
+    <h2>3. Live Agent Progress</h2>
+    <p class="hint">Real tool activity — repository investigation, planning, code change, build, test, deploy.</p>
+    <ul id="activity-list"></ul>
+  </section>
+
+  <section class="panel" id="verification-panel" hidden>
+    <h2>4. Build / Test Verification</h2>
+    <ul id="verification-list"></ul>
+  </section>
+
+  <section class="panel" id="deploy-panel" hidden>
+    <h2>5. Deployment</h2>
+    <div id="deploy-body"></div>
+  </section>
+
+  <section class="panel" id="result-panel" hidden>
+    <h2>6. Result</h2>
+    <div id="result-banner"></div>
+    <pre id="result-text"></pre>
+  </section>
+
+</main>
+
+<script src="trainer.js"></script>
+</body>
+</html>

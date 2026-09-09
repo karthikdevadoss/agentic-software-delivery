@@ -28,9 +28,13 @@ Then open http://127.0.0.1:8420
 import asyncio
 import json
 import queue
+import shutil
+import subprocess
 import sys
 import threading
 import time
+import urllib.error
+import urllib.request
 import uuid
 from pathlib import Path
 
@@ -48,11 +52,16 @@ from execution_agent import EXECUTION_SYSTEM_PROMPT_SUFFIX
 import dashboard_data
 import execution_tools
 import metrics
+import risk_policy
 import sessions_data
 import write_tools
 
 WEB_DIR = Path(__file__).resolve().parent / "web"
+REPO_ROOT = Path(__file__).resolve().parent.parent
+APP_DIR = REPO_ROOT / "app"
 RUN_HISTORY_PATH = Path(__file__).resolve().parent / "web_run_history.jsonl"
+PUBLIC_CUSTOMER_APP_URL = "https://agentic-delivery-customer-app-production.up.railway.app/"
+RAILWAY_SERVICE_NAME = "agentic-delivery-customer-app"
 
 # Maps a real tool name to a real, honest stage label — never fabricated,
 # only ever shown when the corresponding tool is actually called.
@@ -79,6 +88,8 @@ class Run:
         self.events = []
         self.result_text = None
         self.pending_approvals = {}
+        self.trainer_changed_path = None  # set by _trainer_approval_prompt_factory
+        self.trainer_usage_start_index = 0  # set by the trainer route before the thread starts
         self._lock = threading.Lock()
 
     def emit(self, event_type: str, data: dict) -> None:
@@ -120,7 +131,7 @@ def _bounded_summary(result_text: str) -> str:
     return "...\n" + text[-MAX_SUMMARY_CHARS:]
 
 
-def _persist_run_history(run: Run, usage_start_index: int = None) -> None:
+def _persist_run_history(run: Run, usage_start_index: int = None, extra: dict = None) -> None:
     """Append one compact, real record of this run to a small local JSONL
     log — the smallest persistence that survives a server restart, so the
     Dashboard/Sessions pages have something to show beyond in-memory
@@ -163,6 +174,8 @@ def _persist_run_history(run: Run, usage_start_index: int = None) -> None:
         "backend_error": error["message"] if error else None,
         "model_usage": model_usage,
     }
+    if extra:
+        record.update(extra)
     try:
         with RUN_HISTORY_PATH.open("a", encoding="utf-8") as f:
             f.write(json.dumps(record) + "\n")
@@ -324,6 +337,186 @@ def _run_mock_thread(run: Run) -> None:
         _persist_run_history(run)
 
 
+# --- Trainer demo: risk-gated autonomous execution -----------------------
+#
+# Separate, additive code path — never replaces or weakens the default
+# human-approval flow used by /api/runs. A requirement only ever reaches
+# _run_trainer_thread if risk_policy.classify() (deterministic, text-level,
+# server-side) returned decision="auto". Even then, every proposed file
+# still passes through write_tools._validate_write_scope() exactly as any
+# other edit would — the trainer path does not bypass that check, it just
+# replaces the *human* approval click with an automatic one for edits that
+# already made it past both gates.
+
+TRAINER_SYSTEM_PROMPT_SUFFIX = """
+
+This session is a PUBLIC LIVE DEMO with automatic approval — there is no
+human watching to approve your proposal, so make the SMALLEST possible
+change that satisfies the requirement. Strongly prefer touching exactly
+ONE file. For visual/UI requirements, prefer editing
+app/src/main/resources/static/index.html directly. Do not make
+speculative or unrelated changes. After applying, you MUST run the
+controlled compile (and tests if relevant) and report the real result.
+Your final summary must be exactly one crisp sentence describing exactly
+what changed.
+"""
+
+
+def _trainer_approval_prompt_factory(run: "Run"):
+    """Auto-approves — by the time propose_source_change reaches this
+    prompt, write_tools.propose_edit() has ALREADY enforced path/scope/
+    extension rules and raised on any violation, so anything reaching here
+    is already inside the approved demo scope. Decision is recorded as
+    'policy', never mislabeled as a human decision."""
+    def prompt(edit) -> bool:
+        run.trainer_changed_path = edit.path
+        run.emit("approval_decision", {
+            "edit_id": edit.id, "decision": "approve",
+            "decided_by": "risk_policy (auto — no human in the loop for this demo tier)",
+        })
+        return True
+    return prompt
+
+
+def _run_controlled(argv, cwd, timeout_s):
+    """Same controlled-subprocess discipline as build_tools.py: explicit
+    argv list, shell=False, bounded timeout, output captured not streamed
+    raw to the trainer. Resolves argv[0] via shutil.which() first — on
+    Windows, CLI tools installed through npm (railway, vercel) are .cmd
+    shims, and CreateProcess cannot launch a bare 'railway' without an
+    extension; resolving the real path still avoids shell=True entirely."""
+    resolved = shutil.which(argv[0])
+    argv = [resolved or argv[0], *argv[1:]]
+    try:
+        proc = subprocess.run(
+            argv, cwd=str(cwd), capture_output=True, text=True,
+            timeout=timeout_s, shell=False,
+        )
+        return proc.returncode == 0, (proc.stdout or "") + (proc.stderr or "")
+    except subprocess.TimeoutExpired:
+        return False, f"timed out after {timeout_s}s"
+    except OSError as exc:
+        return False, str(exc)
+
+
+def _fetch_public_app(timeout_s=15):
+    try:
+        with urllib.request.urlopen(PUBLIC_CUSTOMER_APP_URL, timeout=timeout_s) as resp:
+            return resp.status, resp.read().decode("utf-8", errors="replace")
+    except (urllib.error.URLError, OSError) as exc:
+        return None, str(exc)
+
+
+def _run_trainer_thread(run: "Run", requirement: str, assessment: dict) -> None:
+    run.trainer_changed_path = None
+    execution_tools.set_approval_prompt(_trainer_approval_prompt_factory(run))
+    baseline_status, baseline_html = _fetch_public_app()
+
+    try:
+        run.status = "PLANNING"
+        run.emit("stage", {"stage": "PLANNING"})
+        result = run_agent_loop(
+            requirement, API_KEY,
+            tool_schemas=execution_tools.EXECUTION_TOOL_SCHEMAS,
+            dispatch_fn=_make_dispatch_fn(run),
+            system_prompt_suffix=EXECUTION_SYSTEM_PROMPT_SUFFIX + TRAINER_SYSTEM_PROMPT_SUFFIX,
+        )
+        run.result_text = result
+
+        apply_ok = any(e for e in run.events if e["type"] == "tool_result" and e.get("tool") == "apply_approved_source_change" and e.get("success"))
+        compile_ok = any(e for e in run.events if e["type"] == "tool_result" and e.get("tool") == "run_controlled_compile" and e.get("success"))
+        test_events = [e for e in run.events if e["type"] == "tool_result" and e.get("tool") == "run_controlled_tests"]
+        test_ok = (not test_events) or all(e.get("success") for e in test_events)
+
+        if not (apply_ok and compile_ok and test_ok):
+            run.status = "FAILED"
+            run.emit("stage", {"stage": "FAILED"})
+            run.emit("error", {"message": "Implementation did not pass verification (apply/compile/test) — not deployed. Production is unchanged."})
+            return
+
+        if run.trainer_changed_path is None:
+            run.status = "FAILED"
+            run.emit("stage", {"stage": "FAILED"})
+            run.emit("error", {"message": "No file change was actually applied — nothing to deploy."})
+            return
+
+        # COMMIT — only the exact file the agent changed, never a blanket `git add -A`.
+        run.status = "COMMITTING"
+        run.emit("stage", {"stage": "COMMITTING"})
+        ok, out = _run_controlled(["git", "add", "--", run.trainer_changed_path], REPO_ROOT, 30)
+        if ok:
+            commit_msg = f"Trainer demo: {requirement.strip()[:100]}"
+            ok, out = _run_controlled(["git", "commit", "-m", commit_msg], REPO_ROOT, 30)
+        if not ok:
+            run.status = "FAILED"
+            run.emit("stage", {"stage": "FAILED"})
+            run.emit("error", {"message": f"Git commit failed, deployment aborted: {out[-400:]}"})
+            return
+        _, sha_out = _run_controlled(["git", "rev-parse", "--short", "HEAD"], REPO_ROOT, 15)
+        production_commit = sha_out.strip()
+        run.emit("commit", {"sha": production_commit, "path": run.trainer_changed_path})
+
+        # DEPLOY
+        run.status = "DEPLOYING"
+        run.emit("stage", {"stage": "DEPLOYING"})
+        deploy_ok, deploy_out = _run_controlled(
+            ["railway", "up", "--detach", "--service", RAILWAY_SERVICE_NAME], APP_DIR, 60)
+        if not deploy_ok:
+            run.status = "FAILED"
+            run.emit("stage", {"stage": "FAILED"})
+            run.emit("error", {"message": f"Railway deploy upload failed: {deploy_out[-400:]}"})
+            return
+
+        deploy_online = False
+        for _ in range(42):  # up to ~7 minutes — a cold Nixpacks/Maven build on Railway
+                              # has been observed to take ~5-6 minutes with no build cache reuse
+            time.sleep(10)
+            _, status_out = _run_controlled(["railway", "status"], APP_DIR, 20)
+            if "Online" in status_out:
+                deploy_online = True
+                break
+            if "Failed" in status_out or "Crashed" in status_out:
+                break
+        if not deploy_online:
+            run.status = "FAILED"
+            run.emit("stage", {"stage": "FAILED"})
+            run.emit("error", {"message": "Deployment did not reach Online state within the wait window."})
+            return
+
+        # VERIFY
+        run.status = "VERIFYING PRODUCTION"
+        run.emit("stage", {"stage": "VERIFYING PRODUCTION"})
+        after_status, after_html = _fetch_public_app()
+        verified = after_status == 200
+        content_changed = bool(after_html) and after_html != baseline_html
+        run.emit("deployment", {
+            "production_commit": production_commit,
+            "public_url": PUBLIC_CUSTOMER_APP_URL,
+            "http_status": after_status,
+            "content_changed_from_baseline": content_changed,
+            "verified": verified,
+        })
+
+        run.status = "COMPLETED"
+        run.emit("stage", {"stage": "COMPLETED"})
+        run.emit("final_result", {"text": result})
+    except Exception as exc:  # noqa: BLE001
+        run.status = "FAILED"
+        run.emit("stage", {"stage": "FAILED"})
+        run.emit("error", {"message": str(exc)})
+    finally:
+        execution_tools.set_approval_prompt(execution_tools._default_approval_prompt)
+        commit_event = next((e for e in run.events if e["type"] == "commit"), None)
+        deploy_event = next((e for e in run.events if e["type"] == "deployment"), None)
+        _persist_run_history(run, usage_start_index=run.trainer_usage_start_index, extra={
+            "session_type": "trainer_demo",
+            "requirement": requirement,
+            "risk_assessment": assessment,
+            "production_commit": commit_event["sha"] if commit_event else None,
+            "deployment": deploy_event if deploy_event else None,
+        })
+
+
 # --- HTTP routes ---------------------------------------------------------
 
 async def start_run(request: Request):
@@ -351,6 +544,41 @@ async def start_mock_run(request: Request):
     thread = threading.Thread(target=_run_mock_thread, args=(run,), daemon=True)
     thread.start()
     return JSONResponse({"run_id": run_id})
+
+
+async def assess_trainer_requirement(request: Request):
+    """Cheap, synchronous, zero-API-cost — lets the trainer UI show the
+    risk/complexity decision before committing to a real agent run."""
+    body = await request.json()
+    requirement = (body.get("requirement") or "").strip()
+    return JSONResponse(risk_policy.classify(requirement))
+
+
+async def start_trainer_run(request: Request):
+    body = await request.json()
+    requirement = (body.get("requirement") or "").strip()
+    if not requirement:
+        return JSONResponse({"error": "requirement is required"}, status_code=400)
+
+    # Re-classify server-side — never trust a client-displayed assessment
+    # as the actual authorization decision.
+    assessment = risk_policy.classify(requirement)
+    if assessment["decision"] != "auto":
+        return JSONResponse({"blocked": True, "assessment": assessment})
+
+    run_id = "trainer-" + uuid.uuid4().hex[:8]
+    run = Run(run_id, requirement)
+    run.trainer_usage_start_index = len(metrics.get_model_usage_events())
+    RUNS[run_id] = run
+    run.emit("risk_assessment", assessment)
+
+    thread = threading.Thread(target=_run_trainer_thread, args=(run, requirement, assessment), daemon=True)
+    thread.start()
+    return JSONResponse({"blocked": False, "run_id": run_id, "assessment": assessment})
+
+
+async def trainer_page(request: Request):
+    return FileResponse(str(WEB_DIR / "trainer.html"))
 
 
 async def get_run(request: Request):
@@ -445,11 +673,14 @@ routes = [
     Route("/api/sessions", get_sessions_data, methods=["GET"]),
     Route("/api/dev-sessions/start", start_dev_session_route, methods=["POST"]),
     Route("/api/dev-sessions/stop", stop_dev_session_route, methods=["POST"]),
+    Route("/api/trainer/assess", assess_trainer_requirement, methods=["POST"]),
+    Route("/api/trainer/runs", start_trainer_run, methods=["POST"]),
     Route("/api/runs/{run_id}", get_run, methods=["GET"]),
     Route("/api/runs/{run_id}/events", stream_events, methods=["GET"]),
     Route("/api/runs/{run_id}/decide", decide, methods=["POST"]),
     Route("/dashboard", dashboard_page, methods=["GET"]),
     Route("/sessions", sessions_page, methods=["GET"]),
+    Route("/trainer", trainer_page, methods=["GET"]),
     Mount("/", app=StaticFiles(directory=str(WEB_DIR), html=True), name="static"),
 ]
 

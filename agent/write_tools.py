@@ -32,11 +32,15 @@ from pathlib import Path
 import tools
 import metrics
 
-# Deliberately narrow: only the Customer app's own source and test trees.
-# Not pom.xml, not docs/, not agent/ itself, not build config — expanding
-# this list is a scope decision, not something to grow implicitly.
-ALLOWED_WRITE_PREFIXES = ("app/src/main/java/", "app/src/test/java/")
-ALLOWED_WRITE_EXTENSIONS = {".java"}
+# Deliberately narrow: only the Customer app's own source, test, and
+# static-UI trees. Not pom.xml, not docs/, not agent/ itself, not build
+# config — expanding this list is a scope decision, not something to grow
+# implicitly. static/ was added specifically for the risk-gated trainer
+# demo flow (small visual/UI changes) — still .html only, still inside
+# the same Customer app, still going through the same path-security and
+# approval-binding checks as any other write.
+ALLOWED_WRITE_PREFIXES = ("app/src/main/java/", "app/src/test/java/", "app/src/main/resources/static/")
+ALLOWED_WRITE_EXTENSIONS = {".java", ".html"}
 
 
 class WriteToolError(Exception):
