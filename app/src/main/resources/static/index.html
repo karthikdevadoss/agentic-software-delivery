@@ -200,7 +200,7 @@
       const customer = await response.json();
       showResult(
         resultEl,
-        `Created (HTTP ${response.status}): ${customer.name} <${customer.email}> (id ${customer.id})`,
+        `Welcome aboard, ${customer.name}! Your customer profile <${customer.email}> has been created (id ${customer.id}).`,
         false
       );
     } catch (err) {
