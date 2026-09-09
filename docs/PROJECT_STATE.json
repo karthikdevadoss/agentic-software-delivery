@@ -1,7 +1,7 @@
 {
   "project": "Agentic Software Delivery System",
-  "current_version": "V4.1 + browser Control UI + Evidence Dashboard + Session Intelligence + public Dashboard/Sessions snapshot + public Customer app",
-  "last_verified_code_commit": "e0bb1fe",
+  "current_version": "V4.1 + browser Control UI + Evidence Dashboard + Session Intelligence + public Dashboard/Sessions snapshot + public Customer app + risk-gated public Trainer demo",
+  "last_verified_code_commit": "a16a086",
   "current_ticket": "Update customer email",
   "current_ticket_implemented": false,
   "completed_capabilities": [
@@ -90,7 +90,7 @@
     "dashboard_run_history_persists_across_restart": {"status": "runtime_verified", "as_of_commit": "35889a0", "evidence": "agent/web_run_history.jsonl (gitignored) appended on every run's terminal state; verified live: one mock run's record survived a full server restart and was correctly re-read by /api/dashboard"},
     "session_intelligence_mvp": {"status": "ui_verified", "as_of_commit": "da50a4f", "evidence": "creator visually reviewed /sessions before this commit; real API token capture (response.usage) wired into agent_loop.py but NOT YET runtime-verified with a live API call (only unit/syntax-checked + full 60-test regression pass); dev-session start/stop endpoints exercised live end to end (real 2s wall-clock span recorded and re-read)"}
   },
-  "next_phase": "Live public data (KV/Blob-backed, no-redeploy publish for Dashboard/Sessions)",
-  "next_action": "All 4 public surfaces are now live (Control system not exposed, by design): Dashboard/Sessions static snapshot at https://agentic-software-delivery.vercel.app, actual Customer app at https://agentic-delivery-customer-app-production.up.railway.app (verified: find + create customer both work, Update Email still unimplemented). Next: wire a KV/Blob store so Dashboard/Sessions update without a redeploy.",
+  "next_phase": "Live public data (KV/Blob-backed, no-redeploy publish for Dashboard/Sessions); a persistent (non-laptop-dependent) host for the trainer execution engine",
+  "next_action": "Risk-gated public Trainer demo (/trainer) live via Cloudflare Quick Tunnel — proven end to end with 2 real runs that actually modified, compiled, committed, and deployed app/src/main/resources/static/index.html to the live Railway Customer app (commits d3dd645, a863e28). Tunnel + local server must both stay running for /trainer to remain reachable. Next: wire a KV/Blob store so Dashboard/Sessions update without a redeploy, and/or move the trainer execution engine to a persistent host.",
   "blocked_on": null
 }
