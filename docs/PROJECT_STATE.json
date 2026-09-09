@@ -20,16 +20,20 @@
     "local semantic RAG (fastembed + numpy cosine similarity) as a 4th tool available to both the direct V3 agent and MCP, hybrid-verified via read_file/search_code",
     "incremental RAG indexing (content-hash based: unchanged files reuse embeddings, changed/new files re-embedded, deleted files removed; verified live including a zero-reembed no-op rebuild)",
     "automated regression tests for MCP adapter and RAG index (24 tests total across agent/test_agent_loop.py, agent/test_rag_index.py, agent/test_mcp_server.py)",
-    "minimal structured metrics hooks (agent/metrics.py) for tool calls, RAG index builds, and retrieval queries — consumable by a future dashboard without rewriting these modules"
+    "minimal structured metrics hooks (agent/metrics.py) for tool calls, RAG index builds, and retrieval queries — consumable by a future dashboard without rewriting these modules",
+    "V4 write boundary foundation (agent/write_tools.py): propose/approve/apply flow, repo-bound, scope-restricted to app/src/{main,test}/java .java files, reuses tools.py path-security (no duplication), unapproved/duplicate/rejected applies all blocked",
+    "V4 controlled compile/test tool (agent/build_tools.py): allowlist-only (compile, test), no shell, verified live against the real Customer app (mvnw compile ~15s, mvnw test ~11s, both succeeded)",
+    "security fix: tools._resolve_safe_path now blocks secret-like filenames even for not-yet-existing files (previously only checked existing files — a real gap for any write path)"
   ],
   "missing_capabilities": [
     "MCP write/build/deploy tool exposure (only read-only tools exposed so far, by design)",
     "MCP Streamable HTTP transport exercised for real (documented/coded path, not yet run over real HTTP — only stdio and in-process Client have been tested; tracked as ACTION_QUEUE ACT-005)",
     "production-grade code embeddings (Voyage AI voyage-code-4 implemented but unusable without VOYAGE_API_KEY; local fastembed is what's actually verified)",
     "vector DB at scale (current local-JSON+numpy index is sized for this repo; would need Qdrant/pgvector for a much larger one)",
-    "code-writing / file-modifying agent",
+    "V4 write/build tools wired into the live Claude tool-calling loop (foundation exists and is tested in isolation; agent_loop.py cannot call them yet)",
+    "any actual ticket implemented through V4 (Update Email remains the planned first proof)",
     "autonomous code modification",
-    "compile-test-self-correction loop",
+    "compile-test-self-correction loop (compile/test tool exists; no loop wiring failures back to the agent yet)",
     "review agent",
     "GitHub PR automation",
     "deployment"
@@ -57,9 +61,14 @@
     "rag_hybrid_verification": {"status": "runtime_verified", "as_of_commit": "d312dd1", "evidence": "live V3 run treated an unread semantic-search hit (index.html) as unverified rather than asserting facts about it"},
     "rag_incremental_indexing": {"status": "unit_tested", "as_of_commit": "d312dd1", "evidence": "agent/test_rag_index.py (7 incremental tests) + live proof: build->0 unnecessary embeds on rebuild, fixture add/modify/delete each triggered exactly the expected single-file change, corrupt/missing index handled safely"},
     "v3_new_tool_integration": {"status": "runtime_verified", "as_of_commit": "d312dd1", "evidence": "agent_loop.py required zero core-loop changes; V3 autonomously chose semantic_repository_search then verified with read_file, unprompted"},
-    "metrics_hooks": {"status": "runtime_verified", "as_of_commit": "d312dd1", "evidence": "direct test: metrics.get_tool_call_events() returned correct structured records (tool, duration_ms, result_size, blocked_unsafe) after real MCP calls, including correct blocked_unsafe=True classification for a traversal rejection"}
+    "metrics_hooks": {"status": "runtime_verified", "as_of_commit": "d312dd1", "evidence": "direct test: metrics.get_tool_call_events() returned correct structured records (tool, duration_ms, result_size, blocked_unsafe) after real MCP calls, including correct blocked_unsafe=True classification for a traversal rejection"},
+    "v4_write_boundary_propose_approve_apply": {"status": "unit_tested", "as_of_commit": "uncommitted", "evidence": "agent/test_write_tools.py (14 tests, 1 skipped for platform symlink privilege): unapproved/duplicate/rejected applies blocked, exact content written, unrelated Customer file proven untouched"},
+    "v4_write_boundary_scope_and_secret_rejection": {"status": "unit_tested", "as_of_commit": "uncommitted", "evidence": "traversal/absolute/out-of-scope/wrong-extension/secret-named-new-file all rejected; secret-name case caught a real pre-existing gap in tools.py, fixed and re-verified (see LESSONS.md)"},
+    "v4_write_boundary_shared_security_reuse": {"status": "unit_tested", "as_of_commit": "uncommitted", "evidence": "agent/test_write_tools.py test_write_scope_check_delegates_to_shared_tools_path_validation: mocks tools._resolve_safe_path and asserts write_tools calls it directly, no reimplementation"},
+    "v4_build_tool_allowlist": {"status": "unit_tested", "as_of_commit": "uncommitted", "evidence": "agent/test_build_tools.py (6 tests): unknown/injection-shaped goals rejected before subprocess is touched, shell=False confirmed, argv-list form confirmed, output size-bounded"},
+    "v4_build_tool_real_execution": {"status": "runtime_verified", "as_of_commit": "uncommitted", "evidence": "real run_maven('compile') and run_maven('test') against the actual Customer app both returned success=True (15.5s and 10.9s respectively; test succeeded trivially since no test classes exist yet)"}
   },
   "next_phase": "V4 controlled code-writing agent with compile feedback loop",
-  "next_action": "Resume V4 write-tool boundary design (propose-diff-then-apply pattern, explicit human approval before any file write, restricted target paths) and a controlled compile tool, before implementing V4 against the Update Email ticket",
+  "next_action": "Wire write_tools/build_tools into agent_loop.py's live tool-calling loop (read-only tools already work this way), then use the Update Email ticket as the first real end-to-end proof of the full propose->approve->apply->compile/test loop",
   "blocked_on": null
 }

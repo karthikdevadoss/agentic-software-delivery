@@ -145,6 +145,28 @@ V3 + MCP + RAG foundations (this checkpoint):
   rewritten; verified real events are recorded with correct blocked_unsafe
   classification
 
+V4 write/execution boundary foundation (this checkpoint, not committed yet):
+- agent/write_tools.py: strict propose -> approve -> apply flow (never direct
+  writes). Reuses tools._resolve_safe_path for traversal/absolute/symlink/
+  secret-name checks (no duplicated security policy); adds a write-only scope
+  restriction to app/src/{main,test}/java `.java` files. 14 tests (1 skipped —
+  symlink creation not permitted on this Windows account), all else passing
+- agent/build_tools.py: allowlist-only compile/test tool (no shell,
+  subprocess argv-list only). 6 unit tests (allowlist/injection rejection,
+  no-shell confirmation) plus two real manual runs against the actual
+  Customer app: `mvnw compile` succeeded (~15.5s), `mvnw test` succeeded
+  (~10.9s, 0 tests exist yet)
+- found and fixed a real security gap while testing: tools.py's secret-
+  filename block only checked files that already existed, silently letting
+  a **new** file named e.g. `credentials.java` through. Fixed at the shared
+  boundary (benefits read tools + MCP too); all 24 prior tests re-confirmed
+  passing after the fix
+- write/build tools are not yet wired into the live Claude tool-calling
+  loop — this checkpoint is the safety mechanism only, deliberately kept
+  separate from first real usage
+- Customer application source: unchanged (git diff empty); Update Email
+  ticket: still not implemented
+
 # Important learning
 V2 is NOT RAG. V3's tool-calling alone was NOT RAG either.
 V2 gathers selected repository context directly and injects it into the Claude prompt.
@@ -183,11 +205,12 @@ docs-only commits), see `last_verified_code_commit` in
 - MCP Streamable HTTP actually run (stdio is what's verified; HTTP path is coded/documented for a future hosted platform)
 - production-grade code embeddings (Voyage AI implemented but blocked on VOYAGE_API_KEY; fastembed is what's actually verified)
 - vector DB at scale (current index is local JSON + numpy, sized for this repo)
-- code-writing / file-modifying agent (V3 can only read/retrieve, never write)
+- code-writing / file-modifying agent wired into the live tool-calling loop (V4's write/build tools exist and are tested in isolation, but agent_loop.py cannot call them yet)
+- any ticket actually implemented through V4 (Update Email remains the planned first proof)
 - test agent
 - reviewer agent
-- autonomous file modification by our Python system
-- compile/test/self-correction loop
+- autonomous file modification by our Python system (the mechanism exists behind an approval gate; nothing calls it autonomously)
+- compile/test/self-correction loop (compile/test tool exists; no failure-feedback loop wired yet)
 - GitHub PR automation
 - CI/CD
 - production hosting
@@ -210,10 +233,12 @@ verify the change and support self-correction — still with no autonomous
 Git writes, PR creation, or deployment at this stage.
 
 Next action:
-Design V4's write-tool boundaries (propose-diff-then-apply pattern, explicit
-human approval before any file write, restricted target paths) and a
-controlled compile tool, before implementing V4 against the Update Email
-ticket. Do not implement V4 yet.
+The V4 write/build safety boundary (propose->approve->apply, scope-
+restricted write tool, allowlist-only compile/test tool) is now built and
+verified in isolation (see above) — not yet committed, not yet wired into
+the live agent loop. Next: wire write_tools/build_tools into
+agent_loop.py's TOOL_SCHEMAS/dispatch, then use the Update Email ticket as
+the first real end-to-end proof.
 
 # Useful commands
 

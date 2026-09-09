@@ -95,11 +95,14 @@ def _resolve_safe_path(user_path: str) -> Path:
     if any(part in BLOCKED_DIR_NAMES for part in rel_parts):
         raise RepoToolError(f"path is inside a blocked directory: {raw!r}")
 
-    if resolved.is_file():
-        if _is_blocked_name(resolved.name):
-            raise RepoToolError(f"file is blocked for safety: {raw!r}")
-        if resolved.suffix.lower() in BLOCKED_EXTENSIONS:
-            raise RepoToolError(f"file type is blocked for safety: {raw!r}")
+    # Checked regardless of whether the file exists yet: for reads this is
+    # equivalent (a nonexistent file can't be read either way), but for
+    # writes it matters — a secret-named file that doesn't exist YET must
+    # still be blocked, not silently allowed because "it's not a file".
+    if _is_blocked_name(resolved.name):
+        raise RepoToolError(f"file is blocked for safety: {raw!r}")
+    if resolved.suffix.lower() in BLOCKED_EXTENSIONS:
+        raise RepoToolError(f"file type is blocked for safety: {raw!r}")
 
     return resolved
 

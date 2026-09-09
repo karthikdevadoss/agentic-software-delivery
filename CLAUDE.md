@@ -1,5 +1,11 @@
 # Agentic Software Delivery System
 
+Governing principles: docs/CONSTITUTION.md (read when a duty/scope/priority/
+truthfulness question isn't obviously answered by the rules below). Long-
+term vision (two dashboard audiences, session/AI-engineering intelligence,
+multi-agent roadmap, enterprise benchmark ladder): docs/ROADMAP.md — future
+increments only, do not build from it without an explicit task.
+
 ## Session startup
 Before modifying anything:
 1. Read docs/PROJECT_STATE.json.

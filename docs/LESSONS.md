@@ -95,3 +95,36 @@ surprising verified behavior would otherwise get rediscovered later.
   bug. Future rule: don't treat a Windows symlink warning/retry from
   HF-Hub-backed libraries as a failure; only investigate if it doesn't
   eventually succeed.
+
+- **A path-safety check gated on `if resolved.is_file()` silently skips
+  protection for files that don't exist yet.** Problem: `tools.py`'s
+  secret-filename block (`.env`, `*credential*`, `*secret*`, etc.) only ran
+  when the target already existed on disk — harmless for read-only tools
+  (a nonexistent file can't be read anyway), but a real security gap once a
+  write tool existed: an agent could create a brand-new file named e.g.
+  `testcredentials.java` and the check never fired. Evidence: found via a
+  deliberate test while building the V4 write boundary
+  (`test_secret_named_new_file_in_scope_rejected`), reproduced before
+  fixing. Root cause: the check was written with "does this file already
+  look dangerous" in mind, not "could writing to this name ever be
+  dangerous." Correction: removed the `is_file()` guard so the name/
+  extension check always runs, regardless of existence; re-ran the full
+  test suite (24 existing + new) to confirm no regression. Future rule:
+  any path-safety check meant to protect against writes must never gate on
+  "does the target currently exist" — that's precisely the condition a
+  first write changes.
+
+- **An "approved" boolean on a mutable object is not the same as binding
+  approval to what was actually approved.** Problem: `PendingEdit.approved`
+  was a plain flag; `apply_edit()` re-read `path`/`new_content` fresh at
+  apply time with nothing checking they still matched what existed when
+  `approve_edit()` was called. Evidence: a deliberate test mutated
+  `edit.new_content`/`edit.path` after approval and the apply would have
+  silently used the substituted value. Root cause: approval recorded "this
+  ID was approved," not "this exact (path, content) pair was approved."
+  Correction: `approve_edit()` now stores `sha256(path + content)` as an
+  `approved_binding`; `apply_edit()` recomputes and compares it, refusing
+  to apply on any mismatch. Future rule: whenever an approval/authorization
+  step and the action it authorizes are separated in time, bind the
+  approval to a hash/snapshot of exactly what was shown, not to a mutable
+  reference that could change underneath it.
