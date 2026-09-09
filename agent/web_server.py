@@ -37,7 +37,7 @@ from pathlib import Path
 import uvicorn
 from starlette.applications import Starlette
 from starlette.requests import Request
-from starlette.responses import JSONResponse
+from starlette.responses import FileResponse, JSONResponse
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 from sse_starlette.sse import EventSourceResponse
@@ -45,10 +45,12 @@ from sse_starlette.sse import EventSourceResponse
 from main import get_api_key
 from agent_loop import run_agent_loop
 from execution_agent import EXECUTION_SYSTEM_PROMPT_SUFFIX
+import dashboard_data
 import execution_tools
 import write_tools
 
 WEB_DIR = Path(__file__).resolve().parent / "web"
+RUN_HISTORY_PATH = Path(__file__).resolve().parent / "web_run_history.jsonl"
 
 # Maps a real tool name to a real, honest stage label — never fabricated,
 # only ever shown when the corresponding tool is actually called.
@@ -116,6 +118,39 @@ def _bounded_summary(result_text: str) -> str:
     return "...\n" + text[-MAX_SUMMARY_CHARS:]
 
 
+def _persist_run_history(run: Run) -> None:
+    """Append one compact, real record of this run to a small local JSONL
+    log — the smallest persistence that survives a server restart, so the
+    Dashboard has something to show beyond in-memory state. Never touches
+    Customer app files; this is our own product's operational log."""
+    tool_calls = [e for e in run.events if e["type"] == "tool_call"]
+    approval = next((e for e in run.events if e["type"] == "approval_decision"), None)
+    apply_result = next((e for e in run.events if e["type"] == "tool_result" and e.get("tool") == "apply_approved_source_change"), None)
+    compile_result = next((e for e in run.events if e["type"] == "tool_result" and e.get("tool") == "run_controlled_compile"), None)
+    test_result = next((e for e in run.events if e["type"] == "tool_result" and e.get("tool") == "run_controlled_tests"), None)
+    error = next((e for e in run.events if e["type"] == "error"), None)
+
+    record = {
+        "run_id": run.id,
+        "is_mock": run.id.startswith("mock-"),
+        "requirement_excerpt": (run.requirement or "")[:200],
+        "final_status": run.status,
+        "started_ts": run.events[0]["ts"] if run.events else None,
+        "ended_ts": run.events[-1]["ts"] if run.events else None,
+        "tool_calls_total": len(tool_calls),
+        "approval_decision": approval["decision"] if approval else None,
+        "apply_succeeded": apply_result["success"] if apply_result else None,
+        "compile": {"success": compile_result["success"], "duration_ms": compile_result["duration_ms"]} if compile_result else None,
+        "test": {"success": test_result["success"], "duration_ms": test_result["duration_ms"]} if test_result else None,
+        "backend_error": error["message"] if error else None,
+    }
+    try:
+        with RUN_HISTORY_PATH.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(record) + "\n")
+    except OSError:
+        pass  # dashboard telemetry is best-effort, never fatal to a run
+
+
 def _make_dispatch_fn(run: Run):
     def dispatch(name, tool_input):
         stage = STAGE_LABELS.get(name)
@@ -177,6 +212,7 @@ def _run_agent_thread(run: Run) -> None:
         run.emit("error", {"message": str(exc)})
     finally:
         execution_tools.set_approval_prompt(execution_tools._default_approval_prompt)
+        _persist_run_history(run)
 
 
 def _run_mock_thread(run: Run) -> None:
@@ -264,6 +300,8 @@ def _run_mock_thread(run: Run) -> None:
         run.status = "FAILED"
         run.emit("stage", {"stage": "FAILED"})
         run.emit("error", {"message": f"[MOCK RUN] {exc}"})
+    finally:
+        _persist_run_history(run)
 
 
 # --- HTTP routes ---------------------------------------------------------
@@ -344,12 +382,22 @@ async def decide(request: Request):
     return JSONResponse({"ok": True})
 
 
+async def get_dashboard_data(request: Request):
+    return JSONResponse(dashboard_data.build_dashboard_snapshot())
+
+
+async def dashboard_page(request: Request):
+    return FileResponse(str(WEB_DIR / "dashboard.html"))
+
+
 routes = [
     Route("/api/runs", start_run, methods=["POST"]),
     Route("/api/runs/mock", start_mock_run, methods=["POST"]),
+    Route("/api/dashboard", get_dashboard_data, methods=["GET"]),
     Route("/api/runs/{run_id}", get_run, methods=["GET"]),
     Route("/api/runs/{run_id}/events", stream_events, methods=["GET"]),
     Route("/api/runs/{run_id}/decide", decide, methods=["POST"]),
+    Route("/dashboard", dashboard_page, methods=["GET"]),
     Mount("/", app=StaticFiles(directory=str(WEB_DIR), html=True), name="static"),
 ]
 

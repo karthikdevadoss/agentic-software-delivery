@@ -12,6 +12,9 @@ venv/
 # RAG index (derived/build data, regenerate with: python agent/rag_index.py)
 agent/.rag_index/
 
+# Local Control UI run-history telemetry (derived/local, not source)
+agent/web_run_history.jsonl
+
 # Java / Maven
 target/
 *.class
