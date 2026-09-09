@@ -1,12 +1,13 @@
 """
-Ticket-to-implementation-plan agent (V2, repository-aware).
+Ticket-to-implementation-plan agent CLI.
 
-Reads a plain-text software requirement, collects a compact summary of the
-actual local repository (Java source structure + docs), and asks Claude to
-produce a numbered implementation plan grounded in that real context. It
-does not modify any files.
+Runs V3 (repository tool-using agent) by default: Claude decides what to
+inspect and calls read-only tools to obtain it. Pass --mode v2 to run the
+earlier static repository-context planner instead, for side-by-side
+comparison. Neither mode modifies any files.
 """
 
+import argparse
 import os
 import sys
 
@@ -14,6 +15,7 @@ from dotenv import load_dotenv
 from anthropic import Anthropic
 
 from repo_context import build_repository_context
+from agent_loop import run_agent_loop
 
 load_dotenv()
 
@@ -104,16 +106,28 @@ def build_plan(requirement: str, repo_context: str, api_key: str) -> str:
 
 
 def main() -> None:
-    if len(sys.argv) != 2:
-        print("Usage: python main.py <path-to-requirement.txt>")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description="Ticket-to-implementation-plan agent")
+    parser.add_argument("requirement_path", help="Path to a plain-text requirement/ticket file")
+    parser.add_argument(
+        "--mode",
+        choices=["v2", "v3"],
+        default="v3",
+        help=(
+            "v3 (default): tool-using agent that inspects the repository itself. "
+            "v2: static repository-context planner, kept for comparison."
+        ),
+    )
+    args = parser.parse_args()
 
-    requirement_path = sys.argv[1]
-    requirement = read_requirement(requirement_path)
+    requirement = read_requirement(args.requirement_path)
     api_key = get_api_key()
-    repo_context = build_repository_context()
 
-    plan = build_plan(requirement, repo_context, api_key)
+    if args.mode == "v2":
+        repo_context = build_repository_context()
+        plan = build_plan(requirement, repo_context, api_key)
+    else:
+        plan = run_agent_loop(requirement, api_key)
+
     print(plan)
 
 
