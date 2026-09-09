@@ -1,7 +1,7 @@
 {
   "project": "Agentic Software Delivery System",
   "current_version": "V3+MCP+RAG foundations",
-  "last_verified_code_commit": "d312dd1",
+  "last_verified_code_commit": "b724035",
   "current_ticket": "Update customer email",
   "current_ticket_implemented": false,
   "completed_capabilities": [
@@ -22,6 +22,7 @@
     "automated regression tests for MCP adapter and RAG index (24 tests total across agent/test_agent_loop.py, agent/test_rag_index.py, agent/test_mcp_server.py)",
     "minimal structured metrics hooks (agent/metrics.py) for tool calls, RAG index builds, and retrieval queries — consumable by a future dashboard without rewriting these modules",
     "V4 write boundary foundation (agent/write_tools.py): propose/approve/apply flow, repo-bound, scope-restricted to app/src/{main,test}/java .java files, reuses tools.py path-security (no duplication), unapproved/duplicate/rejected applies all blocked",
+    "approval-binding integrity: approve_edit() hashes (path, content) at approval time; apply_edit() refuses if either changed since — closes a real gap found via testing (see LESSONS.md)",
     "V4 controlled compile/test tool (agent/build_tools.py): allowlist-only (compile, test), no shell, verified live against the real Customer app (mvnw compile ~15s, mvnw test ~11s, both succeeded)",
     "security fix: tools._resolve_safe_path now blocks secret-like filenames even for not-yet-existing files (previously only checked existing files — a real gap for any write path)"
   ],
@@ -62,11 +63,12 @@
     "rag_incremental_indexing": {"status": "unit_tested", "as_of_commit": "d312dd1", "evidence": "agent/test_rag_index.py (7 incremental tests) + live proof: build->0 unnecessary embeds on rebuild, fixture add/modify/delete each triggered exactly the expected single-file change, corrupt/missing index handled safely"},
     "v3_new_tool_integration": {"status": "runtime_verified", "as_of_commit": "d312dd1", "evidence": "agent_loop.py required zero core-loop changes; V3 autonomously chose semantic_repository_search then verified with read_file, unprompted"},
     "metrics_hooks": {"status": "runtime_verified", "as_of_commit": "d312dd1", "evidence": "direct test: metrics.get_tool_call_events() returned correct structured records (tool, duration_ms, result_size, blocked_unsafe) after real MCP calls, including correct blocked_unsafe=True classification for a traversal rejection"},
-    "v4_write_boundary_propose_approve_apply": {"status": "unit_tested", "as_of_commit": "uncommitted", "evidence": "agent/test_write_tools.py (14 tests, 1 skipped for platform symlink privilege): unapproved/duplicate/rejected applies blocked, exact content written, unrelated Customer file proven untouched"},
-    "v4_write_boundary_scope_and_secret_rejection": {"status": "unit_tested", "as_of_commit": "uncommitted", "evidence": "traversal/absolute/out-of-scope/wrong-extension/secret-named-new-file all rejected; secret-name case caught a real pre-existing gap in tools.py, fixed and re-verified (see LESSONS.md)"},
-    "v4_write_boundary_shared_security_reuse": {"status": "unit_tested", "as_of_commit": "uncommitted", "evidence": "agent/test_write_tools.py test_write_scope_check_delegates_to_shared_tools_path_validation: mocks tools._resolve_safe_path and asserts write_tools calls it directly, no reimplementation"},
-    "v4_build_tool_allowlist": {"status": "unit_tested", "as_of_commit": "uncommitted", "evidence": "agent/test_build_tools.py (6 tests): unknown/injection-shaped goals rejected before subprocess is touched, shell=False confirmed, argv-list form confirmed, output size-bounded"},
-    "v4_build_tool_real_execution": {"status": "runtime_verified", "as_of_commit": "uncommitted", "evidence": "real run_maven('compile') and run_maven('test') against the actual Customer app both returned success=True (15.5s and 10.9s respectively; test succeeded trivially since no test classes exist yet)"}
+    "v4_write_boundary_propose_approve_apply": {"status": "unit_tested", "as_of_commit": "b724035", "evidence": "agent/test_write_tools.py (16 tests, 1 skipped for platform symlink privilege): unapproved/duplicate/rejected applies blocked, exact content written, unrelated Customer file proven untouched"},
+    "v4_approval_binding_integrity": {"status": "unit_tested", "as_of_commit": "b724035", "evidence": "test_content_substitution_after_approval_is_rejected / test_target_substitution_after_approval_is_rejected: mutating edit.new_content or edit.path after approve_edit() causes apply_edit() to refuse, proving approval is bound to the exact (path, content) pair, not just a boolean flag"},
+    "v4_write_boundary_scope_and_secret_rejection": {"status": "unit_tested", "as_of_commit": "b724035", "evidence": "traversal/absolute/out-of-scope/wrong-extension/secret-named-new-file all rejected; secret-name case caught a real pre-existing gap in tools.py, fixed and re-verified (see LESSONS.md)"},
+    "v4_write_boundary_shared_security_reuse": {"status": "unit_tested", "as_of_commit": "b724035", "evidence": "agent/test_write_tools.py test_write_scope_check_delegates_to_shared_tools_path_validation: mocks tools._resolve_safe_path and asserts write_tools calls it directly, no reimplementation"},
+    "v4_build_tool_allowlist": {"status": "unit_tested", "as_of_commit": "b724035", "evidence": "agent/test_build_tools.py (6 tests): unknown/injection-shaped goals rejected before subprocess is touched, shell=False confirmed, argv-list form confirmed, output size-bounded"},
+    "v4_build_tool_real_execution": {"status": "runtime_verified", "as_of_commit": "b724035", "evidence": "real run_maven('compile') and run_maven('test') against the actual Customer app both returned success=True (15.5s and 10.9s respectively; test succeeded trivially since no test classes exist yet)"}
   },
   "next_phase": "V4 controlled code-writing agent with compile feedback loop",
   "next_action": "Wire write_tools/build_tools into agent_loop.py's live tool-calling loop (read-only tools already work this way), then use the Update Email ticket as the first real end-to-end proof of the full propose->approve->apply->compile/test loop",
