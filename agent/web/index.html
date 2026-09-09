@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Agentic Software Delivery — Control Plane</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <h1>Agentic Software Delivery <span class="sub">— Control Plane</span></h1>
+  <p class="tagline">Our product. Operates on the separate Customer target application — not part of it.</p>
+</header>
+
+<main>
+
+  <section class="panel" id="requirement-panel">
+    <h2>1. Requirement</h2>
+    <textarea id="requirement-input" rows="5"></textarea>
+    <button id="start-btn">Start Agent</button>
+    <button id="mock-btn" class="secondary" title="Replays a fixed event sequence for UI verification — no Anthropic API call, still requires your real Approve/Reject click">Run Mock Demo (no API cost)</button>
+    <span id="status-badge" class="status-badge status-idle">IDLE</span>
+  </section>
+
+  <section class="panel" id="activity-panel" hidden>
+    <h2>2. Repository / RAG Evidence &amp; Tool Activity</h2>
+    <p class="hint">Proves the agent is grounded in the actual repository, not guessing.</p>
+    <ul id="activity-list"></ul>
+  </section>
+
+  <section class="panel" id="proposal-panel" hidden>
+    <h2>3. Proposed Change</h2>
+    <div class="proposal-meta">
+      <div><strong>Proposal ID:</strong> <span id="proposal-id"></span></div>
+      <div><strong>Target file:</strong> <code id="proposal-path"></code></div>
+    </div>
+    <pre id="proposal-diff" class="diff"></pre>
+    <div class="approval-controls">
+      <button id="approve-btn" class="approve">APPROVE</button>
+      <button id="reject-btn" class="reject">REJECT</button>
+    </div>
+    <p id="approval-result"></p>
+  </section>
+
+  <section class="panel" id="verification-panel" hidden>
+    <h2>4. Build / Test Verification</h2>
+    <ul id="verification-list"></ul>
+  </section>
+
+  <section class="panel" id="result-panel" hidden>
+    <h2>5. Final Result</h2>
+    <div id="result-banner"></div>
+    <pre id="result-text"></pre>
+  </section>
+
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>

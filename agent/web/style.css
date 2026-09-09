@@ -1,0 +1,176 @@
+:root {
+  --bg: #0f1115;
+  --panel: #161923;
+  --border: #262b3a;
+  --text: #e4e6eb;
+  --muted: #8b93a7;
+  --accent: #4f8cff;
+  --green: #3ecf8e;
+  --red: #ef5a5a;
+  --amber: #e6b450;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+header {
+  padding: 1.5rem 2rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+h1 { margin: 0 0 0.25rem; font-size: 1.5rem; font-weight: 600; }
+h1 .sub { color: var(--muted); font-weight: 400; }
+.tagline { margin: 0; color: var(--muted); font-size: 0.9rem; }
+
+main {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 4rem;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.panel h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.hint { color: var(--muted); font-size: 0.85rem; margin-top: -0.4rem; }
+
+textarea {
+  width: 100%;
+  background: #0d0f14;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.6rem 0.75rem;
+  font-family: inherit;
+  font-size: 0.95rem;
+  resize: vertical;
+}
+
+button {
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.55rem 1.1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 0.75rem;
+  margin-right: 0.5rem;
+}
+button:hover { filter: brightness(1.1); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button.secondary { background: #2a2e3a; color: var(--muted); font-weight: 500; }
+
+.status-badge {
+  display: inline-block;
+  margin-left: 0.75rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  vertical-align: middle;
+}
+.status-idle { background: #2a2e3a; color: var(--muted); }
+.status-running { background: #1e3a5f; color: #7db4ff; }
+.status-waiting { background: #4a3a12; color: var(--amber); }
+.status-completed { background: #124a35; color: var(--green); }
+.status-failed { background: #4a1616; color: var(--red); }
+
+#activity-list, #verification-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 0.85rem;
+}
+/* Bounded, internally-scrollable log — growing activity never grows the
+   whole page or shifts content the user has scrolled down to read. */
+#activity-list {
+  max-height: 320px;
+  overflow-y: auto;
+  overflow-anchor: none;
+}
+#activity-list li, #verification-list li {
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+}
+#activity-list li:last-child, #verification-list li:last-child { border-bottom: none; }
+#activity-list .tool-name { color: var(--accent); font-weight: 600; }
+#activity-list .ok { color: var(--green); }
+#activity-list .err { color: var(--red); }
+#activity-list .stage-marker { color: var(--text); font-weight: 700; margin-top: 0.4rem; }
+
+.proposal-meta { font-size: 0.9rem; margin-bottom: 0.75rem; }
+.proposal-meta div { margin-bottom: 0.25rem; }
+
+.diff {
+  background: #0d0f14;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+}
+
+.approval-controls button.approve { background: var(--green); }
+.approval-controls button.reject { background: var(--red); }
+
+#approval-result { font-size: 0.9rem; color: var(--muted); }
+
+#result-banner {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+}
+#result-banner.success { background: #124a35; color: var(--green); }
+#result-banner.failed { background: #4a1616; color: var(--red); }
+#result-banner.neutral { background: #2a2e3a; color: var(--muted); }
+
+#result-text {
+  background: #0d0f14;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  white-space: pre-wrap;
+  font-size: 0.85rem;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+#verification-list li { padding: 0.6rem 0; }
+.verification-summary {
+  margin: 0.4rem 0 0;
+  padding: 0.5rem 0.7rem;
+  background: #0d0f14;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  white-space: pre-wrap;
+  font-size: 0.8rem;
+  max-height: 220px;
+  overflow-y: auto;
+}

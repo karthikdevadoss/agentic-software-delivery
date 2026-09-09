@@ -1,0 +1,12 @@
+This is an infrastructure verification task, not a business feature.
+
+Create exactly one new file: a minimal placeholder JUnit test class at
+app/src/test/java/com/example/customer/V41BoundaryDemoTest.java, in package
+com.example.customer, containing an empty public class named
+V41BoundaryDemoTest (no test methods needed - this only verifies the
+propose/approve/apply/compile pipeline end to end).
+
+Do not modify any existing file. Do not touch CustomerController,
+CustomerService, CustomerRepository, or Customer. Do not implement email
+update functionality. This is purely a safe, additive placeholder file to
+prove the execution pipeline works.
