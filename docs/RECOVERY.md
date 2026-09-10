@@ -106,46 +106,76 @@ ledger" entry).
 
 Claude Code's own development-activity capture (source=claude_code,
 activity_class=PRODUCT_DEVELOPMENT — distinct from the Workbench/
-PRODUCT_RUNTIME events above) is wired entirely through
-`.claude/settings.local.json`, which is **deliberately never committed**
-(it is user-specific local configuration, globally gitignored on this
-machine via `**/.claude/settings.local.json`) — this is intentional, not
-an oversight: a fresh clone of this now-public repository must not
-silently start running hook scripts or reaching a real database without
-the new operator explicitly choosing to. Portable, non-secret setup steps
-for a new machine that DOES want this:
+PRODUCT_RUNTIME events above) is wired through Claude Code hooks that
+invoke `agent/claude_code_hook.py`.
+
+**CRITICAL — the hooks MUST live in your USER-LEVEL settings file
+(`~/.claude/settings.json`, i.e. `%USERPROFILE%\.claude\settings.json` on
+Windows), never in this project's `.claude/settings.local.json`.** This
+was learned the hard way (see docs/LESSONS.md's "believed implemented but
+verified nothing" incident and docs/DECISIONS.md): Claude Code's own
+permission-remember mechanism (the thing that quietly adds a rule to
+`permissions.allow` when a tool action gets approved) rewrites the ENTIRE
+content of `.claude/settings.local.json` every time it adds a rule, and
+that rewrite does not preserve unmanaged keys — a `hooks` section placed
+there gets silently dropped the next time ANY permission gets
+auto-remembered, with no error, no warning. Confirmed empirically,
+twice, by adding a test marker key to `.claude/settings.local.json`,
+running an ordinary novel command, and watching the marker disappear
+while `~/.claude/settings.json` (never touched by that mechanism)
+retained an identical test marker unchanged. Both locations were tested
+side by side, not assumed independently.
+
+Portable, non-secret setup steps for a new machine that wants this:
 
 1. Confirm the installed Claude Code version actually supports the hook
    events used (`SessionStart`, `SessionEnd`, `UserPromptSubmit`,
    `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `PermissionRequest`,
-   `Notification`, `Stop`, `SubagentStart`, `SubagentStop`) — do not assume;
-   verify against that installation the same way this was verified here
-   (see docs/DECISIONS.md for the method used: extracting literal hook-name
-   strings directly from the installed binary rather than trusting docs).
-2. Create `.claude/settings.local.json` with a `hooks` entry for each
-   supported event, each pointing at
-   `python "${CLAUDE_PROJECT_DIR}/agent/claude_code_hook.py"` (portable —
-   uses Claude Code's own project-directory variable, no hardcoded path).
-3. Complete the event-ledger recovery steps above first — the hook script
+   `PermissionDenied`, `Notification`, `Stop`, `SubagentStart`,
+   `SubagentStop`) — do not assume; verify against that installation the
+   same way this was verified here (see docs/DECISIONS.md for the method
+   used: extracting literal hook-name strings directly from the installed
+   binary rather than trusting docs).
+2. Merge the `hooks` key from the git-tracked, secret-free template
+   `.claude/hooks-template.json` (in this repo) into your USER-LEVEL
+   `~/.claude/settings.json` — do NOT put it in
+   `.claude/settings.local.json` (see above). If you already have other
+   keys in your user settings (theme, plugins, etc.), merge rather than
+   overwrite.
+3. **Verify the configuration with `python agent/verify_claude_hooks_config.py`**
+   — checks that all expected hooks exist in the user-level file, that
+   each command references `claude_code_hook.py` and uses
+   `${CLAUDE_PROJECT_DIR}` (portable across projects/machines), and flags
+   the exact known-bad case (a `hooks` key sitting in
+   `.claude/settings.local.json` instead). Exit code 0 = configuration
+   correct. This proves the CONFIGURATION only — not that Claude Code has
+   actually invoked it (see step 6).
+4. Complete the event-ledger recovery steps above first — the hook script
    spools locally regardless (`agent/event_spool.jsonl`) and only needs
    `EVENT_LEDGER_DATABASE_URL` for the background sync step to actually
    reach the remote database.
-4. For the Windows attention-notification mechanism
+5. For the Windows attention-notification mechanism
    (`agent/claude_notify.ps1`, invoked by the hook script for
    `PermissionRequest`/`Notification` events): no setup needed beyond
    having PowerShell available — it uses only built-in Windows APIs (WinRT
    toast via the pre-registered legacy-PowerShell AUMID, `System.Media.
    SystemSounds`, `user32.dll`'s `FlashWindowEx`), no module install.
-5. Optionally add narrow permission `allow` rules for safe, read-only,
-   local commands (see the actual rules used here for the pattern) — never
-   copy a broad rule like `Bash(git *)` or enable
-   `--dangerously-skip-permissions`/`bypassPermissions`.
-6. **Known gap:** true end-to-end firing of these hooks was verified at
-   the script level (direct stdin simulation) and one hook (the Windows
-   notifier) was verified with a real, human-confirmed test, but Claude
-   Code hooks are loaded at session start — genuine end-to-end
-   confirmation that Claude Code itself invokes them requires observing a
-   fresh session, which could not be done mid-session when this was built.
+6. Optionally add narrow permission `allow` rules for safe, read-only,
+   local commands in `.claude/settings.local.json` (see the actual rules
+   used here for the pattern) — never copy a broad rule like `Bash(git *)`
+   or enable `--dangerously-skip-permissions`/`bypassPermissions`. This
+   file being auto-rewritten by the permission-remember mechanism is fine
+   for permissions (that's its intended job) — just never put anything
+   else in it that needs to survive.
+7. **A telemetry capability is only verified once real ledger rows exist
+   from a real Claude Code process, not once the script/config looks
+   right.** Restart Claude Code in this repo after completing the steps
+   above (hooks load at session start — a config change made mid-session
+   does not apply retroactively to that same session), then query the
+   remote ledger directly for a genuine `dev_session_started` row with a
+   real, non-test session_id and a recent `timestamp_utc`. Script-level
+   testing (direct stdin simulation) proves the hook SCRIPT works: it does
+   not prove Claude Code is actually calling it.
 
 ## Explicitly incomplete recovery dependencies (not solved by this document)
 

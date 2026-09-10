@@ -222,3 +222,30 @@ surprising verified behavior would otherwise get rediscovered later.
   path can silently re-clobber the bit set earlier in the same build).
   Verified live: the exact same requirement that failed before the fix
   reached `NO_CHANGE_NEEDED` cleanly after redeploying with the fix.
+- **Claude Code development telemetry was believed implemented because the
+  hook handler itself passed tests, but the actual Claude Code
+  configuration later contained no hooks — so fresh real sessions produced
+  zero development events, silently, for at least two consecutive tasks.**
+  Root cause, confirmed empirically (not guessed): Claude Code's own
+  permission-remember mechanism — the thing that quietly appends a rule to
+  `permissions.allow` whenever a tool action gets approved — rewrites the
+  ENTIRE content of `.claude/settings.local.json` on every such grant, and
+  that rewrite does not preserve unmanaged top-level keys. A `hooks`
+  section placed there is silently dropped the very next time ANY
+  permission gets auto-remembered, with no error, no warning, no log line.
+  Proven by direct test: added a `hooks` key plus a marker key to
+  `.claude/settings.local.json`, ran one ordinary novel command, and
+  watched both disappear from the rewritten file — reproduced twice.
+  `~/.claude/settings.json` (user-level, global) was tested the same way
+  in parallel and was completely untouched across the same triggers — it
+  is not managed by that rewrite path at all. **Fix: hooks configuration
+  must live in the user-level settings file, never in
+  `.claude/settings.local.json`** (which remains the right place for
+  permission `allow` rules — that churn is its intended job, just never
+  put anything else there that needs to survive). See
+  docs/RECOVERY.md's "Recovering Claude Code development-telemetry hooks"
+  and `agent/verify_claude_hooks_config.py` for the durable fix and its
+  regression guard. **Permanent rule this incident established: a
+  telemetry capability is verified only when the real producer emits an
+  event and the durable remote store contains it — script-level tests
+  passing is necessary but never sufficient proof of a live capability.**

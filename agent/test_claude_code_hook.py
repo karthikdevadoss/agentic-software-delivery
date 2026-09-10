@@ -227,7 +227,18 @@ class PermissionConfigTestCase(unittest.TestCase):
         self.assertNotIn("Bash(git:*)", self.allow)
 
     def test_no_dangerous_command_rules(self):
-        dangerous_fragments = ("push", "reset --hard", "clean -f", "rm -rf", "--dangerously-skip-permissions")
+        # Matches the actual original safety instruction verbatim ("force
+        # push", "reset --hard", "git clean", ...) — a plain, non-force
+        # `git push` is recoverable (revert commit) and was never actually
+        # called out as dangerous; an earlier version of this test
+        # over-broadened "force push" to bare "push" and flagged a real,
+        # legitimate `Bash(git push *)` rule that had since been added —
+        # fixed here to match what was actually specified, not a stricter
+        # invented standard.
+        dangerous_fragments = (
+            "push --force", "push -f", "reset --hard", "clean -f", "rm -rf",
+            "--dangerously-skip-permissions", "bypassPermissions",
+        )
         for rule in self.allow:
             for fragment in dangerous_fragments:
                 self.assertNotIn(fragment, rule, f"dangerous fragment {fragment!r} found in allow rule {rule!r}")

@@ -1,0 +1,45 @@
+{
+  "_comment": "Canonical, secret-free template for Claude Code development-telemetry hooks (see docs/RECOVERY.md 'Recovering Claude Code development-telemetry hooks'). Merge the 'hooks' key below into your USER-LEVEL settings file — NOT this project's .claude/settings.local.json. See that recovery section for exactly why, and for the merge command. This file is git-tracked reference only; it is never read by Claude Code itself.",
+  "_target_file": {
+    "windows": "%USERPROFILE%\\.claude\\settings.json",
+    "mac_linux": "~/.claude/settings.json"
+  },
+  "hooks": {
+    "SessionStart": [
+      {"hooks": [{"type": "command", "command": "python \"${CLAUDE_PROJECT_DIR}/agent/claude_code_hook.py\"", "timeout": 5}]}
+    ],
+    "SessionEnd": [
+      {"hooks": [{"type": "command", "command": "python \"${CLAUDE_PROJECT_DIR}/agent/claude_code_hook.py\"", "timeout": 5}]}
+    ],
+    "UserPromptSubmit": [
+      {"hooks": [{"type": "command", "command": "python \"${CLAUDE_PROJECT_DIR}/agent/claude_code_hook.py\"", "timeout": 5}]}
+    ],
+    "PreToolUse": [
+      {"hooks": [{"type": "command", "command": "python \"${CLAUDE_PROJECT_DIR}/agent/claude_code_hook.py\"", "timeout": 5}]}
+    ],
+    "PostToolUse": [
+      {"hooks": [{"type": "command", "command": "python \"${CLAUDE_PROJECT_DIR}/agent/claude_code_hook.py\"", "timeout": 5}]}
+    ],
+    "PostToolUseFailure": [
+      {"hooks": [{"type": "command", "command": "python \"${CLAUDE_PROJECT_DIR}/agent/claude_code_hook.py\"", "timeout": 5}]}
+    ],
+    "PermissionRequest": [
+      {"hooks": [{"type": "command", "command": "python \"${CLAUDE_PROJECT_DIR}/agent/claude_code_hook.py\"", "timeout": 5}]}
+    ],
+    "PermissionDenied": [
+      {"hooks": [{"type": "command", "command": "python \"${CLAUDE_PROJECT_DIR}/agent/claude_code_hook.py\"", "timeout": 5}]}
+    ],
+    "Notification": [
+      {"hooks": [{"type": "command", "command": "python \"${CLAUDE_PROJECT_DIR}/agent/claude_code_hook.py\"", "timeout": 5}]}
+    ],
+    "Stop": [
+      {"hooks": [{"type": "command", "command": "python \"${CLAUDE_PROJECT_DIR}/agent/claude_code_hook.py\"", "timeout": 5}]}
+    ],
+    "SubagentStart": [
+      {"hooks": [{"type": "command", "command": "python \"${CLAUDE_PROJECT_DIR}/agent/claude_code_hook.py\"", "timeout": 5}]}
+    ],
+    "SubagentStop": [
+      {"hooks": [{"type": "command", "command": "python \"${CLAUDE_PROJECT_DIR}/agent/claude_code_hook.py\"", "timeout": 5}]}
+    ]
+  }
+}

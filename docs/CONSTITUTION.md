@@ -181,3 +181,29 @@ agent/event_ledger.py's TRAINING_ALLOWED/TRAINING_ALLOWED_AFTER_REDACTION/
 EVAL_ONLY/OPERATIONS_ONLY/PERSONAL_DATA_RESTRICTED/SECRET_NEVER_STORE
 concepts), and unconditional secret exclusion. Nothing here authorizes
 using captured data beyond what its recorded classification permits.
+
+**A telemetry capability is verified only when the real producer emits an
+event and the durable remote store contains it — never when the handler
+script alone passes tests.** Established 2026-09-10 after a real incident:
+Claude Code development-telemetry hooks were believed implemented because
+`agent/claude_code_hook.py` and its tests passed, but the actual Claude
+Code configuration silently lost its `hooks` section (a rewrite performed
+by Claude Code's own permission-remember mechanism — see docs/LESSONS.md),
+so real sessions produced zero events for multiple consecutive tasks
+without any error surfacing. Script-level verification is real evidence of
+one layer, not proof of the whole path — closing the loop requires
+querying the durable store itself for rows that only a genuine producer
+could have created.
+
+**Machine-local operational configuration requires a Git-backed recovery
+template and a verification procedure, not just "it works on this
+laptop."** Configuration that must live outside Git for good reason
+(secrets, or — as with Claude Code hooks — a file this constitution's own
+tooling doesn't fully control) still needs: a secret-free canonical
+template committed to the repository, an explicit recovery procedure in
+docs/RECOVERY.md describing exactly where the live config belongs and
+why, and a runnable verification command that reports pass/fail rather
+than requiring a human to eyeball a JSON file. "It was configured once, on
+one machine, at some point" is not durable — a config file silently
+reverting or a new machine never receiving it must be independently
+detectable, not discovered by absence weeks later.

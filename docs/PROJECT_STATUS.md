@@ -598,3 +598,46 @@ Customer app and event ledger rather than introducing a new one.
   dashboard, a creator action. The already-satisfied acceptance path
   proven above doesn't need it; a genuine code-change requirement
   submitted today would currently stop at the deploy step.
+
+# Current Reality (2026-09-10, continued): Claude Code hooks disappearance — root-caused and fixed
+
+**Real incident, not a hypothetical:** Claude Code development-telemetry
+was believed implemented after an earlier task, but the actual hooks
+configuration was later found empty — zero real `dev_session_started`
+events existed across multiple subsequent tasks, even though the hook
+script itself had passing tests the whole time.
+
+**Root cause, confirmed by direct reproducible test, not guessed:**
+Claude Code's own permission-remember mechanism — the thing that quietly
+appends a rule to `permissions.allow` whenever a tool action gets
+approved — rewrites the *entire* content of `.claude/settings.local.json`
+on every such grant, and that rewrite does not preserve unmanaged keys.
+A `hooks` section placed there gets silently dropped the very next time
+any permission is auto-remembered. Proven twice: added a `hooks` key plus
+a marker key, ran one ordinary novel command, watched both vanish from
+the rewritten file. `~/.claude/settings.json` (user-level) was tested the
+same way in parallel and stayed untouched across the same triggers.
+
+**Fix:** hooks now live in `~/.claude/settings.json` (user-level), which
+is not managed by that rewrite path. A secret-free git-tracked template
+(`.claude/hooks-template.json`) and a runnable verification command
+(`python agent/verify_claude_hooks_config.py`) make this durable and
+independently re-checkable, with its own test suite (including a test
+that checks this machine's *real* current configuration, not just a
+mock). `docs/RECOVERY.md` rewritten accordingly.
+
+**Not yet proven:** whether Claude Code itself actually invokes these
+hooks in a real session — that requires a session restart, since hooks
+load at process start and this session was never restarted after the fix
+landed. Config-level verification (`verify_claude_hooks_config.py`
+passing) is real evidence of one layer; it is not the same claim as "the
+real producer emitted an event and the ledger has it." Full regression
+suite re-run clean: 129 Python tests (128 pass + 1 pre-existing skip) +
+14/14 Node — one pre-existing test was found to have over-broadened
+"force push" into a bare "push" match, incorrectly flagging a real,
+legitimate `Bash(git push *)` rule; fixed to match the original
+instruction exactly.
+
+**Permanent rule now recorded in docs/CONSTITUTION.md:** a telemetry
+capability is verified only when the real producer emits an event and the
+durable remote store contains it — never from script-level tests alone.
