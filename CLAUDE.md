@@ -1,10 +1,14 @@
 # Agentic Software Delivery System
 
-Governing principles: docs/CONSTITUTION.md (read when a duty/scope/priority/
-truthfulness question isn't obviously answered by the rules below). Long-
-term vision (two dashboard audiences, session/AI-engineering intelligence,
-multi-agent roadmap, enterprise benchmark ladder): docs/ROADMAP.md — future
-increments only, do not build from it without an explicit task.
+New session/new machine? Start at **START_HERE.md** (repo root) — the
+canonical recovery entry point. Durable "why"/product structure:
+docs/COMPANY_VISION.md. Governing principles: docs/CONSTITUTION.md (read
+when a duty/scope/priority/truthfulness question isn't obviously answered
+by the rules below). Long-term direction (two dashboard audiences,
+session/AI-engineering intelligence, multi-agent roadmap, enterprise
+benchmark ladder, near-term ordered roadmap): docs/ROADMAP.md — future
+increments only, do not build from it without an explicit task. Unresolved
+possibilities not yet decided: docs/IDEAS.md.
 
 ## Session startup
 Before modifying anything:
@@ -77,6 +81,20 @@ trivial observations.
 - Never expose, print, stage or commit agent/.env or API keys.
 - Never weaken tests/verification just to make something pass.
 - Before stopping or when context is becoming constrained: finish or safely halt the current coherent unit, verify it, update PROJECT_STATE.json and docs/ACTION_QUEUE.json (if it exists), commit, and leave one explicit next_action — a fresh session must be able to resume from repository state alone.
+- A local `git commit` is not durably saved — durability requires a verified
+  remote push (see docs/RECOVERY.md, docs/RESOURCE_REGISTRY.md's Git entry).
+  Do not describe work as "saved" or "backed up" from local commits alone.
+- No important company/project knowledge may exist only in this laptop,
+  ChatGPT, Claude, browser state, terminal output, or process memory — see
+  docs/CONSTITUTION.md §17. Before completing a meaningful task, check
+  whether it created or changed: company/product vision, an accepted
+  decision, the roadmap, an important unresolved idea, an architecture
+  rule, an engineering lesson, a resource/URL, verified project state, or
+  a recovery requirement. If yes, update *only* the one appropriate
+  canonical document (COMPANY_VISION/DECISIONS/ROADMAP/IDEAS/
+  CONSTITUTION/LESSONS/RESOURCE_REGISTRY/PROJECT_STATE/RECOVERY) — never
+  duplicate the same fact across several files. If no, don't edit
+  documentation merely to create activity.
 
 Useful commands:
 Planner:

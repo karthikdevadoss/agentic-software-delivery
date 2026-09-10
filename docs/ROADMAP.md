@@ -1,11 +1,97 @@
-# Roadmap (future increments — none of this is implemented yet)
+# Roadmap (future direction — sections below vary in implementation status; check docs/PROJECT_STATE.json for what's actually true now)
 
 Long-horizon direction, kept separate from PROJECT_STATUS.md (verified
 progress) and DECISIONS.md (why choices were made). This file is vision/
 reference, not a build plan for the current session. See docs/CONSTITUTION.md
 for the operating principles that govern how all of this should be pursued
 (smallest useful step, real verification, no scope drift, no fabricated
-maturity).
+maturity). See docs/COMPANY_VISION.md for the durable "why" and public
+product structure this roadmap executes toward.
+
+## Near-term ordered roadmap (directional, not scheduled — order may be revisited)
+
+1. **Durability / no data loss** — this organizational continuity
+   checkpoint, then a durable remote event ledger so new runs/sessions
+   are never lost (see "Data as a strategic asset" below).
+2. **Live Dashboard + Usage** — same durable evidence source, continuously
+   improving the intelligence surfaced.
+3. **Stable public infrastructure / canonical URLs** —
+   `agentic.karthikdevadoss.com`, `app.karthikdevadoss.com`; no resume
+   dependency on an ephemeral laptop Cloudflare Quick Tunnel.
+4. **Operator notification + safe autonomy** — notify when human
+   approval/input is actually required; reduce unnecessary approvals
+   without bypassing any safety boundary.
+5. **Independent credibility audit** — a sanitized evidence package,
+   reviewed by a fresh Claude/ChatGPT session with no prior context,
+   later an external-model audit — establishing a capability credibility
+   baseline instead of self-assessment alone.
+6. **Resume-ready checkpoint** — only evidence-backed claims, a stable
+   flagship URL.
+7. **Workbench product cleanup** — rename Trainer → Workbench, remove the
+   public Control Plane as a competing page, implement the two
+   requirement tiers (below), link to the production app only after a
+   verified deployment.
+8. **Learn foundation** (see topic index below).
+9. **Requirement catalogue + enterprise app expansion** (see target
+   application growth below).
+
+## Two-tier Workbench product model (accepted direction, not implemented)
+
+**Tier 1 — Open demo:** anyone may execute bounded tiny/small, low-risk,
+reversible, inexpensive changes — the Workbench should proactively offer
+several safe suggested requirements, and offer safe alternatives if a
+visitor enters something larger/riskier (this part already exists in
+spirit — see `agent/risk_policy.py`'s deterministic classifier).
+
+**Tier 2 — Owner-authorized build:** larger functional requirements
+require a short-lived owner authorization. Preferred initial semantics:
+**one code = one requirement.** The code is short-lived, validated
+server-side, hashed at rest, rate-limited, never sent to the LLM, and
+never logged in plaintext. The owner receives it via transactional email
+(SMS optionally later). Authorization **never** bypasses security,
+verification, destructive-operation protection, or engineering quality
+gates — it only grants scope, never trust. Not implemented in the current
+codebase.
+
+## Target application growth (accepted direction)
+
+Continuously grow the current Customer application into a clean-room
+enterprise customer/utility-style platform, purely to create increasingly
+realistic software-engineering scenarios for the Workbench to operate on
+— see "Enterprise benchmark roadmap" below for the existing ladder this
+extends. Possible future business areas, entering only when a real
+requirement justifies them (never merely to look sophisticated):
+customer/account/profile, contact information, addresses, preferences,
+plans/contracts, billing, payments, notifications, appointments,
+documents, auth/authorization, audit, integrations, caching, async/event
+processing, distributed services, schema migrations, backward
+compatibility, production incidents, cross-service changes. Never copy
+proprietary third-party code, data, or confidential internal designs from
+any real company.
+
+## Learn — AI-only living interview book (accepted direction, not built)
+
+Explicitly **not** a general Java/Spring textbook — backend technologies
+appear only where needed to explain how an AI capability interacts with
+this project's actual code. Initial topic index:
+
+AI Foundations (LLMs, tokens, context window, inference, transformers,
+attention, embeddings) · Prompting/Context Engineering · RAG (retrieval,
+chunking, vector search, hybrid search, reranking) · Tool Calling/Function
+Calling/MCP · Agents (agent loop, planning, state, memory,
+self-correction, multi-agent systems) · Agentic Software Delivery ·
+Evals/Quality · AI Security (prompt injection, tool authorization,
+sandboxing, human authority) · Observability (tokens, latency, cost,
+model routing) · Models/Training (fine-tuning, preference data,
+evaluation data, proprietary models).
+
+Each topic can carry: definition, why, mechanics, subtopics, alternatives,
+failure modes, current industry state, how this project actually uses it,
+real project evidence, lessons, interview questions (30-second / 2-minute
+/ deep answers), related topics. **Knowledge availability ≠ project
+implementation** — e.g. "Multi-Agent Systems: knowledge AVAILABLE,
+project NOT IMPLEMENTED" must be shown as exactly that, never blurred.
+Not built yet; UI and content generation are future work.
 
 ## Two immediate MVP outcomes + one ultimate purpose
 
@@ -114,6 +200,27 @@ value, sales/GTM, finance. Before retaining any new agent, eventually
 compare quality/latency/tokens/cost/human-effort/redundancy/coordination
 against not having it. Remove unnecessary agents.
 
+## Data as a strategic company asset (accepted top priority, not implemented)
+
+Capture valuable, lawful, observable software-delivery data as early as
+possible — historical trajectories cannot be recreated later once lost.
+This is why "durable remote event ledger" is the near-term roadmap's #1
+item. Desired categories: requirements/prompts supplied where safe/
+authorized, run/session lifecycle, risk/complexity decisions, model
+calls (provider/model/version, input/output tokens when exposed,
+latency), tool calls/results, retrieval/RAG activity, file/change
+metadata, proposals, authorization requests/decisions, builds, tests/
+evals, failures/errors/timeouts, commits, deployments, production
+verification, human interventions, transport/infrastructure problems,
+corrections, regression outcomes. **Preserve failures — never overwrite
+them with later successes** (this project's `web_run_history.jsonl` and
+`knowledge/sessions/` records already follow this in miniature; the
+future event ledger generalizes it). Never store hidden model
+chain-of-thought, plaintext passwords/OTP codes, API keys/tokens, or
+unnecessary personal/customer data. Data classification and training
+eligibility must become part of future data governance before any of
+this feeds model training.
+
 ## Evidence/provenance (no graph DB yet)
 
 Eventually reconstructable: requirement → retrieved evidence → decision →
@@ -142,6 +249,19 @@ notifications/auth/audit/etc.) and evidence corpus (schemas, ADRs, diagrams,
 rules, specs, tickets, runbooks, incidents, stale/conflicting docs) — grown
 only as real requirements demand it, starting from the current tiny Customer
 app.
+
+## YogaCRM future pilot (accepted direction — do not touch YogaCRM yet)
+
+A real, externally-developed CRM product, identified as a potential first
+genuine external product pilot for the Workbench. Safe progression: local
+benchmark proof → YogaCRM read-only repository understanding → a real
+requirement → agent proposal → a dedicated Git branch → automated tests →
+staging → human review → only after that evidence, controlled production
+use, with humans retaining business/risk/approval responsibility
+throughout. Do not assume repository access, technology stack,
+credentials, CI/CD, staging, or production permissions — ask the owner
+when any of those actually become relevant. See docs/IDEAS.md for what
+remains genuinely unresolved about this pilot.
 
 ## Explicitly deferred (roadmap only — do not build without a new explicit task)
 
