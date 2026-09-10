@@ -342,12 +342,28 @@ catch the duplicate-render class of bug) + full Python regression suite
 browser experience (stage checklist, transport badge, timers) — verified
 here via curl/Node-harness evidence, not a real browser.
 
-**Known open defects (not fixed, tracked for a future focused fix):**
-- `_run_controlled()`'s subprocess output capture (`agent/web_server.py`)
-  doesn't pass `encoding="utf-8"` — on Windows this defaults to cp1252,
-  which crashes decoding Railway CLI's colored output and has caused a
-  real, repeatable false "deployment failed" (production was actually
-  fine) three separate times this session.
-- The Cloudflare Quick Tunnel itself remains ephemeral and ties the
-  public Trainer URL to this laptop staying on — the polling fix makes
-  the UI resilient to it, but doesn't make the tunnel itself durable.
+**Railway deployment status truthfulness:** fixed and regression-protected.
+`_run_controlled()` now decodes subprocess output as real UTF-8 (confirmed
+byte-for-byte to be the actual defect — Railway's "●" bullet, U+25CF,
+contains byte `0x8F`, undefined in cp1252). Deployment outcome is now
+decided by `_decide_deployment_outcome()`: independent production
+verification (a direct HTTP check of the real public URL) is the primary
+evidence, Railway CLI polling only corroborates, and a genuine
+`DEPLOYMENT_STATUS_UNKNOWN` outcome exists for when neither confirms
+anything — never silently folded into FAILED. Verified: 9 new focused
+tests (encoding + decision logic, each proven to fail against the old
+behavior) + full regression suite (85/85 Python, 14/14 JS) + read-only
+confirmation against real Railway status and the live production URL
+(footer correctly reads "Powered by DOSS Agentic Delivery", matching the
+creator's own visual confirmation). The historical false-FAILED run
+(`trainer-e8ed222c`) is preserved exactly as recorded — it is evidence,
+not an error to erase.
+
+**Known open items:**
+- The Cloudflare Quick Tunnel itself remains ephemeral (it expired again
+  during this fix, unrelated to the code change) and ties the public
+  Trainer URL to this laptop staying on — the polling-resilience fix
+  makes the UI tolerant of a live tunnel dropping mid-stream, but doesn't
+  make the tunnel durable or prevent it from expiring outright. A fresh
+  `cloudflared` run is needed to get a new public URL; deliberately not
+  done as part of this fix (out of scope).

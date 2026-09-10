@@ -62,7 +62,7 @@ const WORKFLOW_STAGES = [
   { key: "DEPLOYING", label: "Deploying" },
   { key: "VERIFYING PRODUCTION", label: "Verifying production" },
 ];
-const TERMINAL_STAGES = new Set(["COMPLETED", "FAILED", "NO_CHANGE_NEEDED"]);
+const TERMINAL_STAGES = new Set(["COMPLETED", "FAILED", "NO_CHANGE_NEEDED", "DEPLOYMENT_STATUS_UNKNOWN"]);
 
 // Stages where long silence is EXPECTED (waiting on an external system),
 // not a sign anything is wrong — calibrated from real observed durations
@@ -127,7 +127,7 @@ function setStatus(label) {
   statusBadge.textContent = label;
   const map = {
     IDLE: "status-idle", COMPLETED: "status-completed", FAILED: "status-failed",
-    NO_CHANGE_NEEDED: "status-completed",
+    NO_CHANGE_NEEDED: "status-completed", DEPLOYMENT_STATUS_UNKNOWN: "status-waiting",
   };
   statusBadge.className = "status-badge " + (map[label] || "status-running");
 }
@@ -274,6 +274,12 @@ function applyEvent(evt) {
 function renderFinalBanner(text) {
   if (run.currentStage === "NO_CHANGE_NEEDED") {
     resultBanner.textContent = "ALREADY SATISFIED — NO CHANGE REQUIRED";
+    resultBanner.className = "neutral";
+  } else if (run.currentStage === "DEPLOYMENT_STATUS_UNKNOWN") {
+    // Deliberately NOT rendered as failed: Railway CLI polling was
+    // inconclusive AND the direct production check didn't confirm
+    // HTTP 200 either — genuine uncertainty, not a verified failure.
+    resultBanner.textContent = "DEPLOYMENT STATUS UNKNOWN — CHECK MANUALLY";
     resultBanner.className = "neutral";
   } else {
     const failed = verificationState.applySucceeded === false

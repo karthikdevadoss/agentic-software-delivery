@@ -197,6 +197,14 @@ surprising verified behavior would otherwise get rediscovered later.
   call appears to "succeed" with corrupted/empty captured text instead of
   raising, which silently broke a `"Online" in status_out` check and
   produced repeatable false "deployment failed" results even though the
-  real deploy had succeeded. Confirmed a real, repeatable defect (not
-  fixed yet — tracked in docs/PROJECT_STATE.json `open_defects`); the fix
-  is `encoding="utf-8", errors="replace"` on every such `subprocess.run` call.
+  real deploy had succeeded. Root cause confirmed at the exact byte level
+  (not assumed): Railway's "●" bullet is U+25CF, UTF-8-encoded as
+  `E2 97 8F`; byte `0x8F` alone is undefined in cp1252, which is exactly
+  the crash observed. Fixed with `encoding="utf-8", errors="replace"` on
+  `_run_controlled()`'s `subprocess.run` call (`agent/web_server.py`).
+  Separately, decoding failure had also been conflated with deployment
+  failure — fixed by making an independent HTTP check of the real public
+  URL the primary evidence for success/failure, with CLI polling only
+  corroborating (`_decide_deployment_outcome()`), and adding a genuine
+  `DEPLOYMENT_STATUS_UNKNOWN` outcome for when neither signal confirms
+  anything — "unknown" and "failed" are not the same claim.

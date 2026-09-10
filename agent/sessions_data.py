@@ -232,7 +232,12 @@ def _run_history_sessions() -> list:
         # Must stay in sync with web_server.TERMINAL_RUN_STATES (that module
         # is the authoritative source; not imported here to avoid a
         # circular import — web_server imports this module already).
-        status = "FAILED" if r["final_status"] not in ("COMPLETED", "NO_CHANGE_NEEDED") else r["final_status"]
+        # DEPLOYMENT_STATUS_UNKNOWN is deliberately NOT folded into FAILED
+        # here — that conflation is exactly the class of bug this state
+        # exists to prevent (see docs/LESSONS.md: timeout/decoding
+        # uncertainty is not a verified failure).
+        _NON_FAILED_STATUSES = ("COMPLETED", "NO_CHANGE_NEEDED", "DEPLOYMENT_STATUS_UNKNOWN")
+        status = r["final_status"] if r["final_status"] in _NON_FAILED_STATUSES else "FAILED"
 
         compile_ok = r.get("compile", {}).get("success") if r.get("compile") else None
         test_ok = r.get("test", {}).get("success") if r.get("test") else None

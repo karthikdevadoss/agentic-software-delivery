@@ -86,11 +86,30 @@ STAGE_LABELS = {
 # stream_events() ever finding out, leaving completed runs' SSE streams
 # open forever. If you add a new terminal run.status anywhere in this
 # file, add it here in the same change.
-TERMINAL_RUN_STATES = frozenset({"COMPLETED", "FAILED", "NO_CHANGE_NEEDED"})
+TERMINAL_RUN_STATES = frozenset({"COMPLETED", "FAILED", "NO_CHANGE_NEEDED", "DEPLOYMENT_STATUS_UNKNOWN"})
 
 
 def _run_is_terminal(run: "Run") -> bool:
     return run.status in TERMINAL_RUN_STATES
+
+
+def _decide_deployment_outcome(deploy_online: bool, deploy_explicit_failure: bool, production_verified: bool) -> str:
+    """The one place a trainer deploy's outcome is decided. Production
+    verification (an independent HTTP check of the real public URL) is
+    the primary evidence and is checked FIRST — deliberately, so it can
+    never be overridden by a Railway CLI signal in either direction. See
+    docs/LESSONS.md: a CLI decoding glitch or poll timeout produced real
+    false "deployment failed" results on genuinely successful deploys
+    three times before this function existed.
+
+    Returns one of the three real outcomes this decision can produce:
+    COMPLETED, FAILED, or DEPLOYMENT_STATUS_UNKNOWN (genuine uncertainty
+    — never silently folded into FAILED)."""
+    if production_verified:
+        return "COMPLETED"
+    if deploy_explicit_failure:
+        return "FAILED"
+    return "DEPLOYMENT_STATUS_UNKNOWN"
 
 
 API_KEY = None
@@ -401,12 +420,29 @@ def _run_controlled(argv, cwd, timeout_s):
     raw to the trainer. Resolves argv[0] via shutil.which() first — on
     Windows, CLI tools installed through npm (railway, vercel) are .cmd
     shims, and CreateProcess cannot launch a bare 'railway' without an
-    extension; resolving the real path still avoids shell=True entirely."""
+    extension; resolving the real path still avoids shell=True entirely.
+
+    encoding="utf-8" is explicit and load-bearing, not a guess: captured
+    Railway CLI output was confirmed byte-for-byte to be well-formed
+    UTF-8 (its status bullet "●" is U+25CF, encoded as the 3 bytes
+    E2 97 8F). Without an explicit encoding, Python's text=True falls
+    back to the OS locale's codepage — cp1252 on this machine — which has
+    no mapping for byte 0x8F (the last byte of that sequence) and raises
+    UnicodeDecodeError inside subprocess.Popen's background reader
+    threads. That exception doesn't propagate to this function's return
+    value; the practical effect was captured output silently coming back
+    empty/truncated, which then failed the "Online" in status_out check
+    even on a genuinely successful deploy. errors="replace" is defense
+    in depth for any future byte sequence that isn't valid UTF-8 either
+    — it substitutes U+FFFD rather than raising, so a real decoding
+    anomaly becomes visible in the returned text instead of crashing a
+    background thread invisibly again."""
     resolved = shutil.which(argv[0])
     argv = [resolved or argv[0], *argv[1:]]
     try:
         proc = subprocess.run(
             argv, cwd=str(cwd), capture_output=True, text=True,
+            encoding="utf-8", errors="replace",
             timeout=timeout_s, shell=False,
         )
         return proc.returncode == 0, (proc.stdout or "") + (proc.stderr or "")
@@ -513,12 +549,13 @@ def _run_trainer_thread(run: "Run", requirement: str, assessment: dict) -> None:
             return
 
         deploy_online = False
-        # Observed twice now: a cold Nixpacks/Maven build on this Railway
-        # project (no layer cache reuse between deploys) has taken as long
-        # as ~11.5 minutes. Both prior timeouts (4 min, then 7 min) were
-        # real false-negative FAILED results — the deploy had actually
-        # succeeded, just after this loop gave up. 90 x 10s = 15 minutes
-        # gives real margin instead of guessing again from one data point.
+        deploy_explicit_failure = False
+        # A cold Nixpacks/Maven build on this Railway project (no layer
+        # cache reuse between deploys) has been observed taking as long
+        # as ~11.5 minutes for real. 90 x 10s = 15 minutes gives real
+        # margin. This loop is a SIGNAL for the decision below, never the
+        # sole verdict — see the production-verification step that
+        # always runs next regardless of what this loop saw.
         for _ in range(90):  # up to ~15 minutes
             time.sleep(10)
             _, status_out = _run_controlled(["railway", "status"], APP_DIR, 20)
@@ -526,14 +563,14 @@ def _run_trainer_thread(run: "Run", requirement: str, assessment: dict) -> None:
                 deploy_online = True
                 break
             if "Failed" in status_out or "Crashed" in status_out:
+                deploy_explicit_failure = True
                 break
-        if not deploy_online:
-            run.emit("error", {"message": "Deployment did not reach Online state within the wait window."})
-            run.status = "FAILED"
-            run.emit("stage", {"stage": "FAILED"})
-            return
 
-        # VERIFY
+        # VERIFY — production reality is the primary source of truth.
+        # Permanent rule (docs/LESSONS.md): a CLI decoding glitch or a
+        # poll timeout is NOT the same as a verified deployment failure.
+        # This independent HTTP check runs regardless of what the loop
+        # above concluded, and its result decides the outcome below.
         run.status = "VERIFYING PRODUCTION"
         run.emit("stage", {"stage": "VERIFYING PRODUCTION"})
         after_status, after_html = _fetch_public_app()
@@ -545,11 +582,23 @@ def _run_trainer_thread(run: "Run", requirement: str, assessment: dict) -> None:
             "http_status": after_status,
             "content_changed_from_baseline": content_changed,
             "verified": verified,
+            "railway_cli_reported_online": deploy_online,
+            "railway_cli_reported_failure": deploy_explicit_failure,
         })
 
-        run.status = "COMPLETED"
-        run.emit("stage", {"stage": "COMPLETED"})
-        run.emit("final_result", {"text": result})
+        outcome = _decide_deployment_outcome(deploy_online, deploy_explicit_failure, verified)
+        if outcome == "COMPLETED":
+            run.status = "COMPLETED"
+            run.emit("stage", {"stage": "COMPLETED"})
+            run.emit("final_result", {"text": result})
+        elif outcome == "FAILED":
+            run.emit("error", {"message": "Railway reported a failed/crashed deployment, and production is not reachable."})
+            run.status = "FAILED"
+            run.emit("stage", {"stage": "FAILED"})
+        else:  # DEPLOYMENT_STATUS_UNKNOWN — genuinely inconclusive, not a confirmed failure
+            run.emit("error", {"message": "Deployment status could not be confirmed: Railway CLI polling did not report Online within the wait window, and production verification did not return HTTP 200. This is NOT a confirmed failure — check manually."})
+            run.status = "DEPLOYMENT_STATUS_UNKNOWN"
+            run.emit("stage", {"stage": "DEPLOYMENT_STATUS_UNKNOWN"})
     except Exception as exc:  # noqa: BLE001
         run.emit("error", {"message": str(exc)})
         run.status = "FAILED"

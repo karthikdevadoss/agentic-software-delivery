@@ -53,6 +53,10 @@ trivial observations.
 - Re-run focused tests, then regression suite, then appropriate runtime check.
 - Never present stale documentation as current runtime truth.
 - Never confuse transport timeout/status uncertainty with verified failure.
+- An external CLI/process's own output-decoding failure is never itself an
+  application/deployment failure — a final status must be backed by actual
+  evidence (e.g. independent production verification), not by the absence
+  of a signal that failed to decode.
 - Never leave the operator unable to tell whether the system is working,
   waiting, blocked, degraded, failed or complete.
 - When a new run/state/status is introduced, audit every consumer of that
