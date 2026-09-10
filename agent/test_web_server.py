@@ -14,8 +14,33 @@ Run: python agent/test_web_server.py
 import asyncio
 import sys
 import unittest
+from unittest import mock
 
 import web_server as ws
+
+# This file's Run(...) instantiations now also trigger a real write-through
+# call to agent/event_ledger.py (a run_started event + a real git subprocess
+# call for git_commit_before). That's correct production behavior, but it
+# would make this otherwise-fast, offline SSE/status test suite silently
+# depend on network reachability to the live Postgres ledger and write
+# dozens of synthetic "test-run" rows into real durable evidence on every
+# test run. Event-ledger correctness has its own dedicated, real-DB-backed
+# suite (test_event_ledger.py) — here it's simply patched to a no-op so
+# this file keeps testing exactly what its name says: web_server's SSE/
+# status logic, nothing else.
+_event_ledger_patcher = None
+
+
+def setUpModule():
+    global _event_ledger_patcher
+    _event_ledger_patcher = mock.patch.object(
+        ws.event_ledger, "record_event",
+        return_value={"event_id": "patched-out-in-tests", "remote_persisted": False})
+    _event_ledger_patcher.start()
+
+
+def tearDownModule():
+    _event_ledger_patcher.stop()
 
 
 async def _always_connected():

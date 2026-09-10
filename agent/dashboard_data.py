@@ -17,6 +17,7 @@ IMPLEMENTED / NOT VERIFIED) rather than invented.
 import json
 from pathlib import Path
 
+import event_ledger
 import metrics
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -28,13 +29,13 @@ RUN_HISTORY_PATH = REPO_ROOT / "agent" / "web_run_history.jsonl"
 # commit noted below. Re-run and update this constant (do not guess) if
 # agent/*.py or agent/test_*.py change after that commit.
 TEST_EVIDENCE = {
-    "total": 60,
-    "passed": 59,
+    "total": 99,
+    "passed": 98,
     "skipped": 1,
     "failed": 0,
     "skip_reason": "Windows lacks the privilege to create symlinks in this test environment (platform limitation, not a bug)",
-    "command": "python -m unittest test_agent_loop test_rag_index test_mcp_server test_write_tools test_build_tools test_execution_tools",
-    "as_of_commit": "113b016",
+    "command": "python -m unittest test_agent_loop test_rag_index test_mcp_server test_write_tools test_build_tools test_execution_tools test_risk_policy test_web_server test_event_ledger",
+    "as_of_commit": "PENDING_THIS_COMMIT",
 }
 
 # Manually curated, but every field must trace to a verification_state /
@@ -242,6 +243,30 @@ def _security_summary(state: dict) -> dict:
     }
 
 
+def _event_ledger_summary() -> dict:
+    """Minimal live proof that the durable event ledger (agent/event_ledger.py,
+    Railway Postgres — see docs/RESOURCE_REGISTRY.md) is real and queryable.
+    Deliberately NOT a redesign of this page: one small additional key,
+    read-only, honest about UNREACHABLE rather than hiding a real outage."""
+    try:
+        recent = event_ledger.get_recent_events(limit=1)
+        count = event_ledger.count_events()
+        last = recent[0] if recent else None
+        return {
+            "evidence_source": "REMOTE EVENT LEDGER (Railway Postgres, agent/event_ledger.py)",
+            "status": "REACHABLE",
+            "events_captured": count,
+            "last_event_timestamp_utc": last["timestamp_utc"].isoformat() if last else None,
+            "last_event_type": last["event_type"] if last else None,
+        }
+    except Exception as exc:  # noqa: BLE001 - dashboard must never break because the ledger is down
+        return {
+            "evidence_source": "REMOTE EVENT LEDGER (Railway Postgres, agent/event_ledger.py)",
+            "status": "UNREACHABLE",
+            "error": str(exc),
+        }
+
+
 def build_dashboard_snapshot() -> dict:
     state = _project_state()
 
@@ -256,6 +281,7 @@ def build_dashboard_snapshot() -> dict:
             "next_phase": state.get("next_phase", "NOT CAPTURED YET"),
         },
         "last_documented_milestone": _milestone_from_state(state),
+        "event_ledger": _event_ledger_summary(),
         "run_history": _read_run_history(),
         "session_metrics": _session_metrics(),
         "economics": ECONOMICS,

@@ -4,3 +4,4 @@ mcp
 fastembed
 numpy
 requests
+psycopg2-binary

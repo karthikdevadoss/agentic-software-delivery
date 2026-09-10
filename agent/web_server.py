@@ -50,6 +50,7 @@ from main import get_api_key
 from agent_loop import run_agent_loop
 from execution_agent import EXECUTION_SYSTEM_PROMPT_SUFFIX
 import dashboard_data
+import event_ledger
 import execution_tools
 import metrics
 import risk_policy
@@ -114,6 +115,105 @@ def _decide_deployment_outcome(deploy_online: bool, deploy_explicit_failure: boo
 
 API_KEY = None
 RUNS = {}
+_CURRENT_RUN_ID = None  # process-global: metrics.py is single-run-at-a-time (see its own docstring)
+
+
+def _run_source(run_id: str) -> str:
+    """Honest provenance tag derived from this codebase's own existing
+    run_id naming convention (mock-/trainer-/plain hex) — not a new
+    concept, just carried into the event ledger's `source` field."""
+    if run_id.startswith("mock-"):
+        return "workbench_mock"
+    if run_id.startswith("trainer-"):
+        return "workbench_trainer"
+    return "workbench"
+
+
+def _current_git_commit():
+    """Real source git commit BEFORE the run (Section 10's reproducibility
+    manifest) — a genuine subprocess call, not a cached/guessed value."""
+    ok, out = _run_controlled(["git", "rev-parse", "--short", "HEAD"], REPO_ROOT, 10)
+    return out.strip() if ok else None
+
+
+_STAGE_TO_CANONICAL_TYPE = {
+    "COMPLETED": "stage_completed",
+    "FAILED": "run_failed",
+    "NO_CHANGE_NEEDED": "run_no_change",
+    "DEPLOYMENT_STATUS_UNKNOWN": "deployment_status_unknown",
+}
+
+
+def _canonical_event_type(internal_type: str, data: dict) -> str:
+    """Maps this file's actual internal Run.emit() event types onto the
+    canonical taxonomy (CLAUDE.md's event-ledger Section 3). Only maps
+    events genuinely emitted today — nothing here is invented to fill out
+    the taxonomy."""
+    if internal_type == "stage":
+        return _STAGE_TO_CANONICAL_TYPE.get(data.get("stage"), "stage_started")
+    if internal_type == "tool_result":
+        return "tool_call_completed" if data.get("success") else "tool_call_failed"
+    if internal_type == "final_result":
+        return "run_completed"
+    if internal_type == "deployment":
+        if data.get("verified"):
+            return "deployment_completed"
+        return "deployment_failed" if data.get("railway_cli_reported_failure") else "deployment_status"
+    return {
+        "tool_call": "tool_call_started",
+        "proposal": "change_proposed",
+        "approval_decision": "authorization_decision",
+        "risk_assessment": "risk_assessment",
+        "commit": "commit_created",
+        "no_change_needed": "run_no_change",
+        "error": "error",
+    }.get(internal_type, internal_type)
+
+
+def _record_ledger_event(run: "Run", internal_type: str, data: dict) -> None:
+    """Write-through bridge: every Run.emit() call also durably persists to
+    the event ledger immediately, not batched to run-end. Never affects
+    run.events/run.status either way — event_ledger.record_event() itself
+    never raises (falls back to the local spool on any failure)."""
+    event_ledger.record_event(
+        _canonical_event_type(internal_type, data),
+        run_id=run.id,
+        source=_run_source(run.id),
+        service="web_server",
+        environment="local",
+        git_commit=run.git_commit_before,
+        status=run.status,
+        stage=data.get("stage") if internal_type == "stage" else None,
+        tool_name=data.get("tool"),
+        duration_ms=data.get("duration_ms"),
+        training_eligibility=event_ledger.TRAINING_ALLOWED_AFTER_REDACTION,
+        payload=data,
+    )
+
+
+def _on_model_usage(usage_event: dict) -> None:
+    """Bridges metrics.py's real Anthropic API usage into the ledger the
+    moment it's recorded (see metrics.set_usage_sink). Correlated via
+    _CURRENT_RUN_ID because metrics.py is itself process-global/
+    single-run-at-a-time (see its own module docstring) — not a new
+    limitation introduced here."""
+    event_ledger.record_event(
+        "model_usage",
+        run_id=_CURRENT_RUN_ID,
+        source=_run_source(_CURRENT_RUN_ID) if _CURRENT_RUN_ID else None,
+        service="web_server",
+        environment="local",
+        provider=usage_event["provider"],
+        model=usage_event["model"],
+        input_tokens=usage_event["input_tokens"],
+        output_tokens=usage_event["output_tokens"],
+        cache_read_tokens=usage_event.get("cache_read_input_tokens"),
+        cache_write_tokens=usage_event.get("cache_creation_input_tokens"),
+        training_eligibility=event_ledger.OPERATIONS_ONLY,
+    )
+
+
+metrics.set_usage_sink(_on_model_usage)
 
 
 class Run:
@@ -126,11 +226,19 @@ class Run:
         self.pending_approvals = {}
         self.trainer_changed_path = None  # set by _trainer_approval_prompt_factory
         self.trainer_usage_start_index = 0  # set by the trainer route before the thread starts
+        self.git_commit_before = _current_git_commit()
         self._lock = threading.Lock()
+        event_ledger.record_event(
+            "run_started", run_id=self.id, source=_run_source(self.id),
+            service="web_server", environment="local", git_commit=self.git_commit_before,
+            status=self.status, training_eligibility=event_ledger.TRAINING_ALLOWED_AFTER_REDACTION,
+            payload={"requirement": requirement},
+        )
 
     def emit(self, event_type: str, data: dict) -> None:
         with self._lock:
             self.events.append({"type": event_type, "ts": time.time(), **data})
+        _record_ledger_event(self, event_type, data)
 
     def events_from(self, index: int):
         with self._lock:
@@ -260,8 +368,10 @@ def _web_approval_prompt_factory(run: Run):
 
 
 def _run_agent_thread(run: Run) -> None:
+    global _CURRENT_RUN_ID
     execution_tools.set_approval_prompt(_web_approval_prompt_factory(run))
     usage_start_index = len(metrics.get_model_usage_events())
+    _CURRENT_RUN_ID = run.id
     try:
         run.status = "PLANNING"
         run.emit("stage", {"stage": "PLANNING"})
@@ -281,6 +391,7 @@ def _run_agent_thread(run: Run) -> None:
         run.emit("error", {"message": str(exc)})
     finally:
         execution_tools.set_approval_prompt(execution_tools._default_approval_prompt)
+        _CURRENT_RUN_ID = None
         _persist_run_history(run, usage_start_index=usage_start_index)
 
 
@@ -461,9 +572,11 @@ def _fetch_public_app(timeout_s=15):
 
 
 def _run_trainer_thread(run: "Run", requirement: str, assessment: dict) -> None:
+    global _CURRENT_RUN_ID
     run.trainer_changed_path = None
     execution_tools.set_approval_prompt(_trainer_approval_prompt_factory(run))
     baseline_status, baseline_html = _fetch_public_app()
+    _CURRENT_RUN_ID = run.id
 
     try:
         run.status = "PLANNING"
@@ -605,6 +718,7 @@ def _run_trainer_thread(run: "Run", requirement: str, assessment: dict) -> None:
         run.emit("stage", {"stage": "FAILED"})
     finally:
         execution_tools.set_approval_prompt(execution_tools._default_approval_prompt)
+        _CURRENT_RUN_ID = None
         commit_event = next((e for e in run.events if e["type"] == "commit"), None)
         deploy_event = next((e for e in run.events if e["type"] == "deployment"), None)
         _persist_run_history(run, usage_start_index=run.trainer_usage_start_index, extra={

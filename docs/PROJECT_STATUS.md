@@ -367,3 +367,75 @@ not an error to erase.
   make the tunnel durable or prevent it from expiring outright. A fresh
   `cloudflared` run is needed to get a new public URL; deliberately not
   done as part of this fix (out of scope).
+
+# Current Reality (2026-09-10, continued): durable remote event ledger
+
+**This repository is now public** on GitHub
+(https://github.com/karthikdevadoss/agentic-software-delivery.git) — the
+entire reachable Git history was scanned for real secrets first (zero
+found), and local/remote HEAD equality was independently verified via a
+fresh `git fetch`, not just trusted from the push output.
+
+**P0 "no more lost engineering events" is implemented and verified.**
+Before this work, every observable Workbench event (model calls, tool
+calls, proposals, approvals, builds, tests, commits, deployments) lived
+only in this process's memory (`Run.events`) and, at best, a single
+end-of-run JSON line appended to a local, gitignored file
+(`agent/web_run_history.jsonl`) — a crash mid-run, or losing this laptop,
+meant losing everything about that run. That gap is now closed:
+
+- **Real remote store:** Railway PostgreSQL, its own project
+  (`agentic-delivery-events`, separate from the Customer app's Railway
+  project), reached over a public TCP proxy since the default
+  Railway-internal `DATABASE_URL` isn't reachable from this laptop. See
+  docs/RESOURCE_REGISTRY.md.
+- **Write-through, not batch-at-end:** `agent/event_ledger.py`'s
+  `record_event()` is called the moment each event happens — wired
+  directly into `web_server.py`'s `Run.emit()` (every stage/tool/
+  proposal/approval/commit/deployment event) and into `metrics.py`'s real
+  Anthropic API usage capture via a new `set_usage_sink()` hook.
+- **Outage-safe:** if the remote insert fails for any reason, the event
+  is appended to a local spool file instead of being dropped, and
+  `sync_spool()` retries later — idempotently (`ON CONFLICT DO NOTHING`
+  on `event_id`), so a retried sync never creates a duplicate row.
+- **Historical evidence preserved, not overwritten:** `agent/
+  web_run_history.jsonl` was left untouched; a one-time, safely re-runnable
+  backfill imported all 15 of its existing rows into the ledger, clearly
+  tagged as reconstructed history (`backfill_source=historical_backfill`),
+  never mixed with live-observed events.
+- **Genuinely tested, not just inserted once:** `agent/test_event_ledger.py`
+  (14 tests) runs against the real live database — normal insert+query,
+  event ordering, duplicate-retry idempotency, full run-trajectory
+  reconstruction from `run_id` alone, real token-field round-trip, outage
+  spooling, spool sync on recovery, pre-terminal-crash durability,
+  historical-failure preservation, and secret redaction before storage
+  (both remote and spool paths). Full regression suite re-run clean: 99
+  Python tests (98 pass + 1 pre-existing platform-limited skip) + 14/14
+  Node trainer-frontend tests.
+- **Minimal live proof, not a redesign:** `/api/dashboard`'s existing JSON
+  gained one small `event_ledger` key (status, event count, last event) —
+  the Dashboard/Usage pages themselves were deliberately not touched.
+
+**Explicitly NOT done, and why:**
+- **PITR (point-in-time recovery) is disabled** on the event ledger's
+  Postgres instance. Enabling it provisions billed cloud storage — a
+  cost/production decision that needs explicit approval, not something to
+  auto-enable. A manual, on-demand portable logical backup exists instead
+  (`agent/event_ledger_backup.py`, proven live: 59/59 rows exported), but
+  **no restore has been tested** — a backup is not proven recovery until
+  a restore drill actually happens.
+- **Claude Code development-activity capture (a distinct source from
+  Workbench runtime telemetry) was investigated but not wired.** Hook
+  event names were verified directly from the installed Claude Code
+  v2.1.263 binary's own strings (not just documentation), confirming
+  `SessionStart`/`SessionEnd` and others are genuinely supported. It was
+  not implemented this task because a hook that performs real network I/O
+  against a sometimes-slow TCP-proxied database connection would add
+  latency/reliability risk to every future Claude Code session in this
+  repo — a different risk class than this task's own scope. Documented as
+  the next ingestion source; the event schema already accommodates it.
+
+**Next single priority:** wire Dashboard and Usage's actual displayed data
+to query the now-durable `delivery_events` table directly, replacing
+their current reliance on the local JSONL log / in-memory process
+counters — see `next_phase`/`next_action` in docs/PROJECT_STATE.json.

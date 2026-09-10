@@ -67,6 +67,51 @@ old date as due for re-verification, not as current truth.
   redeploy. `server.port=${PORT:8080}` is required for Railway's dynamic
   port assignment (see docs/DECISIONS.md).
 
+## Durable engineering event ledger (Railway PostgreSQL)
+
+- **NAME:** agentic-delivery-events (Railway project), service `Postgres`
+- **PURPOSE:** Real, append-only, remote durable storage for observable
+  Agentic Software Delivery activity (`delivery_events` table) — the P0
+  "no more lost engineering events" foundation. Kept in its OWN Railway
+  project, architecturally separate from `agentic-delivery-customer-app`
+  (our product's infra vs. the Customer target application).
+- **PROVIDER:** Railway, project ID `fda41d23-8c0d-4419-9139-1744e109dd61`,
+  environment ID `677ce73d-7341-498a-a0f4-d74afff8c68c` (production),
+  service ID `382d39f3-ce91-4269-a760-0c5154a66835`.
+- **IMAGE / VOLUME:** `ghcr.io/railwayapp-templates/postgres-ssl:18`,
+  volume `postgres-volume` (500MB capacity), region `iad`.
+- **CONNECTIVITY:** Railway's default `DATABASE_URL`/`PGHOST` resolve to
+  `postgres.railway.internal` — reachable only from inside Railway's own
+  private network, NOT from this laptop (where the Workbench execution
+  engine actually runs). Solved with a public TCP proxy:
+  `shortline.proxy.rlwy.net:51211` → forwards to the service's port 5432.
+  This host:port is a non-secret network location; the credentials that
+  complete the connection string are in `agent/.env` only (see
+  docs/SECRETS_REGISTRY.md's `EVENT_LEDGER_DATABASE_URL`).
+- **STATUS:** CURRENT — `Online`, real connectivity verified from this
+  laptop (`SELECT version()` returned `PostgreSQL 18.6`), real write/read
+  round-trips proven (agent/test_event_ledger.py, 14/14 passing against
+  this live instance), 59 real events persisted as of last verification
+  (14 from historical backfill of agent/web_run_history.jsonl + live
+  write-through events from this session's own work).
+- **LAST VERIFIED:** 2026-09-10
+- **SECRET NAMES REQUIRED:** `EVENT_LEDGER_DATABASE_URL` — see
+  docs/SECRETS_REGISTRY.md.
+- **BACKUP STATUS:** Point-in-time recovery (PITR) — **DISABLED** (`railway
+  postgres pitr status` confirmed: status disabled, bucket not wired).
+  Left disabled deliberately: enabling it provisions billed cloud storage,
+  a cost/production decision requiring explicit approval, not something to
+  auto-enable. A manual, on-demand portable logical backup exists instead
+  (`agent/event_ledger_backup.py` — dumps every row of `delivery_events` to
+  a local gitignored JSONL file via the same connection; proven live, 59/59
+  rows exported). **A restore has NOT been tested** — per CLAUDE.md, a
+  backup is not proven recovery until a restore drill actually happens.
+- **NOTES:** `pg_dump`/Postgres client tools are not installed on this
+  laptop (only the `psycopg2-binary` Python driver) — the portable backup
+  above is a row-level JSON dump via the existing connection, not a true
+  `pg_dump` archive. Sufficient to prove exportability; not equivalent to
+  Railway-native PITR for production-grade recovery guarantees.
+
 ## Local Workbench execution engine + Cloudflare Quick Tunnel
 
 - **NAME:** Local Starlette server (`agent/web_server.py`) + `cloudflared`

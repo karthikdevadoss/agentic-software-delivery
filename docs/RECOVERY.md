@@ -66,6 +66,39 @@ Everything below assumes that gap is closed first.
     repository/runtime evidence — repository state always wins (see
     CLAUDE.md).
 
+## Recovering the durable event ledger (Railway PostgreSQL)
+
+As of this writing this is the ONE piece of durable engineering telemetry
+that lives outside Git — everything else in this document assumes Git
+recovery is enough, but the event ledger's data lives only in Railway
+Postgres (see docs/RESOURCE_REGISTRY.md's "Durable engineering event
+ledger" entry).
+
+1. **Reconnect the Railway CLI** (step 8 above) with access to the
+   `agentic-delivery-events` project.
+2. **Retrieve `EVENT_LEDGER_DATABASE_URL`** — not stored anywhere in Git;
+   reconstruct it from the Railway service's Postgres variables plus the
+   public TCP proxy host:port recorded in docs/RESOURCE_REGISTRY.md
+   (`shortline.proxy.rlwy.net:51211` as of last verification — proxies can
+   be recreated if this one expires: `railway tcp-proxy create --port 5432
+   --service Postgres`). Add it to the new machine's `agent/.env`.
+3. **Install `psycopg2-binary`** (in `agent/requirements.txt`).
+4. **Verify connectivity and schema** — `python -c "import event_ledger as
+   el; el.ensure_schema(); print(el.count_events())"` from `agent/`. If
+   the table doesn't exist yet, `ensure_schema()` creates it from
+   `infra/event-ledger/schema.sql`.
+5. **Known gap:** no remote secret manager exists, so step 2 above has no
+   automated retrieval path — this mirrors the exact same gap already
+   recorded for `ANTHROPIC_API_KEY` below.
+6. **Known gap:** PITR is disabled on this Postgres instance (a deliberate,
+   documented choice pending an explicit cost/approval decision — see
+   docs/RESOURCE_REGISTRY.md). If the Railway project/volume itself is
+   lost (not just this laptop), the event ledger's data is recoverable
+   only from the last manual portable backup run via
+   `agent/event_ledger_backup.py` (gitignored, local-only output) — if one
+   was taken and that file also survived. **No restore of that backup has
+   ever been tested.**
+
 ## Explicitly incomplete recovery dependencies (not solved by this document)
 
 - No Git remote exists yet — step 1 is currently impossible.
@@ -78,3 +111,9 @@ Everything below assumes that gap is closed first.
 - The Cloudflare Quick Tunnel used for public Workbench demos is
   inherently non-durable by design (see docs/RESOURCE_REGISTRY.md) — its
   URL is not something to "recover," a fresh one must be created.
+- The event ledger's `EVENT_LEDGER_DATABASE_URL` has no automated
+  retrieval path on a new machine (same gap as `ANTHROPIC_API_KEY`).
+- PITR is disabled on the event ledger's Postgres instance; recovery of
+  that project/volume being lost outright depends entirely on whether a
+  manual `agent/event_ledger_backup.py` dump was taken and survived — and
+  even then, no restore has ever actually been tested.

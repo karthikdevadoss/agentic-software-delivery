@@ -27,6 +27,31 @@ this is a tracked roadmap gap, not an oversight. See docs/ROADMAP.md.
 - **LAST VERIFIED/ROTATED:** Not tracked — no rotation process exists
   yet (roadmap gap).
 
+## EVENT_LEDGER_DATABASE_URL
+
+- **PURPOSE:** Connection string for the durable, append-only engineering
+  event ledger (agent/event_ledger.py) — Postgres, `delivery_events` table.
+  This is the P0 "no more lost engineering events" foundation: real
+  Workbench run/tool/model/build/test/deploy events are write-through
+  persisted here as they happen, not batched to run-end.
+- **USED BY:** `agent/event_ledger.py` (all connect/insert/query
+  functions), transitively `agent/web_server.py` (Run.emit() write-through
+  wiring, metrics.py model-usage sink) and `agent/dashboard_data.py` (the
+  live "event_ledger" proof key in `/api/dashboard`).
+- **STORED IN:** `agent/.env` locally (gitignored). No remote secret
+  manager configured yet (same gap as ANTHROPIC_API_KEY above).
+- **ENVIRONMENTS:** Local development only — this connects to a Railway
+  Postgres instance over its PUBLIC TCP PROXY (see docs/RESOURCE_REGISTRY.md)
+  because the local Workbench execution engine runs on this laptop, not
+  inside Railway's own private network.
+- **NEVER LOG:** YES — never printed to any tool output or committed
+  anywhere during this credential's creation; every script that touched it
+  redirected raw output directly to a file and printed only confirmation
+  messages, never the value.
+- **LAST VERIFIED/ROTATED:** 2026-09-10 (created and connectivity-verified
+  this session). No rotation process exists yet (same roadmap gap as
+  ANTHROPIC_API_KEY).
+
 ## VOYAGE_API_KEY
 
 - **PURPOSE:** Would authenticate Voyage AI's `voyage-code-4` embedding

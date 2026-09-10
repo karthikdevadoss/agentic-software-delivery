@@ -19,6 +19,19 @@ _tool_call_events = []
 _rag_index_events = []
 _retrieval_events = []
 _model_usage_events = []
+_usage_sink = None
+
+
+def set_usage_sink(callback):
+    """Optional hook invoked synchronously with each recorded model_usage
+    event dict, in addition to normal in-memory storage. Lets a caller
+    (currently web_server.py, bridging into agent/event_ledger.py) persist
+    a model_call_completed event the moment a real API response returns,
+    rather than reconstructing usage after a run ends. None (default)
+    means no bridging — this module has zero required dependency on any
+    downstream consumer."""
+    global _usage_sink
+    _usage_sink = callback
 
 
 def is_security_block(error_message: str) -> bool:
@@ -63,14 +76,20 @@ def record_model_usage(*, provider, model, input_tokens, output_tokens,
     UI counter. cache_* fields are None when the SDK response doesn't
     report them, not silently coerced to 0, so callers can distinguish
     "no cache activity" from "not reported by this response"."""
-    _model_usage_events.append({
+    event = {
         "provider": provider,
         "model": model,
         "input_tokens": input_tokens,
         "output_tokens": output_tokens,
         "cache_creation_input_tokens": cache_creation_input_tokens,
         "cache_read_input_tokens": cache_read_input_tokens,
-    })
+    }
+    _model_usage_events.append(event)
+    if _usage_sink is not None:
+        try:
+            _usage_sink(event)
+        except Exception:  # noqa: BLE001 - telemetry bridging must never break real usage recording
+            pass
 
 
 def get_tool_call_events() -> list:

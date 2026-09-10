@@ -18,6 +18,13 @@ agent/web_run_history.jsonl
 # Local development-session start/stop records (derived/local, not source)
 agent/dev_sessions.json
 
+# Event ledger local outage spool (fallback only, not canonical — see agent/event_ledger.py)
+agent/event_spool.jsonl
+agent/event_spool_test*.jsonl
+
+# Event ledger portable logical backups (derived data, on-demand only — see agent/event_ledger_backup.py)
+agent/event_ledger_backups/
+
 # Java / Maven
 target/
 *.class
