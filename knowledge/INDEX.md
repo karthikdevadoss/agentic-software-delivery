@@ -14,3 +14,4 @@ Source of truth stays layered as always:
 ## Sessions
 
 - [2026-09-09 — Agentic Delivery Platform: Control UI, Dashboard, and the security lessons behind them](sessions/2026-09-09-agentic-platform-build.md) — V3 tool-using agent → MCP → incremental RAG → safe propose/approve/apply → live browser human approval → Evidence Dashboard. Covers 3 real security-gap findings-and-fixes and 2 real UI defects found through actual use.
+- [2026-09-10 — Trainer demo: already-satisfied requirement misreported as FAILED](sessions/2026-09-10-trainer-idempotency-fix.md) — real bug found via public trainer use: a correct "nothing to do, already implemented" no-op was labeled FAILED. Fixed with a new NO_CHANGE_NEEDED terminal state, a regression test built from the real incident text, and a related SSE event-ordering race also found and fixed.
