@@ -439,3 +439,53 @@ meant losing everything about that run. That gap is now closed:
 to query the now-durable `delivery_events` table directly, replacing
 their current reliance on the local JSONL log / in-memory process
 counters — see `next_phase`/`next_action` in docs/PROJECT_STATE.json.
+
+# Current Reality (2026-09-10, continued): Claude Code development telemetry + operator attention
+
+**Our own development process (via Claude Code) is now observable in the
+same durable event ledger** — a distinct source (`source="claude_code"`,
+`activity_class="PRODUCT_DEVELOPMENT"`) from Workbench runtime activity
+(`activity_class="PRODUCT_RUNTIME"`), sharing one table by design.
+
+- **Fast by construction:** `agent/claude_code_hook.py` never makes a
+  network call synchronously — it appends to the local spool
+  (`event_ledger.spool_only()`, measured ~1.3ms) and triggers a detached
+  background sync. Measured real end-to-end hook invocation: 0.27s, all
+  Python interpreter startup, zero network latency.
+- **Verified against the actual binary, not documentation:** every hook
+  name wired (`SessionStart`, `SessionEnd`, `UserPromptSubmit`,
+  `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `PermissionRequest`,
+  `Notification`, `Stop`, `SubagentStart`, `SubagentStop`) was confirmed
+  as a literal string in the installed Claude Code v2.1.263 binary itself
+  — a prior subagent's answer to the same question included several
+  plausible but unverifiable names cited to a GitHub issue, which this
+  approach avoided building on.
+- **Windows attention notifications:** a native toast + sound + best-effort
+  taskbar-flash notifier (`agent/claude_notify.ps1`, zero new module
+  installs) was tested live. The toast popup was confirmed by the creator.
+  Sound and taskbar flash were **not** affirmatively confirmed in that
+  same test — reported honestly rather than assumed working (Focus Assist
+  can mute toast sound; `FlashWindowEx` is documented to no-op against an
+  already-foregrounded window, which the terminal was during that test).
+- **Real historical backfill:** 157 genuine events (3 real human prompts +
+  154 real tool invocations) were imported from this project's own actual
+  Claude Code session transcript for the previous P0 task's real time
+  window — not fabricated, not estimated; proven idempotent on rerun.
+- **Reduced prompt fatigue, narrowly:** `.claude/settings.local.json`
+  (never committed — this repo is public now) gained allow-rules for only
+  the exact safe, read-only, local commands actually used this session
+  (`git status`/`diff`/`log`/`show`/`rev-parse`, `ls`,
+  `python -m unittest`, the Node test harness) — no blanket `Bash(*)` or
+  `Bash(git *)`, no `--dangerously-skip-permissions`.
+- **Honest about what's not proven:** Claude Code hooks load at session
+  start, so true end-to-end confirmation that Claude Code itself invokes
+  them requires observing a fresh session — this could not be done
+  mid-session and is recorded as an open verification item, not claimed
+  complete. Full regression re-run clean: 115 Python tests (114 pass + 1
+  pre-existing platform skip) + 14/14 Node, zero regressions.
+
+**Durable memory also updated this task:** the public product surface
+decision now includes a 5th surface, **Profile** (docs/COMPANY_VISION.md),
+and docs/CONSTITUTION.md §17 gained the "capture broadly with provenance,
+interpret later" principle plus the bounded future-evals/training-data
+direction.

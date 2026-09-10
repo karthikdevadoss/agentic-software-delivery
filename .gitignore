@@ -25,6 +25,9 @@ agent/event_spool_test*.jsonl
 # Event ledger portable logical backups (derived data, on-demand only — see agent/event_ledger_backup.py)
 agent/event_ledger_backups/
 
+# Event ledger background-sync lock (transient, released as soon as a sync finishes)
+agent/event_ledger_sync.lock
+
 # Java / Maven
 target/
 *.class

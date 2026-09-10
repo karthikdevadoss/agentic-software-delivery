@@ -8,11 +8,14 @@ incomplete dependencies explicitly rather than pretending they're solved.
 
 ## Current recovery status: PARTIAL
 
-The single biggest gap: **as of this writing, this repository has no
-configured Git remote** (see docs/RESOURCE_REGISTRY.md). Until a remote
-exists and this repository is pushed to it, losing this laptop means
-losing all Git history — recovery from Git alone is not yet possible.
-Everything below assumes that gap is closed first.
+Git recovery is now real: this repository has a public GitHub remote
+(https://github.com/karthikdevadoss/agentic-software-delivery.git — see
+docs/RESOURCE_REGISTRY.md), verified pushed with local HEAD == remote HEAD.
+Remaining gaps are narrower: no remote secret manager (step 5 below), no
+tested restore of the event ledger's backup (see this file's event-ledger
+section), and Claude Code's own local hook/notification configuration is
+deliberately NOT committed (see this file's Claude Code section) since it
+is user-specific, not project source.
 
 ## Recovery steps
 
@@ -98,6 +101,51 @@ ledger" entry).
    `agent/event_ledger_backup.py` (gitignored, local-only output) — if one
    was taken and that file also survived. **No restore of that backup has
    ever been tested.**
+
+## Recovering Claude Code development-telemetry hooks on a new machine
+
+Claude Code's own development-activity capture (source=claude_code,
+activity_class=PRODUCT_DEVELOPMENT — distinct from the Workbench/
+PRODUCT_RUNTIME events above) is wired entirely through
+`.claude/settings.local.json`, which is **deliberately never committed**
+(it is user-specific local configuration, globally gitignored on this
+machine via `**/.claude/settings.local.json`) — this is intentional, not
+an oversight: a fresh clone of this now-public repository must not
+silently start running hook scripts or reaching a real database without
+the new operator explicitly choosing to. Portable, non-secret setup steps
+for a new machine that DOES want this:
+
+1. Confirm the installed Claude Code version actually supports the hook
+   events used (`SessionStart`, `SessionEnd`, `UserPromptSubmit`,
+   `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `PermissionRequest`,
+   `Notification`, `Stop`, `SubagentStart`, `SubagentStop`) — do not assume;
+   verify against that installation the same way this was verified here
+   (see docs/DECISIONS.md for the method used: extracting literal hook-name
+   strings directly from the installed binary rather than trusting docs).
+2. Create `.claude/settings.local.json` with a `hooks` entry for each
+   supported event, each pointing at
+   `python "${CLAUDE_PROJECT_DIR}/agent/claude_code_hook.py"` (portable —
+   uses Claude Code's own project-directory variable, no hardcoded path).
+3. Complete the event-ledger recovery steps above first — the hook script
+   spools locally regardless (`agent/event_spool.jsonl`) and only needs
+   `EVENT_LEDGER_DATABASE_URL` for the background sync step to actually
+   reach the remote database.
+4. For the Windows attention-notification mechanism
+   (`agent/claude_notify.ps1`, invoked by the hook script for
+   `PermissionRequest`/`Notification` events): no setup needed beyond
+   having PowerShell available — it uses only built-in Windows APIs (WinRT
+   toast via the pre-registered legacy-PowerShell AUMID, `System.Media.
+   SystemSounds`, `user32.dll`'s `FlashWindowEx`), no module install.
+5. Optionally add narrow permission `allow` rules for safe, read-only,
+   local commands (see the actual rules used here for the pattern) — never
+   copy a broad rule like `Bash(git *)` or enable
+   `--dangerously-skip-permissions`/`bypassPermissions`.
+6. **Known gap:** true end-to-end firing of these hooks was verified at
+   the script level (direct stdin simulation) and one hook (the Windows
+   notifier) was verified with a real, human-confirmed test, but Claude
+   Code hooks are loaded at session start — genuine end-to-end
+   confirmation that Claude Code itself invokes them requires observing a
+   fresh session, which could not be done mid-session when this was built.
 
 ## Explicitly incomplete recovery dependencies (not solved by this document)
 

@@ -65,3 +65,13 @@ CREATE INDEX IF NOT EXISTS idx_delivery_events_run_id ON delivery_events (run_id
 CREATE INDEX IF NOT EXISTS idx_delivery_events_session_id ON delivery_events (session_id);
 CREATE INDEX IF NOT EXISTS idx_delivery_events_timestamp ON delivery_events (timestamp_utc);
 CREATE INDEX IF NOT EXISTS idx_delivery_events_event_type ON delivery_events (event_type);
+
+-- Added for the Claude Code development-telemetry source: distinguishes
+-- PRODUCT_DEVELOPMENT activity (building this platform, via Claude Code)
+-- from PRODUCT_RUNTIME activity (the Workbench executing on behalf of a
+-- requirement) — both share this one table/`source` field, but this one
+-- extra dimension is cheap and queried often enough to deserve a real
+-- column rather than living buried in JSONB only. Additive, idempotent —
+-- safe to run against a table that predates this column.
+ALTER TABLE delivery_events ADD COLUMN IF NOT EXISTS activity_class TEXT;
+CREATE INDEX IF NOT EXISTS idx_delivery_events_activity_class ON delivery_events (activity_class);

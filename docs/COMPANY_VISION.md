@@ -53,7 +53,7 @@ implementation detail, not a claim of exclusivity or dependency lock-in.
 
 ## Public product structure (current accepted decision)
 
-Four public surfaces, one flagship product:
+Five public surfaces, one flagship product (Profile added 2026-09-10):
 
 1. **Workbench** — the main product surface. Requirement → analysis →
    implementation → verification → deployment → production verification.
@@ -62,9 +62,22 @@ Four public surfaces, one flagship product:
 3. **Usage** — runs/sessions/model calls/tool calls/tokens/time/cost/
    failures/retries/human intervention/productivity/economics.
 4. **Learn** — an AI/Agentic-AI-**only** interactive learning and interview
-   book. Explicitly not a general Java/Spring textbook — backend
-   technologies may appear only where needed to explain how an AI
-   capability interacts with this project's real, actual code.
+   book, covering AI/Agentic-AI knowledge plus the relevant software-
+   engineering concepts, technologies, protocols, bugs, scenarios,
+   architecture decisions, human-approval concerns, and business value
+   actually encountered while **building** this AI system. Explicitly not
+   a general Java/Spring textbook — backend technologies may appear only
+   where needed to explain how an AI capability interacts with this
+   project's real, actual code.
+5. **Profile** — a one-page, evidence-backed professional profile. A
+   technology or topic being learned/touched while building this system
+   does **not** automatically become a resume claim on this page — Profile
+   only asserts what is actually evidenced (see the Constitution's truth/
+   zero-delusion principle, docs/CONSTITUTION.md §4).
+
+Not implemented yet: Learn and Profile are both decision records only, not
+built pages (see docs/ROADMAP.md for sequencing) — do not build either
+from this document alone without an explicit task.
 
 **Planned retirement (decision recorded here, not yet executed):** the
 current "Control Plane" as a standalone public-competing page, and the
@@ -84,6 +97,7 @@ future task, not implied by this document.
   - `/dashboard` → Dashboard
   - `/usage` → Usage
   - `/learn` → Learn
+  - `/profile` → Profile
 
 **Planned target-application domain:** https://app.karthikdevadoss.com
 (the Customer app the Workbench modifies).

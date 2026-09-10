@@ -154,8 +154,30 @@ output, or process memory. It must be written to its canonical durable
 store: source/company knowledge and decisions to Git (and that Git state
 verified as pushed to a remote, not merely committed locally — see
 docs/RECOVERY.md); operational runs/events/usage to a durable cloud event
-store (not yet implemented — see docs/ROADMAP.md); large evidence/
-artifacts to durable cloud object storage when actually required; secrets
-to an approved secret/password manager, never to Git (see
+store (a real, running one as of 2026-09-10 — see docs/RESOURCE_REGISTRY.md's
+"Durable engineering event ledger" entry and agent/event_ledger.py); large
+evidence/artifacts to durable cloud object storage when actually required;
+secrets to an approved secret/password manager, never to Git (see
 docs/SECRETS_REGISTRY.md). A conversation ending, or this laptop
 disappearing, must not be able to erase anything that mattered.
+
+**Capture broadly with provenance now; interpret later.** Useful observable
+raw evidence — from either the Workbench's own runtime (PRODUCT_RUNTIME)
+or from building this platform itself via Claude Code (PRODUCT_DEVELOPMENT)
+— should be captured as it happens, tagged with its real source and
+evidence quality, even when today's UI has no view that consumes it yet.
+Interpretation, summaries, scores, and derived metrics may evolve and be
+recomputed later; the raw evidence they'd be computed from cannot be
+reconstructed after the fact if it was never captured. Do not discard
+potentially valuable historical evidence merely because nothing reads it
+today.
+
+**Future direction, not a present commitment:** captured delivery
+trajectories (requirement → change → verification → outcome) may in time
+support evaluations, prompt/process optimization, and proprietary model or
+training-data work — but only ever subject to this constitution's existing
+rules: privacy, explicit authorization, honest data classification (see
+agent/event_ledger.py's TRAINING_ALLOWED/TRAINING_ALLOWED_AFTER_REDACTION/
+EVAL_ONLY/OPERATIONS_ONLY/PERSONAL_DATA_RESTRICTED/SECRET_NEVER_STORE
+concepts), and unconditional secret exclusion. Nothing here authorizes
+using captured data beyond what its recorded classification permits.

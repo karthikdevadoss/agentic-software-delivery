@@ -33,9 +33,20 @@ import tools  # reuse tools.redact_secrets — no duplicated security logic
 
 load_dotenv()  # same pattern as agent/main.py — loads agent/.env
 
-SCHEMA_VERSION = 1
+# v2: added activity_class (PRODUCT_DEVELOPMENT vs PRODUCT_RUNTIME) for the
+# Claude Code development-telemetry source. Additive/backward-compatible —
+# v1 rows remain valid, they simply predate this field (honestly None).
+SCHEMA_VERSION = 2
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SPOOL_PATH = Path(__file__).resolve().parent / "event_spool.jsonl"
+SYNC_LOCK_PATH = Path(__file__).resolve().parent / "event_ledger_sync.lock"
+
+# activity_class values — distinguishes what this platform BUILDS (our own
+# Claude Code development activity) from what this platform DOES at
+# runtime (the Workbench executing on behalf of a requirement). Never
+# mixed indistinguishably even though both share this one table.
+ACTIVITY_CLASS_PRODUCT_DEVELOPMENT = "PRODUCT_DEVELOPMENT"
+ACTIVITY_CLASS_PRODUCT_RUNTIME = "PRODUCT_RUNTIME"
 
 # Data-safety/training-eligibility classification (Section 4). Distinct
 # concepts, not free text, so a consumer can filter reliably.
@@ -55,7 +66,7 @@ ENVELOPE_FIELDS = (
     "cache_write_tokens", "tool_name", "tool_call_id", "git_commit",
     "deployment_version", "data_classification", "retention_class",
     "training_eligibility", "payload", "backfill_source",
-    "evidence_quality",
+    "evidence_quality", "activity_class",
 )
 
 # Real event types this session's Workbench pipeline actually emits.
@@ -80,6 +91,14 @@ KNOWN_EVENT_TYPES = frozenset({
     "human_input_requested", "human_decision",
     "error", "timeout",
     "correction_recorded", "regression_verified",
+
+    # Claude Code development-activity source (activity_class=
+    # PRODUCT_DEVELOPMENT) — genuinely new event shapes, not a forced fit
+    # into the Workbench/PRODUCT_RUNTIME taxonomy above. See
+    # agent/claude_code_hook.py.
+    "dev_session_started", "dev_session_ended",
+    "user_prompt_submitted", "dev_turn_stopped",
+    "subagent_started", "subagent_stopped",
 })
 
 _lock = threading.Lock()
@@ -221,6 +240,60 @@ def spool_pending_count():
     return sum(1 for l in SPOOL_PATH.read_text(encoding="utf-8").splitlines() if l.strip())
 
 
+def spool_only(event_type, **fields):
+    """Fast path for callers that must never block on network at all —
+    specifically Claude Code hooks (agent/claude_code_hook.py), which must
+    return in milliseconds or they visibly slow down every tool call/
+    session event. Unlike record_event(), this makes ZERO network attempt
+    (no _insert(), no ensure_schema()) — it only builds the envelope
+    (redaction still applied) and appends to the same spool file
+    record_event() already falls back to. A background sync
+    (trigger_background_sync() / sync_spool()) reconciles it later,
+    through the exact same idempotent ON CONFLICT DO NOTHING path as
+    every other spooled event — this is not a second telemetry system,
+    just a second producer into the same one."""
+    envelope = build_envelope(event_type, **fields)
+    _spool_append(envelope)
+    return {"event_id": envelope["event_id"], "remote_persisted": False, "spooled": True}
+
+
+def trigger_background_sync():
+    """Best-effort, non-blocking: spawns a detached background process to
+    drain the spool, without making the caller wait even a millisecond
+    for network I/O. Guarded by a lock file so a burst of hook events
+    (e.g. several tool calls in a row) doesn't pile up redundant sync
+    processes — if a sync is already in flight, this is a no-op. Never
+    raises: a failure to even SPAWN the background sync must not be
+    allowed to slow down or break the caller (a Claude Code hook)."""
+    try:
+        if SYNC_LOCK_PATH.exists():
+            return {"spawned": False, "reason": "sync already in progress"}
+        SYNC_LOCK_PATH.touch(exist_ok=False)
+    except OSError:
+        return {"spawned": False, "reason": "could not acquire sync lock"}
+
+    try:
+        import subprocess
+        import sys
+        creationflags = 0
+        if sys.platform == "win32":
+            creationflags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW
+        subprocess.Popen(
+            [sys.executable, str(Path(__file__).resolve()), "--sync-spool"],
+            cwd=str(Path(__file__).resolve().parent),
+            creationflags=creationflags,
+            close_fds=True,
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+        return {"spawned": True}
+    except Exception as exc:  # noqa: BLE001 - spawning telemetry sync must never break the caller
+        try:
+            SYNC_LOCK_PATH.unlink(missing_ok=True)
+        except OSError:
+            pass
+        return {"spawned": False, "reason": str(exc)}
+
+
 # --- one-time historical backfill (Section 9) ----------------------------
 
 # Fixed, arbitrary namespace UUID — used only to derive stable, deterministic
@@ -323,6 +396,122 @@ def backfill_from_run_history(history_path=None):
     return {"rows": rows, "processed": processed, "skipped": skipped}
 
 
+def _transcript_message_text(message):
+    """Real human/assistant text only — excludes tool_result-wrapped
+    content, which Claude Code's transcript format also files under the
+    'user' role but is not something a human actually typed."""
+    content = message.get("content")
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = [b.get("text", "") for b in content if isinstance(b, dict) and b.get("type") == "text"]
+        return " ".join(parts)
+    return ""
+
+
+def backfill_from_claude_code_transcript(transcript_path, window_start_iso, window_end_iso, session_label):
+    """One-time, safely re-runnable importer of REAL Claude Code session
+    transcript evidence (~/.claude/projects/.../<session>.jsonl) for a
+    bounded time window — used to backfill development activity that
+    occurred before agent/claude_code_hook.py existed to capture it live.
+
+    Deliberately scoped to [window_start_iso, window_end_iso] rather than
+    a whole (potentially many-day, many-task) transcript file — this is a
+    backfill of ONE specific prior task's evidence, not a full-history
+    import. Every event_id is derived from the transcript's own real
+    per-entry `uuid` field (uuid5, deterministic) so rerunning this is a
+    safe no-op via the usual ON CONFLICT DO NOTHING idempotency.
+
+    Captures only what the transcript genuinely contains: real user
+    prompt text (redacted, with real char/word counts) and real tool_use
+    invocations (tool name only — the transcript does not reliably expose
+    paired success/failure without deeper tool_result correlation, so
+    that is NOT fabricated here). Never invents timestamps: every event's
+    timestamp_utc is the transcript's own real `timestamp` field."""
+    path = Path(transcript_path)
+    if not path.exists():
+        return {"rows": 0, "processed": 0, "skipped": 0}
+
+    start = datetime.fromisoformat(window_start_iso.replace("Z", "+00:00"))
+    end = datetime.fromisoformat(window_end_iso.replace("Z", "+00:00"))
+
+    rows = 0
+    processed = 0
+    skipped = 0
+    with path.open(encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                entry = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            ts_raw = entry.get("timestamp")
+            if not ts_raw:
+                continue
+            try:
+                ts = datetime.fromisoformat(ts_raw.replace("Z", "+00:00"))
+            except ValueError:
+                continue
+            if not (start <= ts <= end):
+                continue
+
+            entry_type = entry.get("type")
+            entry_uuid = entry.get("uuid")
+            if entry_type not in ("user", "assistant") or not entry_uuid:
+                continue
+
+            message = entry.get("message", {})
+
+            if entry_type == "user":
+                text = _transcript_message_text(message)
+                if not text:
+                    continue  # a tool_result-wrapped entry, not a real human prompt
+                rows += 1
+                result = record_event(
+                    "user_prompt_submitted",
+                    event_id=str(uuid.uuid5(_BACKFILL_NAMESPACE, f"claude_code_transcript|{entry_uuid}")),
+                    timestamp_utc=ts.isoformat(),
+                    session_id=session_label, source="claude_code",
+                    activity_class=ACTIVITY_CLASS_PRODUCT_DEVELOPMENT,
+                    actor_type="human",
+                    backfill_source="historical_backfill", evidence_quality="partial_reconstructed",
+                    training_eligibility=TRAINING_ALLOWED_AFTER_REDACTION,
+                    payload={"prompt_char_count": len(text), "prompt_word_count": len(text.split()), "prompt_excerpt": text[:2000]},
+                )
+                processed += 1 if (result["remote_persisted"] or result.get("spooled")) else 0
+                if not (result["remote_persisted"] or result.get("spooled")):
+                    skipped += 1
+                continue
+
+            # assistant entry: one event per real tool_use block
+            content = message.get("content")
+            if not isinstance(content, list):
+                continue
+            for i, block in enumerate(content):
+                if not (isinstance(block, dict) and block.get("type") == "tool_use"):
+                    continue
+                rows += 1
+                result = record_event(
+                    "tool_call_started",
+                    event_id=str(uuid.uuid5(_BACKFILL_NAMESPACE, f"claude_code_transcript|{entry_uuid}|tool_use|{i}")),
+                    timestamp_utc=ts.isoformat(),
+                    session_id=session_label, source="claude_code",
+                    activity_class=ACTIVITY_CLASS_PRODUCT_DEVELOPMENT,
+                    actor_type="ai",
+                    tool_name=block.get("name"),
+                    backfill_source="historical_backfill", evidence_quality="partial_reconstructed",
+                    training_eligibility=TRAINING_ALLOWED_AFTER_REDACTION,
+                )
+                if result["remote_persisted"] or result.get("spooled"):
+                    processed += 1
+                else:
+                    skipped += 1
+
+    return {"rows": rows, "processed": processed, "skipped": skipped}
+
+
 # --- read queries (minimal, for Dashboard/Usage live-proof only) ---------
 
 def get_recent_events(limit=20):
@@ -366,3 +555,16 @@ def count_events():
             return cur.fetchone()[0]
     finally:
         conn.close()
+
+
+if __name__ == "__main__":
+    import sys
+    # Entrypoint for trigger_background_sync()'s detached subprocess only —
+    # not a general CLI. Always releases the lock, even on failure, so a
+    # crashed sync never permanently blocks future sync attempts.
+    if "--sync-spool" in sys.argv:
+        try:
+            result = sync_spool()
+            print(f"SYNC: {result}")
+        finally:
+            SYNC_LOCK_PATH.unlink(missing_ok=True)

@@ -29,13 +29,13 @@ RUN_HISTORY_PATH = REPO_ROOT / "agent" / "web_run_history.jsonl"
 # commit noted below. Re-run and update this constant (do not guess) if
 # agent/*.py or agent/test_*.py change after that commit.
 TEST_EVIDENCE = {
-    "total": 99,
-    "passed": 98,
+    "total": 115,
+    "passed": 114,
     "skipped": 1,
     "failed": 0,
     "skip_reason": "Windows lacks the privilege to create symlinks in this test environment (platform limitation, not a bug)",
-    "command": "python -m unittest test_agent_loop test_rag_index test_mcp_server test_write_tools test_build_tools test_execution_tools test_risk_policy test_web_server test_event_ledger",
-    "as_of_commit": "dfce759",
+    "command": "python -m unittest test_agent_loop test_rag_index test_mcp_server test_write_tools test_build_tools test_execution_tools test_risk_policy test_web_server test_event_ledger test_claude_code_hook",
+    "as_of_commit": "PENDING_THIS_COMMIT",
 }
 
 # Manually curated, but every field must trace to a verification_state /

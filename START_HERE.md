@@ -24,7 +24,7 @@ Three connected goals, in this priority order when they conflict:
 The **Agentic Software Delivery platform** itself — not the Customer app
 it operates on (that's the *target* application, see below).
 
-## What are the four public surfaces?
+## What are the five public surfaces?
 
 1. **Workbench** — requirement → analysis → implementation → verification →
    deployment → production verification. (Currently implemented and
@@ -37,6 +37,9 @@ it operates on (that's the *target* application, see below).
    implemented as `/sessions`.)
 4. **Learn** — an AI/Agentic-AI-only interactive learning and interview
    book. Not implemented yet; see docs/ROADMAP.md.
+5. **Profile** — a one-page, evidence-backed professional profile; a topic
+   merely touched while building this system does not automatically
+   become a resume claim. Not implemented yet; see docs/ROADMAP.md.
 
 See docs/COMPANY_VISION.md for the accepted URL plan (current vs. planned).
 
