@@ -249,3 +249,28 @@ surprising verified behavior would otherwise get rediscovered later.
   telemetry capability is verified only when the real producer emits an
   event and the durable remote store contains it — script-level tests
   passing is necessary but never sufficient proof of a live capability.**
+
+- **A "TINY complexity" pre-run token estimate must not assume the agent's
+  own investigation is cheap — real evidence shows it can dominate the
+  total.** Problem: `agent/estimation.py`'s LOW-confidence fallback
+  heuristic (used when fewer than 3 comparable historical runs exist)
+  guessed 3,000-9,000 total tokens for a TINY/LOW auto-execute
+  requirement. Evidence: the first real public acceptance run on a fresh
+  Railway container (zero local history, so the heuristic path was
+  exercised for real) made 3 real API calls and used 13,557 actual total
+  tokens — 126% above the heuristic's own midpoint, outside the predicted
+  range entirely — even though the run correctly reached `NO_CHANGE_NEEDED`
+  or with zero code changes. Root cause: reading a real file
+  (`app/src/main/resources/static/index.html`, ~5.9KB) plus a real `mvn
+  compile` tool call already consumes several thousand input tokens
+  before the model produces any output at all — investigation cost, not
+  code-generation cost, dominates a small/no-op requirement. Correction:
+  none applied yet — the estimate is explicitly labeled LOW confidence
+  and ESTIMATED specifically so a miss like this doesn't mislead anyone,
+  and the run's own `usage_summary.estimate_error` field records this
+  exact miss for future recalibration. Future rule: when there is enough
+  real history to widen `estimation.py`'s heuristic ranges (or split them
+  by investigation-tool-call count rather than complexity label alone),
+  do so from measured `estimate_error` data, not intuition — the labels
+  TINY/SMALL describe the size of the *change*, not the size of the
+  *investigation* needed to confirm it.

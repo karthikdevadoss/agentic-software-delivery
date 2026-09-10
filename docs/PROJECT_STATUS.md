@@ -440,6 +440,55 @@ to query the now-durable `delivery_events` table directly, replacing
 their current reliance on the local JSONL log / in-memory process
 counters — see `next_phase`/`next_action` in docs/PROJECT_STATE.json.
 
+# Current Reality (2026-09-10, continued): Workbench target-app + AI cost transparency (P0)
+
+**A trainer opening Workbench now sees, before submitting anything, which
+real application they're about to modify, roughly what it will cost, and
+— after execution — exactly what it actually cost.** Three real gaps
+this closes: (1) the target application was never shown up front, (2)
+nothing indicated expected AI spend before a run started, (3) actual
+token/cost usage was captured internally but never surfaced to the
+trainer or clearly persisted with cost attached.
+
+- **Target Application panel** (`agent/web_server.py`'s new
+  `GET /api/target-app`) shows the real Customer App name, environment,
+  and an "OPEN CURRENT CUSTOMER APP" link — backed by the exact same
+  `PUBLIC_CUSTOMER_APP_URL` the backend already deploys to and verifies
+  against, never a second hardcoded copy that could drift.
+- **Pre-run ESTIMATED token/cost range** (`agent/estimation.py`): uses
+  real comparable historical Workbench runs sharing the same complexity
+  bucket when 3+ exist (MEDIUM/HIGH confidence), else a conservative,
+  clearly-labeled LOW-confidence heuristic. Never blocks a safe TINY/LOW
+  auto-execute run just because history is thin.
+- **Post-run ACTUAL AI usage** (`agent/pricing_config.py`, a versioned
+  pricing table verified 2026-09-10 against the live official Anthropic
+  pricing page for `claude-sonnet-5`): model, token counts (incl. cache
+  fields), a real calculated USD cost, elapsed time, and tool-call count
+  — shown for every terminal outcome, or an honest "ACTUAL USAGE NOT
+  CAPTURED" when no real API call happened. Never estimated once actual
+  usage exists.
+- **Terminal-outcome wording consolidated**: COMPLETED/NO_CHANGE_NEEDED/
+  FAILED/DEPLOYMENT_STATUS_UNKNOWN each get exact, unambiguous banner
+  text and the correct "open the app" link — a failed or unknown run can
+  never imply it reached production.
+
+**Real public acceptance run performed**, not just unit-tested: through
+`https://agentic-platform-backend-production.up.railway.app`, the
+already-satisfied requirement "Add a small \"Powered by Agentic
+Delivery\" footer line to the page" reached `NO_CHANGE_NEEDED` with a
+genuine 3-call, 13,557-total-token Anthropic API usage and a real
+calculated cost of $0.029602. One honest finding surfaced by this exact
+run, not hidden: the LOW-confidence heuristic (3,000-9,000 tokens)
+undershot the real total by 126% — investigation cost (a real file read
++ a real `mvn compile`) dominated this TINY/no-op requirement's token
+spend, recorded as a durable lesson in docs/LESSONS.md for future
+recalibration rather than silently patched over.
+
+Full regression: 157 Python tests (156 pass + 1 pre-existing platform
+skip) + 14/14 Node, zero regressions. See
+`verification_state.workbench_target_app_and_cost_transparency` in
+docs/PROJECT_STATE.json for the full evidence trail.
+
 # Current Reality (2026-09-10, continued): Claude Code development telemetry + operator attention
 
 **Our own development process (via Claude Code) is now observable in the
