@@ -165,14 +165,16 @@ old date as due for re-verification, not as current truth.
 - **NOTES:** This supersedes the local-laptop + tunnel approach (both
   Cloudflare Quick Tunnel and `ngrok`) as the trainer/recruiter-facing
   URL — see docs/DECISIONS.md for the full detour history and why each
-  was abandoned. **CANONICAL FINAL URL (not live yet):**
-  `https://agentic.karthikdevadoss.com` — a CNAME record was generated
-  and is ready (`agentic` → `r1bbjhwh.up.railway.app`, confirmed via
-  `railway domain agentic.karthikdevadoss.com`) but NOT applied: adding
-  it requires the creator's own action at wherever `karthikdevadoss.com`'s
-  DNS is managed, which this session has no access to. Do not claim that
-  domain is live until this entry is updated after the creator adds the
-  CNAME and it verifies.
+  was abandoned. **CANONICAL FINAL URL (DNS_CONFIGURED_CERTIFICATE_PROVISIONING_PENDING):**
+  `https://agentic.karthikdevadoss.com` — the creator has added both the
+  CNAME record (`agentic` → `r1bbjhwh.up.railway.app`) and the Railway
+  domain-ownership TXT record at Namecheap (where `karthikdevadoss.com`'s
+  DNS is managed). DNS-side configuration is done from this project's
+  side; what remains is Railway's own TLS certificate provisioning for
+  the domain, which was not waited on/polled as part of this task. Do
+  not claim the domain is serving live traffic until certificate
+  provisioning is independently confirmed (e.g. a successful HTTPS
+  request to the domain, or `railway domain` reporting the cert issued).
 - **TARGET DOMAIN (not live yet):** `https://app.karthikdevadoss.com` for
   the Customer app — not touched this task, unchanged from prior status.
 

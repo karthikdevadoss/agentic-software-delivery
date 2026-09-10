@@ -588,10 +588,13 @@ Customer app and event ledger rather than introducing a new one.
   Docker's `COPY` from this Windows build host doesn't preserve a POSIX
   executable bit. Fixed with an explicit `chmod +x`, redeployed, and the
   identical requirement then succeeded cleanly (see docs/LESSONS.md).
-- **Custom domain ready, not live:** a CNAME record
-  (`agentic` → `r1bbjhwh.up.railway.app`) was generated for
-  `agentic.karthikdevadoss.com` but requires the creator's own DNS
-  action — not something this session can do.
+- **Custom domain: DNS_CONFIGURED_CERTIFICATE_PROVISIONING_PENDING.** The
+  creator has added both the CNAME record (`agentic` →
+  `r1bbjhwh.up.railway.app`) and the Railway domain-ownership TXT record
+  at Namecheap for `agentic.karthikdevadoss.com`. DNS-side setup is done;
+  Railway's own TLS certificate provisioning has not been polled or
+  confirmed as part of any task — do not claim the domain is serving live
+  traffic until that is independently checked.
 - **One known functional gap:** the deployed backend doesn't yet have its
   own `RAILWAY_TOKEN`, so it can't (yet) run `railway up` to auto-deploy
   the Customer app from inside itself — only generatable via the Railway
@@ -641,3 +644,22 @@ instruction exactly.
 **Permanent rule now recorded in docs/CONSTITUTION.md:** a telemetry
 capability is verified only when the real producer emits an event and the
 durable remote store contains it — never from script-level tests alone.
+
+# Current Reality (2026-09-10, continued): Claude Code dev telemetry — true end-to-end confirmation closed out
+
+**The one remaining open item from the hooks-config incident is now closed.**
+A fresh Claude Code session was started in this repo per the queued
+`next_action` and this session's own real hook events were independently
+confirmed directly in the live remote Postgres ledger — not the local
+spool, not a test fixture: a direct SQL query for this session's
+`session_id` (`6bf306ac-a280-41df-b869-9f208ec2ca0d`) returned a genuine
+`dev_session_started` row at `2026-09-10T18:32:37Z`, a real
+`user_prompt_submitted` row capturing the actual prompt that started this
+session, and a live sequence of `tool_call_started`/`tool_call_completed`/
+`tool_call_failed` rows tracking the real Read/Bash tool calls made during
+this verification — including one genuine `PostToolUseFailure` for an
+actual failed command, not a synthetic one. This satisfies the permanent
+rule from the incident above: the real producer emitted events and the
+durable store has them, confirmed independently rather than assumed from
+passing tests. See `verification_state.claude_code_hooks_config_incident_fix`
+in `docs/PROJECT_STATE.json` for the full evidence trail.
