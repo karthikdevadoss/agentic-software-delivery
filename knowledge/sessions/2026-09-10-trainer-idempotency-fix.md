@@ -82,3 +82,38 @@ log (not guessed), fixed with a deterministic classifier consistent with
 the project's existing security-classification style, and locked in with
 a regression test built from the real failing input — not a synthetic
 one.
+
+## Addendum — SSE terminal-state bug (run `trainer-209e94e7`, commit `77f00b3`)
+
+**Symptom:** Browser stuck at `STARTING`, Live Agent Progress panel
+completely empty, no error shown.
+
+**Backend reality:** The run completed correctly in ~12.3s, reaching the
+new `NO_CHANGE_NEEDED` state (added by the fix above) with a full,
+correct event trail — proven directly via `GET /api/runs/trainer-209e94e7`
+and `web_run_history.jsonl`.
+
+**Root cause:** `stream_events()`'s SSE termination check only recognized
+`COMPLETED`/`FAILED` as terminal. `NO_CHANGE_NEEDED` was introduced in
+this same fix session but never added to that check, so the generator
+polled forever after the run actually finished — the connection never
+cleanly closed, leaving the browser's `EventSource` with nothing to
+process as terminal.
+
+**Engineering lesson:** Adding a new state to a state machine requires
+auditing *every* consumer of that state machine, not just the one you
+were actively working on. The fix that introduced `NO_CHANGE_NEEDED`
+(same session, same day) updated the trainer thread and the frontend's
+own stage list, but missed the SSE delivery layer entirely — a
+different file, a different concern, easy to forget under time pressure
+immediately after fixing something else.
+
+**Permanent prevention:** One authoritative `TERMINAL_RUN_STATES` set in
+`agent/web_server.py` (derived from every real `run.status` value in
+that file) plus `_run_is_terminal()`, used by `stream_events()` instead
+of a second hardcoded tuple. `sessions_data.py` and `trainer.js` each
+keep their own necessarily-separate terminal-state check but are now
+commented to point back at this set as the source of truth.
+`agent/test_web_server.py` regression-tests the exact hang (via a
+bounded `asyncio.wait_for`, so a future regression fails fast instead of
+hanging the test suite) plus every other real run status.

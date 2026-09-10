@@ -6,7 +6,7 @@ stream_events()'s termination check only recognized COMPLETED/FAILED,
 so the SSE generator never broke out of its poll loop and the browser's
 EventSource sat open forever with nothing new arriving after the
 terminal event, staying stuck at STARTING. See
-knowledge/sessions/2026-09-10-sse-terminal-state-bug.md.
+knowledge/sessions/2026-09-10-trainer-idempotency-fix.md (Addendum section).
 
 Run: python agent/test_web_server.py
 """
