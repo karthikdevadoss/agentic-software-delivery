@@ -113,3 +113,26 @@ def classify(requirement: str) -> dict:
         "reason": "No blocked terms found; requirement is short and specific enough to scope to a small, reversible change.",
         "matched_keywords": [], "suggested_alternatives": [],
     }
+
+
+# Used only to LABEL a run where the agent never proposed any code change
+# (verified separately, deterministically, via tool-call events — this
+# function is never asked "did the agent do the right thing," only "does
+# its own summary say the requirement was already satisfied"). Since no
+# propose_source_change call happened either way, no write/deploy
+# authority is exercised in either branch — this keyword check only picks
+# between two safe, inert outcomes (ALREADY SATISFIED vs. an inconclusive
+# FAILED), never between "apply" and "don't apply."
+ALREADY_SATISFIED_MARKERS = [
+    "already exist", "already implement", "already satisf", "already contain",
+    "already present", "already working", "already have",
+    "no change was needed", "no change is needed", "no change required",
+    "nothing to implement", "not necessary", "is already",
+    "requirement is already satisfied", "ticket is already satisfied",
+    "no implementation required", "no implementation needed",
+]
+
+
+def looks_already_satisfied(result_text: str) -> bool:
+    lowered = (result_text or "").lower()
+    return any(marker in lowered for marker in ALREADY_SATISFIED_MARKERS)

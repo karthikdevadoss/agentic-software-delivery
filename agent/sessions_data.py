@@ -229,7 +229,7 @@ def _run_history_sessions() -> list:
         is_trainer = r.get("session_type") == "trainer_demo" or str(r["run_id"]).startswith("trainer-")
         session_type = "trainer_demo" if is_trainer else ("benchmark" if r["is_mock"] else "product_runtime")
         goal = r.get("requirement") or r["requirement_excerpt"] or "(no requirement text captured)"
-        status = "COMPLETED" if r["final_status"] == "COMPLETED" else "FAILED"
+        status = "FAILED" if r["final_status"] not in ("COMPLETED", "NO_CHANGE_NEEDED") else r["final_status"]
 
         compile_ok = r.get("compile", {}).get("success") if r.get("compile") else None
         test_ok = r.get("test", {}).get("success") if r.get("test") else None
@@ -243,11 +243,12 @@ def _run_history_sessions() -> list:
         if r.get("production_commit"):
             commits.append({"sha": r["production_commit"], "subject": f"Trainer demo deploy: {goal[:80]}"})
 
+        goal_met = status in ("COMPLETED", "NO_CHANGE_NEEDED")  # a correct "already satisfied" no-op meets the goal just as much as a deploy does
         dims = {
-            "goal_completion": 100 if status == "COMPLETED" else 0,
+            "goal_completion": 100 if goal_met else 0,
             "verification_quality": verification_quality,
             "scope_discipline": 100,  # write scope is structurally enforced (app/src/{main,test}/java only) regardless of run outcome
-            "value_produced": 70 if session_type == "benchmark" else (100 if status == "COMPLETED" else 0),
+            "value_produced": 70 if session_type == "benchmark" else (100 if goal_met else 0),
             "learning_correction": None,
             "efficiency": None,  # tokens present for real runs but no baseline yet to compare against — see NO COMPARABLE BASELINE YET
         }

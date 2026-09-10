@@ -27,6 +27,7 @@ const EXAMPLES = [
 ];
 
 let eventSource = null;
+let lastStage = null;
 let runState = { approvalDecision: null, applySucceeded: null, compileResult: null, testResult: null };
 
 function esc(s) {
@@ -47,6 +48,7 @@ function setStatus(stage) {
   statusBadge.textContent = stage;
   const map = {
     IDLE: "status-idle", COMPLETED: "status-completed", FAILED: "status-failed",
+    NO_CHANGE_NEEDED: "status-completed",
   };
   statusBadge.className = "status-badge " + (map[stage] || "status-running");
 }
@@ -60,6 +62,7 @@ function resetPanels() {
   activityList.innerHTML = "";
   verificationList.innerHTML = "";
   runState = { approvalDecision: null, applySucceeded: null, compileResult: null, testResult: null };
+  lastStage = null;
 }
 
 function renderAssessment(a, blocked) {
@@ -163,12 +166,37 @@ function subscribeToRun(runId) {
 
   eventSource.addEventListener("stage", (e) => {
     const data = JSON.parse(e.data);
+    lastStage = data.stage;
     setStatus(data.stage);
     addActivityLine(`<span class="stage-marker">— ${esc(data.stage)} —</span>`);
-    if (data.stage === "COMPLETED" || data.stage === "FAILED") {
+    if (data.stage === "COMPLETED" || data.stage === "FAILED" || data.stage === "NO_CHANGE_NEEDED") {
       submitBtn.disabled = false;
-      closeEventSource();
+      // Small delay before closing: the server emits the reason (an
+      // "error" or "no_change_needed" event) in the SAME batch just
+      // before this "stage" event, but closing the connection inside
+      // this handler risks dropping an already-buffered sibling message
+      // before the browser dispatches it. See knowledge/sessions — this
+      // exact race previously caused FAILED to show with no reason.
+      setTimeout(closeEventSource, 300);
+      // Defense in depth: if nothing populated the result panel shortly
+      // after a FAILED stage (e.g. an unexpected code path emitted no
+      // reason at all), still tell the trainer something concrete.
+      if (data.stage === "FAILED") {
+        setTimeout(() => {
+          if (resultPanel.hidden) {
+            resultPanel.hidden = false;
+            resultBanner.textContent = "FAILED";
+            resultBanner.className = "failed";
+            resultText.textContent = "The run failed but no specific reason was reported by the server — this itself is a bug worth reporting.";
+          }
+        }, 500);
+      }
     }
+  });
+
+  eventSource.addEventListener("no_change_needed", (e) => {
+    const data = JSON.parse(e.data);
+    addActivityLine(`<span class="hint">${esc(data.reason)}</span>`);
   });
 
   eventSource.addEventListener("tool_call", (e) => {
@@ -210,9 +238,14 @@ function subscribeToRun(runId) {
   eventSource.addEventListener("final_result", (e) => {
     const data = JSON.parse(e.data);
     resultPanel.hidden = false;
-    const failed = runState.applySucceeded === false || (runState.compileResult && !runState.compileResult.success) || (runState.testResult && !runState.testResult.success);
-    resultBanner.textContent = failed ? "FAILED" : "DEPLOYED SUCCESSFULLY";
-    resultBanner.className = failed ? "failed" : "success";
+    if (lastStage === "NO_CHANGE_NEEDED") {
+      resultBanner.textContent = "ALREADY SATISFIED — NO CHANGE REQUIRED";
+      resultBanner.className = "neutral";
+    } else {
+      const failed = runState.applySucceeded === false || (runState.compileResult && !runState.compileResult.success) || (runState.testResult && !runState.testResult.success);
+      resultBanner.textContent = failed ? "FAILED" : "DEPLOYED SUCCESSFULLY";
+      resultBanner.className = failed ? "failed" : "success";
+    }
     resultText.textContent = data.text;
   });
 

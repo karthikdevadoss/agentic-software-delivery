@@ -423,21 +423,49 @@ def _run_trainer_thread(run: "Run", requirement: str, assessment: dict) -> None:
         )
         run.result_text = result
 
+        # An edit was PROPOSED (regardless of whether it was later applied) —
+        # this is the deterministic signal for "the agent attempted a code
+        # change" vs. "the agent investigated and made a deliberate decision
+        # not to change anything." Only the latter can ever be a legitimate
+        # no-op; it is never inferred from apply/compile/test outcomes alone.
+        apply_attempted = any(e for e in run.events if e["type"] == "tool_call" and e.get("tool") == "propose_source_change")
+
+        if not apply_attempted:
+            # No write authority was ever exercised either way — nothing was
+            # proposed, so nothing could have been applied/compiled/deployed.
+            # The only question is how to LABEL this to the trainer: a
+            # keyword check on the agent's own investigation summary decides
+            # ALREADY SATISFIED vs. a genuine inconclusive failure. This
+            # check only picks a UI label — it grants no additional
+            # capability in either branch.
+            if risk_policy.looks_already_satisfied(result):
+                run.status = "NO_CHANGE_NEEDED"
+                run.emit("no_change_needed", {
+                    "reason": "Repository investigation showed the requirement is already implemented. No code was modified, nothing was compiled, nothing was deployed.",
+                })
+                run.emit("stage", {"stage": "NO_CHANGE_NEEDED"})
+                run.emit("final_result", {"text": result})
+                return
+            run.emit("error", {"message": "Agent investigated the repository but did not propose a code change and did not indicate the requirement was already satisfied — inconclusive, not deploying."})
+            run.status = "FAILED"
+            run.emit("stage", {"stage": "FAILED"})
+            return
+
         apply_ok = any(e for e in run.events if e["type"] == "tool_result" and e.get("tool") == "apply_approved_source_change" and e.get("success"))
         compile_ok = any(e for e in run.events if e["type"] == "tool_result" and e.get("tool") == "run_controlled_compile" and e.get("success"))
         test_events = [e for e in run.events if e["type"] == "tool_result" and e.get("tool") == "run_controlled_tests"]
         test_ok = (not test_events) or all(e.get("success") for e in test_events)
 
         if not (apply_ok and compile_ok and test_ok):
+            run.emit("error", {"message": "Implementation did not pass verification (apply/compile/test) — not deployed. Production is unchanged."})
             run.status = "FAILED"
             run.emit("stage", {"stage": "FAILED"})
-            run.emit("error", {"message": "Implementation did not pass verification (apply/compile/test) — not deployed. Production is unchanged."})
             return
 
         if run.trainer_changed_path is None:
+            run.emit("error", {"message": "No file change was actually applied — nothing to deploy."})
             run.status = "FAILED"
             run.emit("stage", {"stage": "FAILED"})
-            run.emit("error", {"message": "No file change was actually applied — nothing to deploy."})
             return
 
         # COMMIT — only the exact file the agent changed, never a blanket `git add -A`.
@@ -448,9 +476,9 @@ def _run_trainer_thread(run: "Run", requirement: str, assessment: dict) -> None:
             commit_msg = f"Trainer demo: {requirement.strip()[:100]}"
             ok, out = _run_controlled(["git", "commit", "-m", commit_msg], REPO_ROOT, 30)
         if not ok:
+            run.emit("error", {"message": f"Git commit failed, deployment aborted: {out[-400:]}"})
             run.status = "FAILED"
             run.emit("stage", {"stage": "FAILED"})
-            run.emit("error", {"message": f"Git commit failed, deployment aborted: {out[-400:]}"})
             return
         _, sha_out = _run_controlled(["git", "rev-parse", "--short", "HEAD"], REPO_ROOT, 15)
         production_commit = sha_out.strip()
@@ -462,14 +490,19 @@ def _run_trainer_thread(run: "Run", requirement: str, assessment: dict) -> None:
         deploy_ok, deploy_out = _run_controlled(
             ["railway", "up", "--detach", "--service", RAILWAY_SERVICE_NAME], APP_DIR, 60)
         if not deploy_ok:
+            run.emit("error", {"message": f"Railway deploy upload failed: {deploy_out[-400:]}"})
             run.status = "FAILED"
             run.emit("stage", {"stage": "FAILED"})
-            run.emit("error", {"message": f"Railway deploy upload failed: {deploy_out[-400:]}"})
             return
 
         deploy_online = False
-        for _ in range(42):  # up to ~7 minutes — a cold Nixpacks/Maven build on Railway
-                              # has been observed to take ~5-6 minutes with no build cache reuse
+        # Observed twice now: a cold Nixpacks/Maven build on this Railway
+        # project (no layer cache reuse between deploys) has taken as long
+        # as ~11.5 minutes. Both prior timeouts (4 min, then 7 min) were
+        # real false-negative FAILED results — the deploy had actually
+        # succeeded, just after this loop gave up. 90 x 10s = 15 minutes
+        # gives real margin instead of guessing again from one data point.
+        for _ in range(90):  # up to ~15 minutes
             time.sleep(10)
             _, status_out = _run_controlled(["railway", "status"], APP_DIR, 20)
             if "Online" in status_out:
@@ -478,9 +511,9 @@ def _run_trainer_thread(run: "Run", requirement: str, assessment: dict) -> None:
             if "Failed" in status_out or "Crashed" in status_out:
                 break
         if not deploy_online:
+            run.emit("error", {"message": "Deployment did not reach Online state within the wait window."})
             run.status = "FAILED"
             run.emit("stage", {"stage": "FAILED"})
-            run.emit("error", {"message": "Deployment did not reach Online state within the wait window."})
             return
 
         # VERIFY
@@ -501,9 +534,9 @@ def _run_trainer_thread(run: "Run", requirement: str, assessment: dict) -> None:
         run.emit("stage", {"stage": "COMPLETED"})
         run.emit("final_result", {"text": result})
     except Exception as exc:  # noqa: BLE001
+        run.emit("error", {"message": str(exc)})
         run.status = "FAILED"
         run.emit("stage", {"stage": "FAILED"})
-        run.emit("error", {"message": str(exc)})
     finally:
         execution_tools.set_approval_prompt(execution_tools._default_approval_prompt)
         commit_event = next((e for e in run.events if e["type"] == "commit"), None)
