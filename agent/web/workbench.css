@@ -34,6 +34,7 @@
 #stage-checklist li.pending .mark { color: var(--muted); }
 #stage-checklist li.skipped { opacity: 0.55; }
 #stage-checklist li.skipped .mark { color: var(--muted); }
+#stage-checklist li.failed .mark { color: var(--red); }
 #stage-checklist .skip-note { color: var(--muted); font-size: 0.78rem; margin-left: 0.4rem; }
 
 @keyframes pulse {

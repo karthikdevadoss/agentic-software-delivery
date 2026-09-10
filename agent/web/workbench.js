@@ -274,17 +274,51 @@ function addVerificationLine(label, result) {
 
 // ---- Stage checklist ------------------------------------------------------
 
+// Real production incident: the fixed checklist entry for "Testing"
+// looked visually PENDING (a hollow ○) even after Committing/Deploying/
+// Verifying all showed done — because the backend's real stage string is
+// "TESTING — NOT APPLICABLE" (or plain "TESTING" when tests actually
+// run), never the bare "TESTING" key this checklist matches against, so
+// the generic seen/skipped logic below never recognized it as reached.
+// A terminal run must never leave Testing looking like it hasn't
+// happened yet — this returns one of the exact allowed explicit states.
+function testingChecklistState() {
+  if (run.stagesSeen.has("TESTING — NOT APPLICABLE")) {
+    return {
+      cls: "skipped", mark: "—", label: "TESTING — NOT APPLICABLE",
+      note: `<span class="skip-note">${esc(run.testingSkipReason || "verified not applicable")}</span>`,
+    };
+  }
+  if (run.stagesSeen.has("TESTING")) {
+    const passed = !verificationState.testResult || verificationState.testResult.success;
+    return passed
+      ? { cls: "done", mark: "✓", label: "TESTING — PASSED", note: "" }
+      : { cls: "failed", mark: "✗", label: "TESTING — FAILED", note: "" };
+  }
+  if (TERMINAL_STAGES.has(run.status)) {
+    // Terminal with no testing decision of any kind ever recorded — an
+    // explicit, truthful gap flag, never a silent/ambiguous "pending".
+    return { cls: "skipped", mark: "?", label: "TESTING", note: '<span class="skip-note">NO TESTING DECISION RECORDED</span>' };
+  }
+  return { cls: "pending", mark: "○", label: "Testing", note: "" };
+}
+
 function renderStageChecklist() {
   if (!run) return;
   const terminal = TERMINAL_STAGES.has(run.status);
   // Once terminal, any workflow stage never reached is genuinely never
-  // going to run (e.g. TESTING when the model didn't call it, or
-  // everything past BUILDING for a NO_CHANGE_NEEDED outcome) — show that
-  // truthfully as skipped, not as a perpetual "not yet".
+  // going to run (e.g. everything past BUILDING for a NO_CHANGE_NEEDED
+  // outcome) — show that truthfully as skipped, not as a perpetual "not
+  // yet". TESTING is handled separately above (testingChecklistState)
+  // since its real backend stage strings never match a single fixed key.
   const lastSeenIndex = WORKFLOW_STAGES.reduce(
     (acc, s, i) => (run.stagesSeen.has(s.key) ? i : acc), -1);
 
   stageChecklist.innerHTML = WORKFLOW_STAGES.map((s, i) => {
+    if (s.key === "TESTING") {
+      const t = testingChecklistState();
+      return `<li class="${t.cls}"><span class="mark">${t.mark}</span><span>${esc(t.label)}</span>${t.note}</li>`;
+    }
     const seen = run.stagesSeen.has(s.key);
     const isCurrent = s.key === run.currentStage && !terminal;
     let cls, mark, note = "";
@@ -308,23 +342,39 @@ function applyEvent(evt) {
       run.currentStage = evt.stage;
       run.status = evt.stage;
       run.stagesSeen.add(evt.stage);
-      run.lastEventTs = evt.ts;
-      run.stageStartedTs = evt.ts;
+      // Client clock only — NEVER the backend's evt.ts here. Real
+      // production incident: a run showed "Total elapsed: 37s" (correct)
+      // alongside "Current stage elapsed: 6m 37s" (wrong) for the SAME
+      // terminal run, because stage-elapsed mixed the backend's own
+      // clock (evt.ts, Python time.time() inside the Railway container)
+      // with this browser's Date.now() — any clock skew between the two
+      // machines leaks straight into the displayed duration. Total
+      // elapsed was correct only because it never touched evt.ts at all
+      // (runStartedAtMs is captured from this same browser's clock).
+      // Fix: every duration shown here is now a delta between two
+      // timestamps captured on THIS browser, never a cross-machine
+      // subtraction.
+      run.stageStartedAtMs = Date.now();
       setStatus(evt.stage);
       addActivityLine(`<span class="stage-marker">— ${esc(evt.stage)} —</span>`);
       if (evt.reason) addActivityLine(`<span class="hint">${esc(evt.reason)}</span>`);
+      if (evt.stage === "TESTING — NOT APPLICABLE") run.testingSkipReason = evt.reason;
       if (TERMINAL_STAGES.has(evt.stage)) {
+        // Freeze total/stage elapsed at the real terminal duration —
+        // "completed-stage duration must not continue increasing
+        // forever" and "do not mix time since completion with duration
+        // of completed stage." A terminal run has no more elapsing to
+        // do; the "current stage" IS the whole run at this point.
+        run.frozenElapsedText = runStartedAtMs ? fmtDuration((Date.now() - runStartedAtMs) / 1000) : "—";
         renderTerminalOutcome();
         finishRun();
       }
       break;
     case "no_change_needed":
       addActivityLine(`<span class="hint">${esc(evt.reason)}</span>`);
-      run.lastEventTs = evt.ts;
       break;
     case "tool_call":
       addActivityLine(`<span class="tool-name">${esc(evt.tool)}</span>(${esc(evt.input_summary)})`);
-      run.lastEventTs = evt.ts;
       break;
     case "tool_result": {
       const cls = evt.success ? "ok" : "err";
@@ -333,28 +383,30 @@ function applyEvent(evt) {
       if (evt.tool === "apply_approved_source_change") verificationState.applySucceeded = evt.success;
       if (evt.tool === "run_controlled_compile") { verificationState.compileResult = evt; addVerificationLine("BUILD (mvn compile)", evt); }
       if (evt.tool === "run_controlled_tests") { verificationState.testResult = evt; addVerificationLine("TESTS (mvn test)", evt); }
-      run.lastEventTs = evt.ts;
       break;
     }
     case "approval_decision":
       addActivityLine(`<span class="hint">Approval: ${esc(evt.decision)} — decided by: ${esc(evt.decided_by || "policy")}</span>`);
-      run.lastEventTs = evt.ts;
       break;
     case "commit":
       deployPanel.hidden = false;
       run.commitInfo = evt;
       deployBody.innerHTML = `<div class="kv"><span class="k">Production commit</span><span class="v"><code>${esc(evt.sha)}</code></span></div><div class="kv"><span class="k">Changed file</span><span class="v"><code>${esc(evt.path)}</code></span></div>`;
-      run.lastEventTs = evt.ts;
       break;
     case "deployment": {
       deployPanel.hidden = false;
       run.deploymentInfo = evt;
-      const verifiedBadge = evt.verified ? '<span style="color:var(--green)">VERIFIED (HTTP 200)</span>' : '<span style="color:var(--red)">NOT VERIFIED</span>';
+      // "Verified" now means BOTH the server is reachable AND the exact
+      // requested content was found live in production — HTTP 200 alone
+      // is never sufficient (real incident: HTTP 200 + old content was
+      // previously shown as "VERIFIED").
+      const verifiedBadge = evt.verified
+        ? '<span style="color:var(--green)">VERIFIED — requested content confirmed live (HTTP 200)</span>'
+        : '<span style="color:var(--red)">NOT VERIFIED' + (evt.http_status === 200 && !evt.content_verified ? " — requested content not found in production" : "") + '</span>';
       deployBody.innerHTML += `<div class="kv"><span class="k">Public app</span><span class="v"><a href="${esc(evt.public_url)}" target="_blank" rel="noopener">${esc(evt.public_url)}</a></span></div>`;
       deployBody.innerHTML += `<div class="kv"><span class="k">HTTP status</span><span class="v">${esc(evt.http_status)}</span></div>`;
-      deployBody.innerHTML += `<div class="kv"><span class="k">Content changed from baseline</span><span class="v">${evt.content_changed_from_baseline ? "yes" : "no"}</span></div>`;
+      deployBody.innerHTML += `<div class="kv"><span class="k">Requested content live</span><span class="v">${evt.content_verified ? "yes" : "no"}</span></div>`;
       deployBody.innerHTML += `<div class="kv"><span class="k">Verification</span><span class="v">${verifiedBadge}</span></div>`;
-      run.lastEventTs = evt.ts;
       break;
     }
     case "final_result":
@@ -364,21 +416,21 @@ function applyEvent(evt) {
       // arrives BEFORE final_result on the COMPLETED/NO_CHANGE_NEEDED
       // paths — refresh just the text here so it isn't left blank.
       if (TERMINAL_STAGES.has(run.status)) resultText.textContent = run.finalResultText;
-      run.lastEventTs = evt.ts;
       break;
     case "error":
       addActivityLine(`<span class="err">ERROR: ${esc(evt.message)}</span>`);
       resultPanel.hidden = false;
       run.lastErrorMessage = evt.message;
       if (TERMINAL_STAGES.has(run.status)) resultText.textContent = run.lastErrorMessage;
-      run.lastEventTs = evt.ts;
       break;
     case "usage_summary":
       run.usageSummary = evt;
       renderUsageSummary(evt);
-      run.lastEventTs = evt.ts;
       break;
   }
+  // Client clock only, for every event type uniformly — see the "stage"
+  // case above for why this must never be the backend's own evt.ts.
+  run.lastEventAtMs = Date.now();
   renderStageChecklist();
 }
 
@@ -554,8 +606,7 @@ function transportLabel() {
 function overallStateLabel() {
   if (!run) return "—";
   if (TERMINAL_STAGES.has(run.status)) return run.status;
-  const nowS = Date.now() / 1000;
-  const quietS = run.lastEventTs ? nowS - run.lastEventTs : 0;
+  const quietS = run.lastEventAtMs ? (Date.now() - run.lastEventAtMs) / 1000 : 0;
   const maxQuiet = STAGE_MAX_QUIET_SECONDS[run.currentStage] || DEFAULT_MAX_QUIET_SECONDS;
   if (run.currentStage === "DEPLOYING" && quietS > 5) return "WAITING FOR EXTERNAL SYSTEM (Railway)";
   if (quietS > maxQuiet) return "STALLED / NO RECENT PROGRESS";
@@ -575,10 +626,25 @@ function tick() {
   rsTransport.innerHTML = `<span class="transport-badge ${t.cls}">${esc(t.text)}</span>`;
   rsOverall.textContent = overallStateLabel();
   rsStage.textContent = run.currentStage || "—";
-  const nowS = Date.now() / 1000;
-  rsStageElapsed.textContent = run.stageStartedTs ? fmtDuration(nowS - run.stageStartedTs) : "—";
-  rsTotalElapsed.textContent = runStartedAtMs ? fmtDuration((Date.now() - runStartedAtMs) / 1000) : "—";
-  rsLastActivity.textContent = run.lastEventTs ? `${fmtDuration(nowS - run.lastEventTs)} ago` : "—";
+  const nowMs = Date.now();
+  if (TERMINAL_STAGES.has(run.status)) {
+    // Terminal: freeze both — a completed run has no "ongoing" stage
+    // left to elapse, and total duration is a fixed historical fact,
+    // never a growing number. Both come from the SAME frozen client-
+    // clock computation taken the instant the terminal stage arrived.
+    rsStageElapsed.textContent = run.frozenElapsedText || "—";
+    rsTotalElapsed.textContent = run.frozenElapsedText || "—";
+  } else {
+    rsStageElapsed.textContent = run.stageStartedAtMs ? fmtDuration((nowMs - run.stageStartedAtMs) / 1000) : "—";
+    rsTotalElapsed.textContent = runStartedAtMs ? fmtDuration((nowMs - runStartedAtMs) / 1000) : "—";
+  }
+  // "Last backend activity" is explicitly allowed to keep growing after
+  // a run ends (it genuinely means "how long ago was the last event"),
+  // clearly labeled as such in the UI — but it must use THIS browser's
+  // own receipt time (lastEventAtMs), never the backend's clock, or a
+  // clock-skewed container would silently distort it just like the
+  // stage-elapsed bug above did.
+  rsLastActivity.textContent = run.lastEventAtMs ? `${fmtDuration((nowMs - run.lastEventAtMs) / 1000)} ago` : "—";
 }
 
 // ---- Submit flow ----------------------------------------------------------
@@ -628,9 +694,10 @@ async function submit() {
 
   run = {
     id: data.run_id, seenEventKeys: new Set(), stagesSeen: new Set(["RECEIVED"]),
-    currentStage: null, status: "STARTING", lastEventTs: null,
-    stageStartedTs: null, finished: false,
+    currentStage: null, status: "STARTING", lastEventAtMs: null,
+    stageStartedAtMs: null, frozenElapsedText: null, finished: false,
     finalResultText: null, lastErrorMessage: null, usageSummary: null,
+    testingSkipReason: null,
   };
   rsRunId.textContent = data.run_id;
   runStartedAtMs = Date.now();

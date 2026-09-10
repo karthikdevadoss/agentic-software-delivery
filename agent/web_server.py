@@ -108,20 +108,30 @@ def _run_is_terminal(run: "Run") -> bool:
     return run.status in TERMINAL_RUN_STATES
 
 
-def _decide_deployment_outcome(deploy_online: bool, deploy_explicit_failure: bool, production_verified: bool) -> str:
-    """The one place a trainer deploy's outcome is decided. Production
-    verification (an independent HTTP check of the real public URL) is
-    the primary evidence and is checked FIRST — deliberately, so it can
-    never be overridden by a Railway CLI signal in either direction. See
-    docs/LESSONS.md: a CLI decoding glitch or poll timeout produced real
-    false "deployment failed" results on genuinely successful deploys
-    three times before this function existed.
+def _decide_deployment_outcome(production_reachable: bool, deploy_explicit_failure: bool, content_verified: bool) -> str:
+    """The one place a trainer deploy's outcome is decided.
 
-    Returns one of the three real outcomes this decision can produce:
-    COMPLETED, FAILED, or DEPLOYMENT_STATUS_UNKNOWN (genuine uncertainty
-    — never silently folded into FAILED)."""
-    if production_verified:
+    Real incident (run trainer-7769757e, 2026-09-10): Workbench reported
+    'Deployment: VERIFIED (HTTP 200)' and claimed the footer changed to
+    the requested text, but the real Customer App still showed the OLD
+    footer. Root cause: this function previously treated HTTP 200 alone
+    ("production_verified") as sufficient — the deploy's own
+    `content_changed_from_baseline` field was already `false` at the
+    time, but nothing gated on it. Deployment transport success (a
+    reachable server) is NOT the same as software-change success (the
+    requested observable effect actually being live).
+
+    COMPLETED now requires BOTH: the server is reachable (HTTP 200) AND
+    the specific requested content is verified present in the fetched
+    HTML (content_verified — see run.trainer_expected_content). Reachable
+    with the requested content confirmed absent is a genuine, CONFIRMED
+    negative result — FAILED, not an ambiguous unknown. Only when
+    production itself could not be reached at all does genuine
+    uncertainty (DEPLOYMENT_STATUS_UNKNOWN) apply."""
+    if production_reachable and content_verified:
         return "COMPLETED"
+    if production_reachable and not content_verified:
+        return "FAILED"
     if deploy_explicit_failure:
         return "FAILED"
     return "DEPLOYMENT_STATUS_UNKNOWN"
@@ -243,6 +253,7 @@ class Run:
         self.result_text = None
         self.pending_approvals = {}
         self.trainer_changed_path = None  # set by _trainer_approval_prompt_factory
+        self.trainer_expected_content = None  # set by _trainer_approval_prompt_factory
         self.trainer_usage_start_index = 0  # set by the trainer route before the thread starts
         self.git_commit_before = _current_git_commit()
         self._lock = threading.Lock()
@@ -602,6 +613,12 @@ def _trainer_approval_prompt_factory(run: "Run"):
     'policy', never mislabeled as a human decision."""
     def prompt(edit) -> bool:
         run.trainer_changed_path = edit.path
+        # The exact byte-for-byte content that will actually be written to
+        # disk (write_tools.apply_edit writes edit.new_content verbatim) —
+        # captured here so production verification can later check the
+        # REQUESTED observable effect is genuinely live, not just that
+        # *some* HTTP 200 response came back. See _decide_deployment_outcome.
+        run.trainer_expected_content = edit.new_content
         run.emit("approval_decision", {
             "edit_id": edit.id, "decision": "approve",
             "decided_by": "risk_policy (auto — no human in the loop for this demo tier)",
@@ -800,45 +817,49 @@ def _run_trainer_thread(run: "Run", requirement: str, assessment: dict) -> None:
             run.emit("stage", {"stage": "FAILED"})
             return
 
-        deploy_online = False
+        # VERIFY — poll production directly for the REQUESTED observable
+        # effect, not a Railway CLI text signal. Real incident (run
+        # trainer-7769757e): `railway status` reports "Online" for the
+        # OLD deployment still serving traffic while a NEW one builds in
+        # the background — exiting this loop on that text alone let a
+        # single HTTP 200 check fire ~13s after commit, long before a
+        # real Nixpacks/Maven build (observed up to ~11.5 minutes cold)
+        # could possibly have finished, so it verified the OLD content.
+        # Waiting here for the actual requested content (or a real CLI
+        # failure, or genuine timeout) is what the permanent rule in
+        # CLAUDE.md/DECISIONS.md requires: DEPLOY -> BECOMES ACTIVE ->
+        # VERIFY REQUESTED OBSERVABLE EFFECT -> ONLY THEN COMPLETED.
+        run.status = "VERIFYING PRODUCTION"
+        run.emit("stage", {"stage": "VERIFYING PRODUCTION"})
         deploy_explicit_failure = False
-        # A cold Nixpacks/Maven build on this Railway project (no layer
-        # cache reuse between deploys) has been observed taking as long
-        # as ~11.5 minutes for real. 90 x 10s = 15 minutes gives real
-        # margin. This loop is a SIGNAL for the decision below, never the
-        # sole verdict — see the production-verification step that
-        # always runs next regardless of what this loop saw.
-        for _ in range(90):  # up to ~15 minutes
-            time.sleep(10)
-            _, status_out = _run_controlled(["railway", "status"], APP_DIR, 20)
-            if "Online" in status_out:
-                deploy_online = True
+        after_status, after_html, content_verified = None, None, False
+        max_wait_s, poll_interval_s, waited_s = 15 * 60, 10, 0
+        while waited_s < max_wait_s:
+            time.sleep(poll_interval_s)
+            waited_s += poll_interval_s
+            after_status, after_html = _fetch_public_app()
+            content_verified = bool(after_html) and bool(run.trainer_expected_content) and run.trainer_expected_content in after_html
+            if after_status == 200 and content_verified:
                 break
+            _, status_out = _run_controlled(["railway", "status"], APP_DIR, 20)
             if "Failed" in status_out or "Crashed" in status_out:
                 deploy_explicit_failure = True
                 break
 
-        # VERIFY — production reality is the primary source of truth.
-        # Permanent rule (docs/LESSONS.md): a CLI decoding glitch or a
-        # poll timeout is NOT the same as a verified deployment failure.
-        # This independent HTTP check runs regardless of what the loop
-        # above concluded, and its result decides the outcome below.
-        run.status = "VERIFYING PRODUCTION"
-        run.emit("stage", {"stage": "VERIFYING PRODUCTION"})
-        after_status, after_html = _fetch_public_app()
-        verified = after_status == 200
+        production_reachable = after_status == 200
         content_changed = bool(after_html) and after_html != baseline_html
         run.emit("deployment", {
             "production_commit": production_commit,
             "public_url": PUBLIC_CUSTOMER_APP_URL,
             "http_status": after_status,
             "content_changed_from_baseline": content_changed,
-            "verified": verified,
-            "railway_cli_reported_online": deploy_online,
+            "content_verified": content_verified,
+            "verified": production_reachable and content_verified,
             "railway_cli_reported_failure": deploy_explicit_failure,
+            "waited_seconds": waited_s,
         })
 
-        outcome = _decide_deployment_outcome(deploy_online, deploy_explicit_failure, verified)
+        outcome = _decide_deployment_outcome(production_reachable, deploy_explicit_failure, content_verified)
         if outcome == "COMPLETED":
             run.status = "COMPLETED"
             run.emit("stage", {"stage": "COMPLETED"})

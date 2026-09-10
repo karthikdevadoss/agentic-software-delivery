@@ -175,6 +175,7 @@ function buildEventSequence(finalStage) {
     ev("stage", { stage: "APPLYING CHANGE" }, t0 + 0.6),
     ev("stage", { stage: "BUILDING" }, t0 + 0.7),
     ev("tool_result", { tool: "run_controlled_compile", success: true, duration_ms: 5 }, t0 + 1.0),
+    ev("stage", { stage: "TESTING — NOT APPLICABLE", reason: "no test files exist" }, t0 + 1.05),
     ev("stage", { stage: "COMMITTING" }, t0 + 1.1),
     ev("commit", { sha: "abc1234", path: "x" }, t0 + 1.1),
     ev("stage", { stage: "DEPLOYING" }, t0 + 1.2),
@@ -350,6 +351,77 @@ async function testJ_targetAppNeverStaysLoadingForeverOnFailure() {
   sandbox.stopEverything();
 }
 
+async function testK_testingStateIsExplicitNeverAmbiguouslyPending() {
+  // Real production incident: the checklist showed a hollow "○ Testing"
+  // (visually pending) even after Committing/Deploying/Verifying all
+  // showed done, because the real backend stage string
+  // "TESTING — NOT APPLICABLE" never matched the checklist's fixed
+  // "TESTING" key. Must now render one of the explicit allowed states.
+  const events = buildEventSequence("COMPLETED"); // now includes a real TESTING — NOT APPLICABLE stage event
+  const fetchStub = makeFetchStub({
+    "POST /api/trainer/assess": () => ({ complexity: "TINY", risk: "LOW", decision: "auto", reason: "ok", matched_keywords: [], suggested_alternatives: [] }),
+    "POST /api/trainer/runs": () => ({ blocked: false, run_id: "trainer-testK", assessment: { decision: "auto" } }),
+    "GET /api/runs/trainer-testK": () => ({ id: "trainer-testK", status: "STARTING", events: [], result: null }),
+  });
+  const doc = makeDocumentStub();
+  FakeEventSource.instances = [];
+  const sandbox = loadTrainerContext(doc, fetchStub);
+  await runSubmit(sandbox, "test requirement K");
+  const es = FakeEventSource.instances[FakeEventSource.instances.length - 1];
+  events.forEach(e => es.fire(e.type, e));
+  await sleep(350);
+
+  const checklistHtml = String(doc.getElementById("stage-checklist")._innerHTML);
+  assert(!checklistHtml.includes('class="pending"><span class="mark">○</span><span>Testing'),
+    "K: Testing never renders as an ambiguous hollow pending mark on a terminal run");
+  assert(checklistHtml.includes("TESTING — NOT APPLICABLE") && checklistHtml.includes("no test files exist"),
+    "K: Testing renders the explicit NOT APPLICABLE state with its real verified reason");
+  sandbox.stopEverything();
+}
+
+async function testL_terminalTimingFreezesAndNeverGrows() {
+  // Real production incident: a terminal run showed "Total elapsed: 37s"
+  // (correct) next to "Current stage elapsed: 6m 37s" (wrong, and still
+  // growing) — caused by mixing the backend's own clock (evt.ts) with
+  // this browser's Date.now(). Proves both now freeze at the SAME real
+  // value and never diverge or keep increasing after termination.
+  const events = buildEventSequence("COMPLETED");
+  const fetchStub = makeFetchStub({
+    "POST /api/trainer/assess": () => ({ complexity: "TINY", risk: "LOW", decision: "auto", reason: "ok", matched_keywords: [], suggested_alternatives: [] }),
+    "POST /api/trainer/runs": () => ({ blocked: false, run_id: "trainer-testL", assessment: { decision: "auto" } }),
+    "GET /api/runs/trainer-testL": () => ({ id: "trainer-testL", status: "STARTING", events: [], result: null }),
+  });
+  const doc = makeDocumentStub();
+  FakeEventSource.instances = [];
+  const sandbox = loadTrainerContext(doc, fetchStub);
+  await runSubmit(sandbox, "test requirement L");
+  const es = FakeEventSource.instances[FakeEventSource.instances.length - 1];
+  events.forEach(e => es.fire(e.type, e));
+  await sleep(350);
+  sandbox.tick(); // simulate the next real 1s tick interval firing and reading the frozen values
+
+  const totalAtCompletion = doc.getElementById("rs-total-elapsed").textContent;
+  const stageAtCompletion = doc.getElementById("rs-stage-elapsed").textContent;
+  assertEqual(totalAtCompletion, stageAtCompletion,
+    "L: total elapsed and stage elapsed are the SAME frozen value for a terminal run (no cross-clock mismatch)");
+
+  // Manually invoke another tick well after "completion" (simulating the
+  // creator leaving the tab open) — values must not have changed.
+  await sleep(200);
+  sandbox.tick();
+  assertEqual(doc.getElementById("rs-total-elapsed").textContent, totalAtCompletion, "L: total elapsed does not keep growing after termination");
+  assertEqual(doc.getElementById("rs-stage-elapsed").textContent, stageAtCompletion, "L: stage elapsed does not keep growing after termination");
+
+  // "Last backend activity" is explicitly allowed to keep aging.
+  const lastActivityBefore = doc.getElementById("rs-last-activity").textContent;
+  await sleep(1100);
+  sandbox.tick();
+  const lastActivityAfter = doc.getElementById("rs-last-activity").textContent;
+  assert(lastActivityBefore !== lastActivityAfter || lastActivityBefore.includes("ago"),
+    "L: last backend activity is labeled as relative time and may continue aging");
+  sandbox.stopEverything();
+}
+
 (async () => {
   await testA_sseWorksNormally();
   await testBC_pollingFallbackWhenSSESilent();
@@ -357,6 +429,8 @@ async function testJ_targetAppNeverStaysLoadingForeverOnFailure() {
   await testI_noDuplicateEventsWhenBothTransportsDeliverSameData();
   await testGH_transportFailureNeverResubmits();
   await testJ_targetAppNeverStaysLoadingForeverOnFailure();
+  await testK_testingStateIsExplicitNeverAmbiguouslyPending();
+  await testL_terminalTimingFreezesAndNeverGrows();
 
   console.log(`\n${passed} passed, ${failures} failed`);
   process.exit(failures > 0 ? 1 : 0);

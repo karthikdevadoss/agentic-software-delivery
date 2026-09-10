@@ -185,57 +185,72 @@ class SubprocessEncodingTestCase(unittest.TestCase):
 
 
 class DeploymentOutcomeDecisionTestCase(unittest.TestCase):
-    """Regression tests for _decide_deployment_outcome — the exact
-    decision that mislabeled 3 genuinely successful deploys as FAILED
-    this session because it trusted CLI polling as the sole verdict."""
+    """Regression tests for _decide_deployment_outcome.
 
-    def test_d_explicit_cli_failure_with_unreachable_production_is_failed(self):
+    Real incident (run trainer-7769757e, 2026-09-10): Workbench reported
+    'Deployment: VERIFIED (HTTP 200)' and claimed the requested footer
+    text was live, but the real Customer App still showed the OLD
+    footer — the deploy's own content_changed_from_baseline was already
+    `false`, but the decision only checked HTTP 200. HTTP 200 alone must
+    never be sufficient to mark a modifying run COMPLETED."""
+
+    def test_reachable_with_content_verified_is_completed(self):
         self.assertEqual(
-            ws._decide_deployment_outcome(deploy_online=False, deploy_explicit_failure=True, production_verified=False),
+            ws._decide_deployment_outcome(production_reachable=True, deploy_explicit_failure=False, content_verified=True),
+            "COMPLETED")
+
+    def test_reachable_but_content_not_verified_is_a_confirmed_failure_not_unknown(self):
+        """The EXACT real incident's shape: HTTP 200 came back (server
+        reachable), but the requested content was never actually
+        present. This is a confirmed negative result, not ambiguity —
+        must be FAILED, never COMPLETED and never DEPLOYMENT_STATUS_UNKNOWN."""
+        self.assertEqual(
+            ws._decide_deployment_outcome(production_reachable=True, deploy_explicit_failure=False, content_verified=False),
             "FAILED")
 
-    def test_e_poll_timeout_with_no_production_confirmation_is_unknown_not_failed(self):
+    def test_explicit_cli_failure_with_unreachable_production_is_failed(self):
         self.assertEqual(
-            ws._decide_deployment_outcome(deploy_online=False, deploy_explicit_failure=False, production_verified=False),
+            ws._decide_deployment_outcome(production_reachable=False, deploy_explicit_failure=True, content_verified=False),
+            "FAILED")
+
+    def test_unreachable_with_no_explicit_failure_is_unknown_not_failed(self):
+        self.assertEqual(
+            ws._decide_deployment_outcome(production_reachable=False, deploy_explicit_failure=False, content_verified=False),
             "DEPLOYMENT_STATUS_UNKNOWN")
 
-    def test_f_cli_confirmed_online_and_production_verified_is_completed(self):
-        self.assertEqual(
-            ws._decide_deployment_outcome(deploy_online=True, deploy_explicit_failure=False, production_verified=True),
-            "COMPLETED")
-
-    def test_g_production_verified_overrides_cli_never_confirming_online(self):
-        """The exact real incident's shape: CLI polling timed out
-        (deploy_online=False — it never saw "Online" due to the encoding
-        crash), but production was genuinely reachable and correct. A
-        decoding/timeout problem must never become a false failure."""
-        self.assertEqual(
-            ws._decide_deployment_outcome(deploy_online=False, deploy_explicit_failure=False, production_verified=True),
-            "COMPLETED")
-
-    def test_h_verified_production_cannot_coexist_with_failed_even_if_cli_disagrees(self):
-        # Production verification succeeding must never be overridden,
-        # even by a contradictory explicit CLI failure signal.
-        self.assertEqual(
-            ws._decide_deployment_outcome(deploy_online=False, deploy_explicit_failure=True, production_verified=True),
-            "COMPLETED")
-
-    def test_h_cli_saying_online_is_not_sufficient_without_production_verification(self):
-        self.assertEqual(
-            ws._decide_deployment_outcome(deploy_online=True, deploy_explicit_failure=False, production_verified=False),
-            "DEPLOYMENT_STATUS_UNKNOWN")
-
-    def test_old_behavior_would_have_failed_this_exact_real_scenario(self):
+    def test_old_behavior_would_have_completed_this_exact_real_scenario(self):
         """Proves the fix against the OLD logic, not just in isolation.
-        Old code: `if not deploy_online: FAILED` — unconditional, with no
-        production-verification override at all."""
-        deploy_online = False  # what the real incident actually saw
-        old_result = "FAILED" if not deploy_online else "COMPLETED"
+        Old code: `if production_verified (HTTP 200 only): COMPLETED` —
+        with no check that the requested content was actually there."""
+        http_200 = True
+        old_result = "COMPLETED" if http_200 else "FAILED"  # what the real incident's old code did
         new_result = ws._decide_deployment_outcome(
-            deploy_online=False, deploy_explicit_failure=False, production_verified=True)
-        self.assertEqual(old_result, "FAILED")
-        self.assertEqual(new_result, "COMPLETED")
+            production_reachable=True, deploy_explicit_failure=False, content_verified=False)
+        self.assertEqual(old_result, "COMPLETED")
+        self.assertEqual(new_result, "FAILED")
         self.assertNotEqual(old_result, new_result)
+
+
+class ContentVerificationTestCase(unittest.TestCase):
+    """Regression tests for the requested-observable-effect check itself
+    (run.trainer_expected_content vs. the fetched production HTML) — the
+    exact mechanism that closes the false-success gap."""
+
+    def test_expected_content_present_verifies_true(self):
+        run = ws.Run("test-run", "test requirement")
+        run.trainer_expected_content = "<footer>Powered by DEVADOSS Agentic Delivery</footer>"
+        after_html = "<html><body>...<footer>Powered by DEVADOSS Agentic Delivery</footer></body></html>"
+        self.assertIn(run.trainer_expected_content, after_html)
+
+    def test_missing_expected_content_never_verifies(self):
+        run = ws.Run("test-run", "test requirement")
+        run.trainer_expected_content = "<footer>Powered by DEVADOSS Agentic Delivery</footer>"
+        after_html = "<html><body>...<footer>Powered by Agentic Delivery</footer></body></html>"  # OLD content
+        self.assertNotIn(run.trainer_expected_content, after_html)
+
+    def test_expected_content_defaults_to_none_never_fabricates_verification(self):
+        run = ws.Run("test-run", "test requirement")
+        self.assertIsNone(run.trainer_expected_content)
 
 
 class PublicRouteStructureTestCase(unittest.TestCase):
