@@ -12,6 +12,7 @@ Run: python agent/test_web_server.py
 """
 
 import asyncio
+import json
 import sys
 import unittest
 from unittest import mock
@@ -270,6 +271,155 @@ class PublicRouteStructureTestCase(unittest.TestCase):
         # The 5 public surface paths must never include internal-tool naming.
         for public_path in ("/", "/workbench", "/dashboard", "/usage", "/learn", "/profile"):
             self.assertNotIn("control-plane", public_path)
+
+
+class TargetApplicationTestCase(unittest.IsolatedAsyncioTestCase):
+    """Section 1 of the Workbench target-app/cost-transparency task: the
+    trainer must be shown which real application a requirement targets,
+    before submitting anything, via a single backend-owned source of
+    truth (never a second hardcoded copy of the URL in the frontend)."""
+
+    def test_target_app_route_is_registered(self):
+        routes = {r.path: r for r in ws.routes if hasattr(r, "path")}
+        self.assertIn("/api/target-app", routes)
+        self.assertIn("GET", routes["/api/target-app"].methods)
+
+    async def test_target_app_payload_has_the_required_fields(self):
+        response = await ws.get_target_app(mock.Mock())
+        body = json.loads(response.body)
+        for key in ("name", "url", "environment", "description"):
+            self.assertIn(key, body)
+
+    async def test_target_app_url_matches_the_real_deploy_verification_url(self):
+        """Same constant used for the actual deploy/verification path
+        (_fetch_public_app) — never a second, independently-typed URL that
+        could silently drift from what the backend actually operates on."""
+        response = await ws.get_target_app(mock.Mock())
+        body = json.loads(response.body)
+        self.assertEqual(body["url"], ws.PUBLIC_CUSTOMER_APP_URL)
+        self.assertTrue(body["url"].startswith("https://"))
+
+
+class PreRunEstimateTestCase(unittest.IsolatedAsyncioTestCase):
+    """Section 2: an ESTIMATED (never fabricated-precision) token/cost
+    range must be produced before execution for an auto-execute
+    requirement, and a thin/missing estimate must never block a safe
+    TINY/LOW auto-execute run."""
+
+    async def test_assess_route_attaches_an_estimate_for_auto_decisions(self):
+        request = mock.Mock()
+        request.json = mock.AsyncMock(return_value={"requirement": 'Add a small "Agent Demo" status badge'})
+        response = await ws.assess_trainer_requirement(request)
+        body = json.loads(response.body)
+        self.assertEqual(body["decision"], "auto")
+        self.assertIn("estimate", body)
+        self.assertTrue(body["estimate"]["available"])
+        self.assertIn(body["estimate"]["confidence"], ("LOW", "MEDIUM", "HIGH"))
+
+    async def test_assess_route_never_estimates_a_blocked_requirement(self):
+        request = mock.Mock()
+        request.json = mock.AsyncMock(return_value={"requirement": "Change the login password hashing scheme"})
+        response = await ws.assess_trainer_requirement(request)
+        body = json.loads(response.body)
+        self.assertEqual(body["decision"], "blocked")
+        self.assertNotIn("estimate", body)  # nothing to estimate — it will never execute
+
+    async def test_missing_estimate_never_blocks_a_safe_auto_execute_run(self):
+        """Direct test of the exact requirement: 'Do not prevent a safe
+        TINY/LOW request from running only because an estimate is
+        unavailable.' Forces estimation to report ESTIMATE NOT AVAILABLE
+        and proves start_trainer_run still creates and starts a real run
+        for an auto-decision requirement."""
+        with mock.patch.object(ws.estimation, "estimate_run",
+                                return_value={"available": False, "reason": "ESTIMATE NOT AVAILABLE — test", "method_version": "test"}), \
+             mock.patch.object(ws.threading, "Thread") as mock_thread:
+            request = mock.Mock()
+            request.json = mock.AsyncMock(return_value={"requirement": 'Add a small "Agent Demo" status badge'})
+            response = await ws.start_trainer_run(request)
+            body = json.loads(response.body)
+            self.assertFalse(body["blocked"])
+            self.assertIn("run_id", body)
+            self.assertFalse(body["assessment"]["estimate"]["available"])
+            # The run genuinely started despite the unavailable estimate.
+            # (threading.Thread is also used internally by subprocess.run's
+            # reader threads for the run's own `git rev-parse` call, so
+            # assert on the specific call rather than call count.)
+            trainer_thread_calls = [
+                c for c in mock_thread.call_args_list
+                if c.kwargs.get("target") is ws._run_trainer_thread
+            ]
+            self.assertEqual(len(trainer_thread_calls), 1)
+
+
+class ActualUsageSummaryTestCase(unittest.TestCase):
+    """Section 3: actual (never estimated) usage must be reported for
+    every terminal outcome when real usage exists, and truthfully
+    reported as not captured when it doesn't — never fabricated."""
+
+    def setUp(self):
+        ws.metrics.reset()
+
+    def tearDown(self):
+        ws.metrics.reset()
+
+    def test_no_api_calls_reports_not_captured(self):
+        summary = ws._build_usage_summary(usage_start_index=0)
+        self.assertFalse(summary["captured"])
+
+    def test_real_usage_is_aggregated_and_priced(self):
+        start_index = len(ws.metrics.get_model_usage_events())
+        ws.metrics.record_model_usage(
+            provider="anthropic", model="claude-sonnet-5",
+            input_tokens=1000, output_tokens=500,
+            cache_creation_input_tokens=100, cache_read_input_tokens=200,
+        )
+        summary = ws._build_usage_summary(start_index)
+        self.assertTrue(summary["captured"])
+        self.assertEqual(summary["input_tokens"], 1000)
+        self.assertEqual(summary["output_tokens"], 500)
+        self.assertEqual(summary["cache_write_tokens"], 100)
+        self.assertEqual(summary["cache_read_tokens"], 200)
+        self.assertTrue(summary["cost_available"])
+        self.assertGreater(summary["cost_usd"], 0)
+        self.assertEqual(summary["pricing_version"], ws.pricing_config.PRICING_VERSION)
+
+    def test_usage_summary_maps_to_a_canonical_ledger_event_type(self):
+        self.assertEqual(ws._canonical_event_type("usage_summary", {}), "run_usage_summary")
+
+    def test_unpriced_model_reports_cost_unavailable_not_zero(self):
+        start_index = len(ws.metrics.get_model_usage_events())
+        ws.metrics.record_model_usage(provider="anthropic", model="claude-nonexistent-9", input_tokens=100, output_tokens=50)
+        summary = ws._build_usage_summary(start_index)
+        self.assertTrue(summary["captured"])
+        self.assertFalse(summary["cost_available"])
+        self.assertIsNone(summary["cost_usd"])
+
+
+class EstimateErrorTestCase(unittest.TestCase):
+    """Section 5: a run's own estimate vs. its real captured usage should
+    be comparable for future estimate-accuracy measurement, and this
+    comparison must never be fabricated when there's nothing real to
+    compare against."""
+
+    def test_no_usage_captured_means_no_estimate_error(self):
+        run = ws.Run("test-run", "test requirement")
+        self.assertIsNone(ws._estimate_error(run, {"captured": False}))
+
+    def test_no_prior_estimate_means_no_estimate_error(self):
+        run = ws.Run("test-run", "test requirement")
+        run.emit("risk_assessment", {"complexity": "TINY", "risk": "LOW"})  # no "estimate" key
+        self.assertIsNone(ws._estimate_error(run, {"captured": True, "input_tokens": 1000, "output_tokens": 500}))
+
+    def test_real_comparison_is_produced_when_both_exist(self):
+        run = ws.Run("test-run", "test requirement")
+        run.emit("risk_assessment", {
+            "complexity": "TINY", "risk": "LOW",
+            "estimate": {"available": True, "estimated_total_tokens_range": [1000, 2000], "method_version": "test-v1"},
+        })
+        result = ws._estimate_error(run, {"captured": True, "input_tokens": 1000, "output_tokens": 500})
+        self.assertEqual(result["actual_total_tokens"], 1500)
+        self.assertTrue(result["within_estimated_range"])
+        self.assertEqual(result["estimate_method_version"], "test-v1")
 
 
 class PublicRouteRedirectTestCase(unittest.IsolatedAsyncioTestCase):

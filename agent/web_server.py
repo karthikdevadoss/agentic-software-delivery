@@ -51,9 +51,11 @@ from main import get_api_key
 from agent_loop import run_agent_loop
 from execution_agent import EXECUTION_SYSTEM_PROMPT_SUFFIX
 import dashboard_data
+import estimation
 import event_ledger
 import execution_tools
 import metrics
+import pricing_config
 import risk_policy
 import sessions_data
 import write_tools
@@ -64,6 +66,17 @@ APP_DIR = REPO_ROOT / "app"
 RUN_HISTORY_PATH = Path(__file__).resolve().parent / "web_run_history.jsonl"
 PUBLIC_CUSTOMER_APP_URL = "https://agentic-delivery-customer-app-production.up.railway.app/"
 RAILWAY_SERVICE_NAME = "agentic-delivery-customer-app"
+
+# The one real application every Workbench requirement targets. Exposed via
+# GET /api/target-app so the frontend never hardcodes a second copy of this
+# URL that could drift from the one actually used for deploy/verification
+# above.
+TARGET_APPLICATION = {
+    "name": "Customer App",
+    "url": PUBLIC_CUSTOMER_APP_URL,
+    "environment": "Production Demo",
+    "description": "This is the live demo application your requirement will modify.",
+}
 
 # Maps a real tool name to a real, honest stage label — never fabricated,
 # only ever shown when the corresponding tool is actually called.
@@ -156,6 +169,8 @@ def _canonical_event_type(internal_type: str, data: dict) -> str:
         return "tool_call_completed" if data.get("success") else "tool_call_failed"
     if internal_type == "final_result":
         return "run_completed"
+    if internal_type == "usage_summary":
+        return "run_usage_summary"
     if internal_type == "deployment":
         if data.get("verified"):
             return "deployment_completed"
@@ -276,6 +291,66 @@ def _bounded_summary(result_text: str) -> str:
     return "...\n" + text[-MAX_SUMMARY_CHARS:]
 
 
+def _build_usage_summary(usage_start_index: int) -> dict:
+    """ACTUAL (never estimated) AI usage for exactly the model calls made
+    during this run's window — same slicing convention already used by
+    _persist_run_history: metrics.py is process-global/single-run-at-a-time
+    (see its own docstring), so a run's own usage is everything recorded
+    after its own start index. Returns {'captured': False} — never
+    fabricated zeros — when no real API call happened in that window (e.g.
+    a run failed before ever reaching the model)."""
+    events = metrics.get_model_usage_events()[usage_start_index:]
+    if not events:
+        return {"captured": False}
+    provider, model = events[0]["provider"], events[0]["model"]
+    input_tokens = sum(e["input_tokens"] for e in events)
+    output_tokens = sum(e["output_tokens"] for e in events)
+    cache_read_tokens = sum(e.get("cache_read_input_tokens") or 0 for e in events)
+    cache_write_tokens = sum(e.get("cache_creation_input_tokens") or 0 for e in events)
+    cost = pricing_config.calculate_cost(
+        provider, model, input_tokens=input_tokens, output_tokens=output_tokens,
+        cache_read_tokens=cache_read_tokens, cache_write_tokens=cache_write_tokens,
+    )
+    return {
+        "captured": True,
+        "provider": provider,
+        "model": model,
+        "api_calls": len(events),
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "cache_read_tokens": cache_read_tokens or None,
+        "cache_write_tokens": cache_write_tokens or None,
+        "cost_available": cost["available"],
+        "cost_usd": cost.get("total_usd"),
+        "cost_unavailable_reason": cost.get("reason"),
+        "pricing_version": cost.get("pricing_version"),
+    }
+
+
+def _estimate_error(run: "Run", usage_summary: dict):
+    """Compares this run's real captured usage against its own pre-run
+    estimate (if one was made), for future estimate-accuracy measurement.
+    None whenever there's nothing real to compare (no usage captured, or
+    no available estimate was ever produced for this run) — never a
+    fabricated comparison."""
+    if not usage_summary.get("captured"):
+        return None
+    assessment_event = next((e for e in run.events if e["type"] == "risk_assessment"), None)
+    estimate = assessment_event.get("estimate") if assessment_event else None
+    if not estimate or not estimate.get("available"):
+        return None
+    low, high = estimate["estimated_total_tokens_range"]
+    actual_total = usage_summary["input_tokens"] + usage_summary["output_tokens"]
+    midpoint = (low + high) / 2
+    return {
+        "estimated_total_tokens_range": [low, high],
+        "actual_total_tokens": actual_total,
+        "within_estimated_range": low <= actual_total <= high,
+        "pct_error_vs_midpoint": round(100 * (actual_total - midpoint) / midpoint, 1) if midpoint else None,
+        "estimate_method_version": estimate.get("method_version"),
+    }
+
+
 def _persist_run_history(run: Run, usage_start_index: int = None, extra: dict = None) -> None:
     """Append one compact, real record of this run to a small local JSONL
     log — the smallest persistence that survives a server restart, so the
@@ -291,17 +366,24 @@ def _persist_run_history(run: Run, usage_start_index: int = None, extra: dict = 
 
     model_usage = None
     if usage_start_index is not None:
-        # Real API-reported usage for exactly the model calls this run made
-        # (metrics.py is process-global, so slice to this run's window).
+        # Real API-reported usage for exactly the model calls this run made.
         # None for mock runs, which never call the Anthropic API at all.
-        events = metrics.get_model_usage_events()[usage_start_index:]
-        if events:
+        # Keeps the original key names Usage/Sessions already read
+        # (provider/model/api_calls/input_tokens/output_tokens) and
+        # additively includes cache/cost fields — see docs/PROJECT_STATE.json
+        # P0 Workbench cost-transparency task for why those were added.
+        summary = _build_usage_summary(usage_start_index)
+        if summary["captured"]:
             model_usage = {
-                "provider": events[0]["provider"],
-                "model": events[0]["model"],
-                "api_calls": len(events),
-                "input_tokens": sum(e["input_tokens"] for e in events),
-                "output_tokens": sum(e["output_tokens"] for e in events),
+                "provider": summary["provider"],
+                "model": summary["model"],
+                "api_calls": summary["api_calls"],
+                "input_tokens": summary["input_tokens"],
+                "output_tokens": summary["output_tokens"],
+                "cache_read_tokens": summary["cache_read_tokens"],
+                "cache_write_tokens": summary["cache_write_tokens"],
+                "cost_usd": summary["cost_usd"],
+                "pricing_version": summary["pricing_version"],
             }
 
     record = {
@@ -720,6 +802,17 @@ def _run_trainer_thread(run: "Run", requirement: str, assessment: dict) -> None:
     finally:
         execution_tools.set_approval_prompt(execution_tools._default_approval_prompt)
         _CURRENT_RUN_ID = None
+        # ACTUAL usage — emitted for every terminal outcome (COMPLETED,
+        # FAILED, NO_CHANGE_NEEDED, DEPLOYMENT_STATUS_UNKNOWN) as long as at
+        # least one real API call happened in this run's window, never only
+        # for successful runs. See Section 3/5 of the Workbench cost-
+        # transparency task: never estimate post-run when actual usage
+        # exists, and never lose the record for a failed/no-change run.
+        usage_summary = _build_usage_summary(run.trainer_usage_start_index)
+        usage_summary["estimate_error"] = _estimate_error(run, usage_summary)
+        usage_summary["elapsed_seconds"] = round(run.events[-1]["ts"] - run.events[0]["ts"], 1) if run.events else None
+        usage_summary["tool_call_count"] = sum(1 for e in run.events if e["type"] == "tool_call")
+        run.emit("usage_summary", usage_summary)
         commit_event = next((e for e in run.events if e["type"] == "commit"), None)
         deploy_event = next((e for e in run.events if e["type"] == "deployment"), None)
         _persist_run_history(run, usage_start_index=run.trainer_usage_start_index, extra={
@@ -762,10 +855,16 @@ async def start_mock_run(request: Request):
 
 async def assess_trainer_requirement(request: Request):
     """Cheap, synchronous, zero-API-cost — lets the trainer UI show the
-    risk/complexity decision before committing to a real agent run."""
+    risk/complexity decision AND an estimated token/cost range before
+    committing to a real agent run. Estimation only runs for the auto-
+    execute path — a blocked requirement never executes, so there is
+    nothing to estimate."""
     body = await request.json()
     requirement = (body.get("requirement") or "").strip()
-    return JSONResponse(risk_policy.classify(requirement))
+    assessment = risk_policy.classify(requirement)
+    if assessment["decision"] == "auto":
+        assessment["estimate"] = estimation.estimate_run(assessment)
+    return JSONResponse(assessment)
 
 
 async def start_trainer_run(request: Request):
@@ -779,6 +878,7 @@ async def start_trainer_run(request: Request):
     assessment = risk_policy.classify(requirement)
     if assessment["decision"] != "auto":
         return JSONResponse({"blocked": True, "assessment": assessment})
+    assessment["estimate"] = estimation.estimate_run(assessment)
 
     run_id = "trainer-" + uuid.uuid4().hex[:8]
     run = Run(run_id, requirement)
@@ -789,6 +889,10 @@ async def start_trainer_run(request: Request):
     thread = threading.Thread(target=_run_trainer_thread, args=(run, requirement, assessment), daemon=True)
     thread.start()
     return JSONResponse({"blocked": False, "run_id": run_id, "assessment": assessment})
+
+
+async def get_target_app(request: Request):
+    return JSONResponse(TARGET_APPLICATION)
 
 
 async def workbench_page(request: Request):
@@ -915,6 +1019,7 @@ routes = [
     Route("/api/sessions", get_sessions_data, methods=["GET"]),
     Route("/api/dev-sessions/start", start_dev_session_route, methods=["POST"]),
     Route("/api/dev-sessions/stop", stop_dev_session_route, methods=["POST"]),
+    Route("/api/target-app", get_target_app, methods=["GET"]),
     Route("/api/trainer/assess", assess_trainer_requirement, methods=["POST"]),
     Route("/api/trainer/runs", start_trainer_run, methods=["POST"]),
     Route("/api/runs/{run_id}", get_run, methods=["GET"]),

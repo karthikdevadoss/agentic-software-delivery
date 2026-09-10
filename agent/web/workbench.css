@@ -70,3 +70,36 @@
   margin-bottom: 0.85rem;
 }
 .open-production-btn:hover { filter: brightness(1.08); }
+.production-verified-box.neutral-box { border-color: var(--muted); }
+.production-verified-box.failed-box { border-color: var(--red); }
+.production-verified-box.neutral-box .open-production-btn,
+.production-verified-box.failed-box .open-production-btn { background: var(--accent); color: #fff; }
+
+#target-app-panel { border-color: var(--accent); }
+.open-app-link {
+  display: inline-block;
+  margin-top: 0.6rem;
+  font-weight: 700;
+  text-decoration: none;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+}
+.open-app-link:hover { background: var(--accent-soft); }
+
+.estimate-box, .usage-box {
+  margin-top: 0.75rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.015);
+}
+.estimate-label {
+  margin: 0 0 0.5rem;
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+}
+.estimate-basis { margin: 0.5rem 0 0; font-size: 0.78rem; }

@@ -37,6 +37,8 @@ const deployBody = document.getElementById("deploy-body");
 const resultPanel = document.getElementById("result-panel");
 const resultBanner = document.getElementById("result-banner");
 const resultText = document.getElementById("result-text");
+const usageSummaryBox = document.getElementById("usage-summary-box");
+const targetAppBody = document.getElementById("target-app-body");
 
 const EXAMPLES = [
   'Add a small "Agent Demo" status badge near the page title',
@@ -91,6 +93,32 @@ EXAMPLES.forEach(ex => {
   examplesList.appendChild(btn);
 });
 
+// ---- Target application (shown before any requirement is submitted) -----
+// Fetched from the backend rather than hardcoded here, so this can never
+// drift from the exact URL the backend itself deploys to and verifies
+// against (see agent/web_server.py's TARGET_APPLICATION/PUBLIC_CUSTOMER_APP_URL).
+let targetApp = null;
+
+async function loadTargetApp() {
+  try {
+    const resp = await fetch("/api/target-app");
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    targetApp = await resp.json();
+    targetAppBody.innerHTML =
+      `<div class="kv"><span class="k">Application</span><span class="v">${esc(targetApp.name)}</span></div>` +
+      `<div class="kv"><span class="k">Environment</span><span class="v">${esc(targetApp.environment)}</span></div>` +
+      `<p class="hint">${esc(targetApp.description)}</p>` +
+      `<a class="secondary open-app-link" href="${esc(targetApp.url)}" target="_blank" rel="noopener">OPEN CURRENT CUSTOMER APP ↗</a>`;
+  } catch (_) {
+    targetAppBody.innerHTML = `<p class="hint err">Could not load target application info. Try reloading the page.</p>`;
+  }
+}
+loadTargetApp();
+
+function currentAppUrl() {
+  return (targetApp && targetApp.url) || (run && run.deploymentInfo && run.deploymentInfo.public_url) || "#";
+}
+
 // ---- Single source of truth for the active run --------------------------
 
 let run = null; // { id, seenEventKeys, stagesSeen: Set, currentStage, status, finished }
@@ -114,6 +142,7 @@ function resetPanels() {
   verificationList.innerHTML = "";
   stageChecklist.innerHTML = "";
   deployBody.innerHTML = "";
+  usageSummaryBox.innerHTML = "";
   verificationState = { applySucceeded: null, compileResult: null, testResult: null };
   stopEverything();
   run = null;
@@ -146,6 +175,8 @@ function renderAssessment(a, blocked) {
   html += `<div class="kv"><span class="k">Reason</span><span class="v">${esc(a.reason)}</span></div>`;
   if (blocked) {
     html += `<p class="hint" style="margin-top:0.8rem;">Try one of these safe, bounded changes instead:</p><div id="alt-list"></div>`;
+  } else if (a.estimate) {
+    html += renderEstimateBlock(a.estimate);
   }
   assessmentBody.innerHTML = html;
 
@@ -161,6 +192,34 @@ function renderAssessment(a, blocked) {
       altList.appendChild(btn);
     });
   }
+}
+
+function fmtUsd(n) {
+  if (n === null || n === undefined) return "—";
+  return "$" + n.toFixed(n < 0.01 ? 4 : 2);
+}
+
+function renderEstimateBlock(estimate) {
+  let html = `<div class="estimate-box"><p class="estimate-label">ESTIMATED EXECUTION</p>`;
+  if (!estimate.available) {
+    html += `<p class="hint">${esc(estimate.reason || "ESTIMATE NOT AVAILABLE.")}</p>`;
+    html += `</div>`;
+    return html;
+  }
+  const [tokLow, tokHigh] = estimate.estimated_total_tokens_range;
+  html += `<div class="kv"><span class="k">Complexity</span><span class="v">${esc(estimate.complexity)}</span></div>`;
+  html += `<div class="kv"><span class="k">Risk</span><span class="v">${esc(estimate.risk)}</span></div>`;
+  html += `<div class="kv"><span class="k">Estimated AI token range</span><span class="v">${tokLow.toLocaleString()} – ${tokHigh.toLocaleString()} tokens (ESTIMATED)</span></div>`;
+  if (estimate.estimated_cost_range_usd) {
+    const [costLow, costHigh] = estimate.estimated_cost_range_usd;
+    html += `<div class="kv"><span class="k">Estimated API cost range</span><span class="v">${fmtUsd(costLow)} – ${fmtUsd(costHigh)} (ESTIMATED)</span></div>`;
+  } else {
+    html += `<div class="kv"><span class="k">Estimated API cost range</span><span class="v">ESTIMATE NOT AVAILABLE (no pricing for ${esc(estimate.provider)}/${esc(estimate.model)})</span></div>`;
+  }
+  html += `<div class="kv"><span class="k">Estimate confidence</span><span class="v">${esc(estimate.confidence)}</span></div>`;
+  html += `<p class="hint estimate-basis">Basis: ${esc(estimate.basis)} · method ${esc(estimate.method_version)}</p>`;
+  html += `</div>`;
+  return html;
 }
 
 function addActivityLine(html) {
@@ -223,7 +282,10 @@ function applyEvent(evt) {
       run.stageStartedTs = evt.ts;
       setStatus(evt.stage);
       addActivityLine(`<span class="stage-marker">— ${esc(evt.stage)} —</span>`);
-      if (TERMINAL_STAGES.has(evt.stage)) finishRun();
+      if (TERMINAL_STAGES.has(evt.stage)) {
+        renderTerminalOutcome();
+        finishRun();
+      }
       break;
     case "no_change_needed":
       addActivityLine(`<span class="hint">${esc(evt.reason)}</span>`);
@@ -266,57 +328,104 @@ function applyEvent(evt) {
     }
     case "final_result":
       resultPanel.hidden = false;
-      renderFinalBanner(evt.text);
+      run.finalResultText = evt.text;
+      // The terminal "stage" event (which triggers renderTerminalOutcome)
+      // arrives BEFORE final_result on the COMPLETED/NO_CHANGE_NEEDED
+      // paths — refresh just the text here so it isn't left blank.
+      if (TERMINAL_STAGES.has(run.status)) resultText.textContent = run.finalResultText;
       run.lastEventTs = evt.ts;
       break;
     case "error":
       addActivityLine(`<span class="err">ERROR: ${esc(evt.message)}</span>`);
       resultPanel.hidden = false;
-      resultBanner.textContent = "FAILED";
-      resultBanner.className = "failed";
-      resultText.textContent = evt.message;
+      run.lastErrorMessage = evt.message;
+      if (TERMINAL_STAGES.has(run.status)) resultText.textContent = run.lastErrorMessage;
+      run.lastEventTs = evt.ts;
+      break;
+    case "usage_summary":
+      run.usageSummary = evt;
+      renderUsageSummary(evt);
       run.lastEventTs = evt.ts;
       break;
   }
   renderStageChecklist();
 }
 
-function renderFinalBanner(text) {
-  let evidenceHtml = "";
-  if (run.currentStage === "NO_CHANGE_NEEDED") {
-    resultBanner.textContent = "ALREADY SATISFIED — NO CHANGE REQUIRED";
-    resultBanner.className = "neutral";
-  } else if (run.currentStage === "DEPLOYMENT_STATUS_UNKNOWN") {
-    // Deliberately NOT rendered as failed: Railway CLI polling was
-    // inconclusive AND the direct production check didn't confirm
-    // HTTP 200 either — genuine uncertainty, not a verified failure.
-    resultBanner.textContent = "DEPLOYMENT STATUS UNKNOWN — CHECK MANUALLY";
-    resultBanner.className = "neutral";
-  } else {
-    const failed = verificationState.applySucceeded === false
-      || (verificationState.compileResult && !verificationState.compileResult.success)
-      || (verificationState.testResult && !verificationState.testResult.success);
-    const verified = !failed && run.deploymentInfo && run.deploymentInfo.verified;
-    resultBanner.textContent = verified ? "PRODUCTION CHANGE VERIFIED" : (failed ? "FAILED" : "DEPLOYED SUCCESSFULLY");
-    resultBanner.className = failed ? "failed" : "success";
+// One authoritative place that decides the four possible terminal
+// outcomes' banner text and "open the app" button — see Section 4 of the
+// Workbench target-app/cost-transparency task. Must never imply a failed
+// or unknown change reached production: only the COMPLETED branch is
+// allowed to say so, and only after apply/compile/test/deploy all
+// genuinely succeeded (enforced server-side by _decide_deployment_outcome
+// before COMPLETED is ever reached).
+const TERMINAL_OUTCOME = {
+  COMPLETED: {
+    banner: "PRODUCTION CHANGE VERIFIED", cls: "success",
+    buttonLabel: "OPEN UPDATED CUSTOMER APP",
+  },
+  NO_CHANGE_NEEDED: {
+    banner: "CURRENT APPLICATION ALREADY SATISFIES THIS REQUIREMENT", cls: "neutral",
+    buttonLabel: "OPEN CURRENT CUSTOMER APP",
+  },
+  FAILED: {
+    banner: "CHANGE WAS NOT VERIFIED AS DEPLOYED", cls: "failed",
+    buttonLabel: "OPEN CURRENT CUSTOMER APP",
+  },
+  DEPLOYMENT_STATUS_UNKNOWN: {
+    banner: "DEPLOYMENT STATUS COULD NOT BE CONFIRMED", cls: "neutral",
+    buttonLabel: "OPEN CURRENT CUSTOMER APP",
+  },
+};
 
-    if (verified) {
-      evidenceHtml += `<div class="production-verified-box">`;
-      evidenceHtml += `<a class="open-production-btn" href="${esc(run.deploymentInfo.public_url)}" target="_blank" rel="noopener">[ OPEN PRODUCTION APP ]</a>`;
-      evidenceHtml += `<div class="kv"><span class="k">Run ID</span><span class="v"><code>${esc(run.id)}</code></span></div>`;
-      if (run.commitInfo) {
-        evidenceHtml += `<div class="kv"><span class="k">Commit SHA</span><span class="v"><code>${esc(run.commitInfo.sha)}</code></span></div>`;
-        evidenceHtml += `<div class="kv"><span class="k">Files changed</span><span class="v"><code>${esc(run.commitInfo.path)}</code></span></div>`;
-      }
-      if (verificationState.compileResult) evidenceHtml += `<div class="kv"><span class="k">Build</span><span class="v">${verificationState.compileResult.success ? "PASS" : "FAIL"} · ${(verificationState.compileResult.duration_ms / 1000).toFixed(1)}s</span></div>`;
-      if (verificationState.testResult) evidenceHtml += `<div class="kv"><span class="k">Tests</span><span class="v">${verificationState.testResult.success ? "PASS" : "FAIL"} · ${(verificationState.testResult.duration_ms / 1000).toFixed(1)}s</span></div>`;
-      evidenceHtml += `<div class="kv"><span class="k">Deployment</span><span class="v">VERIFIED (HTTP ${esc(run.deploymentInfo.http_status)})</span></div>`;
-      if (runStartedAtMs) evidenceHtml += `<div class="kv"><span class="k">Duration</span><span class="v">${fmtDuration((Date.now() - runStartedAtMs) / 1000)}</span></div>`;
-      evidenceHtml += `</div>`;
+function renderTerminalOutcome() {
+  resultPanel.hidden = false;
+  const outcome = TERMINAL_OUTCOME[run.status] || TERMINAL_OUTCOME.FAILED;
+  resultBanner.textContent = outcome.banner;
+  resultBanner.className = outcome.cls;
+
+  const buttonUrl = run.status === "COMPLETED"
+    ? ((run.deploymentInfo && run.deploymentInfo.public_url) || currentAppUrl())
+    : currentAppUrl();
+  let evidenceHtml = `<div class="production-verified-box ${outcome.cls}-box">`;
+  evidenceHtml += `<a class="open-production-btn" href="${esc(buttonUrl)}" target="_blank" rel="noopener">[ ${esc(outcome.buttonLabel)} ]</a>`;
+  evidenceHtml += `<div class="kv"><span class="k">Run ID</span><span class="v"><code>${esc(run.id)}</code></span></div>`;
+  if (run.status === "COMPLETED") {
+    if (run.commitInfo) {
+      evidenceHtml += `<div class="kv"><span class="k">Commit SHA</span><span class="v"><code>${esc(run.commitInfo.sha)}</code></span></div>`;
+      evidenceHtml += `<div class="kv"><span class="k">Files changed</span><span class="v"><code>${esc(run.commitInfo.path)}</code></span></div>`;
     }
+    if (verificationState.compileResult) evidenceHtml += `<div class="kv"><span class="k">Build</span><span class="v">${verificationState.compileResult.success ? "PASS" : "FAIL"} · ${(verificationState.compileResult.duration_ms / 1000).toFixed(1)}s</span></div>`;
+    if (verificationState.testResult) evidenceHtml += `<div class="kv"><span class="k">Tests</span><span class="v">${verificationState.testResult.success ? "PASS" : "FAIL"} · ${(verificationState.testResult.duration_ms / 1000).toFixed(1)}s</span></div>`;
+    if (run.deploymentInfo) evidenceHtml += `<div class="kv"><span class="k">Deployment</span><span class="v">VERIFIED (HTTP ${esc(run.deploymentInfo.http_status)})</span></div>`;
   }
-  resultText.textContent = text;
+  if (runStartedAtMs) evidenceHtml += `<div class="kv"><span class="k">Duration</span><span class="v">${fmtDuration((Date.now() - runStartedAtMs) / 1000)}</span></div>`;
+  evidenceHtml += `</div>`;
+
   document.getElementById("result-evidence").innerHTML = evidenceHtml;
+  resultText.textContent = run.finalResultText || run.lastErrorMessage || "";
+  if (run.usageSummary) renderUsageSummary(run.usageSummary);
+}
+
+function renderUsageSummary(evt) {
+  if (!evt.captured) {
+    usageSummaryBox.innerHTML = `<div class="usage-box"><p class="estimate-label">ACTUAL AI USAGE</p><p class="hint">ACTUAL USAGE NOT CAPTURED</p></div>`;
+    return;
+  }
+  let html = `<div class="usage-box"><p class="estimate-label">ACTUAL AI USAGE</p>`;
+  html += `<div class="kv"><span class="k">Model</span><span class="v">${esc(evt.provider)}/${esc(evt.model)}</span></div>`;
+  html += `<div class="kv"><span class="k">Input tokens</span><span class="v">${evt.input_tokens.toLocaleString()}</span></div>`;
+  html += `<div class="kv"><span class="k">Output tokens</span><span class="v">${evt.output_tokens.toLocaleString()}</span></div>`;
+  if (evt.cache_read_tokens) html += `<div class="kv"><span class="k">Cache-read tokens</span><span class="v">${evt.cache_read_tokens.toLocaleString()}</span></div>`;
+  if (evt.cache_write_tokens) html += `<div class="kv"><span class="k">Cache-write tokens</span><span class="v">${evt.cache_write_tokens.toLocaleString()}</span></div>`;
+  html += `<div class="kv"><span class="k">Actual API cost</span><span class="v">${evt.cost_available ? fmtUsd(evt.cost_usd) : "NOT AVAILABLE (" + esc(evt.cost_unavailable_reason || "unpriced model") + ")"}</span></div>`;
+  if (evt.elapsed_seconds != null) html += `<div class="kv"><span class="k">Elapsed run time</span><span class="v">${fmtDuration(evt.elapsed_seconds)}</span></div>`;
+  if (evt.tool_call_count != null) html += `<div class="kv"><span class="k">Tool-call count</span><span class="v">${evt.tool_call_count}</span></div>`;
+  if (evt.estimate_error) {
+    const ee = evt.estimate_error;
+    html += `<p class="hint estimate-basis">Estimate vs. actual: predicted ${ee.estimated_total_tokens_range[0].toLocaleString()}–${ee.estimated_total_tokens_range[1].toLocaleString()} tokens, actual ${ee.actual_total_tokens.toLocaleString()} (${ee.within_estimated_range ? "within range" : "outside range"}).</p>`;
+  }
+  html += `</div>`;
+  usageSummaryBox.innerHTML = html;
 }
 
 // Dedup key: (type, ts) is effectively unique per real backend event —
@@ -368,7 +477,7 @@ function subscribeToRun(runId) {
     try { applyEventIfNew(JSON.parse(e.data)); } catch (_) { /* malformed frame, ignore */ }
   };
   ["risk_assessment", "stage", "no_change_needed", "tool_call", "tool_result",
-   "approval_decision", "commit", "deployment", "final_result", "error"]
+   "approval_decision", "commit", "deployment", "final_result", "error", "usage_summary"]
     .forEach(type => eventSource.addEventListener(type, onMessage));
 }
 
@@ -490,6 +599,7 @@ async function submit() {
     id: data.run_id, seenEventKeys: new Set(), stagesSeen: new Set(["RECEIVED"]),
     currentStage: null, status: "STARTING", lastEventTs: null,
     stageStartedTs: null, finished: false,
+    finalResultText: null, lastErrorMessage: null, usageSummary: null,
   };
   rsRunId.textContent = data.run_id;
   runStartedAtMs = Date.now();

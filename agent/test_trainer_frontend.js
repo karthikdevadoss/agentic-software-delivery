@@ -252,7 +252,7 @@ async function testBC_pollingFallbackWhenSSESilent() {
 
   assertEqual(FakeEventSource.instances[0].listeners["stage"] === undefined ? 0 : 0, 0, "sanity");
   assert(doc.getElementById("activity-list").children.length > 0, "B: progress became visible with SSE completely silent");
-  assertEqual(doc.getElementById("result-banner").textContent, "ALREADY SATISFIED — NO CHANGE REQUIRED", "C/F: NO_CHANGE_NEEDED reached via polling fallback");
+  assertEqual(doc.getElementById("result-banner").textContent, "CURRENT APPLICATION ALREADY SATISFIES THIS REQUIREMENT", "C/F: NO_CHANGE_NEEDED reached via polling fallback");
   assert(!FakeEventSource.instances[0].closed || true, "sanity"); // EventSource may or may not have been explicitly closed by fake browser, not asserted here
   sandbox.stopEverything();
 }
@@ -272,7 +272,7 @@ async function testDE_completedAndFailedThroughFallback() {
     await sandbox.pollOnce();
     await sleep(350);
 
-    const expectedBanner = finalStage === "COMPLETED" ? "PRODUCTION CHANGE VERIFIED" : "FAILED";
+    const expectedBanner = finalStage === "COMPLETED" ? "PRODUCTION CHANGE VERIFIED" : "CHANGE WAS NOT VERIFIED AS DEPLOYED";
     assertEqual(doc.getElementById("result-banner").textContent, expectedBanner, `D/E: ${finalStage} reached through polling-only fallback`);
     assertEqual(doc.getElementById("submit-btn").disabled, false, `D/E: submit re-enabled after ${finalStage}`);
     sandbox.stopEverything();
