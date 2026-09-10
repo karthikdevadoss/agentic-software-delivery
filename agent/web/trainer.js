@@ -169,6 +169,9 @@ function subscribeToRun(runId) {
     lastStage = data.stage;
     setStatus(data.stage);
     addActivityLine(`<span class="stage-marker">— ${esc(data.stage)} —</span>`);
+    // Must stay in sync with agent/web_server.py's TERMINAL_RUN_STATES —
+    // that's the authoritative list; a state missing from either side
+    // reproduces the exact "stuck at STARTING" bug this comment is next to.
     if (data.stage === "COMPLETED" || data.stage === "FAILED" || data.stage === "NO_CHANGE_NEEDED") {
       submitBtn.disabled = false;
       // Small delay before closing: the server emits the reason (an

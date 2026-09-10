@@ -229,6 +229,9 @@ def _run_history_sessions() -> list:
         is_trainer = r.get("session_type") == "trainer_demo" or str(r["run_id"]).startswith("trainer-")
         session_type = "trainer_demo" if is_trainer else ("benchmark" if r["is_mock"] else "product_runtime")
         goal = r.get("requirement") or r["requirement_excerpt"] or "(no requirement text captured)"
+        # Must stay in sync with web_server.TERMINAL_RUN_STATES (that module
+        # is the authoritative source; not imported here to avoid a
+        # circular import — web_server imports this module already).
         status = "FAILED" if r["final_status"] not in ("COMPLETED", "NO_CHANGE_NEEDED") else r["final_status"]
 
         compile_ok = r.get("compile", {}).get("success") if r.get("compile") else None

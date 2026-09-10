@@ -76,6 +76,23 @@ STAGE_LABELS = {
     "run_controlled_tests": "TESTING",
 }
 
+# The single authoritative list of run.status values that mean "this run
+# is done, no further events will ever arrive." Every consumer that needs
+# to know whether a run is finished (SSE delivery, this module's own
+# terminal checks) must go through _run_is_terminal()/this set rather
+# than re-deriving its own list — that duplication is exactly what let
+# NO_CHANGE_NEEDED be added as a real run.status value (see the
+# "PROPOSING CHANGE"/"BUILDING"/etc. in-progress stages above) without
+# stream_events() ever finding out, leaving completed runs' SSE streams
+# open forever. If you add a new terminal run.status anywhere in this
+# file, add it here in the same change.
+TERMINAL_RUN_STATES = frozenset({"COMPLETED", "FAILED", "NO_CHANGE_NEEDED"})
+
+
+def _run_is_terminal(run: "Run") -> bool:
+    return run.status in TERMINAL_RUN_STATES
+
+
 API_KEY = None
 RUNS = {}
 
@@ -624,24 +641,30 @@ async def get_run(request: Request):
     })
 
 
+async def _generate_run_events(run: "Run", is_disconnected):
+    """is_disconnected: async callable, () -> bool (normally
+    request.is_disconnected). Extracted from stream_events as a top-level
+    function so this exact termination logic — the thing that was
+    actually broken — can be driven directly in a test with a fake Run
+    and a fake is_disconnected, without needing a real ASGI request."""
+    sent = 0
+    while True:
+        if await is_disconnected():
+            break
+        new_events, sent = run.events_from(sent)
+        for evt in new_events:
+            yield {"event": evt["type"], "data": json.dumps(evt)}
+        if _run_is_terminal(run) and not new_events:
+            break
+        await asyncio.sleep(0.3)
+
+
 async def stream_events(request: Request):
     run = RUNS.get(request.path_params["run_id"])
     if run is None:
         return JSONResponse({"error": "no such run"}, status_code=404)
 
-    async def event_generator():
-        sent = 0
-        while True:
-            if await request.is_disconnected():
-                break
-            new_events, sent = run.events_from(sent)
-            for evt in new_events:
-                yield {"event": evt["type"], "data": json.dumps(evt)}
-            if run.status in ("COMPLETED", "FAILED") and not new_events:
-                break
-            await asyncio.sleep(0.3)
-
-    return EventSourceResponse(event_generator())
+    return EventSourceResponse(_generate_run_events(run, request.is_disconnected))
 
 
 async def decide(request: Request):
