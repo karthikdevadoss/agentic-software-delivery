@@ -112,42 +112,42 @@ old date as due for re-verification, not as current truth.
   `pg_dump` archive. Sufficient to prove exportability; not equivalent to
   Railway-native PITR for production-grade recovery guarantees.
 
-## Local Workbench execution engine + Cloudflare Quick Tunnel
+## Local Workbench execution engine + TEMPORARY TRAINER PREVIEW URL
 
-- **NAME:** Local Starlette server (`agent/web_server.py`) + `cloudflared`
-  Quick Tunnel.
+- **NAME:** Local Starlette server (`agent/web_server.py`) + `ngrok` HTTP
+  tunnel.
 - **PURPOSE:** Runs Workbench/Dashboard/Usage/Learn/Profile (and the
-  internal-only Control Plane at `/control-plane`) locally, optionally
-  exposed publicly via an ephemeral tunnel for demos.
-- **PROVIDER:** This laptop (server), Cloudflare (Quick Tunnel, free/
-  account-less tier).
-- **URL:** Local: `http://127.0.0.1:8420` — **CURRENT, fully verified**
-  (all 6 public routes return HTTP 200, `/trainer` and `/sessions` return
-  308 redirects to `/workbench`/`/usage`). Latest attempted public tunnel
-  URL: `https://construct-limousines-venues-hats.trycloudflare.com` —
-  **UNCONFIRMED**. `cloudflared` itself reported a successful tunnel
-  registration with Cloudflare's edge (`location=txl01`), but the
-  hostname did not resolve in DNS after ~10+ minutes across 3 separate
-  tunnel creation attempts, confirmed via a direct query to Cloudflare's
-  own authoritative resolver (1.1.1.1 DoH), which returned NXDOMAIN with
-  a cached negative TTL. This looks like a genuine, transient issue with
-  the free/account-less Quick Tunnel DNS provisioning path at the time
-  of this session, not a code defect in this project — the identical
-  symptom (successful registration, unresolvable hostname) occurred on
-  all 3 attempts. **The URL above may or may not become reachable** —
-  worth a direct check before relying on it; a fresh
-  `cloudflared tunnel --url http://127.0.0.1:8420` attempt (ideally at a
-  different time) is the standard recovery step, same as any expired
-  Quick Tunnel.
-- **STATUS:** CURRENT (local only, fully verified) / **UNCONFIRMED**
-  (public tunnel — see above, distinct from the previously EXPIRED one)
+  internal-only Control Plane at `/control-plane`) locally, exposed
+  publicly via a temporary tunnel for trainer preview access.
+- **PROVIDER:** This laptop (server), `ngrok` (free-tier authenticated
+  account, provider = ngrok).
+- **TEMPORARY TRAINER PREVIEW URL:** `https://relish-collapse-flyaway.ngrok-free.dev`
+- **STATUS:** LIVE — **verified publicly reachable**: `/`, `/workbench`,
+  `/dashboard`, `/usage`, `/learn`, `/profile` all return real HTTP 200
+  pages with correct titles/nav through this exact URL; `/trainer` and
+  `/sessions` return 308 redirects to `/workbench`/`/usage`. A full real
+  Workbench acceptance run (requirement: `Add a small "Powered by Agentic
+  Delivery" footer line to the page`) was submitted and completed through
+  this same public URL, reaching `NO_CHANGE_NEEDED` (genuinely
+  non-mutating — the footer already matched from an earlier real run).
+- **PURPOSE:** trainer preview.
+- **DEPENDENCY:** creator's laptop staying on + the local
+  `agent/web_server.py` process (PID recorded at start time, port 8420)
+  + this `ngrok` process remaining alive. If either stops, this URL goes
+  dark — it is NOT independent infrastructure.
 - **LAST VERIFIED:** 2026-09-10
-- **NOTES:** Quick Tunnel URLs are inherently ephemeral and change on
-  every `cloudflared` restart — this is expected behavior, not a defect
-  (see docs/PROJECT_STATE.json `open_defects`). A fresh tunnel run is
-  needed before the next public Workbench demo. Planned permanent
-  replacement: `agentic.karthikdevadoss.com` (see docs/COMPANY_VISION.md)
-  — **NOT LIVE**, do not claim otherwise until this entry is updated.
+- **NOTES:** This is explicitly TEMPORARY trainer-preview infrastructure,
+  not durable/permanent hosting. Do not treat this URL as stable across a
+  laptop restart or beyond this demo window. An earlier Cloudflare Quick
+  Tunnel attempt (same session, prior task) failed at public DNS
+  resolution across 3 attempts despite successful edge registration —
+  switched to `ngrok` instead per explicit instruction, not retried
+  further. No `ngrok` authtoken is stored in this repository or anywhere
+  in Git — it lives only in the local `ngrok` config
+  (`%LOCALAPPDATA%\ngrok\ngrok.yml` on this machine), configured
+  interactively by the creator. **CANONICAL FINAL URL (not live yet):**
+  `https://agentic.karthikdevadoss.com` (see docs/COMPANY_VISION.md) —
+  do not claim that domain is live until this entry is updated.
 
 ## Model providers actually used
 
