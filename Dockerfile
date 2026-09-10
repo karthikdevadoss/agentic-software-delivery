@@ -60,6 +60,22 @@ RUN git config --global --add safe.directory /repo \
     && git config --global user.email "agent@agentic-software-delivery.local" \
     && git config --global user.name "Agentic Software Delivery (platform)"
 
+# ROOT CAUSE (real production incident, run trainer-6aedf022, 2026-09-10):
+# `railway up`'s upload of the local working directory does not include
+# .git (confirmed: the deployed container had no .git anywhere under
+# /repo at all — not a permissions/ownership issue, which would raise a
+# different git error). COPY . . therefore never had a .git to copy, so
+# every real trainer commit attempt failed with "fatal: not a git
+# repository" at the COMMITTING stage, after real API cost had already
+# been spent on investigation/proposal/build. Fix: give the image its
+# own real, usable git repository at build time if none was uploaded —
+# this workspace never pushes to/pulls from GitHub, it only needs a
+# genuine local repo so `git commit`/`git rev-parse HEAD` work for the
+# trainer's provenance-commit-then-deploy flow.
+RUN if [ ! -d .git ]; then \
+      git init -q && git add -A && git commit -q -m "Baseline snapshot (Railway build context has no .git)"; \
+    fi
+
 WORKDIR /repo/agent
 
 # PORT is provided by Railway at runtime; web_server.py reads it (falls

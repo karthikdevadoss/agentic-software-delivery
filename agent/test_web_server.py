@@ -14,7 +14,9 @@ Run: python agent/test_web_server.py
 import asyncio
 import json
 import sys
+import tempfile
 import unittest
+from pathlib import Path
 from unittest import mock
 
 import web_server as ws
@@ -420,6 +422,82 @@ class EstimateErrorTestCase(unittest.TestCase):
         self.assertEqual(result["actual_total_tokens"], 1500)
         self.assertTrue(result["within_estimated_range"])
         self.assertEqual(result["estimate_method_version"], "test-v1")
+
+
+class RepositoryWorkspaceReadyTestCase(unittest.TestCase):
+    """Regression tests for real production incident trainer-6aedf022
+    (2026-09-10): `railway up` does not upload .git, so a source-mutating
+    run reached COMMITTING — after real API cost was spent — before
+    discovering there was no usable git repository at all. The
+    workspace must be verified BEFORE the agent loop runs, not after."""
+
+    def test_real_repository_on_this_machine_is_ready(self):
+        """This dev checkout has a real .git — sanity-checks the positive
+        path isn't itself broken."""
+        result = ws._check_repository_workspace_ready()
+        self.assertTrue(result["ready"])
+        self.assertTrue(result["checks"]["git_repository_usable"])
+        self.assertTrue(result["checks"]["head_resolvable"])
+
+    def test_missing_git_repository_is_detected_not_assumed(self):
+        """Reproduces the exact real incident: a directory with real
+        source files but genuinely no .git anywhere up the tree."""
+        with tempfile.TemporaryDirectory() as tmp:
+            fake_root = Path(tmp)
+            (fake_root / "app" / "src").mkdir(parents=True)
+            with mock.patch.object(ws, "REPO_ROOT", fake_root), \
+                 mock.patch.object(ws, "APP_DIR", fake_root / "app"):
+                result = ws._check_repository_workspace_ready()
+                self.assertFalse(result["ready"])
+                self.assertFalse(result["checks"]["git_repository_usable"])
+
+    def test_trainer_thread_fails_before_touching_source_when_workspace_not_ready(self):
+        """The exact required behavior: FAIL BEFORE MODIFYING SOURCE.
+        run_agent_loop must never even be called when the precondition
+        fails — proves zero source mutation was attempted, not just that
+        the final status happens to say FAILED."""
+        run = ws.Run("test-run", "test requirement")
+        run.trainer_usage_start_index = 0
+        with mock.patch.object(ws, "_check_repository_workspace_ready",
+                                return_value={"ready": False, "checks": {"git_repository_usable": False}}), \
+             mock.patch.object(ws, "_fetch_public_app", return_value=(200, "<html></html>")), \
+             mock.patch("web_server.run_agent_loop") as mock_agent_loop:
+            ws._run_trainer_thread(run, "some requirement", {"complexity": "TINY", "risk": "LOW"})
+        mock_agent_loop.assert_not_called()
+        self.assertEqual(run.status, "FAILED")
+        error_event = next(e for e in run.events if e["type"] == "error")
+        self.assertIn("REPOSITORY_WORKSPACE_READY", error_event["message"])
+
+
+class TestApplicabilityGateTestCase(unittest.TestCase):
+    """Regression tests for the real observed defect: Testing did not
+    visibly reach PASS before Commit. Root cause: an empty test_events
+    list was silently treated as 'tests passed.' Must now be an explicit,
+    truthful decision keyed off a real fact (does app/src/test/java have
+    any test files at all right now), never a silent default."""
+
+    def test_real_app_test_directory_reflects_actual_repo_state(self):
+        """Sanity-checks the real fact this repo currently has, so the
+        rest of this task's tests aren't built on an assumption."""
+        test_dir = ws.APP_DIR / "src" / "test" / "java"
+        has_real_tests = test_dir.is_dir() and any(test_dir.rglob("*.java"))
+        self.assertEqual(ws._tests_applicable(), has_real_tests)
+
+    def test_tests_not_applicable_when_no_test_files_exist(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            fake_app_dir = Path(tmp) / "app"
+            (fake_app_dir / "src" / "test" / "java").mkdir(parents=True)
+            with mock.patch.object(ws, "APP_DIR", fake_app_dir):
+                self.assertFalse(ws._tests_applicable())
+
+    def test_tests_applicable_when_a_real_test_file_exists(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            fake_app_dir = Path(tmp) / "app"
+            test_dir = fake_app_dir / "src" / "test" / "java"
+            test_dir.mkdir(parents=True)
+            (test_dir / "SomeTest.java").write_text("class SomeTest {}", encoding="utf-8")
+            with mock.patch.object(ws, "APP_DIR", fake_app_dir):
+                self.assertTrue(ws._tests_applicable())
 
 
 class PublicRouteRedirectTestCase(unittest.IsolatedAsyncioTestCase):

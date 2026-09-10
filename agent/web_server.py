@@ -171,6 +171,8 @@ def _canonical_event_type(internal_type: str, data: dict) -> str:
         return "run_completed"
     if internal_type == "usage_summary":
         return "run_usage_summary"
+    if internal_type == "repository_workspace_check":
+        return "repository_workspace_check"
     if internal_type == "deployment":
         if data.get("verified"):
             return "deployment_completed"
@@ -654,6 +656,36 @@ def _fetch_public_app(timeout_s=15):
         return None, str(exc)
 
 
+def _check_repository_workspace_ready() -> dict:
+    """REPOSITORY_WORKSPACE_READY precondition — verified explicitly
+    before any source-mutating trainer run, never assumed from an
+    accidental current working directory. Root-caused real incident
+    (run trainer-6aedf022, 2026-09-10): `railway up` does not upload
+    .git, so a genuinely fresh deploy could reach COMMITTING — after
+    real API cost was already spent on investigation/apply/build —
+    before discovering there was no usable git repository at all. This
+    check must run BEFORE the agent loop starts, not after apply."""
+    checks = {
+        "repo_root_exists": REPO_ROOT.is_dir(),
+        "app_source_tree_exists": (APP_DIR / "src").is_dir(),
+    }
+    is_repo_ok, is_repo_out = _run_controlled(["git", "rev-parse", "--is-inside-work-tree"], REPO_ROOT, 10)
+    checks["git_repository_usable"] = is_repo_ok and is_repo_out.strip() == "true"
+    head_ok, head_out = _run_controlled(["git", "rev-parse", "--short", "HEAD"], REPO_ROOT, 10)
+    checks["head_resolvable"] = head_ok and bool(head_out.strip())
+    return {"ready": all(checks.values()), "checks": checks}
+
+
+def _tests_applicable() -> bool:
+    """Real, checkable fact — not a guess: does app/src/test/java contain
+    any .java file at all right now? If none exist, requiring a test run
+    before commit would be theater (Maven's surefire has nothing to
+    execute), so that state must be shown as an explicit, truthful
+    TESTING — NOT APPLICABLE rather than silently treated as passed."""
+    test_dir = APP_DIR / "src" / "test" / "java"
+    return test_dir.is_dir() and any(test_dir.rglob("*.java"))
+
+
 def _run_trainer_thread(run: "Run", requirement: str, assessment: dict) -> None:
     global _CURRENT_RUN_ID
     run.trainer_changed_path = None
@@ -662,6 +694,14 @@ def _run_trainer_thread(run: "Run", requirement: str, assessment: dict) -> None:
     _CURRENT_RUN_ID = run.id
 
     try:
+        workspace = _check_repository_workspace_ready()
+        run.emit("repository_workspace_check", workspace)
+        if not workspace["ready"]:
+            run.emit("error", {"message": f"REPOSITORY_WORKSPACE_READY failed before any source was touched — not modifying source. Checks: {workspace['checks']}"})
+            run.status = "FAILED"
+            run.emit("stage", {"stage": "FAILED"})
+            return
+
         run.status = "PLANNING"
         run.emit("stage", {"stage": "PLANNING"})
         result = run_agent_loop(
@@ -703,7 +743,23 @@ def _run_trainer_thread(run: "Run", requirement: str, assessment: dict) -> None:
         apply_ok = any(e for e in run.events if e["type"] == "tool_result" and e.get("tool") == "apply_approved_source_change" and e.get("success"))
         compile_ok = any(e for e in run.events if e["type"] == "tool_result" and e.get("tool") == "run_controlled_compile" and e.get("success"))
         test_events = [e for e in run.events if e["type"] == "tool_result" and e.get("tool") == "run_controlled_tests"]
-        test_ok = (not test_events) or all(e.get("success") for e in test_events)
+        # Real incident (trainer-6aedf022): an empty test_events list was
+        # silently treated as "tests passed," letting COMMIT proceed with
+        # no visible testing state at all. Now an explicit, truthful
+        # decision: tests are only skippable when app/src/test/java
+        # genuinely has zero test files (a real, checkable fact, not
+        # assumed) — otherwise a skipped test run blocks commit exactly
+        # like a failed one.
+        if test_events:
+            test_ok = all(e.get("success") for e in test_events)
+        elif not _tests_applicable():
+            run.emit("stage", {
+                "stage": "TESTING — NOT APPLICABLE",
+                "reason": "app/src/test/java currently has no test files, so there is nothing for Maven's test phase to execute.",
+            })
+            test_ok = True
+        else:
+            test_ok = False
 
         if not (apply_ok and compile_ok and test_ok):
             run.emit("error", {"message": "Implementation did not pass verification (apply/compile/test) — not deployed. Production is unchanged."})

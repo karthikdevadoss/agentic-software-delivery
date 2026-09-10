@@ -330,12 +330,33 @@ async function testGH_transportFailureNeverResubmits() {
   sandbox.stopEverything();
 }
 
+async function testJ_targetAppNeverStaysLoadingForeverOnFailure() {
+  // Real production incident: this card was observed stuck on "Loading
+  // target application..." indefinitely. Reproduces the failure path
+  // (GET /api/target-app rejects) and proves a bounded, truthful
+  // fallback renders instead of leaving the placeholder text forever.
+  const fetchStub = makeFetchStub({}); // no route registered -> every fetch rejects
+  const doc = makeDocumentStub();
+  doc._elementsById.set("target-app-body", makeElement("div"));
+  FakeEventSource.instances = [];
+  const sandbox = loadTrainerContext(doc, fetchStub);
+  await sleep(50); // let the fire-and-forget loadTargetApp() call settle
+
+  const body = doc.getElementById("target-app-body");
+  assert(!String(body.textContent || body._innerHTML).includes("Loading target application"),
+    "J: target-app card does not stay on the loading placeholder after a fetch failure");
+  assert(String(body._innerHTML).includes("OPEN CURRENT CUSTOMER APP"),
+    "J: a usable fallback link is shown even when the live lookup fails");
+  sandbox.stopEverything();
+}
+
 (async () => {
   await testA_sseWorksNormally();
   await testBC_pollingFallbackWhenSSESilent();
   await testDE_completedAndFailedThroughFallback();
   await testI_noDuplicateEventsWhenBothTransportsDeliverSameData();
   await testGH_transportFailureNeverResubmits();
+  await testJ_targetAppNeverStaysLoadingForeverOnFailure();
 
   console.log(`\n${passed} passed, ${failures} failed`);
   process.exit(failures > 0 ? 1 : 0);

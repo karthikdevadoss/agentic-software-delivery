@@ -98,10 +98,24 @@ EXAMPLES.forEach(ex => {
 // drift from the exact URL the backend itself deploys to and verifies
 // against (see agent/web_server.py's TARGET_APPLICATION/PUBLIC_CUSTOMER_APP_URL).
 let targetApp = null;
+const TARGET_APP_TIMEOUT_MS = 8000;
 
+// Real production incident: this card was observed stuck on "Loading
+// target application..." indefinitely. fetch() has NO built-in timeout —
+// a hung/slow response (or a stale cached script from before this
+// endpoint existed) left the card with no bounded failure path at all.
+// AbortController + a fallback with a manual retry button ensures this
+// card can never stay on "Loading..." forever, and a truthful message +
+// the known real URL are shown even when the live lookup genuinely fails.
 async function loadTargetApp() {
+  targetAppBody.innerHTML = `<p class="hint">Loading target application…</p>`;
+  let timeoutId;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error("target-app fetch timed out")), TARGET_APP_TIMEOUT_MS);
+  });
   try {
-    const resp = await fetch("/api/target-app");
+    const resp = await Promise.race([fetch("/api/target-app"), timeout]);
+    clearTimeout(timeoutId);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     targetApp = await resp.json();
     targetAppBody.innerHTML =
@@ -110,9 +124,25 @@ async function loadTargetApp() {
       `<p class="hint">${esc(targetApp.description)}</p>` +
       `<a class="secondary open-app-link" href="${esc(targetApp.url)}" target="_blank" rel="noopener">OPEN CURRENT CUSTOMER APP ↗</a>`;
   } catch (_) {
-    targetAppBody.innerHTML = `<p class="hint err">Could not load target application info. Try reloading the page.</p>`;
+    clearTimeout(timeoutId);
+    // Truthful, USABLE fallback — never left staring at "Loading…"
+    // forever, and never silently omits the one thing a trainer actually
+    // needs (a working link to the real target application).
+    targetAppBody.innerHTML =
+      `<p class="hint err">Could not load live target application info (request failed or timed out).</p>` +
+      `<a class="secondary open-app-link" href="${esc(PUBLIC_CUSTOMER_APP_FALLBACK_URL)}" target="_blank" rel="noopener">OPEN CURRENT CUSTOMER APP ↗</a>` +
+      `<button class="secondary" id="retry-target-app" style="margin-left:0.5rem;">RETRY</button>`;
+    const retryBtn = document.getElementById("retry-target-app");
+    if (retryBtn) retryBtn.addEventListener("click", loadTargetApp);
   }
 }
+
+// Static, known-correct fallback for the one case the live lookup itself
+// cannot answer (the lookup failed) — kept in sync with
+// agent/web_server.py's PUBLIC_CUSTOMER_APP_URL; used ONLY when
+// /api/target-app is unreachable, never as the primary source of truth.
+const PUBLIC_CUSTOMER_APP_FALLBACK_URL = "https://agentic-delivery-customer-app-production.up.railway.app/";
+
 loadTargetApp();
 
 function currentAppUrl() {
@@ -282,6 +312,7 @@ function applyEvent(evt) {
       run.stageStartedTs = evt.ts;
       setStatus(evt.stage);
       addActivityLine(`<span class="stage-marker">— ${esc(evt.stage)} —</span>`);
+      if (evt.reason) addActivityLine(`<span class="hint">${esc(evt.reason)}</span>`);
       if (TERMINAL_STAGES.has(evt.stage)) {
         renderTerminalOutcome();
         finishRun();
