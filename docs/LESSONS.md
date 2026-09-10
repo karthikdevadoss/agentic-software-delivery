@@ -160,3 +160,43 @@ surprising verified behavior would otherwise get rediscovered later.
   target (don't just trust the command exited 0) before treating the
   workspace as clean, especially right before a run whose output you're
   about to inspect for signal.
+
+- **Agent execution must not depend on one observability transport.** A
+  Cloudflare Quick Tunnel silently dropped an entire SSE stream — no
+  error, no close, zero bytes — while the backend genuinely executed a
+  real run to completion. A client cannot reliably detect that class of
+  silent failure from `EventSource`'s own signals. Correction: UI state
+  must come from authoritative backend state (an ordinary `GET` of the
+  same run), not from the assumption that a live stream is healthy —
+  SSE stays the fast path, plain HTTP polling runs as an always-on
+  safety net, not a failure-triggered fallback (a client can't always
+  detect the failure to trigger on). A transport failure is not the same
+  as an execution failure, and a user must always be able to tell
+  working / waiting / stalled / degraded / failed / completed apart —
+  see `agent/web/trainer.js` and `knowledge/sessions/2026-09-10-trainer-idempotency-fix.md`.
+
+- **Adding a new state to a state machine requires auditing every
+  consumer of it, not just the one you're actively working on.** Adding
+  `NO_CHANGE_NEEDED` to fix one bug immediately broke SSE stream
+  termination, because the delivery layer had its own separate,
+  now-stale terminal-state list nobody thought to check in the same
+  change. Correction: one authoritative `TERMINAL_RUN_STATES` set instead
+  of duplicated tuples; when introducing or changing a run state,
+  explicitly review execution/orchestration, terminal-state definitions,
+  event emission, SSE, polling/status APIs, persistence, Sessions,
+  Dashboard, frontend rendering, and tests — not by blindly editing all
+  of them, but by checking each one and changing only what actually needs it.
+
+- **`subprocess.run(..., text=True)` on Windows decodes captured output
+  using the system codepage (cp1252), not UTF-8, unless `encoding=` is
+  given explicitly.** A CLI tool's own colored/unicode output (e.g.
+  Railway's "●" status bullet) can contain byte sequences invalid under
+  cp1252, raising `UnicodeDecodeError` inside `subprocess.Popen`'s
+  background reader threads. That exception doesn't propagate to the
+  caller (Python's default thread-exception hook just prints it) — the
+  call appears to "succeed" with corrupted/empty captured text instead of
+  raising, which silently broke a `"Online" in status_out` check and
+  produced repeatable false "deployment failed" results even though the
+  real deploy had succeeded. Confirmed a real, repeatable defect (not
+  fixed yet — tracked in docs/PROJECT_STATE.json `open_defects`); the fix
+  is `encoding="utf-8", errors="replace"` on every such `subprocess.run` call.

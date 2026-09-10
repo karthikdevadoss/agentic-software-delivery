@@ -117,3 +117,64 @@ commented to point back at this set as the source of truth.
 `agent/test_web_server.py` regression-tests the exact hang (via a
 bounded `asyncio.wait_for`, so a future regression fails fast instead of
 hanging the test suite) plus every other real run status.
+
+## Addendum 2 — Silent SSE transport failure (run `trainer-988627bc`, commit `69caf06`)
+
+**Symptom:** A different real requirement ("change existing footer text")
+submitted through the public Workbench showed: accepted, TINY/LOW/
+AUTO-EXECUTE, then `STARTING` forever — Live Agent Progress empty, no
+error, no approval visible, no way to tell if anything was happening.
+
+**Investigation (diagnosis-only pass, no code touched until confirmed):**
+Found the exact run via the server access log. `GET /api/runs/trainer-988627bc`
+(bypassing the tunnel, straight to `127.0.0.1:8420`) returned the full,
+correct, currently-progressing event history instantly. The identical
+request through the live Cloudflare Quick Tunnel
+(`https://fallen-pest-ecology-walter.trycloudflare.com/api/runs/trainer-988627bc/events`)
+delivered **zero bytes** in a 12-second window — no error, no close, just
+silence. The backend was never broken; it eventually reached a real
+(if false-negative, see below) terminal state on its own.
+
+**Root cause:** The public tunnel silently failed to relay a long-lived
+SSE stream while ordinary request/response traffic through the same
+tunnel worked normally. `EventSource` gives a client no reliable signal
+to detect "connected but nothing will ever arrive" — no `error` fires,
+no `close` fires, it just goes quiet forever.
+
+**Engineering lesson:** Never make a user-visible workflow's *observability*
+depend on a single transport, especially one you don't control (a free
+ephemeral tunnel). The backend was doing real, valuable work the entire
+time this incident looked like a dead system — the actual defect was
+100% presentation-layer, not execution-layer, but from the operator's
+chair it was indistinguishable from a hang. The fix: `agent/web/trainer.js`
+now always runs a plain HTTP poll of the same authoritative `GET
+/api/runs/{id}` state alongside SSE, deduped by `(event type, timestamp)`
+rather than a position counter (since SSE replays from scratch on
+reconnect and this tunnel is known to drop and silently retry) — so a
+silent SSE failure costs at most one poll interval of latency, never
+total blindness.
+
+**Bonus finding during this incident:** the previously-flagged
+`UnicodeDecodeError` in `_run_controlled()`'s subprocess capture
+(Windows defaults to cp1252, not UTF-8, for `text=True` without an
+explicit `encoding=`) was directly observed corrupting `railway status`
+output during this exact run's deploy-poll loop, and independently
+confirmed responsible for a real false "Deployment did not reach Online"
+failure — Railway itself, and the live app's content, showed the deploy
+had actually succeeded. This happened a second and third time on
+follow-up verification runs the same session, i.e. it's a repeatable
+failure mode, not a fluke. Left open per explicit scope (see
+docs/PROJECT_STATE.json `open_defects`); the fix required is a one-line
+`encoding="utf-8", errors="replace"` addition, not attempted here to
+keep this fix focused on the proven root cause it was scoped to.
+
+**Verification:** `agent/test_trainer_frontend.js` (new, plain-Node,
+`vm`-based, no new dependency) proves the SSE-completely-silent case
+still reaches a correct terminal state via polling alone, and that
+overlapping delivery from both transports never double-renders — the
+dedup test was confirmed to actually fail (16 lines instead of 8) when
+the dedup check is removed, proving it's a real regression guard, not a
+tautology. Live-verified twice more through the public tunnel: once
+where the agent correctly found real drift and made a real fix (proving
+the UI isn't blind to genuine work), and once against the now-correct
+text reaching `NO_CHANGE_NEEDED` with zero mutation/commit/deploy.

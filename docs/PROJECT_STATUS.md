@@ -324,3 +324,30 @@ cd app
 For every meaningful phase:
 implement → inspect diff → compile/test/run → verify → commit.
 Never continue with a broken/uncommitted baseline.
+
+# Current Reality (2026-09-10)
+
+**Public Trainer Workbench run visibility:** resilient. SSE remains the
+fast path; `agent/web/trainer.js` now always runs an HTTP poll of the
+authoritative `GET /api/runs/{id}` state alongside it, so a silent
+transport failure (proven real via the current Cloudflare Quick Tunnel —
+see knowledge/sessions/2026-09-10-trainer-idempotency-fix.md) costs at
+most one poll interval of UI latency, never total blindness. Verified:
+focused Node test suite (14/14, including a test proven to actually
+catch the duplicate-render class of bug) + full Python regression suite
+(74/74, 1 pre-existing skip) + two live runs through the public tunnel
+(one real fix deployed, one genuine no-op with zero mutation/commit/deploy).
+
+**Still requires creator visual verification:** the actual rendered
+browser experience (stage checklist, transport badge, timers) — verified
+here via curl/Node-harness evidence, not a real browser.
+
+**Known open defects (not fixed, tracked for a future focused fix):**
+- `_run_controlled()`'s subprocess output capture (`agent/web_server.py`)
+  doesn't pass `encoding="utf-8"` — on Windows this defaults to cp1252,
+  which crashes decoding Railway CLI's colored output and has caused a
+  real, repeatable false "deployment failed" (production was actually
+  fine) three separate times this session.
+- The Cloudflare Quick Tunnel itself remains ephemeral and ties the
+  public Trainer URL to this laptop staying on — the polling fix makes
+  the UI resilient to it, but doesn't make the tunnel itself durable.

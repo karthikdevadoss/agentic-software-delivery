@@ -44,6 +44,22 @@ persist only what's reusable — a lesson in LESSONS.md, an item in
 ACTION_QUEUE.json, or an updated fact in PROJECT_STATE.json. Don't persist
 trivial observations.
 
+## Stability / Execution Discipline
+- One execution task / primary outcome at a time.
+- If a user-visible critical workflow fails, STOP feature expansion.
+- Diagnose from evidence before changing code.
+- Fix the proven root cause only.
+- Add a regression for every meaningful escaped deterministic defect.
+- Re-run focused tests, then regression suite, then appropriate runtime check.
+- Never present stale documentation as current runtime truth.
+- Never confuse transport timeout/status uncertainty with verified failure.
+- Never leave the operator unable to tell whether the system is working,
+  waiting, blocked, degraded, failed or complete.
+- When a new run/state/status is introduced, audit every consumer of that
+  state (execution, persistence, streaming/polling, Sessions/Dashboard/UI/tests).
+- Do not move to another feature while unresolved P0/P1 stabilization defects
+  remain.
+
 ## Durable-state rules
 - Repository files and Git are authoritative; conversation history is supplementary.
 - Never guess what an earlier session did. Verify filesystem and Git.
