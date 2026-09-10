@@ -38,24 +38,38 @@
     <div id="assessment-body"></div>
   </section>
 
+  <section class="panel" id="run-status-panel" hidden>
+    <h2>3. Run Status</h2>
+    <div class="run-status-grid">
+      <div class="kv"><span class="k">Overall state</span><span class="v" id="rs-overall">—</span></div>
+      <div class="kv"><span class="k">Run ID</span><span class="v"><code id="rs-runid">—</code></span></div>
+      <div class="kv"><span class="k">Transport</span><span class="v" id="rs-transport">—</span></div>
+      <div class="kv"><span class="k">Current stage</span><span class="v" id="rs-stage">—</span></div>
+      <div class="kv"><span class="k">Current stage elapsed</span><span class="v" id="rs-stage-elapsed">—</span></div>
+      <div class="kv"><span class="k">Total elapsed</span><span class="v" id="rs-total-elapsed">—</span></div>
+      <div class="kv"><span class="k">Last backend activity</span><span class="v" id="rs-last-activity">—</span></div>
+    </div>
+    <ul id="stage-checklist"></ul>
+  </section>
+
   <section class="panel" id="activity-panel" hidden>
-    <h2>3. Live Agent Progress</h2>
+    <h2>4. Live Agent Progress</h2>
     <p class="hint">Real tool activity — repository investigation, planning, code change, build, test, deploy.</p>
     <ul id="activity-list"></ul>
   </section>
 
   <section class="panel" id="verification-panel" hidden>
-    <h2>4. Build / Test Verification</h2>
+    <h2>5. Build / Test Verification</h2>
     <ul id="verification-list"></ul>
   </section>
 
   <section class="panel" id="deploy-panel" hidden>
-    <h2>5. Deployment</h2>
+    <h2>6. Deployment</h2>
     <div id="deploy-body"></div>
   </section>
 
   <section class="panel" id="result-panel" hidden>
-    <h2>6. Result</h2>
+    <h2>7. Result</h2>
     <div id="result-banner"></div>
     <pre id="result-text"></pre>
   </section>
