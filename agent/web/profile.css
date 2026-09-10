@@ -1,0 +1,34 @@
+main { max-width: 800px; }
+
+.profile-headline {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 0.75rem;
+}
+
+.evidence-list { list-style: none; margin: 0; padding: 0; }
+.evidence-list li {
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+.evidence-list li:last-child { border-bottom: none; }
+
+.ev-tag {
+  display: inline-block;
+  margin-left: 0.4rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  background: #124a35;
+  color: var(--green);
+  vertical-align: middle;
+}
+
+.link-list { list-style: none; margin: 0; padding: 0; }
+.link-list li { padding: 0.4rem 0; font-size: 0.92rem; }
+.link-list a { color: var(--accent); text-decoration: none; font-weight: 600; }
+.link-list a:hover { text-decoration: underline; }

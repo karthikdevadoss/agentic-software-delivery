@@ -116,14 +116,31 @@ old date as due for re-verification, not as current truth.
 
 - **NAME:** Local Starlette server (`agent/web_server.py`) + `cloudflared`
   Quick Tunnel.
-- **PURPOSE:** Runs the Control Plane/Workbench/Dashboard/Sessions
-  locally, optionally exposed publicly via an ephemeral tunnel for demos.
+- **PURPOSE:** Runs Workbench/Dashboard/Usage/Learn/Profile (and the
+  internal-only Control Plane at `/control-plane`) locally, optionally
+  exposed publicly via an ephemeral tunnel for demos.
 - **PROVIDER:** This laptop (server), Cloudflare (Quick Tunnel, free/
   account-less tier).
-- **URL:** Local: `http://127.0.0.1:8420`. Last known public tunnel URL:
-  `https://fallen-pest-ecology-walter.trycloudflare.com` — **EXPIRED**
-  ("Unauthorized: Tunnel not found" as of this session).
-- **STATUS:** CURRENT (local only) / **EXPIRED** (public tunnel)
+- **URL:** Local: `http://127.0.0.1:8420` — **CURRENT, fully verified**
+  (all 6 public routes return HTTP 200, `/trainer` and `/sessions` return
+  308 redirects to `/workbench`/`/usage`). Latest attempted public tunnel
+  URL: `https://construct-limousines-venues-hats.trycloudflare.com` —
+  **UNCONFIRMED**. `cloudflared` itself reported a successful tunnel
+  registration with Cloudflare's edge (`location=txl01`), but the
+  hostname did not resolve in DNS after ~10+ minutes across 3 separate
+  tunnel creation attempts, confirmed via a direct query to Cloudflare's
+  own authoritative resolver (1.1.1.1 DoH), which returned NXDOMAIN with
+  a cached negative TTL. This looks like a genuine, transient issue with
+  the free/account-less Quick Tunnel DNS provisioning path at the time
+  of this session, not a code defect in this project — the identical
+  symptom (successful registration, unresolvable hostname) occurred on
+  all 3 attempts. **The URL above may or may not become reachable** —
+  worth a direct check before relying on it; a fresh
+  `cloudflared tunnel --url http://127.0.0.1:8420` attempt (ideally at a
+  different time) is the standard recovery step, same as any expired
+  Quick Tunnel.
+- **STATUS:** CURRENT (local only, fully verified) / **UNCONFIRMED**
+  (public tunnel — see above, distinct from the previously EXPIRED one)
 - **LAST VERIFIED:** 2026-09-10
 - **NOTES:** Quick Tunnel URLs are inherently ephemeral and change on
   every `cloudflared` restart — this is expected behavior, not a defect

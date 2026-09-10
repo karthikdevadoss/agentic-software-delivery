@@ -41,7 +41,7 @@ from pathlib import Path
 import uvicorn
 from starlette.applications import Starlette
 from starlette.requests import Request
-from starlette.responses import FileResponse, JSONResponse
+from starlette.responses import FileResponse, JSONResponse, RedirectResponse
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 from sse_starlette.sse import EventSourceResponse
@@ -790,8 +790,30 @@ async def start_trainer_run(request: Request):
     return JSONResponse({"blocked": False, "run_id": run_id, "assessment": assessment})
 
 
-async def trainer_page(request: Request):
-    return FileResponse(str(WEB_DIR / "trainer.html"))
+async def workbench_page(request: Request):
+    return FileResponse(str(WEB_DIR / "workbench.html"))
+
+
+async def control_plane_page(request: Request):
+    """Internal/debug human-approval tool — not linked from public
+    navigation (see docs/DECISIONS.md), but deliberately not deleted."""
+    return FileResponse(str(WEB_DIR / "control-plane.html"))
+
+
+async def redirect_trainer_to_workbench(request: Request):
+    return RedirectResponse(url="/workbench", status_code=308)
+
+
+async def redirect_sessions_to_usage(request: Request):
+    return RedirectResponse(url="/usage", status_code=308)
+
+
+async def learn_page(request: Request):
+    return FileResponse(str(WEB_DIR / "learn.html"))
+
+
+async def profile_page(request: Request):
+    return FileResponse(str(WEB_DIR / "profile.html"))
 
 
 async def get_run(request: Request):
@@ -861,8 +883,8 @@ async def get_sessions_data(request: Request):
     return JSONResponse(sessions_data.build_sessions_snapshot())
 
 
-async def sessions_page(request: Request):
-    return FileResponse(str(WEB_DIR / "sessions.html"))
+async def usage_page(request: Request):
+    return FileResponse(str(WEB_DIR / "usage.html"))
 
 
 async def start_dev_session_route(request: Request):
@@ -897,9 +919,20 @@ routes = [
     Route("/api/runs/{run_id}", get_run, methods=["GET"]),
     Route("/api/runs/{run_id}/events", stream_events, methods=["GET"]),
     Route("/api/runs/{run_id}/decide", decide, methods=["POST"]),
+    # Five public surfaces (see docs/COMPANY_VISION.md's public product
+    # structure decision). "/" and "/workbench" both serve the same public
+    # preview page — Workbench is the flagship/default landing surface.
+    Route("/", workbench_page, methods=["GET"]),
+    Route("/workbench", workbench_page, methods=["GET"]),
     Route("/dashboard", dashboard_page, methods=["GET"]),
-    Route("/sessions", sessions_page, methods=["GET"]),
-    Route("/trainer", trainer_page, methods=["GET"]),
+    Route("/usage", usage_page, methods=["GET"]),
+    Route("/learn", learn_page, methods=["GET"]),
+    Route("/profile", profile_page, methods=["GET"]),
+    # Retired public terminology — kept as redirects, not dead links.
+    Route("/trainer", redirect_trainer_to_workbench, methods=["GET"]),
+    Route("/sessions", redirect_sessions_to_usage, methods=["GET"]),
+    # Internal/debug tool — deliberately not in public navigation.
+    Route("/control-plane", control_plane_page, methods=["GET"]),
     Mount("/", app=StaticFiles(directory=str(WEB_DIR), html=True), name="static"),
 ]
 
@@ -908,5 +941,5 @@ app = Starlette(routes=routes)
 
 if __name__ == "__main__":
     API_KEY = get_api_key()  # fails fast here, not mid-request, if missing
-    print("Agentic Software Delivery Control Plane: http://127.0.0.1:8420", file=sys.stderr)
+    print("Agentic Software Delivery: http://127.0.0.1:8420 (Workbench/Dashboard/Usage/Learn/Profile)", file=sys.stderr)
     uvicorn.run(app, host="127.0.0.1", port=8420)

@@ -235,5 +235,54 @@ class DeploymentOutcomeDecisionTestCase(unittest.TestCase):
         self.assertNotEqual(old_result, new_result)
 
 
+class PublicRouteStructureTestCase(unittest.TestCase):
+    """Regression lock for TRAINER PREVIEW V1's route structure — the
+    exact 5 public surfaces (Workbench/Dashboard/Usage/Learn/Profile),
+    retired-terminology redirects, and the still-reachable internal
+    Control Plane. Protects against a future change silently dropping a
+    public route or re-breaking a retired-terminology link."""
+
+    def _route_map(self):
+        return {r.path: r for r in ws.routes if hasattr(r, "path")}
+
+    def test_all_five_public_surfaces_are_registered_get_routes(self):
+        routes = self._route_map()
+        for path in ("/", "/workbench", "/dashboard", "/usage", "/learn", "/profile"):
+            self.assertIn(path, routes, f"{path} is not registered")
+            self.assertIn("GET", routes[path].methods)
+
+    def test_root_and_workbench_serve_the_same_handler(self):
+        routes = self._route_map()
+        self.assertIs(routes["/"].endpoint, routes["/workbench"].endpoint)
+        self.assertIs(routes["/"].endpoint, ws.workbench_page)
+
+    def test_retired_terminology_redirects_not_dead_links(self):
+        routes = self._route_map()
+        self.assertIn("/trainer", routes)
+        self.assertIn("/sessions", routes)
+        self.assertIs(routes["/trainer"].endpoint, ws.redirect_trainer_to_workbench)
+        self.assertIs(routes["/sessions"].endpoint, ws.redirect_sessions_to_usage)
+
+    def test_control_plane_still_reachable_but_not_a_public_surface_name(self):
+        routes = self._route_map()
+        self.assertIn("/control-plane", routes)
+        self.assertIs(routes["/control-plane"].endpoint, ws.control_plane_page)
+        # The 5 public surface paths must never include internal-tool naming.
+        for public_path in ("/", "/workbench", "/dashboard", "/usage", "/learn", "/profile"):
+            self.assertNotIn("control-plane", public_path)
+
+
+class PublicRouteRedirectTestCase(unittest.IsolatedAsyncioTestCase):
+    async def test_trainer_redirects_to_workbench(self):
+        response = await ws.redirect_trainer_to_workbench(mock.Mock())
+        self.assertEqual(response.headers["location"], "/workbench")
+        self.assertEqual(response.status_code, 308)
+
+    async def test_sessions_redirects_to_usage(self):
+        response = await ws.redirect_sessions_to_usage(mock.Mock())
+        self.assertEqual(response.headers["location"], "/usage")
+        self.assertEqual(response.status_code, 308)
+
+
 if __name__ == "__main__":
     unittest.main()

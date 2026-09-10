@@ -40,9 +40,11 @@ const resultText = document.getElementById("result-text");
 
 const EXAMPLES = [
   'Add a small "Agent Demo" status badge near the page title',
-  "Add a read-only customer-count endpoint and show the count on the page",
   "Change the wording of the Create Customer success message",
   'Add a small "Powered by Agentic Delivery" footer line to the page',
+  "Change the page title text",
+  "Change a button label to something clearer",
+  "Add a short informational helper line under the page title",
 ];
 
 // The real workflow stages a trainer run can pass through, in order.
@@ -134,18 +136,24 @@ function setStatus(label) {
 
 function renderAssessment(a, blocked) {
   assessmentPanel.hidden = false;
-  let html = `<div class="kv"><span class="k">Complexity</span><span class="v">${esc(a.complexity)}</span></div>`;
+  let html = "";
+  if (blocked) {
+    html += `<p class="owner-auth-notice">This change requires Owner Authorization. Larger authorized builds are not enabled in this preview yet.</p>`;
+  }
+  html += `<div class="kv"><span class="k">Complexity</span><span class="v">${esc(a.complexity)}</span></div>`;
   html += `<div class="kv"><span class="k">Risk</span><span class="v">${esc(a.risk)}</span></div>`;
-  html += `<div class="kv"><span class="k">Decision</span><span class="v">${blocked ? '<strong style="color:var(--red)">REQUIRES OWNER REVIEW / TOO LARGE FOR DEMO</strong>' : '<strong style="color:var(--green)">AUTO-EXECUTE</strong>'}</span></div>`;
+  html += `<div class="kv"><span class="k">Decision</span><span class="v">${blocked ? '<strong style="color:var(--red)">REQUIRES OWNER AUTHORIZATION</strong>' : '<strong style="color:var(--green)">AUTO-EXECUTE</strong>'}</span></div>`;
   html += `<div class="kv"><span class="k">Reason</span><span class="v">${esc(a.reason)}</span></div>`;
-  if (blocked && a.suggested_alternatives && a.suggested_alternatives.length) {
-    html += `<p class="hint" style="margin-top:0.8rem;">For a quick live demonstration, choose one:</p><div id="alt-list"></div>`;
+  if (blocked) {
+    html += `<p class="hint" style="margin-top:0.8rem;">Try one of these safe, bounded changes instead:</p><div id="alt-list"></div>`;
   }
   assessmentBody.innerHTML = html;
 
-  if (blocked && a.suggested_alternatives && a.suggested_alternatives.length) {
+  if (blocked) {
     const altList = document.getElementById("alt-list");
-    a.suggested_alternatives.forEach(alt => {
+    const alternatives = (a.suggested_alternatives && a.suggested_alternatives.length)
+      ? a.suggested_alternatives : EXAMPLES;
+    alternatives.forEach(alt => {
       const btn = document.createElement("button");
       btn.className = "secondary example-btn";
       btn.textContent = "USE: " + alt;
@@ -241,11 +249,13 @@ function applyEvent(evt) {
       break;
     case "commit":
       deployPanel.hidden = false;
+      run.commitInfo = evt;
       deployBody.innerHTML = `<div class="kv"><span class="k">Production commit</span><span class="v"><code>${esc(evt.sha)}</code></span></div><div class="kv"><span class="k">Changed file</span><span class="v"><code>${esc(evt.path)}</code></span></div>`;
       run.lastEventTs = evt.ts;
       break;
     case "deployment": {
       deployPanel.hidden = false;
+      run.deploymentInfo = evt;
       const verifiedBadge = evt.verified ? '<span style="color:var(--green)">VERIFIED (HTTP 200)</span>' : '<span style="color:var(--red)">NOT VERIFIED</span>';
       deployBody.innerHTML += `<div class="kv"><span class="k">Public app</span><span class="v"><a href="${esc(evt.public_url)}" target="_blank" rel="noopener">${esc(evt.public_url)}</a></span></div>`;
       deployBody.innerHTML += `<div class="kv"><span class="k">HTTP status</span><span class="v">${esc(evt.http_status)}</span></div>`;
@@ -272,6 +282,7 @@ function applyEvent(evt) {
 }
 
 function renderFinalBanner(text) {
+  let evidenceHtml = "";
   if (run.currentStage === "NO_CHANGE_NEEDED") {
     resultBanner.textContent = "ALREADY SATISFIED — NO CHANGE REQUIRED";
     resultBanner.className = "neutral";
@@ -285,10 +296,27 @@ function renderFinalBanner(text) {
     const failed = verificationState.applySucceeded === false
       || (verificationState.compileResult && !verificationState.compileResult.success)
       || (verificationState.testResult && !verificationState.testResult.success);
-    resultBanner.textContent = failed ? "FAILED" : "DEPLOYED SUCCESSFULLY";
+    const verified = !failed && run.deploymentInfo && run.deploymentInfo.verified;
+    resultBanner.textContent = verified ? "PRODUCTION CHANGE VERIFIED" : (failed ? "FAILED" : "DEPLOYED SUCCESSFULLY");
     resultBanner.className = failed ? "failed" : "success";
+
+    if (verified) {
+      evidenceHtml += `<div class="production-verified-box">`;
+      evidenceHtml += `<a class="open-production-btn" href="${esc(run.deploymentInfo.public_url)}" target="_blank" rel="noopener">[ OPEN PRODUCTION APP ]</a>`;
+      evidenceHtml += `<div class="kv"><span class="k">Run ID</span><span class="v"><code>${esc(run.id)}</code></span></div>`;
+      if (run.commitInfo) {
+        evidenceHtml += `<div class="kv"><span class="k">Commit SHA</span><span class="v"><code>${esc(run.commitInfo.sha)}</code></span></div>`;
+        evidenceHtml += `<div class="kv"><span class="k">Files changed</span><span class="v"><code>${esc(run.commitInfo.path)}</code></span></div>`;
+      }
+      if (verificationState.compileResult) evidenceHtml += `<div class="kv"><span class="k">Build</span><span class="v">${verificationState.compileResult.success ? "PASS" : "FAIL"} · ${(verificationState.compileResult.duration_ms / 1000).toFixed(1)}s</span></div>`;
+      if (verificationState.testResult) evidenceHtml += `<div class="kv"><span class="k">Tests</span><span class="v">${verificationState.testResult.success ? "PASS" : "FAIL"} · ${(verificationState.testResult.duration_ms / 1000).toFixed(1)}s</span></div>`;
+      evidenceHtml += `<div class="kv"><span class="k">Deployment</span><span class="v">VERIFIED (HTTP ${esc(run.deploymentInfo.http_status)})</span></div>`;
+      if (runStartedAtMs) evidenceHtml += `<div class="kv"><span class="k">Duration</span><span class="v">${fmtDuration((Date.now() - runStartedAtMs) / 1000)}</span></div>`;
+      evidenceHtml += `</div>`;
+    }
   }
   resultText.textContent = text;
+  document.getElementById("result-evidence").innerHTML = evidenceHtml;
 }
 
 // Dedup key: (type, ts) is effectively unique per real backend event —

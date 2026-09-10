@@ -1,11 +1,13 @@
-// Focused regression tests for agent/web/trainer.js's transport-resilience
-// logic (SSE-preferred + always-on HTTP polling fallback, event dedup,
-// terminal-state handling through either transport).
+// Focused regression tests for agent/web/workbench.js's (formerly
+// trainer.js — renamed for TRAINER PREVIEW V1's public naming, see
+// docs/DECISIONS.md) transport-resilience logic (SSE-preferred +
+// always-on HTTP polling fallback, event dedup, terminal-state handling
+// through either transport).
 //
 // This is a plain-Node test using a hand-built DOM/EventSource/fetch stub
 // via the built-in `vm` module — no jsdom, no test framework, no new
 // dependency, matching this project's existing zero-new-dependency
-// discipline (see docs/DECISIONS.md). It exercises the REAL trainer.js
+// discipline (see docs/DECISIONS.md). It exercises the REAL workbench.js
 // source directly (loaded and run as-is), not a reimplementation of its
 // logic. It does NOT drive a real browser — that is explicitly out of
 // scope for this layer; see the incident report for what still requires
@@ -116,10 +118,12 @@ function makeFetchStub(routes) {
   return fetchFn;
 }
 
-// ---- Load the real trainer.js source into a sandboxed context -----------
+// ---- Load the real workbench.js source into a sandboxed context ---------
+// (formerly trainer.js — renamed for TRAINER PREVIEW V1's public naming,
+// see docs/DECISIONS.md; this harness exercises the identical logic.)
 
 function loadTrainerContext(documentStub, fetchStub) {
-  const source = fs.readFileSync(path.join(__dirname, "web", "trainer.js"), "utf8");
+  const source = fs.readFileSync(path.join(__dirname, "web", "workbench.js"), "utf8");
   const sandbox = {
     document: documentStub,
     EventSource: FakeEventSource,
@@ -130,7 +134,7 @@ function loadTrainerContext(documentStub, fetchStub) {
     Math,
   };
   vm.createContext(sandbox);
-  vm.runInContext(source, sandbox, { filename: "trainer.js" });
+  vm.runInContext(source, sandbox, { filename: "workbench.js" });
   return sandbox;
 }
 
@@ -206,7 +210,7 @@ async function testA_sseWorksNormally() {
   events.forEach(e => es.fire(e.type, e));
   await sleep(350); // let finishRun's delayed stopEverything run
 
-  assertEqual(doc.getElementById("result-banner").textContent, "DEPLOYED SUCCESSFULLY", "A: final banner via SSE");
+  assertEqual(doc.getElementById("result-banner").textContent, "PRODUCTION CHANGE VERIFIED", "A: final banner via SSE");
   assert(es.closed, "A: EventSource closed after terminal state");
   assertEqual(doc.getElementById("submit-btn").disabled, false, "A: submit re-enabled");
   sandbox.stopEverything();
@@ -268,7 +272,7 @@ async function testDE_completedAndFailedThroughFallback() {
     await sandbox.pollOnce();
     await sleep(350);
 
-    const expectedBanner = finalStage === "COMPLETED" ? "DEPLOYED SUCCESSFULLY" : "FAILED";
+    const expectedBanner = finalStage === "COMPLETED" ? "PRODUCTION CHANGE VERIFIED" : "FAILED";
     assertEqual(doc.getElementById("result-banner").textContent, expectedBanner, `D/E: ${finalStage} reached through polling-only fallback`);
     assertEqual(doc.getElementById("submit-btn").disabled, false, `D/E: submit re-enabled after ${finalStage}`);
     sandbox.stopEverything();

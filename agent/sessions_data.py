@@ -32,6 +32,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import dashboard_data
+import event_ledger
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 RUN_HISTORY_PATH = REPO_ROOT / "agent" / "web_run_history.jsonl"
@@ -366,6 +367,37 @@ VALUE_LEDGER = {
 }
 
 
+def _event_ledger_recent(limit: int = 10) -> dict:
+    """Minimal real event-ledger evidence for Usage — recent events with
+    real source/activity_class/duration/model/token fields where captured.
+    Never a redesign of this page: one additional section, read-only."""
+    try:
+        recent = event_ledger.get_recent_events(limit=limit)
+        count = event_ledger.count_events()
+        return {
+            "status": "REACHABLE",
+            "events_captured": count,
+            "recent_events": [
+                {
+                    "event_type": r["event_type"],
+                    "run_id": r.get("run_id"),
+                    "status": r.get("status"),
+                    "source": r.get("source"),
+                    "activity_class": r.get("activity_class"),
+                    "duration_ms": r.get("duration_ms"),
+                    "provider": r.get("provider"),
+                    "model": r.get("model"),
+                    "input_tokens": r.get("input_tokens"),
+                    "output_tokens": r.get("output_tokens"),
+                    "timestamp_utc": r["timestamp_utc"].isoformat() if r.get("timestamp_utc") else None,
+                }
+                for r in recent
+            ],
+        }
+    except Exception as exc:  # noqa: BLE001 - Usage must never break because the ledger is down
+        return {"status": "UNREACHABLE", "error": str(exc)}
+
+
 def build_sessions_snapshot() -> dict:
     project_state = dashboard_data.read_project_state()
     reconstructed = _reconstructed_sessions()
@@ -399,4 +431,5 @@ def build_sessions_snapshot() -> dict:
             "development", "product_runtime", "benchmark", "portfolio_demo",
             "trainer_demo", "staging", "yogacrm_pilot", "customer_production",
         ],
+        "event_ledger": _event_ledger_recent(),
     }

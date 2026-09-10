@@ -40,3 +40,33 @@
   0%, 100% { opacity: 1; }
   50% { opacity: 0.35; }
 }
+
+.owner-auth-notice {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 0.6rem 0.9rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin: 0 0 0.9rem;
+}
+
+.production-verified-box {
+  margin-top: 0.75rem;
+  padding: 1rem 1.1rem;
+  background: #0d0f14;
+  border: 1px solid var(--green);
+  border-radius: 8px;
+}
+.open-production-btn {
+  display: inline-block;
+  background: var(--green);
+  color: #05130d;
+  font-weight: 700;
+  text-decoration: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
+  margin-bottom: 0.85rem;
+}
+.open-production-btn:hover { filter: brightness(1.08); }

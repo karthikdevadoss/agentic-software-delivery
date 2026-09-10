@@ -1,0 +1,1043 @@
+{
+  "sections": [
+    {
+      "id": "ai-foundations",
+      "title": "AI Foundations",
+      "topics": [
+        {
+          "name": "Artificial Intelligence",
+          "definition": "Computer systems performing tasks that normally require human intelligence — perception, reasoning, language, decision-making.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": null
+        },
+        {
+          "name": "Machine Learning",
+          "definition": "Systems that improve at a task from data/experience rather than being explicitly programmed with rules for every case.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": null
+        },
+        {
+          "name": "Deep Learning",
+          "definition": "Machine learning using multi-layer neural networks to learn hierarchical representations directly from raw data.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": null
+        },
+        {
+          "name": "Neural Networks",
+          "definition": "Layered networks of simple weighted units (neurons) whose connection strengths are learned from data via backpropagation.",
+          "subtopics": [],
+          "related": [
+            "Deep Learning"
+          ],
+          "evidence_status": null
+        },
+        {
+          "name": "Generative AI",
+          "definition": "Models that produce new content (text, code, images) rather than only classifying or scoring existing input.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": null
+        },
+        {
+          "name": "Foundation Models",
+          "definition": "Large models pre-trained on broad data, then adapted (via prompting or fine-tuning) to many downstream tasks — e.g. Claude.",
+          "subtopics": [],
+          "related": [
+            "Model Selection"
+          ],
+          "evidence_status": "IMPLEMENTED"
+        }
+      ]
+    },
+    {
+      "id": "llms",
+      "title": "LLMs",
+      "topics": [
+        {
+          "name": "Transformer",
+          "definition": "The neural network architecture (attention-based, no recurrence) underlying modern large language models.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": null
+        },
+        {
+          "name": "Attention",
+          "definition": "The mechanism letting a model weigh how relevant each other token is when producing a representation for a given token.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": null
+        },
+        {
+          "name": "Token",
+          "definition": "The basic unit a language model reads/writes — a word, subword, or character fragment, not necessarily a whole word.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": null
+        },
+        {
+          "name": "Tokenization",
+          "definition": "Splitting raw text into tokens using a fixed vocabulary/algorithm before it can be fed to a model.",
+          "subtopics": [],
+          "related": [
+            "Token"
+          ],
+          "evidence_status": null
+        },
+        {
+          "name": "Context Window",
+          "definition": "The maximum number of tokens (input + output) a model can attend to in a single call.",
+          "subtopics": [],
+          "related": [
+            "Context Engineering"
+          ],
+          "evidence_status": null
+        },
+        {
+          "name": "Inference",
+          "definition": "Running a trained model forward to produce an output, as opposed to training/updating its weights.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": null
+        },
+        {
+          "name": "Sampling",
+          "definition": "The strategy for choosing the next token from the model's predicted probability distribution.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": null
+        },
+        {
+          "name": "Temperature",
+          "definition": "A sampling parameter controlling randomness — lower values make output more deterministic/focused.",
+          "subtopics": [],
+          "related": [
+            "Sampling",
+            "Top-p"
+          ],
+          "evidence_status": null
+        },
+        {
+          "name": "Top-p",
+          "definition": "Nucleus sampling — restricts token choice to the smallest set whose cumulative probability exceeds p.",
+          "subtopics": [],
+          "related": [
+            "Sampling",
+            "Temperature"
+          ],
+          "evidence_status": null
+        },
+        {
+          "name": "Hallucination",
+          "definition": "A model producing fluent but false or unsupported output — the core reason this project verifies claims against real tool results instead of trusting model output alone.",
+          "subtopics": [],
+          "related": [
+            "Groundedness",
+            "Retrieval-Augmented Generation"
+          ],
+          "evidence_status": "IMPLEMENTED"
+        }
+      ]
+    },
+    {
+      "id": "prompt-context-engineering",
+      "title": "Prompt & Context Engineering",
+      "topics": [
+        {
+          "name": "System Prompt",
+          "definition": "Instructions given to a model before the conversation, establishing its role, constraints, and behavior.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "IMPLEMENTED"
+        },
+        {
+          "name": "User Prompt",
+          "definition": "The end user's actual request/message to the model, as distinct from the system prompt.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": null
+        },
+        {
+          "name": "Prompt Engineering",
+          "definition": "Deliberately designing prompt wording/structure to reliably get the desired model behavior.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": null
+        },
+        {
+          "name": "Context Engineering",
+          "definition": "Deliberately curating WHAT information (files, retrieval results, tool schemas, history) is placed in the model's context, not just how it's worded.",
+          "subtopics": [],
+          "related": [
+            "Context Window",
+            "Retrieval-Augmented Generation"
+          ],
+          "evidence_status": "IMPLEMENTED"
+        },
+        {
+          "name": "Structured Output",
+          "definition": "Constraining a model's response to a defined schema (e.g. a tool call) rather than free text.",
+          "subtopics": [],
+          "related": [
+            "Tool Schemas"
+          ],
+          "evidence_status": "IMPLEMENTED"
+        },
+        {
+          "name": "Few-shot Prompting",
+          "definition": "Including a few worked examples in the prompt to steer the model's output format/behavior.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": null
+        },
+        {
+          "name": "Context Management",
+          "definition": "Deciding what to keep, summarize, or drop as a conversation/session grows beyond what fits usefully in context.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "IMPLEMENTED"
+        }
+      ]
+    },
+    {
+      "id": "embeddings-retrieval",
+      "title": "Embeddings & Retrieval",
+      "topics": [
+        {
+          "name": "Embeddings",
+          "definition": "A numeric vector representation of text/code such that semantically similar content maps to nearby vectors.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "RUNTIME VERIFIED"
+        },
+        {
+          "name": "Semantic Search",
+          "definition": "Finding relevant content by embedding-vector similarity rather than exact keyword matching.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "RUNTIME VERIFIED"
+        },
+        {
+          "name": "Vector Database",
+          "definition": "A datastore specialized for storing and similarity-searching embedding vectors at scale.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "NOT USED"
+        },
+        {
+          "name": "Similarity",
+          "definition": "A numeric measure (e.g. cosine similarity) of how close two embedding vectors are.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "IMPLEMENTED"
+        },
+        {
+          "name": "Chunking",
+          "definition": "Splitting a document into smaller pieces before embedding, so retrieval can return precisely relevant sections.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "IMPLEMENTED"
+        },
+        {
+          "name": "Metadata",
+          "definition": "Structured facts attached to a chunk/document (path, timestamps, type) used to filter or explain retrieval results.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": null
+        },
+        {
+          "name": "Hybrid Search",
+          "definition": "Combining semantic (vector) search with exact/keyword search or verification for better precision.",
+          "subtopics": [],
+          "related": [
+            "Groundedness"
+          ],
+          "evidence_status": "IMPLEMENTED"
+        },
+        {
+          "name": "Reranking",
+          "definition": "A second-pass model that reorders initial retrieval candidates by finer-grained relevance.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "NOT USED"
+        }
+      ]
+    },
+    {
+      "id": "rag",
+      "title": "RAG",
+      "topics": [
+        {
+          "name": "Retrieval-Augmented Generation",
+          "definition": "Giving a model relevant retrieved content at inference time instead of relying only on what it memorized during training.",
+          "subtopics": [],
+          "related": [
+            "Embeddings",
+            "Semantic Search"
+          ],
+          "evidence_status": "RUNTIME VERIFIED"
+        },
+        {
+          "name": "Indexing",
+          "definition": "The offline step of chunking, embedding, and storing content so it can later be retrieved quickly.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "IMPLEMENTED"
+        },
+        {
+          "name": "Retrieval",
+          "definition": "The online step of finding the most relevant stored chunks for a given query.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "RUNTIME VERIFIED"
+        },
+        {
+          "name": "Grounding",
+          "definition": "Tying a model's claims to real, checkable source content rather than unverified generation.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": null
+        },
+        {
+          "name": "Context Injection",
+          "definition": "Placing retrieved content directly into the prompt so the model can condition its answer on it.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": null
+        },
+        {
+          "name": "RAG Evaluation",
+          "definition": "Measuring whether retrieval actually returns relevant content and whether generation stays faithful to it.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "NOT USED"
+        },
+        {
+          "name": "RAG Failure Modes",
+          "definition": "Ways RAG breaks in practice: irrelevant retrieval, stale index, over-trusting a retrieved-but-unverified chunk.",
+          "subtopics": [],
+          "related": [
+            "Hallucination",
+            "Groundedness"
+          ],
+          "evidence_status": "LEARNED"
+        }
+      ]
+    },
+    {
+      "id": "tool-use",
+      "title": "Tool Use",
+      "topics": [
+        {
+          "name": "Function Calling",
+          "definition": "A model's ability to emit a structured call to a predefined function/tool instead of only free text.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "RUNTIME VERIFIED"
+        },
+        {
+          "name": "Tool Calling",
+          "definition": "The general pattern of a model selecting and invoking external tools/actions as part of solving a task.",
+          "subtopics": [],
+          "related": [
+            "Function Calling",
+            "Agent Loop"
+          ],
+          "evidence_status": "RUNTIME VERIFIED"
+        },
+        {
+          "name": "Tool Schemas",
+          "definition": "The formal definition (name, description, input parameters) a model is given so it can call a tool correctly.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "IMPLEMENTED"
+        },
+        {
+          "name": "Tool Authorization",
+          "definition": "The boundary deciding which tools a model may call and under what human/policy approval.",
+          "subtopics": [],
+          "related": [
+            "Approval Boundaries",
+            "Least Privilege"
+          ],
+          "evidence_status": "RUNTIME VERIFIED"
+        },
+        {
+          "name": "Tool Result Handling",
+          "definition": "How a tool's real output is fed back to the model so it can continue reasoning from actual evidence, not a guess.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "RUNTIME VERIFIED"
+        }
+      ]
+    },
+    {
+      "id": "mcp",
+      "title": "MCP",
+      "topics": [
+        {
+          "name": "MCP Architecture",
+          "definition": "Model Context Protocol's client-server design for exposing tools/data/prompts to any compliant AI client in a standard way.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "RUNTIME VERIFIED"
+        },
+        {
+          "name": "Clients",
+          "definition": "The MCP-side component (e.g. an AI application) that discovers and invokes a server's tools/resources.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": null
+        },
+        {
+          "name": "Servers",
+          "definition": "The MCP-side component exposing tools/resources/prompts over a standard protocol.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "IMPLEMENTED"
+        },
+        {
+          "name": "Tools",
+          "definition": "MCP's concept for an invokable, schema-described action a server exposes to clients.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "TESTED"
+        },
+        {
+          "name": "Resources",
+          "definition": "MCP's concept for addressable, readable content a server exposes (distinct from an invokable tool).",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "NOT USED"
+        },
+        {
+          "name": "Prompts",
+          "definition": "MCP's concept for server-defined, reusable prompt templates a client can request.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "NOT USED"
+        },
+        {
+          "name": "Transports",
+          "definition": "How MCP messages actually move between client/server — e.g. stdio (local process) or Streamable HTTP (networked).",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "IMPLEMENTED"
+        },
+        {
+          "name": "Authorization",
+          "definition": "MCP's mechanisms for controlling which client may access which server tools/resources.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "NOT USED"
+        },
+        {
+          "name": "Current Protocol Concepts",
+          "definition": "The MCP spec version actually implemented against in this project, and what it changed (e.g. stateless Streamable HTTP).",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "LEARNED"
+        }
+      ]
+    },
+    {
+      "id": "agents",
+      "title": "Agents",
+      "topics": [
+        {
+          "name": "Agent Loop",
+          "definition": "The repeating cycle of a model reasoning, calling a tool, receiving a real result, and reasoning again until done.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "RUNTIME VERIFIED"
+        },
+        {
+          "name": "Planning",
+          "definition": "An agent deciding what steps to take before/while executing, rather than reacting one tool call at a time with no direction.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "IMPLEMENTED"
+        },
+        {
+          "name": "Task Decomposition",
+          "definition": "Breaking a larger goal into smaller steps an agent (or set of agents) can execute and verify individually.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": null
+        },
+        {
+          "name": "State",
+          "definition": "What an agent tracks about progress/results across steps of a single run.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "IMPLEMENTED"
+        },
+        {
+          "name": "Memory",
+          "definition": "What an agent/system persists across separate runs/sessions, distinct from in-run state.",
+          "subtopics": [],
+          "related": [
+            "Event Ledger"
+          ],
+          "evidence_status": "RUNTIME VERIFIED"
+        },
+        {
+          "name": "Tool Selection",
+          "definition": "An agent's decision of which available tool (if any) best serves the current step.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "RUNTIME VERIFIED"
+        },
+        {
+          "name": "Self-correction",
+          "definition": "An agent detecting its own tool/verification failure and adjusting its next step in response.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "NOT USED"
+        },
+        {
+          "name": "Reflection",
+          "definition": "An agent explicitly reviewing its own prior output/reasoning before finalizing or continuing.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": null
+        },
+        {
+          "name": "Multi-agent Systems",
+          "definition": "Architectures where multiple distinct agents (often with different roles) collaborate on a task.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "NOT USED"
+        },
+        {
+          "name": "Human-in-the-loop",
+          "definition": "A human must actively approve/decide before a consequential action proceeds — this project's core approval boundary.",
+          "subtopics": [],
+          "related": [
+            "Approval Boundaries",
+            "Human-on-the-loop"
+          ],
+          "evidence_status": "PRODUCTION VERIFIED"
+        },
+        {
+          "name": "Human-on-the-loop",
+          "definition": "A human monitors and can intervene, but does not have to approve every individual action (used for this project's bounded-autonomy preview tier).",
+          "subtopics": [],
+          "related": [
+            "Risk-based Autonomy"
+          ],
+          "evidence_status": "RUNTIME VERIFIED"
+        },
+        {
+          "name": "Autonomy",
+          "definition": "The degree to which an agent may act without a human approving each step — deliberately scoped by risk in this project, never unconditional.",
+          "subtopics": [],
+          "related": [
+            "Risk-based Autonomy"
+          ],
+          "evidence_status": "IMPLEMENTED"
+        }
+      ]
+    },
+    {
+      "id": "agentic-software-engineering",
+      "title": "Agentic Software Engineering",
+      "topics": [
+        {
+          "name": "Coding Agents",
+          "definition": "AI agents that read, propose, and (under authorization) modify real source code as part of their task.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "RUNTIME VERIFIED"
+        },
+        {
+          "name": "Repository Understanding",
+          "definition": "An agent building an accurate picture of an actual codebase's structure/conventions before proposing a change.",
+          "subtopics": [],
+          "related": [
+            "Retrieval-Augmented Generation"
+          ],
+          "evidence_status": "RUNTIME VERIFIED"
+        },
+        {
+          "name": "Impact Analysis",
+          "definition": "Assessing what a proposed change actually touches/risks before applying it.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "IMPLEMENTED"
+        },
+        {
+          "name": "Agentic SDLC",
+          "definition": "Extending the software delivery lifecycle (plan/build/test/deploy/verify) with AI agents performing bounded, verified steps.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": null
+        },
+        {
+          "name": "Verification Gates",
+          "definition": "Deterministic checks (compile, test, production HTTP check) a proposed change must pass before being considered successful — never taking a model's own claim as proof.",
+          "subtopics": [],
+          "related": [
+            "Production Verification"
+          ],
+          "evidence_status": "PRODUCTION VERIFIED"
+        },
+        {
+          "name": "Risk-based Autonomy",
+          "definition": "Granting more autonomous execution only for changes classified as small/low-risk/reversible; everything else requires explicit human authorization.",
+          "subtopics": [],
+          "related": [
+            "Human-on-the-loop"
+          ],
+          "evidence_status": "PRODUCTION VERIFIED"
+        },
+        {
+          "name": "Human Authority",
+          "definition": "The principle that capability (what an agent CAN technically do) never equals authority (what it's allowed to do without a human) — a named Constitution rule in this project.",
+          "subtopics": [],
+          "related": [
+            "Approval Boundaries"
+          ],
+          "evidence_status": "IMPLEMENTED"
+        },
+        {
+          "name": "Production Verification",
+          "definition": "Independently checking the REAL deployed system after a change, rather than trusting a deploy tool's own status report.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "PRODUCTION VERIFIED"
+        }
+      ]
+    },
+    {
+      "id": "evals-quality",
+      "title": "Evals / Quality",
+      "topics": [
+        {
+          "name": "LLM Evaluation",
+          "definition": "Systematically measuring a model's output quality against defined criteria/data, not just spot-checking.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": null
+        },
+        {
+          "name": "Agent Evaluation",
+          "definition": "Evaluating an agent's full trajectory (tool choices, corrections, final outcome), not just one model response.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": null
+        },
+        {
+          "name": "Deterministic Tests",
+          "definition": "Tests with a fixed, repeatable pass/fail outcome — this project's primary correctness signal (unit tests, real compile/test runs).",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "RUNTIME VERIFIED"
+        },
+        {
+          "name": "Regression Evals",
+          "definition": "Re-running past known-good/known-bad cases after a change to confirm nothing that used to work now breaks.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "RUNTIME VERIFIED"
+        },
+        {
+          "name": "Groundedness",
+          "definition": "Whether a model's claim is actually backed by real, checked evidence rather than asserted from unread/unverified content.",
+          "subtopics": [],
+          "related": [
+            "Hallucination",
+            "Hybrid Search"
+          ],
+          "evidence_status": "RUNTIME VERIFIED"
+        },
+        {
+          "name": "Reliability",
+          "definition": "How consistently a system produces a correct/expected outcome across repeated real runs.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": null
+        },
+        {
+          "name": "First-pass Success",
+          "definition": "Whether an agent's first attempt at a task succeeds without requiring a human correction/retry.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": null
+        },
+        {
+          "name": "Failure Trajectories",
+          "definition": "The full sequence of steps/events leading to a failed outcome — deliberately preserved as evidence in this project's event ledger, not discarded.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "RUNTIME VERIFIED"
+        }
+      ]
+    },
+    {
+      "id": "ai-security-governance",
+      "title": "AI Security / Governance",
+      "topics": [
+        {
+          "name": "Prompt Injection",
+          "definition": "Malicious/untrusted content (in a file, tool result, or webpage) attempting to hijack a model's instructions.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "LEARNED"
+        },
+        {
+          "name": "Tool Abuse",
+          "definition": "A model being tricked or misconfigured into using a legitimate tool for an unintended, harmful action.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": null
+        },
+        {
+          "name": "Least Privilege",
+          "definition": "Granting a model/agent only the exact tools/scope/paths it needs — never broad, unscoped access.",
+          "subtopics": [],
+          "related": [
+            "Tool Authorization"
+          ],
+          "evidence_status": "RUNTIME VERIFIED"
+        },
+        {
+          "name": "Sandboxing",
+          "definition": "Isolating an agent's execution environment so a mistake or attack can't reach the real system unchecked.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "LEARNED"
+        },
+        {
+          "name": "Secret Protection",
+          "definition": "Deterministically preventing credential-shaped values from ever reaching a model, log, or durable store.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "PRODUCTION VERIFIED"
+        },
+        {
+          "name": "Data Classification",
+          "definition": "Explicitly tagging captured data (e.g. TRAINING_ALLOWED, EVAL_ONLY, SECRET_NEVER_STORE) so downstream use respects its real sensitivity.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "IMPLEMENTED"
+        },
+        {
+          "name": "RAG Poisoning",
+          "definition": "An attacker planting malicious content where a retrieval system will find and surface it as if trustworthy.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "LEARNED"
+        },
+        {
+          "name": "Approval Boundaries",
+          "definition": "The exact, verified line between what a model can propose and what only a human can authorize — enforced outside the model's own reachable tool surface in this project.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "PRODUCTION VERIFIED"
+        },
+        {
+          "name": "AI Governance",
+          "definition": "The organizational rules/policies constraining how AI systems may act, what they may access, and who is accountable.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": null
+        }
+      ]
+    },
+    {
+      "id": "observability",
+      "title": "Observability",
+      "topics": [
+        {
+          "name": "AI Tracing",
+          "definition": "Recording the real sequence of a model/agent's calls and decisions so a run can be reconstructed after the fact.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "RUNTIME VERIFIED"
+        },
+        {
+          "name": "Events",
+          "definition": "Individual, timestamped, typed records of something that actually happened — this project's atomic unit of durable evidence.",
+          "subtopics": [],
+          "related": [
+            "Event Ledger"
+          ],
+          "evidence_status": "PRODUCTION VERIFIED"
+        },
+        {
+          "name": "Spans",
+          "definition": "A tracing concept for a bounded operation with a start/end time, often nested (e.g. one tool call within one agent turn).",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "NOT USED"
+        },
+        {
+          "name": "Model Usage",
+          "definition": "Real, provider-reported facts about a model call (provider, model, token counts) — never estimated.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "RUNTIME VERIFIED"
+        },
+        {
+          "name": "Token Usage",
+          "definition": "The real input/output token counts a model call actually consumed, as reported by the API response itself.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "RUNTIME VERIFIED"
+        },
+        {
+          "name": "Latency",
+          "definition": "How long a real operation (model call, tool call, deployment) actually took, measured, not guessed.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": null
+        },
+        {
+          "name": "Human Wait Time",
+          "definition": "How long a human's attention/approval was genuinely needed before an agent could continue — captured as raw timestamps, never fabricated as a single number.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "IMPLEMENTED"
+        },
+        {
+          "name": "Tool Telemetry",
+          "definition": "Structured records of real tool calls (name, input summary, success, duration) for later analysis.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "RUNTIME VERIFIED"
+        },
+        {
+          "name": "Agent Telemetry",
+          "definition": "Structured records of an agent's own development/runtime activity — this project's event ledger, distinguishing PRODUCT_DEVELOPMENT from PRODUCT_RUNTIME sources.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "RUNTIME VERIFIED"
+        }
+      ]
+    },
+    {
+      "id": "model-engineering",
+      "title": "Model Engineering",
+      "topics": [
+        {
+          "name": "Model Selection",
+          "definition": "Choosing which model to use for a given task based on capability/cost/latency tradeoffs.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "IMPLEMENTED"
+        },
+        {
+          "name": "Model Routing",
+          "definition": "Automatically directing different requests to different models based on task type/complexity/cost.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "NOT USED"
+        },
+        {
+          "name": "Fine-tuning",
+          "definition": "Further training a pre-trained model's weights on task-specific data to specialize its behavior.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "NOT USED"
+        },
+        {
+          "name": "Preference Data",
+          "definition": "Human/AI-judged comparisons between candidate outputs, used to align a model toward preferred behavior.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "NOT USED"
+        },
+        {
+          "name": "Evaluation Dataset",
+          "definition": "A held-out set of real or representative cases used to measure model/agent performance.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": null
+        },
+        {
+          "name": "Training Dataset",
+          "definition": "The data a model's weights are actually learned from.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": null
+        },
+        {
+          "name": "Distillation",
+          "definition": "Training a smaller model to imitate a larger one's behavior, trading some capability for cost/speed.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": null
+        },
+        {
+          "name": "Proprietary Models",
+          "definition": "Models trained/owned privately on an organization's own captured data — a stated future direction for this project's evidence ledger, not a current capability.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "NOT USED"
+        }
+      ]
+    },
+    {
+      "id": "ai-economics",
+      "title": "AI Economics",
+      "topics": [
+        {
+          "name": "Token Cost",
+          "definition": "The real monetary cost of a model call, derived from its real token counts and a dated provider pricing table.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "NOT USED"
+        },
+        {
+          "name": "Latency",
+          "definition": "The real time cost of a model/tool call — a first-class economic factor alongside token cost.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": null
+        },
+        {
+          "name": "Cost per Verified Change",
+          "definition": "The real total cost (tokens + time) to produce one change that actually passed verification — this project's target unit economic metric, not yet computed.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": null
+        },
+        {
+          "name": "Human Minutes per Change",
+          "definition": "The real amount of human attention required to get one verified change through — distinct from AI wall-clock time.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "IMPLEMENTED"
+        },
+        {
+          "name": "Model Efficiency",
+          "definition": "How much real verified value a model produces per token/dollar spent.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": null
+        },
+        {
+          "name": "Caching",
+          "definition": "Reusing a previous model/tool result instead of recomputing it, to save cost/latency.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "NOT USED"
+        }
+      ]
+    },
+    {
+      "id": "ai-delivery-engineering",
+      "title": "AI Delivery Engineering (concepts encountered while building this platform)",
+      "topics": [
+        {
+          "name": "Event Ledger",
+          "definition": "This project's real, append-only, durable store of observable engineering events (Workbench runtime + Claude Code development activity).",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "PRODUCTION VERIFIED"
+        },
+        {
+          "name": "Append-only Data",
+          "definition": "A storage pattern where records are only ever added, never modified/deleted in place — preserves history and failure evidence.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "RUNTIME VERIFIED"
+        },
+        {
+          "name": "Idempotency",
+          "definition": "An operation that can be safely retried without producing a duplicate/incorrect result — this project's event inserts are idempotent by event_id.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "RUNTIME VERIFIED"
+        },
+        {
+          "name": "Retry",
+          "definition": "Attempting a failed operation again, ideally combined with idempotency so a retry can never corrupt state.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "RUNTIME VERIFIED"
+        },
+        {
+          "name": "Durable Spool",
+          "definition": "A local fallback queue that holds events when a remote store is unreachable, synced later — never a substitute for the real durable store.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "RUNTIME VERIFIED"
+        },
+        {
+          "name": "PostgreSQL",
+          "definition": "The real relational database backing this project's event ledger (Railway-hosted).",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "PRODUCTION VERIFIED"
+        },
+        {
+          "name": "TCP Proxy",
+          "definition": "A public network endpoint forwarding to a database that otherwise only listens on a private network — how this project's laptop reaches its Railway Postgres instance.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "RUNTIME VERIFIED"
+        },
+        {
+          "name": "Private Networking",
+          "definition": "A cloud provider's internal-only network, unreachable from outside without an explicit public endpoint (e.g. a TCP proxy).",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "LEARNED"
+        },
+        {
+          "name": "SSE",
+          "definition": "Server-Sent Events — a one-way, HTTP-based streaming protocol this project uses for live run updates.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "RUNTIME VERIFIED"
+        },
+        {
+          "name": "Polling Fallback",
+          "definition": "Periodically re-fetching state as a safety net alongside a streaming transport, since this project proved SSE can silently drop a stream with zero error signal.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "PRODUCTION VERIFIED"
+        },
+        {
+          "name": "State Machines",
+          "definition": "Modeling a run's lifecycle as a fixed set of states/transitions (e.g. PLANNING -> BUILDING -> DEPLOYED) so status is always well-defined.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "RUNTIME VERIFIED"
+        },
+        {
+          "name": "Deployment Verification",
+          "definition": "Confirming a deployment actually succeeded via independent evidence (a real HTTP check), never trusting a deploy tool's self-report alone.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "PRODUCTION VERIFIED"
+        },
+        {
+          "name": "Git Evidence",
+          "definition": "Using real commit history/hashes as durable, checkable evidence of what code actually changed and when.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "RUNTIME VERIFIED"
+        },
+        {
+          "name": "CI/CD",
+          "definition": "Automated build/test/deploy pipelines triggered by code changes — not yet implemented in this project (deploys are still run manually).",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "NOT USED"
+        },
+        {
+          "name": "Production Observability",
+          "definition": "Real, live visibility into a deployed system's actual behavior/state, not just its build-time correctness.",
+          "subtopics": [],
+          "related": [],
+          "evidence_status": "RUNTIME VERIFIED"
+        }
+      ]
+    }
+  ]
+}

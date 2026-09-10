@@ -121,6 +121,27 @@ function renderImprovement(d) {
   return section("Are We Improving?", `<p>${esc(d.relative_improvement)}</p>`);
 }
 
+function renderEventLedger(d) {
+  const el = d.event_ledger;
+  if (!el) return "";
+  if (el.status !== "REACHABLE") {
+    return section("Event Ledger", `<p class="hint">Evidence source: REMOTE EVENT LEDGER — status: ${esc(el.status)}${el.error ? " (" + esc(el.error) + ")" : ""}</p>`);
+  }
+  const rows = el.recent_events.map(e => {
+    const parts = [];
+    if (e.duration_ms != null) parts.push(`${(e.duration_ms / 1000).toFixed(1)}s`);
+    if (e.model) parts.push(esc(e.model));
+    if (e.input_tokens != null || e.output_tokens != null) parts.push(`${e.input_tokens ?? "?"} in / ${e.output_tokens ?? "?"} out tokens`);
+    const detail = parts.length ? ` — ${parts.join(" · ")}` : "";
+    const src = e.activity_class ? `${esc(e.source)}/${esc(e.activity_class)}` : esc(e.source || "unknown");
+    return `<li><code>${esc(e.event_type)}</code> <span class="hint">[${src}]</span>${detail} <span class="hint">${esc(e.timestamp_utc)}</span></li>`;
+  }).join("");
+  return section("Event Ledger (live)", `
+    <p class="hint" style="margin-top:0;">Evidence source: REMOTE EVENT LEDGER (Railway Postgres) &middot; Events captured: ${el.events_captured} &middot; distinguishes PRODUCT_DEVELOPMENT (building this platform) from PRODUCT_RUNTIME (Workbench runs)</p>
+    <ul class="ledger-recent">${rows}</ul>
+  `);
+}
+
 function renderConsumptionCategories(d) {
   const items = d.consumption_categories.map(c => `<li>${esc(c)}</li>`).join("");
   return section("Consumption Categories (schema)", `<p class="hint">Every session/run is tagged with exactly one of these — never mixed together for economics.</p><ul>${items}</ul>`);
@@ -178,6 +199,7 @@ async function load() {
   }
 
   main.innerHTML = [
+    renderEventLedger(data),
     renderDevSessionControls(),
     renderToday(data),
     renderCoverageExplainer(),

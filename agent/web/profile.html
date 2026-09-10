@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Karthikeyan Devadoss — Profile</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="profile.css">
+</head>
+<body>
+
+<header>
+  <h1>Agentic Software Delivery <span class="sub">— Profile</span></h1>
+  <p class="tagline">Evidence-backed, not a marketing page. Every capability claim below links to real, runnable evidence in this project.</p>
+  <nav class="top-nav">
+    <a href="/workbench">Workbench</a>
+    <a href="/dashboard">Dashboard</a>
+    <a href="/usage">Usage</a>
+    <a href="/learn">Learn</a>
+    <a href="/profile"><strong>Profile</strong></a>
+  </nav>
+</header>
+
+<main>
+
+  <section class="panel">
+    <h2>Karthikeyan Devadoss</h2>
+    <p class="profile-headline">15+ years of enterprise backend/software engineering experience, now focused on Agentic AI and AI-assisted software delivery.</p>
+    <p>Building the <strong>Agentic Software Delivery</strong> platform — a system that turns real software requirements into controlled, evidence-backed, verified changes, with human approval required for anything beyond small, reversible, low-risk work. Direction: architecture, delivery, and technical leadership for AI-assisted engineering.</p>
+  </section>
+
+  <section class="panel">
+    <h2>What This Platform Actually Does (evidence, not claims)</h2>
+    <ul class="evidence-list">
+      <li><strong>LLM tool-calling agent loop</strong> — investigates a real repository and proposes source changes using Claude's tool-use API. <span class="ev-tag">Runtime verified</span></li>
+      <li><strong>Safe write boundary</strong> — propose → approve → apply, with approval cryptographically bound to the exact content approved; a model can never approve its own change. <span class="ev-tag">Unit tested + runtime verified</span></li>
+      <li><strong>Risk-gated bounded autonomy</strong> — small, low-risk, reversible changes execute automatically with real compile/test/deploy verification; everything else requires explicit Owner Authorization. <span class="ev-tag">Production verified</span></li>
+      <li><strong>Local semantic RAG + MCP adapter</strong> — hybrid retrieval (semantic search finds candidates, tools verify before any claim is asserted). <span class="ev-tag">Runtime verified</span></li>
+      <li><strong>Durable event ledger</strong> — real Postgres-backed, append-only, write-through capture of Workbench runs and Claude Code development activity, with outage-safe local spooling and idempotent sync. <span class="ev-tag">Production verified</span></li>
+      <li><strong>Production verification, not self-reported success</strong> — every deploy is independently confirmed against the real live application, not trusted from a deploy tool's own status.</li>
+    </ul>
+    <p class="hint">Full capability matrix, verification status, and known gaps: see <a href="/dashboard">Dashboard</a>. Detailed evidence mapping: <code>docs/EXPERIENCE_EVIDENCE.md</code> in the repository.</p>
+  </section>
+
+  <section class="panel">
+    <h2>Links</h2>
+    <ul class="link-list">
+      <li><a href="/workbench">Workbench</a> — try a real, small, bounded requirement</li>
+      <li><a href="/dashboard">Dashboard</a> — current platform capability and evidence</li>
+      <li><a href="/usage">Usage</a> — real run/session/model-usage history</li>
+      <li><a href="/learn">Learn</a> — Agentic AI concept index</li>
+      <li><a href="https://github.com/karthikdevadoss/agentic-software-delivery" target="_blank" rel="noopener">GitHub — source code</a></li>
+      <li><a href="https://agentic-delivery-customer-app-production.up.railway.app/" target="_blank" rel="noopener">Production app</a> — the real target application the Workbench operates on</li>
+    </ul>
+  </section>
+
+  <section class="panel">
+    <p class="hint">A technology or topic appearing in <a href="/learn">Learn</a> does not automatically become a claim on this page — Profile only asserts what is actually evidenced above.</p>
+  </section>
+
+</main>
+
+</body>
+</html>

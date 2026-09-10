@@ -489,3 +489,66 @@ decision now includes a 5th surface, **Profile** (docs/COMPANY_VISION.md),
 and docs/CONSTITUTION.md §17 gained the "capture broadly with provenance,
 interpret later" principle plus the bounded future-evals/training-data
 direction.
+
+# Current Reality (2026-09-10, continued): TRAINER PREVIEW V1 — one public product experience
+
+**All five public surfaces now exist and are locally verified**:
+Workbench, Dashboard, Usage, Learn, Profile — one shared shell/nav
+(`agent/web/style.css`), consistent across all pages.
+
+- **Workbench** (`agent/web/workbench.html/js/css`, formerly the public
+  Trainer demo, files renamed via `git mv` — history preserved) reuses
+  the existing bounded-autonomy execution path unchanged. Larger
+  requirements now show "This change requires Owner Authorization.
+  Larger authorized builds are not enabled in this preview yet." with
+  clickable safe alternatives. A verified successful deploy now shows a
+  prominent "PRODUCTION CHANGE VERIFIED" banner with an "[ OPEN
+  PRODUCTION APP ]" link plus run ID/commit/build/test/deploy evidence.
+- **Dashboard** and **Usage** (formerly Sessions) got new nav +
+  terminology only — Usage additionally gained one small, additive
+  "Event Ledger (live)" section showing real recent events with their
+  real `PRODUCT_DEVELOPMENT`/`PRODUCT_RUNTIME` source. Neither was
+  redesigned.
+- **Learn V1** is a real, data-driven, searchable index — 127 topics
+  across 15 areas, each with a concise real definition and an honest
+  evidence-status tag only where this project genuinely has that
+  evidence. Deeper content (interview answers, mechanics, etc.) is
+  intentionally not built yet — the data model has room for it.
+- **Profile V1** is a static, evidence-backed page drawing only from
+  `docs/EXPERIENCE_EVIDENCE.md`'s already-verified capability table and
+  the creator's own stated experience — explicitly not copying claims
+  from the pre-existing `karthikdevadoss.com` site.
+- The former Control Plane (`agent/web/control-plane.html`, formerly
+  `index.html`) is fully functional at `/control-plane` — kept, not
+  deleted, just removed from public navigation.
+
+**A real Workbench acceptance run was performed end-to-end** through the
+actual running server: "Add a small \"Powered by Agentic Delivery\"
+footer line to the page" → assessed TINY/LOW/auto → real commit `37e569c`
+→ real Railway deploy → production verification HTTP 200 → COMPLETED.
+Independently re-verified afterward by directly curling the live
+production URL: the real footer text is now "Powered by Agentic
+Delivery," confirming genuine success. One honest anomaly, not hidden:
+the run's own `deployment` event reported
+`content_changed_from_baseline=false` despite the change being genuinely
+live moments later — most likely a timing race between that event's
+own before/after fetch and Railway's redeploy propagation, not a masked
+failure (the independent post-hoc check confirmed the real outcome).
+
+**Public reachability: UNCONFIRMED, not a code defect.** A stale
+`python.exe` process was found holding port 8420 from earlier in this
+session and stopped before starting a fresh server with the current
+code. Three separate `cloudflared tunnel --url` attempts each reported
+successful tunnel registration with Cloudflare's edge, but in every case
+the assigned `*.trycloudflare.com` hostname never resolved in public DNS
+even after 10+ minutes — confirmed via direct queries to Cloudflare's own
+authoritative resolver (1.1.1.1 DoH), which returned NXDOMAIN with a
+cached negative TTL on every attempt. This is consistent with a genuine,
+transient issue in Cloudflare's free/account-less Quick Tunnel DNS
+provisioning at the time of this session. See
+docs/RESOURCE_REGISTRY.md for the current attempted URL and next steps.
+
+Full regression suite: clean (all existing Python/Node tests still pass;
+no new focused test file was added this task since the changes are
+primarily frontend/routing — verified instead by direct HTTP checks
+against every route and the one real acceptance run above).

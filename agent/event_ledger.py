@@ -515,12 +515,19 @@ def backfill_from_claude_code_transcript(transcript_path, window_start_iso, wind
 # --- read queries (minimal, for Dashboard/Usage live-proof only) ---------
 
 def get_recent_events(limit=20):
+    """Minimal read-only projection for Dashboard/Usage live-proof
+    surfaces — broadened (Section 5, TRAINER PREVIEW V1) to include
+    source/activity_class/duration/model/token columns so Usage can show
+    real recent-run evidence without a new query surface or a bigger
+    analytics redesign."""
     ensure_schema()
     conn = _connect()
     try:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT event_id, timestamp_utc, event_type, run_id, status "
+                "SELECT event_id, timestamp_utc, event_type, run_id, status, "
+                "source, activity_class, duration_ms, provider, model, "
+                "input_tokens, output_tokens "
                 "FROM delivery_events ORDER BY timestamp_utc DESC LIMIT %s",
                 (limit,),
             )

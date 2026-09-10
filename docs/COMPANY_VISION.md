@@ -75,9 +75,15 @@ Five public surfaces, one flagship product (Profile added 2026-09-10):
    only asserts what is actually evidenced (see the Constitution's truth/
    zero-delusion principle, docs/CONSTITUTION.md §4).
 
-Not implemented yet: Learn and Profile are both decision records only, not
-built pages (see docs/ROADMAP.md for sequencing) — do not build either
-from this document alone without an explicit task.
+**All five surfaces are now implemented** (TRAINER PREVIEW V1, 2026-09-10):
+`/workbench`, `/dashboard`, `/usage`, `/learn`, `/profile` all live and
+verified locally and through a temporary public preview tunnel — see
+docs/RESOURCE_REGISTRY.md for the current preview URL (ephemeral, not the
+final planned domain) and docs/PROJECT_STATE.json's
+`verification_state.trainer_preview_v1` for full evidence. Learn V1 is a
+data-driven topic index (127 topics/15 areas), not the full interview
+book; Profile V1 is a static evidence-backed page. Both still have real
+room to grow — see docs/ROADMAP.md.
 
 **Planned retirement (decision recorded here, not yet executed):** the
 current "Control Plane" as a standalone public-competing page, and the

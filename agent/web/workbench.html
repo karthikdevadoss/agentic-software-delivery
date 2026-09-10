@@ -2,21 +2,22 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Agentic Software Delivery — Live Requirement Workbench</title>
+<title>Agentic Software Delivery — Workbench</title>
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="dashboard.css">
-<link rel="stylesheet" href="trainer.css">
+<link rel="stylesheet" href="workbench.css">
 </head>
 <body>
 
 <header>
-  <h1>Agentic Software Delivery <span class="sub">— Live Requirement Workbench</span></h1>
-  <p class="tagline">Enter a real requirement. Small, low-risk changes are implemented, tested, and deployed automatically — no human approval needed for this demo tier. Larger or riskier requests are safely refused, with reasons and smaller alternatives.</p>
+  <h1>Agentic Software Delivery <span class="sub">— Workbench</span></h1>
+  <p class="tagline">Enter a real requirement. Small, low-risk changes are implemented, tested, and deployed automatically — no human approval needed for this preview tier. Larger or riskier requests require Owner Authorization, with safe smaller alternatives suggested instead.</p>
   <nav class="top-nav">
-    <a href="/">Control Plane</a>
+    <a href="/workbench"><strong>Workbench</strong></a>
     <a href="/dashboard">Dashboard</a>
-    <a href="/sessions">Sessions</a>
-    <a href="/trainer"><strong>Trainer</strong></a>
+    <a href="/usage">Usage</a>
+    <a href="/learn">Learn</a>
+    <a href="/profile">Profile</a>
   </nav>
 </header>
 
@@ -71,11 +72,12 @@
   <section class="panel" id="result-panel" hidden>
     <h2>7. Result</h2>
     <div id="result-banner"></div>
+    <div id="result-evidence"></div>
     <pre id="result-text"></pre>
   </section>
 
 </main>
 
-<script src="trainer.js"></script>
+<script src="workbench.js"></script>
 </body>
 </html>
