@@ -112,42 +112,83 @@ old date as due for re-verification, not as current truth.
   `pg_dump` archive. Sufficient to prove exportability; not equivalent to
   Railway-native PITR for production-grade recovery guarantees.
 
-## Local Workbench execution engine + TEMPORARY TRAINER PREVIEW URL
+## Agentic Software Delivery platform backend (persistent cloud hosting)
 
-- **NAME:** Local Starlette server (`agent/web_server.py`) + `ngrok` HTTP
-  tunnel.
-- **PURPOSE:** Runs Workbench/Dashboard/Usage/Learn/Profile (and the
-  internal-only Control Plane at `/control-plane`) locally, exposed
-  publicly via a temporary tunnel for trainer preview access.
-- **PROVIDER:** This laptop (server), `ngrok` (free-tier authenticated
-  account, provider = ngrok).
-- **TEMPORARY TRAINER PREVIEW URL:** `https://relish-collapse-flyaway.ngrok-free.dev`
-- **STATUS:** LIVE — **verified publicly reachable**: `/`, `/workbench`,
-  `/dashboard`, `/usage`, `/learn`, `/profile` all return real HTTP 200
-  pages with correct titles/nav through this exact URL; `/trainer` and
-  `/sessions` return 308 redirects to `/workbench`/`/usage`. A full real
-  Workbench acceptance run (requirement: `Add a small "Powered by Agentic
-  Delivery" footer line to the page`) was submitted and completed through
-  this same public URL, reaching `NO_CHANGE_NEEDED` (genuinely
-  non-mutating — the footer already matched from an earlier real run).
-- **PURPOSE:** trainer preview.
-- **DEPENDENCY:** creator's laptop staying on + the local
-  `agent/web_server.py` process (PID recorded at start time, port 8420)
-  + this `ngrok` process remaining alive. If either stops, this URL goes
-  dark — it is NOT independent infrastructure.
+- **NAME:** `agentic-platform-backend` — a Railway service running
+  `agent/web_server.py` from a Docker image built from the repo-root
+  `Dockerfile`. Runs Workbench/Dashboard/Usage/Learn/Profile (and the
+  internal-only Control Plane at `/control-plane`) 24x7, independent of
+  the creator's laptop.
+- **PROVIDER:** Railway. Deliberately placed as a **second service inside
+  the existing `agentic-delivery-events` project** (service ID
+  `c69e2076-a9ae-458f-bda7-c601bcf739bd`), NOT a new project — the free
+  plan's project-count limit was hit when creating a genuinely new
+  project (`Free plan resource provision limit exceeded`, verified by
+  trying), while adding a new *service* to an already-provisioned project
+  was not blocked. The naming mismatch (platform backend living in the
+  "events" project) is a known, deliberate tradeoff — not an accident.
+- **PUBLIC URL (persistent, Railway-provided):**
+  `https://agentic-platform-backend-production.up.railway.app`
+- **STATUS:** LIVE — **verified publicly reachable, independent of any
+  laptop**: `/`, `/workbench`, `/dashboard`, `/usage`, `/learn`,
+  `/profile` all return real HTTP 200 pages with correct titles/nav
+  through this exact URL; `/trainer`/`/sessions` return 308 redirects.
+  The deployed backend independently confirmed reachable to the real
+  event ledger (`/api/dashboard`'s `event_ledger.status` = `REACHABLE`,
+  346 real events at verification time). A full real Workbench
+  acceptance run (`Add a small "Powered by Agentic Delivery" footer line
+  to the page`) was submitted and completed **through this public URL**,
+  reaching `NO_CHANGE_NEEDED` (genuinely non-mutating — read-only
+  repository investigation only, no compile/commit/deploy triggered).
+- **RUNTIME CAPABILITY:** the image includes `git`, a JDK (for
+  `app/mvnw`), and the Railway CLI (`v5.50.2`, statically-linked musl
+  binary) — real infrastructure for the Workbench's full bounded-autonomy
+  path (investigate → propose → apply → build/test → commit →
+  deploy → verify), not just static page serving. `ANTHROPIC_API_KEY`
+  and `EVENT_LEDGER_DATABASE_URL` are set as Railway service variables
+  (never printed/logged/committed at any point — copied via a script that
+  redirected values directly between `agent/.env` and `railway variable
+  set --stdin`).
+- **KNOWN GAP:** `railway up`/`railway status` from *inside* this
+  container (the trainer's real auto-deploy-the-Customer-app step) has
+  NOT been exercised — it needs its own `RAILWAY_TOKEN` (a
+  project-scoped Railway token, confirmed as a real supported env var by
+  extracting the literal string from the installed CLI binary itself),
+  which requires generating a token from the Railway dashboard (a
+  browser action, not available via any CLI subcommand as of CLI 5.50.2
+  — confirmed by inspecting `railway --help`'s full command list). The
+  acceptance test performed above deliberately used an
+  already-satisfied requirement specifically so this gap didn't block
+  proving the rest of the pipeline — a genuine code-change requirement
+  would currently fail at the deploy step until `RAILWAY_TOKEN` is added.
 - **LAST VERIFIED:** 2026-09-10
-- **NOTES:** This is explicitly TEMPORARY trainer-preview infrastructure,
-  not durable/permanent hosting. Do not treat this URL as stable across a
-  laptop restart or beyond this demo window. An earlier Cloudflare Quick
-  Tunnel attempt (same session, prior task) failed at public DNS
-  resolution across 3 attempts despite successful edge registration —
-  switched to `ngrok` instead per explicit instruction, not retried
-  further. No `ngrok` authtoken is stored in this repository or anywhere
-  in Git — it lives only in the local `ngrok` config
-  (`%LOCALAPPDATA%\ngrok\ngrok.yml` on this machine), configured
-  interactively by the creator. **CANONICAL FINAL URL (not live yet):**
-  `https://agentic.karthikdevadoss.com` (see docs/COMPANY_VISION.md) —
-  do not claim that domain is live until this entry is updated.
+- **NOTES:** This supersedes the local-laptop + tunnel approach (both
+  Cloudflare Quick Tunnel and `ngrok`) as the trainer/recruiter-facing
+  URL — see docs/DECISIONS.md for the full detour history and why each
+  was abandoned. **CANONICAL FINAL URL (not live yet):**
+  `https://agentic.karthikdevadoss.com` — a CNAME record was generated
+  and is ready (`agentic` → `r1bbjhwh.up.railway.app`, confirmed via
+  `railway domain agentic.karthikdevadoss.com`) but NOT applied: adding
+  it requires the creator's own action at wherever `karthikdevadoss.com`'s
+  DNS is managed, which this session has no access to. Do not claim that
+  domain is live until this entry is updated after the creator adds the
+  CNAME and it verifies.
+- **TARGET DOMAIN (not live yet):** `https://app.karthikdevadoss.com` for
+  the Customer app — not touched this task, unchanged from prior status.
+
+## Local Workbench execution engine (development/debug only)
+
+- **NAME:** Local Starlette server (`agent/web_server.py`) run directly
+  on the creator's laptop, `http://127.0.0.1:8420`.
+- **PURPOSE:** Local development/debugging only. The public-facing
+  deployment above is now the trainer/recruiter-facing surface — this
+  local instance is no longer the primary way to reach the platform.
+- **STATUS:** Available on demand (`python agent/web_server.py` from
+  `agent/`), not continuously running.
+- **NOTES:** Any earlier `ngrok`/Cloudflare Quick Tunnel processes
+  fronting this local instance should be considered retired — the
+  Railway deployment above is the durable answer to "one URL I can send
+  my trainer," not a laptop-dependent tunnel.
 
 ## Model providers actually used
 

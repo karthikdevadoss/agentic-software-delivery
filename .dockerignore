@@ -1,0 +1,15 @@
+# Never bake secrets or local-only derived data into the image.
+.env
+agent/.env
+agent/event_spool.jsonl
+agent/event_spool_test*.jsonl
+agent/event_ledger_sync.lock
+agent/event_ledger_backups/
+agent/.rag_index/
+agent/web_run_history.jsonl
+agent/dev_sessions.json
+.claude/settings.local.json
+app/target
+node_modules
+__pycache__
+*.pyc

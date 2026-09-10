@@ -201,21 +201,22 @@ class RealLedgerDistinctnessTestCase(unittest.TestCase):
 
 
 class PermissionConfigTestCase(unittest.TestCase):
-    """Structural proof of Section 7: narrow, specific allow rules exist
-    for safe read-only commands, and no broad/dangerous rule was added.
-    Does not (and cannot, from a unit test) invoke Claude Code's own
-    permission engine — that requires a real session. This proves the
-    CONFIGURATION itself is narrow, which is the actual safety property."""
+    """Structural proof of Section 7: no broad/dangerous rule exists in
+    the local permission config. Does not (and cannot, from a unit test)
+    invoke Claude Code's own permission engine — that requires a real
+    session. This proves the CONFIGURATION itself stays safe, which is
+    the actual invariant — not any specific set of rules. This file
+    (.claude/settings.local.json) is gitignored and legitimately
+    creator-editable at any time (e.g. to add/remove convenience rules),
+    so this suite deliberately does NOT assert any particular rule is
+    present — only that nothing dangerous is, regardless of how the
+    creator has tuned it since."""
 
     @classmethod
     def setUpClass(cls):
         settings_path = Path(__file__).resolve().parent.parent / ".claude" / "settings.local.json"
         cls.settings = json.loads(settings_path.read_text(encoding="utf-8")) if settings_path.exists() else {}
         cls.allow = cls.settings.get("permissions", {}).get("allow", [])
-
-    def test_expected_safe_rules_present(self):
-        for expected in ("Bash(git status)", "Bash(git diff)", "Bash(git log)", "Bash(git rev-parse *)"):
-            self.assertIn(expected, self.allow)
 
     def test_no_blanket_bash_rule(self):
         self.assertNotIn("Bash(*)", self.allow)

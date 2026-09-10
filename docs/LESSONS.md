@@ -208,3 +208,17 @@ surprising verified behavior would otherwise get rediscovered later.
   corroborating (`_decide_deployment_outcome()`), and adding a genuine
   `DEPLOYMENT_STATUS_UNKNOWN` outcome for when neither signal confirms
   anything — "unknown" and "failed" are not the same claim.
+- **Docker `COPY` from a Windows build host does not preserve/infer a POSIX
+  executable bit.** Building the platform backend's image (repo-root
+  `Dockerfile`) on this Windows laptop, `COPY app/mvnw ./app/` produced a
+  file with no execute permission inside the Linux container — a real
+  deploy's first Workbench acceptance run failed with `[Errno 13]
+  Permission denied: '/repo/app/mvnw'` when the agent tried
+  `run_controlled_compile`. Windows filesystems have no POSIX execute-bit
+  concept, so there's nothing for Docker's build context to preserve;
+  Linux containers need it explicitly. Fixed with an explicit `RUN chmod
+  +x app/mvnw` immediately after each `COPY` that could touch that file
+  (including after the later `COPY . .`, since a second copy of the same
+  path can silently re-clobber the bit set earlier in the same build).
+  Verified live: the exact same requirement that failed before the fix
+  reached `NO_CHANGE_NEEDED` cleanly after redeploying with the fix.

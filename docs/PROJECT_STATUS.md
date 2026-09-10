@@ -552,3 +552,49 @@ Full regression suite: clean (all existing Python/Node tests still pass;
 no new focused test file was added this task since the changes are
 primarily frontend/routing — verified instead by direct HTTP checks
 against every route and the one real acceptance run above).
+
+# Current Reality (2026-09-10, continued): PERSISTENT cloud hosting — no more laptop/tunnel dependency
+
+**The platform is now hosted independently of the creator's laptop.**
+ngrok (the prior task's fix) technically worked but was correctly
+rejected as unsuitable for a recruiter-facing link — it shows a provider
+interstitial warning page and goes dark the instant the laptop or tunnel
+process stops. Both that and the earlier failed Cloudflare Quick Tunnel
+are now superseded.
+
+**New persistent URL:** `https://agentic-platform-backend-production.up.railway.app`
+— a Railway service (`agentic-platform-backend`) running the exact same
+`agent/web_server.py`, packaged as a Docker image (new repo-root
+`Dockerfile`), reusing the same providers already trusted for the
+Customer app and event ledger rather than introducing a new one.
+
+- **Why Railway, not Vercel-frontend-split:** `web_server.py` is a
+  long-running process with in-memory run state, SSE streams, and
+  background threads, and its real execution path shells out to `git`,
+  `app/mvnw` (needs a JDK), and the `railway` CLI — none of which fits a
+  serverless function. One Docker image on Railway was the correct,
+  minimal-risk fit for the actual, inspected requirements — not a
+  redesign.
+- **Where it lives:** inside the *existing* `agentic-delivery-events`
+  Railway project (as a second service), not a new project — creating a
+  genuinely new project hit a real, verified free-plan resource limit.
+- **Verified, not assumed:** all 5 public surfaces return correct pages
+  through the real public URL; the deployed backend independently
+  confirmed reachable to the real event ledger; a full real Workbench
+  acceptance run was submitted *and completed* through the public URL
+  itself, reaching `NO_CHANGE_NEEDED`.
+- **A real bug was found and fixed via actual testing:** the first
+  deploy's acceptance run failed with a `mvnw` permission-denied error —
+  Docker's `COPY` from this Windows build host doesn't preserve a POSIX
+  executable bit. Fixed with an explicit `chmod +x`, redeployed, and the
+  identical requirement then succeeded cleanly (see docs/LESSONS.md).
+- **Custom domain ready, not live:** a CNAME record
+  (`agentic` → `r1bbjhwh.up.railway.app`) was generated for
+  `agentic.karthikdevadoss.com` but requires the creator's own DNS
+  action — not something this session can do.
+- **One known functional gap:** the deployed backend doesn't yet have its
+  own `RAILWAY_TOKEN`, so it can't (yet) run `railway up` to auto-deploy
+  the Customer app from inside itself — only generatable via the Railway
+  dashboard, a creator action. The already-satisfied acceptance path
+  proven above doesn't need it; a genuine code-change requirement
+  submitted today would currently stop at the deploy step.

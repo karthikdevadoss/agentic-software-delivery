@@ -27,6 +27,7 @@ Then open http://127.0.0.1:8420
 
 import asyncio
 import json
+import os
 import queue
 import shutil
 import subprocess
@@ -941,5 +942,12 @@ app = Starlette(routes=routes)
 
 if __name__ == "__main__":
     API_KEY = get_api_key()  # fails fast here, not mid-request, if missing
-    print("Agentic Software Delivery: http://127.0.0.1:8420 (Workbench/Dashboard/Usage/Learn/Profile)", file=sys.stderr)
-    uvicorn.run(app, host="127.0.0.1", port=8420)
+    # Same infra-only pattern already used for the Customer app
+    # (server.port=${PORT:8080}, see docs/DECISIONS.md): Railway assigns
+    # a dynamic PORT and requires binding 0.0.0.0, not 127.0.0.1. Local
+    # dev (no PORT set) keeps the exact previous behavior — loopback
+    # only, port 8420 — so this never changes local-laptop usage.
+    port = int(os.environ.get("PORT", "8420"))
+    host = "0.0.0.0" if "PORT" in os.environ else "127.0.0.1"
+    print(f"Agentic Software Delivery: http://{host}:{port} (Workbench/Dashboard/Usage/Learn/Profile)", file=sys.stderr)
+    uvicorn.run(app, host=host, port=port)
