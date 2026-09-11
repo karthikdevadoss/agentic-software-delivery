@@ -57,7 +57,77 @@
       "safe_to_auto_execute": false,
       "verification_required": "DONE: native invocation confirmed live in a fresh session; the subagent's own self-reported identity plus tool-call telemetry is the proof.",
       "created_at_commit": "9cbc7dd",
-      "resolved_at_commit": "PENDING_THIS_TASK_COMMIT"
+      "resolved_at_commit": "cd58f11"
+    },
+    {
+      "id": "LEARN-WIKI-P0",
+      "source": "product",
+      "title": "Learn recursive technical Wikipedia -- backend/routing/content complete, real browser click-through not yet performed",
+      "priority": "high",
+      "status": "in_progress",
+      "scope": "agent/build_learn_tree.py, agent/learn_tree.py, agent/web/learn.{html,js,css}, agent/web_server.py::learn_page",
+      "reason": "P0_PROMPT.txt Sections 3-18: /learn must become a real recursive Wikipedia (domain -> topic -> child topic -> detailed sections), not a flat card dump. Implemented and independently verified via direct HTTP against the live public deployment: /learn (landing), /learn/system-design, /learn/system-design/databases/connection-pooling all return 200 with real content; /learn/<unknown> genuinely 404s server-side (validated against the canonical tree, not a client-side illusion). A dedicated Node harness (agent/test_learn_frontend.js) exercises the real learn.js source and proves breadcrumbs, child-topic links, related-topic resolution, and the Not-Found state all render correctly.",
+      "evidence": "agent/test_learn_tree.py (9/9), agent/test_learn_frontend.js (14/14), agent/test_web_server.py::LearnRecursiveRouteTestCase (6/6), live curl checks against https://agentic-platform-backend-production.up.railway.app/learn/... this task.",
+      "safe_to_auto_execute": false,
+      "verification_required": "A human (or a genuine browser-automation tool, unavailable in this session) must actually click through Learn in a real browser per P0_PROMPT.txt Section 46's LEARN ACCEPTANCE steps 1-14 before this is marked verified -- HTTP/Node-harness evidence is strong but is not the same claim as a real browser click-through.",
+      "created_at_commit": "7996b8f",
+      "resolved_at_commit": null
+    },
+    {
+      "id": "LEARN-PDF-BOOK-P0",
+      "source": "product",
+      "title": "Downloadable Learn PDF book generated from the same canonical tree -- backend complete, real browser download not yet performed",
+      "priority": "high",
+      "status": "in_progress",
+      "scope": "agent/learn_pdf.py, agent/web_server.py::get_learn_book_pdf, Learn landing page PDF button",
+      "reason": "P0_PROMPT.txt Sections 37-44: a real, non-screenshot PDF generated from the SAME canonical learn-tree.json. Implemented with reportlab (documented justification in agent/learn_pdf.py's own docstring); independently verified against the live public deployment: /api/learn/book.pdf returns a genuine 88-page, 235KB PDF (application/pdf, correct Content-Disposition) containing real domain/topic hierarchy, WHAT/WHY/HOW/WHEN, development steps, interview sections, and metadata (git commit, generated timestamp, topic counts) -- confirmed via pypdf text extraction, not just a byte-count check.",
+      "evidence": "agent/test_learn_pdf.py (11/11), agent/test_web_server.py::LearnPdfRouteTestCase (3/3), live PDF fetched from the production URL this task and independently re-parsed.",
+      "safe_to_auto_execute": false,
+      "verification_required": "A human must actually click DOWNLOAD COMPLETE BOOK (PDF) on the live public Learn page and confirm a real download happens per P0_PROMPT.txt Section 46 steps 35-45 -- not yet performed this session (no browser tool available).",
+      "created_at_commit": "7996b8f",
+      "resolved_at_commit": null
+    },
+    {
+      "id": "SESSION-HISTORY-P0",
+      "source": "product",
+      "title": "Complete historical Usage session system -- backend/pagination/routing complete, real browser click-through not yet performed",
+      "priority": "high",
+      "status": "in_progress",
+      "scope": "agent/session_history.py, agent/web_server.py (session-history routes), agent/web/usage.{js,css}",
+      "reason": "P0_PROMPT.txt Sections 19-23, 30-32: Usage must show ALL captured historical sessions (not just today), grouped by Europe/Berlin date, paginated to the earliest known session, with a dedicated /usage/session/{id} detail route. Implemented unifying 3 real session kinds already in the event ledger (Claude Code dev sessions, Workbench runs, V2 trial benchmarks); independently verified this task: 38+ real sessions spanning 3 real calendar dates (2026-09-09 through 2026-09-11), pagination reaches the earliest session with zero duplicates, test-fixture session_ids excluded so the ledger's own test noise never appears as a fabricated session.",
+      "evidence": "agent/test_session_history.py (13/13), agent/test_web_server.py::SessionHistoryRouteTestCase (5/5), live curl checks against the production URL this task.",
+      "safe_to_auto_execute": false,
+      "verification_required": "A human must scroll/Load-More through real Session History on the live public Usage page and open a session detail page per P0_PROMPT.txt Section 46 steps 15-34 -- not yet performed this session (no browser tool available).",
+      "created_at_commit": "7996b8f",
+      "resolved_at_commit": null
+    },
+    {
+      "id": "SESSION-ECONOMICS-P0",
+      "source": "product",
+      "title": "Session-level token/cost economics (EXACT/AGGREGATE_ONLY/honest COST UNAVAILABLE) -- implemented and tested",
+      "priority": "high",
+      "status": "in_progress",
+      "scope": "agent/session_history.py's token/cost rendering",
+      "reason": "P0_PROMPT.txt Sections 24-26: a session's tokens/cost must be honestly labeled (EXACT/AGGREGATE_ONLY/NOT_CAPTURED for tokens, ACTUAL/COST_UNAVAILABLE-with-reason for cost), and must never contradict the same run's figures shown elsewhere (Workbench/Dashboard/Usage). Verified this task: workbench_run sessions show EXACT tokens + ACTUAL cost from the same event_ledger.get_usage_economics()-adjacent run_usage_summary events already canonical elsewhere; v2_trial_benchmark sessions correctly show AGGREGATE_ONLY tokens and COST_UNAVAILABLE (never a fabricated USD figure from an aggregate total); claude_code_dev_session correctly shows NOT_CAPTURED (Claude Code's hook interface exposes no token field, confirmed by direct code inspection in the prior task).",
+      "evidence": "agent/test_session_history.py::test_workbench_run_has_exact_tokens_and_actual_cost_when_captured, test_v2_trial_tokens_are_aggregate_only_never_fake_exact.",
+      "safe_to_auto_execute": false,
+      "verification_required": "Cross-page economics audit (Workbench/Dashboard/Usage/session detail all agreeing on one canonical run's numbers) should be spot-checked visually once a browser tool is available -- not yet done this session.",
+      "created_at_commit": "7996b8f",
+      "resolved_at_commit": null
+    },
+    {
+      "id": "SESSION-QUALITY-P0",
+      "source": "product",
+      "title": "Session value/quality/comparison-to-cohort -- implemented and tested, evidence-gated (never a fake 100%)",
+      "priority": "medium",
+      "status": "in_progress",
+      "scope": "agent/session_history.py::get_session_detail's value/quality/comparison blocks",
+      "reason": "P0_PROMPT.txt Sections 27-29: value/quality must be evidence-backed (never fabricated monetary value, never an unqualified 100% score) and a session must be compared against a real cohort only once >=3 comparable sessions exist. Verified this task against a real workbench run (trainer-4733d1c0): technical/learning value computed from real ledger facts, quality score gated by evidence_coverage_pct, comparison correctly requires >=3 comparable same-kind sessions in the last 7 days before computing a median (26 real comparable sessions found, real +17.1% tokens / +13.5% cost vs. cohort median reported).",
+      "evidence": "agent/test_session_history.py::test_quality_never_reports_100_percent_without_full_evidence, test_comparison_requires_at_least_three_comparable_sessions; live comparison numbers reproduced this task against the real ledger.",
+      "safe_to_auto_execute": false,
+      "verification_required": "Visual spot-check of the rendered Quality/Comparison sections on a real session detail page once a browser tool is available.",
+      "created_at_commit": "7996b8f",
+      "resolved_at_commit": null
     }
   ]
 }
