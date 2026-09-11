@@ -465,14 +465,37 @@ def get_session_detail(session_id: str) -> dict:
             pass
         learning_value = {"knowledge_candidates_created": knowledge_candidates_linked}
 
+        # scored_dimensions: substantive FACTS about this session (always
+        # knowable -- a definite True/False either way -- so they are
+        # never a meaningful "coverage" signal on their own; shown for
+        # transparency, not used to compute coverage below).
         scored_dims = {}
         scored_dims["goal_completion"] = summary["status"] not in ("UNKNOWN", None)
         scored_dims["human_intervention_present"] = len(human_interventions) > 0
-        scored_dims["ai_active_time_known"] = summary["ai_active_ms"] is not None
-        scored_dims["cost_known"] = summary["cost"].get("status") == "ACTUAL"
-        evidence_coverage_pct = round(100 * sum(1 for v in scored_dims.values() if v is not None) / len(scored_dims))
+
+        # evidence_availability: real incident (2026-09-11, live
+        # production verification) -- the PREVIOUS coverage calculation
+        # counted "was this dimension evaluated at all" (always true,
+        # since every dimension above always resolves to a definite
+        # boolean), so evidence_coverage_pct was silently 100% and
+        # overall_confidence was silently HIGH_CONFIDENCE for EVERY
+        # session, including ones with zero captured tokens/cost/timing
+        # (e.g. a NO_CHANGE_NEEDED run with tokens=NOT_CAPTURED,
+        # cost=COST_UNAVAILABLE, ai_active_ms=None still showed
+        # HIGH_CONFIDENCE) -- exactly the fake-100%-with-thin-evidence
+        # defect this system is supposed to prevent. Coverage now
+        # measures only genuine evidence-AVAILABILITY signals (is real
+        # timing/token/cost data actually present), which legitimately
+        # differ session to session.
+        availability_dims = {
+            "ai_active_time_known": summary["ai_active_ms"] is not None,
+            "tokens_captured": summary["tokens"].get("status") in ("EXACT", "AGGREGATE_ONLY"),
+            "cost_known": summary["cost"].get("status") == "ACTUAL",
+        }
+        evidence_coverage_pct = round(100 * sum(1 for v in availability_dims.values() if v) / len(availability_dims))
         quality = {
             "scored_dimensions": scored_dims,
+            "evidence_availability": availability_dims,
             "evidence_coverage_pct": evidence_coverage_pct,
             "overall_confidence": (
                 "HIGH_CONFIDENCE" if evidence_coverage_pct >= 75 else

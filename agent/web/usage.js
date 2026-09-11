@@ -374,11 +374,19 @@ function renderTopSummary(d) {
 
 function renderQualityBlock(q) {
   if (!q) return "";
-  const rows = Object.entries(q.scored_dimensions || {}).map(([k, v]) =>
+  const factRows = Object.entries(q.scored_dimensions || {}).map(([k, v]) =>
     `<li><span>${esc(k.replace(/_/g, " "))}</span><span>${v ? "yes" : "no"}</span></li>`
   ).join("");
-  return `<ul class="score-breakdown">${rows}</ul>
-    <p class="hint">Evidence coverage: ${q.evidence_coverage_pct}% — overall: ${esc(q.overall_confidence)}</p>`;
+  const availRows = Object.entries(q.evidence_availability || {}).map(([k, v]) =>
+    `<li><span>${esc(k.replace(/_/g, " "))}</span><span class="value-note ${v ? "note-exact" : "note-unknown"}">${v ? "captured" : "not captured"}</span></li>`
+  ).join("");
+  const confClass = q.overall_confidence === "HIGH_CONFIDENCE" ? "note-exact" : q.overall_confidence === "PARTIAL" ? "note-derived" : "note-unknown";
+  return `
+    <p class="hint" style="margin-top:0;">Session facts:</p>
+    <ul class="score-breakdown">${factRows}</ul>
+    <p class="hint">Evidence actually captured (drives the coverage % below):</p>
+    <ul class="score-breakdown">${availRows}</ul>
+    <p><strong>Evidence coverage: ${q.evidence_coverage_pct}%</strong> — overall: <span class="value-note ${confClass}">${esc(q.overall_confidence)}</span></p>`;
 }
 
 function renderComparisonBlock(c) {

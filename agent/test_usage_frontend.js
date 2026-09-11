@@ -112,6 +112,19 @@ const FIXTURE_DETAIL = {
   assertIncludes(summaryHtml, "Quality", "top summary includes quality at a glance");
   assertIncludes(summaryHtml, "Value", "top summary includes value at a glance");
 
+  // ---- Quality block distinguishes real evidence-availability from
+  // substantive session facts, and never implies fake 100% confidence
+  // for a thin-evidence session (real incident, 2026-09-11) -----------
+  const thinQuality = {
+    scored_dimensions: { goal_completion: true, human_intervention_present: false },
+    evidence_availability: { ai_active_time_known: false, tokens_captured: false, cost_known: false },
+    evidence_coverage_pct: 0, overall_confidence: "LOW_COVERAGE",
+  };
+  const qualityHtml = sandbox.renderQualityBlock(thinQuality);
+  assertIncludes(qualityHtml, "not captured", "thin-evidence quality block shows real 'not captured' signals");
+  assertIncludes(qualityHtml, "note-unknown", "LOW_CONFIDENCE quality is visually flagged, not shown as a plain success");
+  assert(!qualityHtml.includes("note-exact\">LOW_COVERAGE"), "LOW_COVERAGE must never be styled as the confident/exact color");
+
   console.log(`${passed} passed, ${failures} failed`);
   process.exit(failures ? 1 : 0);
 })();

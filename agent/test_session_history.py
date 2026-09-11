@@ -134,14 +134,24 @@ class SessionDetailTestCase(unittest.TestCase):
         self.assertIn("UNKNOWN", d["human_active_note"])
 
     def test_quality_never_reports_100_percent_without_full_evidence(self):
-        d = sh.get_session_detail("trainer-4733d1c0")
-        q = d["quality"]
-        scored_true = sum(1 for v in q["scored_dimensions"].values() if v)
-        total = len(q["scored_dimensions"])
-        expected_pct = round(100 * total / total)  # coverage counts dimensions evaluated, not all true
-        self.assertLessEqual(q["evidence_coverage_pct"], 100)
-        if scored_true < total:
-            self.assertNotEqual(q["overall_confidence"], "HIGH_CONFIDENCE") if q["evidence_coverage_pct"] < 75 else None
+        """Real incident (2026-09-11, live production verification):
+        evidence_coverage_pct previously counted 'was this dimension
+        evaluated' (always true by construction), so it -- and
+        overall_confidence -- were silently 100%/HIGH_CONFIDENCE for
+        EVERY session, including ones with zero captured tokens/cost/
+        timing. Prove a thin-evidence real session (trainer-c830f5a6:
+        NO_CHANGE_NEEDED, no tokens/cost/ai_active_time captured) scores
+        strictly lower than a rich-evidence real session
+        (trainer-4733d1c0: real tokens, cost, AI active time) -- coverage
+        must actually distinguish them, not be a fixed constant."""
+        rich = sh.get_session_detail("trainer-4733d1c0")
+        thin = sh.get_session_detail("trainer-c830f5a6")
+        self.assertLess(thin["quality"]["evidence_coverage_pct"], rich["quality"]["evidence_coverage_pct"])
+        self.assertEqual(thin["quality"]["evidence_coverage_pct"], 0)
+        self.assertNotEqual(thin["quality"]["overall_confidence"], "HIGH_CONFIDENCE")
+        self.assertEqual(rich["quality"]["overall_confidence"], "HIGH_CONFIDENCE")
+        for v in thin["quality"]["evidence_availability"].values():
+            self.assertFalse(v)
 
     def test_comparison_requires_at_least_three_comparable_sessions(self):
         d = sh.get_session_detail("trainer-4733d1c0")
