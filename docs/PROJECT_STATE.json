@@ -1,7 +1,7 @@
 {
   "project": "Agentic Software Delivery System",
   "current_version": "V4.1 + Trainer Preview V1 (5 public surfaces, PERSISTENTLY CLOUD-HOSTED on Railway, laptop-independent) + durable event ledger + Claude Code dev telemetry + public Customer app + Workbench target-app/cost transparency + Architecture V2 foundation and 3 shadow trials (Skills + independent QA evaluator, now NATIVELY invokable, not yet in the live pipeline) + real Customer app test suite + ledger-backed economics with Europe/Berlin display-timezone windows + Learn deep-dive (10 topics) + a small real knowledge-candidate pipeline",
-  "last_verified_code_commit": "9684109",
+  "last_verified_code_commit": "b5e3055",
   "current_ticket": "Update customer email",
   "current_ticket_implemented": false,
   "completed_capabilities": [
