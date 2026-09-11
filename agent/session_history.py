@@ -222,6 +222,20 @@ def _usage_for_v2_trial(conn, run_ids):
 
 
 def list_sessions(before_cursor: str = None, limit: int = 20) -> dict:
+    before_dt = None
+    if before_cursor:
+        try:
+            before_dt = datetime.fromisoformat(before_cursor)
+        except ValueError:
+            # Real incident (2026-09-11): a `before` cursor containing an
+            # unencoded '+' (from the ISO timezone offset, e.g.
+            # "...T02:17:07+00:00") is interpreted as a space by standard
+            # query-string decoding when a caller doesn't percent-encode
+            # it (the real browser client does, via URLSearchParams.set(),
+            # so this never happens through the actual UI -- but any other
+            # caller sending a malformed/differently-encoded cursor must
+            # get a truthful 400, never an unhandled 500).
+            return {"status": "INVALID_CURSOR", "error": f"'before' is not a valid ISO timestamp: {before_cursor!r}", "sessions": [], "next_cursor": None}
     try:
         conn = el._connect()
     except Exception as exc:  # noqa: BLE001
@@ -229,9 +243,6 @@ def list_sessions(before_cursor: str = None, limit: int = 20) -> dict:
     try:
         el.ensure_schema()
         params = _query_params()
-        before_dt = None
-        if before_cursor:
-            before_dt = datetime.fromisoformat(before_cursor)
         sql = f"SELECT * FROM ({_SESSIONS_CTE}) s WHERE (%(before)s::timestamptz IS NULL OR start_ts < %(before)s) ORDER BY start_ts DESC LIMIT %(limit)s"
         params["before"] = before_dt
         params["limit"] = limit + 1  # fetch one extra to know if more remain

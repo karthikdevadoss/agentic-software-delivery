@@ -27,6 +27,28 @@ class ListSessionsTestCase(unittest.TestCase):
         self.assertIn("next_cursor", data)
         self.assertIn("has_more", data)
 
+    def test_malformed_before_cursor_returns_truthful_error_not_a_crash(self):
+        """Real incident (2026-09-11, live production verification): a
+        `before` cursor with an unencoded '+' decoded to a space by
+        standard query-string parsing raised an unhandled ValueError from
+        datetime.fromisoformat(), surfacing as a raw 500. Must now return
+        a clean, honest INVALID_CURSOR result instead of raising."""
+        space_for_plus = "2026-09-10T02:17:07.628697 00:00"  # exactly what an unencoded '+' becomes
+        data = sh.list_sessions(before_cursor=space_for_plus, limit=5)
+        self.assertEqual(data["status"], "INVALID_CURSOR")
+        self.assertIn("error", data)
+        self.assertEqual(data["sessions"], [])
+
+    def test_properly_encoded_cursor_with_plus_still_works(self):
+        """The real ISO cursor this API itself returns (next_cursor)
+        always contains a '+' UTC offset -- confirm a genuinely valid
+        cursor is never rejected by the fix above."""
+        first_page = sh.list_sessions(limit=3)
+        if not first_page.get("next_cursor"):
+            self.skipTest("not enough real history for a second page right now")
+        second_page = sh.list_sessions(before_cursor=first_page["next_cursor"], limit=3)
+        self.assertEqual(second_page["status"], "REACHABLE")
+
     def test_sessions_span_multiple_real_dates(self):
         """Real historical evidence in this project's ledger spans more
         than one calendar day -- prove the listing surfaces more than

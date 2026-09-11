@@ -674,6 +674,16 @@ class SessionHistoryRouteTestCase(unittest.IsolatedAsyncioTestCase):
         body = json.loads(response.body)
         self.assertLessEqual(len(body["sessions"]), 3)
 
+    async def test_malformed_before_cursor_returns_400_not_500(self):
+        """Real production incident (2026-09-11): an unencoded '+' in a
+        `before` cursor decodes to a space, previously raising an
+        unhandled 500. Must be a clean 400 with a truthful error body."""
+        space_for_plus = "2026-09-10T02:17:07.628697 00:00"
+        response = await ws.get_session_history(mock.Mock(query_params={"before": space_for_plus}))
+        self.assertEqual(response.status_code, 400)
+        body = json.loads(response.body)
+        self.assertEqual(body["status"], "INVALID_CURSOR")
+
     async def test_session_detail_route_returns_404_for_unknown_id(self):
         response = await ws.get_session_detail(mock.Mock(path_params={"session_id": "no-such-session-xyz"}))
         self.assertEqual(response.status_code, 404)

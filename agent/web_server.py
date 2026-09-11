@@ -1165,7 +1165,9 @@ async def usage_page(request: Request):
 async def get_session_history(request: Request):
     limit = int(request.query_params.get("limit", "20"))
     before = request.query_params.get("before")
-    return JSONResponse(session_history.list_sessions(before_cursor=before, limit=limit))
+    result = session_history.list_sessions(before_cursor=before, limit=limit)
+    status_code = 400 if result.get("status") == "INVALID_CURSOR" else 200
+    return JSONResponse(result, status_code=status_code)
 
 
 async def get_session_detail(request: Request):
