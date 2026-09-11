@@ -8,9 +8,10 @@ the current baseline before any public cutover. Per docs/CONSTITUTION.md
 §4/§9: no winner may be declared before data exists, and both success and
 failure must be seen clearly.
 
-**Status of this document: PLAN, NOT YET EXECUTED.** No V2 sample runs
-have been collected as of this writing. This is deliberate — see
-docs/ARCHITECTURE_V2.md §14, "no production cutover in this task."
+**Status of this document: PLAN + ONE controlled shadow trial executed
+(Trial #1, 2026-09-11, see below).** n=1 — no cutover decision follows
+from this alone. See docs/ARCHITECTURE_V2.md §14, "no production cutover
+in this task."
 
 ## Baseline (A) vs. V2 (B)
 
@@ -102,6 +103,155 @@ None of these have been measured yet. This document exists so that once
 the `qa-evaluator` and Skills exist, the comparison is designed *before*
 the data arrives — preventing the failure mode of picking metrics that
 flatter whichever result shows up first.
+
+## Trial #1 (B) — real data, 2026-09-11, isolated non-public worktree
+
+Trial ID `v2-shadow-trial-1-heading-2026-09-11`. Isolated in git worktree
+`v2-shadow-trial-1` branched from current master (verified byte-identical
+`app/` content to the `trainer-preview-v1-stable` tag before starting —
+zero diff). Worktree removed after the trial (disposable); all real
+evidence preserved in the event ledger (`source=v2_trial`,
+`activity_class=BENCHMARK_EVAL`) and here. Public Workbench/Customer App
+never touched.
+
+**Requirement:** "Change the Create Customer section heading from
+'Create Customer' to 'Create a Customer'" — independently confirmed NOT
+already present in the isolated baseline before starting.
+
+**Acceptance Contract:** created via `agent/acceptance_contract.py`
+(the `requirement-contract` Skill's mechanism), `validate()` returned
+`[]`. `expected_observable_effect`: the isolated running app's HTML
+contains `<h2>Create a Customer</h2>`.
+
+**Implementer — two attempts, both recorded, neither erased:**
+
+- **Attempt 1 (FAILED):** claude-sonnet-5, 14,432 input + 548 output
+  tokens, 11.2s, 3 tool calls. The model concluded — incorrectly —
+  that `propose_source_change` only permits `.java` files and reported
+  the requirement impossible. **Root cause, verified from source, not
+  assumed:** `agent/write_tools.py::ALLOWED_WRITE_EXTENSIONS` includes
+  `.html`; the real capability exists. The actual cause was a genuine
+  setup defect in this trial's own harness: its hand-written system
+  prompt omitted production's `TRAINER_SYSTEM_PROMPT_SUFFIX` line ("For
+  visual/UI requirements, prefer editing
+  app/src/main/resources/static/index.html directly"). This was caught
+  by the human/orchestrator role in this trial (comparing the claim
+  against known real production behavior), not by the evaluator — the
+  evaluator was only ever shown the corrected attempt. Recorded honestly
+  as a trial-methodology defect, not a production capability gap.
+- **Attempt 2 (COMPLETED, implementer-reported):** corrected to use the
+  real `TRAINER_SYSTEM_PROMPT_SUFFIX` verbatim. claude-sonnet-5, 38,926
+  input + 2,900 output tokens (41,826 total), $0.106852, 61.8s. Real
+  tool calls (model-facing, deduplicated): `search_code` ×2, `read_file`,
+  `propose_source_change`, `apply_approved_source_change`,
+  `run_controlled_compile` = 6. (Raw `metrics.get_tool_call_events()`
+  reported 10 — a genuine, newly-discovered observability nuance:
+  `write_tools.py`/`build_tools.py` each call `metrics.record_tool_call`
+  at their own level AND `execution_tools.py`'s wrapper calls it again,
+  double-counting when read directly instead of via
+  `agent/web_server.py`'s own `run.events`-based counting, which
+  production actually uses and is unaffected by this.) Files changed:
+  exactly `app/src/main/resources/static/index.html`, one line.
+
+**QA Evaluator — genuinely independent, evidence-based:**
+
+- **Real limitation discovered:** the custom `qa-evaluator` subagent
+  (`.claude/agents/qa-evaluator.md`) was **not available as a
+  `subagent_type`** in this session — most likely because custom
+  subagent definitions load at session start, and this session predates
+  the file's creation (added in the prior task). Worked around
+  transparently: a `general-purpose` subagent was instructed to read
+  `.claude/agents/qa-evaluator.md` first and act exactly per its
+  prescribed duty/tool restrictions. This achieved genuine separation
+  (no visibility into the implementer's report or reasoning — only the
+  Acceptance Contract and evidence locations were given), but is a real
+  gap worth closing before Trial #2 (verify in a fresh session whether
+  `qa-evaluator` then appears as a native `subagent_type`).
+- **Verdict: PASS.** Real independent evidence gathered, not trusted
+  claims: re-fetched the isolated app's live HTTP response directly
+  (confirmed `<h2>Create a Customer</h2>`, old text absent), independently
+  re-ran `mvnw compile` itself (`BUILD SUCCESS`), independently read
+  `write_tools.py`'s actual `ALLOWED_WRITE_EXTENSIONS`/`ALLOWED_WRITE_PREFIXES`
+  rather than assuming, independently inspected the full `git diff`
+  (exactly one file, one line, correctly scoped), independently confirmed
+  no test directory exists (correctly concluding `TESTING — NOT
+  APPLICABLE`, not a failure).
+- Aggregate: 55,032 subagent tokens (not decomposed into input/output/
+  cache/cost by the tooling used to invoke it — a real measurement gap,
+  recorded honestly rather than estimated), 9 tool uses, 78.058s.
+- **Genuine value added beyond confirmation:** flagged, without changing
+  its verdict, that the change exists only as an *uncommitted*
+  working-tree modification — the isolated Spring Boot dev server serves
+  static resources directly from disk, so this didn't block the observed
+  effect, but the evaluator correctly questioned whether a real
+  (non-trial) flow's `repository_workspace_ready` gate should require a
+  commit before COMPLETED. Neither the implementer nor the orchestrator
+  had raised this question.
+- **Evaluator self-check (§19):** every conclusion had direct evidence;
+  applied the Acceptance Contract as given, did not invent extra
+  requirements (raised the commit question as an open concern, not a
+  failing criterion); did not ignore evidence; no false pass detected
+  (independently reconfirmed by the orchestrator's own earlier `curl`
+  check); no false fail (didn't fail).
+
+**Combined / delta (n=1 — provisional, not a rate):**
+
+| | Implementer | Evaluator | Combined |
+|---|---|---|---|
+| Tokens | 41,826 (attempt 2 only; +14,980 if attempt 1 included) | 55,032 (aggregate) | ~96,858 |
+| USD cost | $0.106852 | not separately captured | ≥$0.106852 |
+| Elapsed | 61.8s (+11.2s attempt 1) | 78.058s | ~151.1s incl. attempt 1 |
+| Tool calls | 6 (real) | 9 | 15 |
+
+**Comparable baseline (A):** `trainer-4733d1c0` (Create → Create
+Customer, a near-identical TINY/LOW requirement) — 37,340 input + 2,821
+output tokens, $0.10289, 111.1s, 5 production-counted tool calls.
+**Scope caveat, not glossed over:** A's 111.1s includes commit + deploy +
+an 80s real production-wait cycle; B's implementer never attempted
+commit/deploy (out of scope for this trial per instructions), so the
+time comparison is not apples-to-apples. Token/cost for the
+implementation-only phase are close (A: 40,161 tokens/$0.10289 for the
+full pipeline; B: 41,826 tokens/$0.106852 for investigate-through-compile
+only) — B's evaluator adds real, substantial overhead (+~132% tokens)
+on top of that.
+
+**Human intervention:** zero, in both implementer and evaluator phases —
+consistent with `risk_policy`'s LOW-risk auto-execute design intent.
+
+**EVALUATOR USEFULNESS: MEDIUM.** Performed correct, independent,
+evidence-based verification (re-fetched, re-compiled, re-read source
+rather than trusting any party's claim) and surfaced one genuinely new
+process question. But no defect survived to reach it in this trial (the
+one real implementer defect — the false "impossible" claim — was caught
+by the orchestrator correcting the harness *before* invoking the
+evaluator, not by the evaluator itself), so its incremental
+defect-catching value is not yet demonstrated by this trial alone.
+Rating HIGH would overclaim from n=1 with no caught defect; rating LOW
+would ignore the real, correct, independent verification work it did.
+
+**Lessons recorded (not yet acted on beyond noting them — see
+docs/ARCHITECTURE_V2.md §11's review rule):**
+1. A trial/benchmark harness must use the EXACT production system-prompt
+   suffix, not a hand-written paraphrase — a paraphrase gap produced a
+   real false-negative in attempt 1.
+2. Custom subagent definitions may not be visible to a session that was
+   already running when the definition was added — verify in a fresh
+   session before Trial #2.
+3. `metrics.get_tool_call_events()` double-counts tool calls that pass
+   through both a lower-level tool module and `execution_tools.py`'s
+   wrapper — harmless for production (which counts via `run.events`
+   instead) but a trap for any new harness reading `metrics.py` directly.
+4. The evaluator's own token/cost usage is not currently captured with
+   the same rigor as the implementer's (no input/output/cache/cost
+   breakdown) — a real gap if evaluator cost is ever the deciding factor
+   in a cutover decision.
+
+**Recommended next experiment:** Trial #2 should (a) confirm `qa-evaluator`
+loads as a native `subagent_type` in a fresh session, (b) deliberately
+seed a real implementation defect in the FINAL candidate handed to the
+evaluator (not caught earlier), to actually measure catch rate rather
+than confirmation, and (c) capture the evaluator's own token/cost
+breakdown with the same rigor as the implementer's.
 
 ## Review cadence
 

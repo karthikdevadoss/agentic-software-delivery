@@ -44,6 +44,20 @@
       "verification_required": "Start the server with transport='streamable-http' and confirm a real HTTP-based MCP client (not just in-process) can discover and invoke tools, before this transport is relied on for hosting.",
       "created_at_commit": "d312dd1",
       "resolved_at_commit": null
+    },
+    {
+      "id": "ACT-006",
+      "source": "architecture",
+      "title": "qa-evaluator custom subagent was not available as a subagent_type in a session that predated its creation",
+      "priority": "low",
+      "status": "open",
+      "scope": "verification only, no production code changes expected",
+      "reason": "During Architecture V2 Shadow Trial #1 (docs/ARCHITECTURE_V2_EVALUATION_PLAN.md), invoking the Agent tool with subagent_type='qa-evaluator' (.claude/agents/qa-evaluator.md, added in the immediately prior task) failed with 'Agent type not found' -- worked around by having a general-purpose subagent read and follow that file's instructions directly. Suspected cause: custom subagent definitions load once at session start, and this was a long-running session from before the file existed.",
+      "evidence": "Agent tool call with subagent_type='qa-evaluator' returned an error listing only built-in agent types, not including qa-evaluator, despite .claude/agents/qa-evaluator.md existing and being committed at the time.",
+      "safe_to_auto_execute": false,
+      "verification_required": "In a freshly-started Claude Code session in this repo, confirm subagent_type='qa-evaluator' is recognized and invokable directly (no workaround needed) before relying on it for Trial #2.",
+      "created_at_commit": "9cbc7dd",
+      "resolved_at_commit": null
     }
   ]
 }

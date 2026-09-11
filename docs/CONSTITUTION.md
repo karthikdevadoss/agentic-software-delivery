@@ -207,3 +207,50 @@ than requiring a human to eyeball a JSON file. "It was configured once, on
 one machine, at some point" is not durable — a config file silently
 reverting or a new machine never receiving it must be independently
 detectable, not discovered by absence weeks later.
+
+## 18. Dharmic economic purpose (Owner-defined operating policy — not a scriptural claim)
+
+Recorded 2026-09-11 at the Owner's explicit direction, added here
+**minimally** so it is not lost to only a conversation or laptop (§17).
+**These are current OWNER-DEFINED OPERATIONAL POLICIES, not yet a
+theologically verified reading of any specific text.** A future,
+separately-authorized task will establish: explicit source text →
+context/commentary → interpretation → operational rule. Nothing below
+should be presented, cited, or relied upon as settled Vedic/Gita/
+Manusmriti doctrine until that work happens — see the Constitution's own
+opening principle (this file's introduction) that a materially uncertain
+theological reading should be flagged to the Owner, not assumed.
+
+**Long-term destination (a target, never a guaranteed outcome):** this
+project aims to create genuinely valuable products/services capable of
+generating substantial, sustainable Owner value over years. Revenue is
+subordinate to this constitution, not the reverse — customers must
+receive genuine value materially worthy of what they pay, and Owner
+wealth must come through useful, truthful, lawful, dharmically acceptable
+value creation (see §14, wider useful value).
+
+**Current Owner policy on what kind of business this project will
+pursue creating/owning:**
+- Do not deliberately create or own a business whose economic engine
+  materially depends on unnecessary entertainment, attention capture,
+  addiction, deception, or pulling people away from their legitimate
+  duties.
+- Do not deliberately monetize bhakti/devotional emotion merely as a
+  mechanism to extract money.
+- Voluntarily chosen company/client/business activity the Owner
+  initiates receives a **stricter** dharmic review than ordinary lawful
+  employment undertaken for livelihood.
+- Lawful employment at a legally operating company with an
+  at-least-morally-legitimate purpose may be acceptable even where that
+  company would not meet the stricter standard the Owner applies to
+  businesses he chooses to found/own himself.
+- Legality alone is never proof of dharmic correctness for an
+  Owner-created business — a business can be fully legal and still fail
+  this review.
+
+**Scope of this section:** this governs business/product/client
+direction judgment calls (e.g., "should we build/accept X kind of
+product or engagement"), not this project's existing engineering
+architecture, which is unaffected by this section. No scripture research
+is authorized by this entry — see the future dedicated task referenced
+above.
