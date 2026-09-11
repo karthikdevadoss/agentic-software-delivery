@@ -149,19 +149,19 @@ old date as due for re-verification, not as current truth.
   (never printed/logged/committed at any point — copied via a script that
   redirected values directly between `agent/.env` and `railway variable
   set --stdin`).
-- **KNOWN GAP:** `railway up`/`railway status` from *inside* this
-  container (the trainer's real auto-deploy-the-Customer-app step) has
-  NOT been exercised — it needs its own `RAILWAY_TOKEN` (a
-  project-scoped Railway token, confirmed as a real supported env var by
-  extracting the literal string from the installed CLI binary itself),
-  which requires generating a token from the Railway dashboard (a
-  browser action, not available via any CLI subcommand as of CLI 5.50.2
-  — confirmed by inspecting `railway --help`'s full command list). The
-  acceptance test performed above deliberately used an
-  already-satisfied requirement specifically so this gap didn't block
-  proving the rest of the pipeline — a genuine code-change requirement
-  would currently fail at the deploy step until `RAILWAY_TOKEN` is added.
-- **LAST VERIFIED:** 2026-09-10
+- **RESOLVED 2026-09-11 (was a KNOWN GAP):** `railway up`/`railway
+  status` from *inside* this container now has a working project-scoped
+  `RAILWAY_TOKEN` for `agentic-delivery-customer-app` — the creator
+  generated it via the Railway dashboard and added it to this service's
+  variables, then redeployed. Independently re-verified without ever
+  reading/printing the token value: `railway run --service
+  agentic-platform-backend -- railway status` (pulling this service's
+  real env vars into a local subprocess) correctly authenticated and
+  resolved Project=agentic-delivery-customer-app, Environment=production,
+  that exact service listed Online. See docs/PROJECT_STATE.json's
+  `verification_state.workbench_p0_trainer_readiness_acceptance` for the
+  full real modifying-run proof that followed.
+- **LAST VERIFIED:** 2026-09-11
 - **NOTES:** This supersedes the local-laptop + tunnel approach (both
   Cloudflare Quick Tunnel and `ngrok`) as the trainer/recruiter-facing
   URL — see docs/DECISIONS.md for the full detour history and why each
