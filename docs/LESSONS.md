@@ -371,3 +371,33 @@ surprising verified behavior would otherwise get rediscovered later.
   See docs/ARCHITECTURE_V2_EVALUATION_PLAN.md's Trial #3 section and the
   Learn topic `evaluator-uncertainty-and-verdict-design` for the reusable
   framework.
+
+- **Reusing an existing CSS badge class for a new, semantically different
+  taxonomy silently conflates two different questions in the UI.** The
+  first Learn Wikipedia implementation rendered `experience_classification`
+  (CURRENT_PROJECT_EXPERIENCE/LEARNED_UNDERSTOOD/etc — "is this the
+  Creator's own experience?") using the pre-existing `.ev-badge`/
+  `.ev-runtime-verified` classes, which were designed for an entirely
+  different taxonomy (`evidence_status` — "was this code verified to
+  work?"). Both could appear on the same page with identical visual
+  styling, making them indistinguishable even though they answer
+  unrelated questions. General rule: when a new data field is
+  conceptually a different taxonomy from an existing badge/status field,
+  give it its own CSS class family from the start, even if the visual
+  effect (a small colored pill) looks similar — never repurpose an
+  existing status-badge style "because it looks about right," since the
+  two meanings will drift apart in the reader's understanding the moment
+  they appear together. Fixed by introducing a dedicated `.exp-badge`
+  family plus an explicit legend on the Learn landing page (see
+  `docs/UI_AUDIT_OPEN_ITEMS.md` and `agent/web/learn.js::expBadge`).
+
+- **A missing `<meta name="viewport">` tag makes every other responsive
+  CSS rule on that page ineffective, silently.** Discovered auditing
+  Learn/Usage: none of this project's HTML pages had ever included a
+  viewport meta tag, so mobile browsers render at desktop width and zoom
+  out — any `@media (max-width: ...)` rule added without also checking
+  for this tag will appear to do nothing on a real phone, and it's easy
+  to misdiagnose as "the media query is wrong" instead of "the viewport
+  isn't declared." Always check for `<meta name="viewport"
+  content="width=device-width, initial-scale=1">` first, before writing
+  or debugging any responsive CSS.

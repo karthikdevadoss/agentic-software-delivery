@@ -177,6 +177,42 @@ async function loadLearnJs(ctx) {
     assertIncludes(html, "Not Found", "unknown path renders a Not Found state client-side");
   }
 
+  // ---- UI hardening pass: domain/topic distinction, experience-badge
+  // family kept separate from legacy evidence-status badges, back-link,
+  // depth hints, PDF panel with loading/error handling -----------------
+  {
+    const ctx = buildContext("/learn");
+    await loadLearnJs(ctx);
+    const html = ctx.elements["learn-app"].innerHTML;
+    assertIncludes(html, "domain-kind-tag", "landing page visually tags domain cards as DOMAIN");
+    assertIncludes(html, "exp-legend", "landing page shows the experience-classification legend");
+    assertIncludes(html, "exp-badge-project", "legend uses the dedicated exp-badge family, not ev-badge");
+    assert(!html.includes("ev-runtime-verified"), "experience classification must not reuse the legacy ev-badge classes");
+  }
+  {
+    const ctx = buildContext("/learn/system-design");
+    await loadLearnJs(ctx);
+    const html = ctx.elements["learn-app"].innerHTML;
+    assertIncludes(html, "back-link", "topic page shows an explicit back-link, not just the breadcrumb");
+    assertIncludes(html, "depth-hint", "child topic cards show a depth hint (sub-topic count or leaf)");
+  }
+  {
+    // Within "databases"' child grid, both children (connection-pooling,
+    // hikaricp) are themselves childless in the fixture -> each must be
+    // marked as a leaf topic, not silently given a misleading sub-topic count.
+    const ctx = buildContext("/learn/system-design/databases");
+    await loadLearnJs(ctx);
+    const html = ctx.elements["learn-app"].innerHTML;
+    assertIncludes(html, "depth-hint-leaf", "a childless child topic is visually marked as a leaf topic");
+  }
+  {
+    const ctx = buildContext("/learn");
+    await loadLearnJs(ctx);
+    const html = ctx.elements["learn-app"].innerHTML;
+    assertIncludes(html, 'id="learn-pdf-download"', "PDF download button exists with its stable id");
+    assertIncludes(html, 'href="/api/learn/book.pdf"', "PDF button points at the real endpoint");
+  }
+
   console.log(`${passed} passed, ${failures} failed`);
   process.exit(failures ? 1 : 0);
 })();

@@ -79,12 +79,24 @@ function classificationLabel(c) {
   return c.replace(/_/g, " ").replace(/\w\S*/g, t => t[0].toUpperCase() + t.slice(1).toLowerCase());
 }
 
-const CLASS_BADGE_CLASS = {
-  CURRENT_PROJECT_EXPERIENCE: "ev-runtime-verified",
-  REAL_PROFESSIONAL_EXPERIENCE: "ev-production-verified",
-  LEARNED_UNDERSTOOD: "ev-learned",
-  PLANNED_NOT_EXPERIENCED: "ev-not-used",
+// Deliberately a SEPARATE badge family from the legacy evidence_status
+// badges (IMPLEMENTED/RUNTIME VERIFIED/etc, still used by the migrated
+// reference-catalog topics) -- these two taxonomies answer different
+// questions (was this code verified vs. is this the Creator's own
+// experience) and must never be visually conflated (see
+// docs/UI_AUDIT_OPEN_ITEMS.md-adjacent lesson in docs/LESSONS.md).
+const EXP_BADGE_CLASS = {
+  REAL_PROFESSIONAL_EXPERIENCE: "exp-badge-professional",
+  CURRENT_PROJECT_EXPERIENCE: "exp-badge-project",
+  LEARNED_UNDERSTOOD: "exp-badge-learned",
+  PLANNED_NOT_EXPERIENCED: "exp-badge-planned",
 };
+
+function expBadge(classification) {
+  if (!classification) return "";
+  const cls = EXP_BADGE_CLASS[classification] || "exp-badge-learned";
+  return `<span class="exp-badge ${cls}" title="Experience classification">${esc(classificationLabel(classification))}</span>`;
+}
 
 function renderBreadcrumb(breadcrumb) {
   return `<nav class="breadcrumb">${breadcrumb.map((b, i) => {
@@ -100,15 +112,19 @@ function renderChildGrid(children, parentSegments) {
   if (!children || !children.length) return "";
   return `<section class="learn-block">
     <h3>Child Topics <span class="hint">(${children.length})</span></h3>
+    <p class="hint" style="margin-top:0;">Click any topic below to go deeper.</p>
     <div class="topic-grid">
       ${children.map(c => {
         const href = pathFor(parentSegments.concat(c.slug));
-        const badge = c.experience_classification
-          ? `<span class="ev-badge ${CLASS_BADGE_CLASS[c.experience_classification] || ""}">${esc(classificationLabel(c.experience_classification))}</span>` : "";
-        const count = c.children && c.children.length ? `<span class="hint"> (${c.children.length})</span>` : "";
+        const badge = expBadge(c.experience_classification);
+        const childCount = c.children && c.children.length;
+        const depthHint = childCount
+          ? `<span class="depth-hint">${childCount} sub-topic${childCount === 1 ? "" : "s"} &rsaquo;</span>`
+          : `<span class="depth-hint depth-hint-leaf">leaf topic</span>`;
         return `<a class="topic-card topic-card-link" data-link href="${href}">
-          <div class="topic-head"><span class="topic-name">${esc(c.title)}${count}</span>${badge}</div>
+          <div class="topic-head"><span class="topic-name">${esc(c.title)}</span>${badge}</div>
           <div class="topic-def">${esc(c.short_overview || "")}</div>
+          <div class="topic-card-footer">${depthHint}</div>
         </a>`;
       }).join("")}
     </div>
@@ -166,10 +182,14 @@ function renderRelated(related) {
 }
 
 function renderTopicPage(node, breadcrumb) {
-  const badge = node.experience_classification
-    ? `<span class="ev-badge ${CLASS_BADGE_CLASS[node.experience_classification] || ""}">${esc(classificationLabel(node.experience_classification))}</span>` : "";
+  const badge = expBadge(node.experience_classification);
   const status = node.status ? `<span class="ev-badge">${esc(node.status)}</span>` : "";
+  const parent = breadcrumb.length >= 2 ? breadcrumb[breadcrumb.length - 2] : null;
+  const backLink = parent
+    ? `<a class="back-link" data-link href="${pathFor(parent.segments)}">&larr; Back to ${esc(parent.title)}</a>`
+    : `<a class="back-link" data-link href="/learn">&larr; Back to Learn</a>`;
   return `
+    ${backLink}
     ${renderBreadcrumb(breadcrumb)}
     <h2 class="topic-title">${esc(node.title)} ${badge} ${status}</h2>
     ${node.short_overview ? `<p class="topic-overview">${esc(node.short_overview)}</p>` : ""}
@@ -195,14 +215,30 @@ function flattenSearchIndex() {
 
 let SEARCH_INDEX = null;
 
+function renderLegend() {
+  const items = [
+    ["REAL_PROFESSIONAL_EXPERIENCE", "The Creator's own verified professional work"],
+    ["CURRENT_PROJECT_EXPERIENCE", "This project's own code/incidents"],
+    ["LEARNED_UNDERSTOOD", "Correct general knowledge, not personal experience"],
+    ["PLANNED_NOT_EXPERIENCED", "Roadmap only — not yet built or used"],
+  ];
+  return `<div class="exp-legend">
+    ${items.map(([key, desc]) => `<div class="exp-legend-item">${expBadge(key)}<span class="hint">${esc(desc)}</span></div>`).join("")}
+  </div>`;
+}
+
 function renderLanding() {
   const m = TREE.metrics || {};
   SEARCH_INDEX = SEARCH_INDEX || flattenSearchIndex();
   const domainCards = TREE.domains.map(d => {
     const count = (d.children || []).length;
     return `<a class="topic-card topic-card-link domain-card" data-link href="${pathFor([d.slug])}">
-      <div class="topic-head"><span class="topic-name">${esc(d.title)}</span><span class="hint">${count} topic(s)</span></div>
+      <div class="topic-head">
+        <span class="domain-kind-tag">DOMAIN</span>
+        <span class="topic-name">${esc(d.title)}</span>
+      </div>
       <div class="topic-def">${esc(d.short_overview || "")}</div>
+      <div class="topic-card-footer"><span class="depth-hint">${count} topic${count === 1 ? "" : "s"} &rsaquo;</span></div>
     </a>`;
   }).join("");
 
@@ -213,20 +249,59 @@ function renderLanding() {
         ${m.total_domains || TREE.domains.length} domains · ${m.total_reference_topics || 0} reference topics ·
         ${m.total_deep_topics || 0} deep evidence-backed topics
       </p>
-      <p class="hint">
-        Experience: ${m.current_project_experience_topics || 0} current-project ·
-        ${m.real_professional_experience_topics || 0} professional ·
-        ${m.learned_understood_topics || 0} learned/understood ·
-        ${m.planned_not_experienced_topics || 0} planned
-      </p>
-      <a id="learn-pdf-download" class="pdf-download-btn" href="/api/learn/book.pdf" download>
-        ⬇ DOWNLOAD COMPLETE BOOK (PDF)
-      </a>
-      <p class="hint" id="learn-pdf-meta">Generated from this exact knowledge tree — commit ${esc(TREE.git_commit || "unknown")}.</p>
+      ${renderLegend()}
+    </section>
+    <section class="panel pdf-panel">
+      <h2>Prefer a Book?</h2>
+      <p class="hint" style="margin-top:0;">The same knowledge tree above, generated as one downloadable PDF — hierarchy, WHAT/WHY/HOW/WHEN, development steps, and interview prep included.</p>
+      <a id="learn-pdf-download" class="pdf-download-btn" href="/api/learn/book.pdf">⬇ DOWNLOAD COMPLETE BOOK (PDF)</a>
+      <p class="hint" id="learn-pdf-status">Knowledge version: commit ${esc(TREE.git_commit || "unknown")}${TREE.generated_at_utc ? ` · generated ${esc(TREE.generated_at_utc)}` : ""}.</p>
     </section>
     <div id="learn-search-results"></div>
     <div id="learn-domain-grid" class="topic-grid domain-grid">${domainCards}</div>
   `;
+}
+
+function wirePdfDownload() {
+  const btn = document.getElementById("learn-pdf-download");
+  const statusEl = document.getElementById("learn-pdf-status");
+  if (!btn) return;
+  const originalLabel = btn.textContent;
+  const originalStatus = statusEl ? statusEl.textContent : "";
+  let inFlight = false;
+
+  btn.addEventListener("click", async (e) => {
+    e.preventDefault();
+    if (inFlight) return; // accidental repeated clicks: ignore while one request is already running
+    inFlight = true;
+    btn.textContent = "Preparing PDF…";
+    btn.classList.add("pdf-loading");
+    if (statusEl) statusEl.textContent = "Generating your book — this can take a few seconds the first time.";
+    try {
+      const resp = await fetch(btn.getAttribute("href"));
+      if (!resp.ok) {
+        let reason = `HTTP ${resp.status}`;
+        try { const body = await resp.json(); if (body.error) reason = body.error; } catch (_) { /* non-JSON error body */ }
+        throw new Error(reason);
+      }
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "agentic-software-delivery-learn-book.pdf";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      if (statusEl) statusEl.textContent = originalStatus;
+    } catch (err) {
+      if (statusEl) statusEl.textContent = `Could not generate the PDF: ${err.message}. Try again in a moment.`;
+    } finally {
+      btn.textContent = originalLabel;
+      btn.classList.remove("pdf-loading");
+      inFlight = false;
+    }
+  });
 }
 
 function wireSearch() {
@@ -258,6 +333,7 @@ function render() {
   if (!segments.length) {
     APP_ROOT.innerHTML = renderLanding();
     wireSearch();
+    wirePdfDownload();
     return;
   }
   const { node, breadcrumb } = resolvePath(segments);

@@ -37,10 +37,26 @@ h1 { margin: 0 0 0.35rem; font-size: 1.65rem; font-weight: 700; letter-spacing: 
 h1 .sub { color: var(--muted); font-weight: 400; }
 .tagline { margin: 0; color: var(--muted); font-size: 0.95rem; max-width: 640px; }
 
-.top-nav { margin-top: 0.9rem; display: flex; gap: 1.25rem; align-items: center; }
+.top-nav { margin-top: 0.9rem; display: flex; flex-wrap: wrap; row-gap: 0.5rem; gap: 1.25rem; align-items: center; }
 .top-nav a { color: var(--muted); text-decoration: none; font-size: 0.88rem; font-weight: 600; padding-bottom: 0.15rem; border-bottom: 2px solid transparent; transition: color .15s, border-color .15s; }
 .top-nav a:hover { color: var(--text); }
 .top-nav a strong { color: var(--accent); border-bottom: 2px solid var(--accent); padding-bottom: 0.15rem; font-weight: 700; }
+
+/* Keyboard-focus visibility (accessibility basics) -- browsers vary in
+   whether they show a default focus ring on custom interactive elements
+   like our card-as-link pattern; make it explicit and consistent. */
+a:focus-visible, button:focus-visible, input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 640px) {
+  header { padding: 1.5rem 1rem 1rem; }
+  main { padding: 1.25rem 0.85rem 3rem; }
+  h1 { font-size: 1.35rem; }
+  .top-nav { gap: 0.85rem; }
+  .panel { padding: 1.1rem 1.1rem; }
+}
 
 main {
   max-width: 1000px;

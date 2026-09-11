@@ -252,7 +252,7 @@ function renderSessionCard(s) {
     <div class="hist-row-top">
       <span class="tag-type ${esc(s.kind)}">${esc(KIND_LABELS[s.kind] || s.kind)}</span>
       <span class="hint">${berlinTimeLabel(s.start_utc)} Europe/Berlin</span>
-      <span class="hint">${esc(s.provenance)}</span>
+      ${provenanceBadge(s.provenance)}
     </div>
     <div class="hist-goal">${esc((s.goal || "").slice(0, 140))}</div>
     <div class="hist-meta">
@@ -330,6 +330,48 @@ function wireSessionHistoryPanel() {
 
 // ---- Session detail page ------------------------------------------------
 
+// Consistent color-coding so ACTUAL/EXACT (green), DERIVED (amber), and
+// UNKNOWN/NOT_CAPTURED (muted) are visually distinguishable at a glance,
+// instead of all looking like identical plain hint text (UI audit finding).
+function noteClass(note) {
+  if (!note) return "note-unknown";
+  if (/DERIVED/i.test(note)) return "note-derived";
+  if (/UNKNOWN|NOT CAPTURED/i.test(note)) return "note-unknown";
+  return "note-exact";
+}
+function noteSpan(note) {
+  return `<span class="value-note ${noteClass(note)}">${esc(note)}</span>`;
+}
+function provenanceBadge(provenance) {
+  const cls = provenance === "LIVE_CAPTURED" ? "provenance-live" : "provenance-partial";
+  return `<span class="provenance-badge ${cls}">${esc((provenance || "UNKNOWN").replace(/_/g, " "))}</span>`;
+}
+function shortId(id, max = 28) {
+  if (!id || id.length <= max) return esc(id || "");
+  return `<span title="${esc(id)}">${esc(id.slice(0, max - 1))}&hellip;</span>`;
+}
+
+function renderTopSummary(d) {
+  const qualityPct = d.quality ? d.quality.evidence_coverage_pct : null;
+  return `<section class="panel session-summary-panel">
+    <div class="summary-head">
+      <span class="tag-type ${esc(d.kind)}">${esc(KIND_LABELS[d.kind] || d.kind)}</span>
+      ${provenanceBadge(d.provenance)}
+      <span class="hint session-id-hint">${shortId(d.session_id)}</span>
+    </div>
+    <h2 class="session-goal">${esc(d.goal || "NOT CAPTURED")}</h2>
+    <div class="summary-grid">
+      <div class="summary-stat"><div class="summary-label">Status</div><div class="summary-value">${esc(d.status)}</div></div>
+      <div class="summary-stat"><div class="summary-label">Start &rarr; End</div><div class="summary-value">${d.start_utc ? berlinTimeLabel(d.start_utc) : "?"} &rarr; ${d.end_utc ? berlinTimeLabel(d.end_utc) : "?"}</div></div>
+      <div class="summary-stat"><div class="summary-label">Wall time</div><div class="summary-value">${fmtMs(d.wall_clock_ms) || "UNKNOWN"}</div></div>
+      <div class="summary-stat"><div class="summary-label">Tokens</div><div class="summary-value">${tokenSummary(d.tokens)}</div></div>
+      <div class="summary-stat"><div class="summary-label">Cost</div><div class="summary-value">${costSummary(d.cost)}</div></div>
+      <div class="summary-stat"><div class="summary-label">Quality</div><div class="summary-value">${qualityPct != null ? qualityPct + "% coverage" : "N/A"}</div></div>
+      <div class="summary-stat"><div class="summary-label">Value</div><div class="summary-value">${d.value ? d.value.technical_value.verified_changes_completed + " verified" : "N/A"}</div></div>
+    </div>
+  </section>`;
+}
+
 function renderQualityBlock(q) {
   if (!q) return "";
   const rows = Object.entries(q.scored_dimensions || {}).map(([k, v]) =>
@@ -381,37 +423,33 @@ async function renderSessionDetail(sessionId) {
 
   main.innerHTML = `
     <a data-link href="/usage" class="back-link">&larr; Back to Usage</a>
-    <section class="panel">
-      <h2>${esc(KIND_LABELS[d.kind] || d.kind)} <span class="hint">${esc(d.session_id)}</span></h2>
-      <p class="goal">${esc(d.goal || "NOT CAPTURED")}</p>
-      <div class="meta">
-        <span>Status: ${esc(d.status)}</span>
-        <span>Provenance: ${esc(d.provenance)}</span>
-      </div>
-    </section>
-    ${section("Start / End / Timing", `
+    ${renderTopSummary(d)}
+    ${section("Timing (AI Activity / Human Activity)", `
       <ul class="score-breakdown">
         <li><span>Start (Europe/Berlin)</span><span>${d.start_utc ? berlinTimeLabel(d.start_utc) + " on " + berlinDateKey(d.start_utc) : "UNKNOWN"}</span></li>
         <li><span>End (Europe/Berlin)</span><span>${d.end_utc ? berlinTimeLabel(d.end_utc) + " on " + berlinDateKey(d.end_utc) : "UNKNOWN"}</span></li>
         <li><span>Wall-clock duration</span><span>${fmtMs(d.wall_clock_ms) || "UNKNOWN"}</span></li>
-        <li><span>AI active time</span><span>${fmtMs(d.ai_active_ms) || "UNKNOWN"} <span class="hint">(${esc(d.ai_active_ms_note)})</span></span></li>
-        <li><span>AI waiting for human</span><span>${fmtMs(d.ai_waiting_for_human_ms) || "UNKNOWN"} <span class="hint">(${esc(d.ai_waiting_for_human_note)})</span></span></li>
-        <li><span>Human active time</span><span>UNKNOWN <span class="hint">(${esc(d.human_active_note)})</span></span></li>
-        <li><span>Human waiting for AI</span><span>${fmtMs(d.human_waiting_for_ai_ms) || "UNKNOWN"} <span class="hint">(${esc(d.human_waiting_for_ai_note)})</span></span></li>
+        <li><span>AI active time</span><span>${fmtMs(d.ai_active_ms) || "UNKNOWN"} ${noteSpan(d.ai_active_ms_note)}</span></li>
+        <li><span>AI waiting for human</span><span>${fmtMs(d.ai_waiting_for_human_ms) || "UNKNOWN"} ${noteSpan(d.ai_waiting_for_human_note)}</span></li>
+        <li><span>Human active time</span><span>UNKNOWN ${noteSpan(d.human_active_note)}</span></li>
+        <li><span>Human waiting for AI</span><span>${fmtMs(d.human_waiting_for_ai_ms) || "UNKNOWN"} ${noteSpan(d.human_waiting_for_ai_note)}</span></li>
       </ul>
     `)}
-    ${section("Token Usage", `<p>${tokenSummary(d.tokens)}</p>`)}
-    ${section("Cost", `<p>${costSummary(d.cost)}</p>`)}
+    ${section("Model Usage, Tokens &amp; Cost", `
+      <p><strong>Tokens:</strong> ${tokenSummary(d.tokens)} <span class="value-note ${d.tokens && d.tokens.status === "EXACT" ? "note-exact" : d.tokens && d.tokens.status === "AGGREGATE_ONLY" ? "note-derived" : "note-unknown"}">${esc((d.tokens && d.tokens.status) || "")}</span></p>
+      <p><strong>Cost:</strong> ${costSummary(d.cost)} <span class="value-note ${d.cost && d.cost.status === "ACTUAL" ? "note-exact" : "note-unknown"}">${esc((d.cost && d.cost.status) || "")}</span></p>
+    `)}
     ${section("Value", `
       <p><strong>Technical value:</strong> ${d.value.technical_value.verified_changes_completed} verified change(s), ${d.value.technical_value.failures} failure(s)</p>
       <p><strong>Learning value:</strong> ${d.value.learning_value.knowledge_candidates_created} knowledge candidate(s) linked to this session</p>
     `)}
-    ${section("Quality", renderQualityBlock(d.quality))}
+    ${section("Quality (evidence-coverage-gated, never assumed 100%)", renderQualityBlock(d.quality))}
     ${section("Comparison to Other Sessions", renderComparisonBlock(d.comparison))}
-    ${section(`Timeline (${d.tool_call_count} tool call(s))`, renderTimelineBlock(d.timeline))}
+    ${section(`Timeline &amp; Runs/Tasks (${d.tool_call_count} tool call(s))`, renderTimelineBlock(d.timeline))}
     ${section("Human Interventions", d.human_interventions && d.human_interventions.length
       ? `<ul class="ledger-recent">${d.human_interventions.map(h => `<li>${esc(h.event_type)} — ${esc(h.status)} <span class="hint">${berlinTimeLabel(h.timestamp_utc)}</span></li>`).join("")}</ul>`
       : `<p class="hint">None captured for this session.</p>`)}
+    ${section("Full Session ID", `<p class="full-session-id">${esc(d.session_id)}</p>`)}
   `;
 }
 
