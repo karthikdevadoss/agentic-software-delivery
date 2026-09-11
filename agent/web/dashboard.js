@@ -179,20 +179,46 @@ function renderCapabilityMatrix(d) {
   return section("G. Capability Matrix", html);
 }
 
+function fmtUsd(n) {
+  if (n === null || n === undefined) return "—";
+  return "$" + n.toFixed(n < 0.01 ? 4 : 2);
+}
+
+// Real incident (2026-09-11): this section used to show a hardcoded
+// "NOT CAPTURED YET"/"NOT CALCULATED YET" pair that predated real usage
+// capture entirely — the data existed elsewhere in the product the whole
+// time. Now reads agent/event_ledger.py::get_usage_economics()'s real,
+// ledger-backed aggregation directly — never a static placeholder again.
+function renderEconWindow(label, w) {
+  if (!w || w.runs_total === 0) {
+    return `<div class="econ-card"><div class="econ-label">${esc(label)}</div><div class="econ-value">no runs in this window</div></div>`;
+  }
+  const costText = w.cost_known_for_all_captured_runs ? fmtUsd(w.cost_usd) : `${fmtUsd(w.cost_usd)} (partial — some runs' cost unknown)`;
+  return `<div class="econ-card">
+    <div class="econ-label">${esc(label)}</div>
+    <div class="econ-value">${w.input_tokens.toLocaleString()} in / ${w.output_tokens.toLocaleString()} out tokens</div>
+    <div class="kv-row"><span>${w.runs_total} run(s)</span><span>${w.runs_completed_verified} verified</span><span>Cost: ${costText}</span></div>
+  </div>`;
+}
+
 function renderEconomics(d) {
   const e = d.economics;
+  if (e.status !== "REACHABLE") {
+    return section("Economics / Consumption", `<div class="econ-note">Event ledger ${badge(e.status)} — ${esc(e.error || "no further detail")}</div>`);
+  }
   const html = `
     <div class="econ-grid">
-      <div class="econ-card">
-        <div class="econ-label">Token usage</div>
-        <div class="econ-value">${badge(e.token_usage)}</div>
-      </div>
-      <div class="econ-card">
-        <div class="econ-label">Estimated API cost</div>
-        <div class="econ-value">${badge(e.api_cost)}</div>
-      </div>
+      ${renderEconWindow("Last run", e.last_run)}
+      ${renderEconWindow("Last hour (UTC)", e.last_hour_utc)}
+      ${renderEconWindow("Today (UTC calendar day)", e.today_utc_calendar_day)}
+      ${renderEconWindow("Lifetime", e.lifetime)}
     </div>
-    <div class="econ-note"><strong>Why:</strong> ${esc(e.token_usage_note)}<br><br><strong>Cost:</strong> ${esc(e.cost_note)}<br><br><strong>Next step:</strong> ${esc(e.next_instrumentation_step)}</div>
+    <div class="econ-note">
+      <strong>Cost per verified (COMPLETED) change:</strong> ${e.cost_per_verified_change_usd != null ? fmtUsd(e.cost_per_verified_change_usd) : "INSUFFICIENT DATA"}<br><br>
+      <strong>Source:</strong> ${esc(e.canonical_source)}<br><br>
+      <strong>Pricing versions seen:</strong> ${e.pricing_versions_seen.length ? esc(e.pricing_versions_seen.join(", ")) : "none yet"} — a run's cost always uses the pricing version recorded at that run's own time, never recomputed with a later price.<br><br>
+      <strong>Note:</strong> ${esc(e.timezone_note)}
+    </div>
   `;
   return section("Economics / Consumption", html);
 }

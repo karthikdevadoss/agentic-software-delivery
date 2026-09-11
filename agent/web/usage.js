@@ -49,8 +49,17 @@ function renderSessionRow(s, index) {
   const correctionsHtml = s.corrections.length
     ? `<div><strong>Real corrections during this session:</strong><ul>${s.corrections.map(c => `<li>${esc(c)}</li>`).join("")}</ul></div>`
     : "";
+  // Real incident: this line hardcoded "Cost: NOT CALCULATED YET" even
+  // after agent/pricing_config.py started computing and persisting a
+  // real cost_usd alongside this exact token data (see
+  // agent/web_server.py::_build_usage_summary) — the value existed and
+  // was captured, it just was never displayed here. Never show a
+  // contradictory "not calculated" next to real captured numbers again.
+  const costText = (s.model_usage && s.model_usage.cost_usd != null)
+    ? `$${s.model_usage.cost_usd.toFixed(s.model_usage.cost_usd < 0.01 ? 4 : 2)}`
+    : "NOT AVAILABLE (no pricing entry for this model)";
   const usageHtml = s.model_usage
-    ? `<div><strong>Model usage (from API response, not estimated):</strong> ${esc(s.model_usage.provider)}/${esc(s.model_usage.model)} — ${s.model_usage.input_tokens} input tokens, ${s.model_usage.output_tokens} output tokens across ${s.model_usage.api_calls} call(s). Cost: NOT CALCULATED YET.</div>`
+    ? `<div><strong>Model usage (from API response, not estimated):</strong> ${esc(s.model_usage.provider)}/${esc(s.model_usage.model)} — ${s.model_usage.input_tokens} input tokens, ${s.model_usage.output_tokens} output tokens across ${s.model_usage.api_calls} call(s). Cost: ${esc(costText)}.</div>`
     : `<div><strong>Model usage:</strong> NOT CAPTURED${s.session_type === "development" ? " for this session type yet" : ""}</div>`;
 
   return `<div class="session-row" data-idx="${index}">

@@ -24,7 +24,7 @@ import json
 import os
 import threading
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -562,6 +562,97 @@ def count_events():
             return cur.fetchone()[0]
     finally:
         conn.close()
+
+
+def get_usage_economics() -> dict:
+    """Real, ledger-backed token/cost economics — the canonical historical
+    source (never a hardcoded placeholder). Root-caused real incident
+    (2026-09-11): agent/dashboard_data.py's ECONOMICS dict was a static,
+    long-stale constant ("NOT CAPTURED YET"/"NOT CALCULATED YET") that
+    predated agent/pricing_config.py and the real run_usage_summary event
+    entirely — real captured usage existed in this exact table the whole
+    time, the display surface just never looked at it.
+
+    Reads `run_usage_summary` events — emitted for EVERY terminal outcome
+    (COMPLETED, FAILED, NO_CHANGE_NEEDED, DEPLOYMENT_STATUS_UNKNOWN), so
+    failed/aborted work's real cost is never hidden (a failed run still
+    spent real money). Uses COALESCE so both pre-fix rows (real data only
+    inside the JSONB payload) and post-fix rows (also in dedicated
+    columns) aggregate correctly — no historical row is lost or ignored.
+    Each row's own recorded pricing_version is preserved; a later price
+    change never silently rewrites a past run's cost.
+
+    'Today'/'this hour' use UTC calendar boundaries — no per-user
+    timezone is configured anywhere in this system yet, so this is
+    honestly labeled rather than silently assumed correct for a specific
+    timezone."""
+    try:
+        conn = _connect()
+    except Exception as exc:  # noqa: BLE001 - Dashboard must never break because the ledger is unreachable
+        return {"status": "UNREACHABLE", "error": str(exc)}
+    try:
+        ensure_schema()
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT
+                    timestamp_utc, run_id, source, activity_class, status,
+                    COALESCE(input_tokens, (payload->>'input_tokens')::bigint) AS input_tokens,
+                    COALESCE(output_tokens, (payload->>'output_tokens')::bigint) AS output_tokens,
+                    COALESCE(cache_read_tokens, (payload->>'cache_read_tokens')::bigint) AS cache_read_tokens,
+                    COALESCE(cache_write_tokens, (payload->>'cache_write_tokens')::bigint) AS cache_write_tokens,
+                    (payload->>'cost_usd')::double precision AS cost_usd,
+                    (payload->>'pricing_version') AS pricing_version,
+                    COALESCE((payload->>'captured')::boolean, true) AS captured
+                FROM delivery_events
+                WHERE event_type = 'run_usage_summary'
+                ORDER BY timestamp_utc DESC
+            """)
+            cols = [d[0] for d in cur.description]
+            rows = [dict(zip(cols, r)) for r in cur.fetchall()]
+    finally:
+        conn.close()
+
+    now = datetime.now(timezone.utc)
+    hour_ago = now - timedelta(hours=1)
+    today_start_utc = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    def _aggregate(subset: list) -> dict:
+        captured_rows = [r for r in subset if r["captured"] and r["input_tokens"] is not None]
+        return {
+            "runs_total": len(subset),
+            "runs_with_captured_usage": len(captured_rows),
+            "runs_completed_verified": sum(1 for r in subset if r["status"] == "COMPLETED"),
+            "input_tokens": sum(r["input_tokens"] or 0 for r in captured_rows),
+            "output_tokens": sum(r["output_tokens"] or 0 for r in captured_rows),
+            "cache_read_tokens": sum(r["cache_read_tokens"] or 0 for r in captured_rows),
+            "cache_write_tokens": sum(r["cache_write_tokens"] or 0 for r in captured_rows),
+            "cost_usd": round(sum(r["cost_usd"] for r in captured_rows if r["cost_usd"] is not None), 6),
+            "cost_known_for_all_captured_runs": all(r["cost_usd"] is not None for r in captured_rows) if captured_rows else True,
+        }
+
+    last_run_rows = rows[:1]
+    hour_rows = [r for r in rows if r["timestamp_utc"] >= hour_ago]
+    today_rows = [r for r in rows if r["timestamp_utc"] >= today_start_utc]
+
+    lifetime = _aggregate(rows)
+    completed_with_cost = [r for r in rows if r["status"] == "COMPLETED" and r["cost_usd"] is not None]
+    cost_per_verified_change = (
+        round(sum(r["cost_usd"] for r in completed_with_cost) / len(completed_with_cost), 6)
+        if completed_with_cost else None
+    )
+
+    return {
+        "status": "REACHABLE",
+        "canonical_source": "event ledger (delivery_events, event_type=run_usage_summary) — includes FAILED/NO_CHANGE_NEEDED/DEPLOYMENT_STATUS_UNKNOWN runs, never only successful ones",
+        "last_run": {**_aggregate(last_run_rows), "timestamp_utc": rows[0]["timestamp_utc"].isoformat() if rows else None},
+        "last_hour_utc": _aggregate(hour_rows),
+        "today_utc_calendar_day": _aggregate(today_rows),
+        "lifetime": lifetime,
+        "cost_per_verified_change_usd": cost_per_verified_change,
+        "cost_per_verified_change_note": "INSUFFICIENT DATA" if cost_per_verified_change is None else "lifetime COMPLETED runs with known cost only",
+        "pricing_versions_seen": sorted({r["pricing_version"] for r in rows if r["pricing_version"]}),
+        "timezone_note": "last_hour/today use UTC — no per-user timezone is configured in this system yet",
+    }
 
 
 if __name__ == "__main__":

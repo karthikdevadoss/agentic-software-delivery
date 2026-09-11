@@ -92,19 +92,27 @@ KNOWN_LIMITATIONS = [
     "No real customer pilot yet (YogaCRM is a future strategic target, not started).",
     "Metrics are in-memory (reset on restart) plus a small local run-history log — no persisted long-term analytics store.",
     "MCP Streamable HTTP transport is implemented but not runtime-verified over real HTTP (only stdio / in-process Client tested).",
-    "Token usage and API cost are NOT captured — no instrumentation exists; Claude Code's own context display was deliberately not used as a substitute, since it is not a reliable per-run cost source.",
+    "Token usage and API cost ARE now captured and aggregated from the real event ledger (see the 'economics' section) — historical cost uses each run's own recorded pricing_version, never recomputed with a later price. Cost-per-verified-change is INSUFFICIENT DATA until enough real COMPLETED runs with known cost exist.",
     "The Dashboard's own data layer (agent/dashboard_data.py) has no automated tests yet — it was verified this session via live curl checks against the real endpoints, not a unit test suite.",
 ]
 
-# Honest, explicit economics status — never a computed number without a
-# real, versioned source. See KNOWN_LIMITATIONS for the reasoning.
-ECONOMICS = {
-    "token_usage": "NOT CAPTURED YET",
-    "token_usage_note": "Real capture code exists (agent_loop.py reads response.usage from the Anthropic SDK directly — never estimated) but has not yet been exercised by a live API call, since real runs were deliberately avoided today to control cost.",
-    "api_cost": "NOT CALCULATED YET",
-    "cost_note": "No versioned, sourced pricing table exists in this system. A cost figure will only be shown once one is added and dated — never inferred from a UI counter.",
-    "next_instrumentation_step": "Run one real (non-mock) Control UI session end-to-end, confirm response.usage populates agent/web_run_history.jsonl's model_usage field, then add a dated pricing table to compute cost from real tokens.",
-}
+def _economics_snapshot() -> dict:
+    """Real, ledger-backed token/cost economics (event_ledger.get_usage_economics()).
+
+    ROOT-CAUSED REAL INCIDENT (2026-09-11): this used to be a static
+    ECONOMICS dict hardcoded to "NOT CAPTURED YET"/"NOT CALCULATED YET" —
+    written before agent/pricing_config.py and the real run_usage_summary
+    event existed, and never updated afterward. The Creator observed a
+    real run showing real captured tokens (e.g. 31,573 input / 2,797
+    output / 5 API calls) elsewhere in the product while this exact
+    surface still claimed nothing was captured — the capture was real,
+    only this display was stale and disconnected from it. Never again:
+    this now queries the same canonical event ledger every other real
+    usage display reads from."""
+    try:
+        return event_ledger.get_usage_economics()
+    except Exception as exc:  # noqa: BLE001 - Dashboard must never break because the ledger is unreachable
+        return {"status": "UNREACHABLE", "error": str(exc)}
 
 # A single manually-observed fact about the live public Customer app,
 # captured by directly querying the deployed instance — NOT a durable
@@ -284,7 +292,7 @@ def build_dashboard_snapshot() -> dict:
         "event_ledger": _event_ledger_summary(),
         "run_history": _read_run_history(),
         "session_metrics": _session_metrics(),
-        "economics": ECONOMICS,
+        "economics": _economics_snapshot(),
         "verified_activity": VERIFIED_ACTIVITY,
         "rag": _rag_index_summary(),
         "mcp": _mcp_summary(state),
