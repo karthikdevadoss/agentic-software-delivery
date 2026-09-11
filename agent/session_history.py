@@ -42,6 +42,52 @@ from datetime import datetime, timedelta, timezone
 
 import event_ledger as el
 
+_MAX_CONCISE_TITLE = 160
+
+
+def repair_mojibake(text):
+    """Repairs one specific, well-understood historical data-corruption
+    pattern (real incident, 2026-09-11 live production verification): a
+    real UTF-8 multi-byte character (e.g. the arrow '→') that was, at
+    some earlier point BEFORE this project's own capture pipeline, decoded
+    as if it were single-byte cp1252 and then re-encoded as UTF-8 for
+    storage -- producing a string like 'Ã¢' + 'â€ ' + 'â€™' as separate
+    Unicode codepoints, displayed as visible mojibake such as 'â†’'.
+
+    Detection is via the repair itself succeeding: encoding the string as
+    cp1252 and decoding the resulting bytes as UTF-8 only succeeds when
+    the string is exactly this kind of double-mis-encoded text -- correct
+    ASCII text round-trips to itself unchanged, and correct text
+    containing genuine non-cp1252-representable characters (e.g. an
+    actual '→') raises UnicodeEncodeError and is returned untouched.
+    Never mutates the stored ledger row -- this is a display-only repair,
+    applied fresh each time a value is read."""
+    if not text:
+        return text
+    try:
+        repaired = text.encode("cp1252").decode("utf-8")
+    except (UnicodeEncodeError, UnicodeDecodeError):
+        return text
+    return repaired
+
+
+def concise_title(text, max_len=_MAX_CONCISE_TITLE):
+    """Derives a short, meaningful title from a long raw capture (e.g. a
+    full Claude Code prompt used as a reconstructed session's only
+    available 'goal') -- real incident (2026-09-11 live production
+    verification): a several-hundred-character raw prompt was displayed
+    verbatim as a session's visible title, dominating the page. The full
+    original text is never discarded -- see raw_capture in
+    _render_session_summary/get_session_detail."""
+    if not text:
+        return text
+    first_line = text.split("\n", 1)[0].strip()
+    if len(first_line) > max_len:
+        return first_line[: max_len - 1].rstrip() + "…"
+    if len(text.strip()) > len(first_line):
+        return first_line + " …"
+    return first_line
+
 KIND_CLAUDE_CODE = "claude_code_dev_session"
 KIND_WORKBENCH_RUN = "workbench_run"
 KIND_V2_TRIAL = "v2_trial_benchmark"
@@ -129,7 +175,7 @@ def _goal_for_claude_code(conn, session_ids):
             """,
             (session_ids,),
         )
-        return dict(cur.fetchall())
+        return {sid: repair_mojibake(text) for sid, text in cur.fetchall()}
 
 
 def _goal_for_workbench(conn, run_ids):
@@ -147,7 +193,7 @@ def _goal_for_workbench(conn, run_ids):
             """,
             (list(_WORKBENCH_SOURCES), run_ids),
         )
-        return dict(cur.fetchall())
+        return {rid: repair_mojibake(text) for rid, text in cur.fetchall()}
 
 
 def _ai_active_ms(conn, session_ids, run_ids):
@@ -221,6 +267,40 @@ def _usage_for_v2_trial(conn, run_ids):
         return {rid: (int(total) if total is not None else None) for rid, total in cur.fetchall()}
 
 
+def _cost_coverage_summary(conn) -> dict:
+    """Usage-level economics (Section 6: 'add useful economics such as
+    KNOWN COST TOTAL / SESSIONS WITH KNOWN COST / SESSIONS WITH UNKNOWN
+    COST / COST COVERAGE %'). One lightweight aggregate query over the
+    canonical run_usage_summary event type -- the same source
+    agent/event_ledger.py::get_usage_economics() already treats as
+    canonical for lifetime rollups, so this can never contradict it.
+    Deliberately covers workbench_run only (the only kind with a real
+    possibility of ACTUAL cost); v2_trial/claude_code sessions are
+    honestly excluded from 'total sessions' here rather than padding the
+    denominator with kinds that can never have a known cost, which would
+    silently deflate the coverage percentage."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT COUNT(*) FILTER (WHERE (payload->>'cost_usd') IS NOT NULL) AS known,
+                   COUNT(*) AS total,
+                   COALESCE(SUM((payload->>'cost_usd')::double precision), 0) AS known_total
+            FROM delivery_events
+            WHERE event_type = 'run_usage_summary'
+            """
+        )
+        known, total, known_total = cur.fetchone()
+    unknown = total - known
+    coverage_pct = round(100 * known / total) if total else None
+    return {
+        "known_cost_total_usd": round(known_total, 6),
+        "sessions_with_known_cost": known,
+        "sessions_with_unknown_cost": unknown,
+        "cost_coverage_pct": coverage_pct,
+        "scope_note": "covers workbench_run sessions only (the only kind with a real run_usage_summary event carrying provider cost)",
+    }
+
+
 def list_sessions(before_cursor: str = None, limit: int = 20) -> dict:
     before_dt = None
     if before_cursor:
@@ -274,15 +354,61 @@ def list_sessions(before_cursor: str = None, limit: int = 20) -> dict:
             "sessions": sessions,
             "next_cursor": next_cursor,
             "has_more": has_more,
+            "cost_coverage_summary": _cost_coverage_summary(conn),
         }
     finally:
         conn.close()
 
 
+_COST_DISPLAY_LABELS = {
+    "ACTUAL": "ACTUAL COST — CALCULATED FROM ACTUAL USAGE",
+    "AGGREGATE_ONLY_TOKENS": "COST UNAVAILABLE — AGGREGATE_ONLY",
+    "NOT_CAPTURED": "COST UNAVAILABLE — TOKENS NOT CAPTURED",
+    "OTHER": "COST UNAVAILABLE",
+}
+
+
+def _cost_display_label(tokens: dict, cost: dict) -> str:
+    if cost.get("status") == "ACTUAL":
+        return _COST_DISPLAY_LABELS["ACTUAL"]
+    if tokens.get("status") == "AGGREGATE_ONLY":
+        return _COST_DISPLAY_LABELS["AGGREGATE_ONLY_TOKENS"]
+    if tokens.get("status") == "NOT_CAPTURED":
+        return _COST_DISPLAY_LABELS["NOT_CAPTURED"]
+    return _COST_DISPLAY_LABELS["OTHER"]
+
+
+def _window_semantics(start_ts, end_ts, has_end_event):
+    """Real incident (2026-09-11, live production verification): a
+    reconstructed Claude Code session showed '04:52 -> 17:00 / 12.1 hr'
+    with AI active time UNKNOWN -- visually implying 12.1 hours of
+    continuous work, when the true fact is only that the FIRST and LAST
+    *observed* events happen to span that gap; nothing proves continuous
+    activity across it. Returns (wall_clock_ms, window_kind, display_note).
+
+    window_kind is CAPTURED_SESSION_DURATION only when a genuine terminal
+    event (dev_session_ended / a real Workbench terminal event) closes the
+    session -- otherwise OBSERVED_EVENT_WINDOW, since the true session
+    boundary (if the session even meaningfully 'ended' at that moment) was
+    never actually observed."""
+    if start_ts is None or end_ts is None:
+        return None, "UNKNOWN", "DURATION NOT CAPTURED"
+    wall_ms = (end_ts - start_ts).total_seconds() * 1000
+    if wall_ms == 0:
+        # Real incident: a single-event (or exactly-simultaneous-events)
+        # session showed a bare "0ms", implying a proven instantaneous
+        # duration -- timestamp precision cannot actually prove that; the
+        # true duration is simply not captured.
+        return wall_ms, "UNKNOWN", "DURATION NOT CAPTURED (only one observed instant, true duration unknown)"
+    if has_end_event:
+        return wall_ms, "CAPTURED_SESSION_DURATION", None
+    return wall_ms, "OBSERVED_EVENT_WINDOW", "reconstructed from first/last OBSERVED event only — does not prove continuous activity across this span"
+
+
 def _render_session_summary(r, goals_cc, goals_wb, ai_active, usage_wb, usage_v2):
     sid, kind = r["id"], r["kind"]
     start_ts, end_ts = r["start_ts"], r["end_ts"]
-    wall_ms = (end_ts - start_ts).total_seconds() * 1000 if start_ts and end_ts else None
+    wall_ms, window_kind, window_note = _window_semantics(start_ts, end_ts, r["has_end_event"])
     active = ai_active.get(sid)
     ai_active_ms_val = active[0] if active else None
     tool_call_count = active[1] if active else 0
@@ -293,6 +419,8 @@ def _render_session_summary(r, goals_cc, goals_wb, ai_active, usage_wb, usage_v2
         "start_utc": start_ts.isoformat() if start_ts else None,
         "end_utc": end_ts.isoformat() if end_ts else None,
         "wall_clock_ms": wall_ms,
+        "window_kind": window_kind,
+        "window_note": window_note,
         "status": r["last_status"] or "UNKNOWN",
         "provenance": _provenance(kind, r["has_end_event"]),
         "ai_active_ms": ai_active_ms_val,
@@ -307,12 +435,16 @@ def _render_session_summary(r, goals_cc, goals_wb, ai_active, usage_wb, usage_v2
     }
 
     if kind == KIND_CLAUDE_CODE:
-        summary["goal"] = goals_cc.get(sid) or "NOT CAPTURED"
+        raw_goal = goals_cc.get(sid) or "NOT CAPTURED"
+        summary["goal"] = concise_title(raw_goal) if raw_goal != "NOT CAPTURED" else raw_goal
+        summary["raw_capture"] = raw_goal if raw_goal != summary["goal"] else None
         summary["model"] = "claude-sonnet-5"
         summary["tokens"] = {"status": "NOT_CAPTURED", "note": "Claude Code hook interface exposes no token-usage field for development sessions (verified against claude_code_hook.py's own field list)."}
         summary["cost"] = {"status": "COST_UNAVAILABLE", "reason": "no token usage captured for this session kind"}
     elif kind == KIND_WORKBENCH_RUN:
-        summary["goal"] = goals_wb.get(sid) or "NOT CAPTURED"
+        raw_goal = goals_wb.get(sid) or "NOT CAPTURED"
+        summary["goal"] = concise_title(raw_goal) if raw_goal != "NOT CAPTURED" else raw_goal
+        summary["raw_capture"] = raw_goal if raw_goal != summary["goal"] else None
         usage = usage_wb.get(sid)
         if usage:
             in_tok, out_tok, cost_usd, pricing_version, captured = usage
@@ -328,6 +460,7 @@ def _render_session_summary(r, goals_cc, goals_wb, ai_active, usage_wb, usage_v2
             summary["cost"] = {"status": "COST_UNAVAILABLE", "reason": "no run_usage_summary event for this run"}
     else:  # v2_trial
         summary["goal"] = sid
+        summary["raw_capture"] = None
         agg_tokens = usage_v2.get(sid)
         if agg_tokens is not None:
             summary["tokens"] = {"status": "AGGREGATE_ONLY", "aggregate_tokens": agg_tokens}
@@ -336,6 +469,7 @@ def _render_session_summary(r, goals_cc, goals_wb, ai_active, usage_wb, usage_v2
             summary["tokens"] = {"status": "NOT_CAPTURED"}
             summary["cost"] = {"status": "COST_UNAVAILABLE", "reason": "no usage recorded for this trial"}
 
+    summary["cost_display_label"] = _cost_display_label(summary["tokens"], summary["cost"])
     return summary
 
 
@@ -374,32 +508,74 @@ def _median(values):
     return values[mid] if n % 2 else (values[mid - 1] + values[mid]) / 2
 
 
-def _compare_to_cohort(conn, kind, cohort_ids, this_session_tokens, this_session_cost):
-    """Real median comparison — only computed once >=3 comparable sessions
-    with KNOWN usage exist, per Section 29 ('do not invent statistics
-    from tiny samples'). Only workbench_run has a directly queryable
-    per-id total-token figure (run_usage_summary); other kinds report
-    cohort size only, honestly, rather than a fabricated comparison."""
-    if kind != KIND_WORKBENCH_RUN or not cohort_ids:
-        return {}
-    usage = _usage_for_workbench(conn, cohort_ids)
-    token_totals = [
-        (u[0] or 0) + (u[1] or 0) for u in usage.values()
-        if u[4] and u[0] is not None
-    ]
-    cost_values = [u[2] for u in usage.values() if u[4] and u[2] is not None]
+def _cohort_wall_times_and_interventions(conn, kind, cohort_ids):
+    """Batch (not N+1) lookup of each cohort session's wall-clock span and
+    whether it had a human intervention -- reuses the same CTE-free direct
+    aggregation pattern as the rest of this module."""
+    id_col = "session_id" if kind == KIND_CLAUDE_CODE else "run_id"
+    with conn.cursor() as cur:
+        cur.execute(
+            f"""
+            SELECT {id_col}, MIN(timestamp_utc), MAX(timestamp_utc),
+                   BOOL_OR(event_type IN ('authorization_decision', 'human_decision'))
+            FROM delivery_events
+            WHERE {id_col} = ANY(%s)
+            GROUP BY {id_col}
+            """,
+            (cohort_ids,),
+        )
+        wall_times = {}
+        interventions = {}
+        for cid, start_ts, end_ts, had_intervention in cur.fetchall():
+            if start_ts and end_ts:
+                wall_times[cid] = (end_ts - start_ts).total_seconds() * 1000
+            interventions[cid] = had_intervention
+    return wall_times, interventions
+
+
+def _compare_to_cohort(conn, kind, cohort_ids, this_session_tokens, this_session_cost,
+                        this_session_wall_ms, this_session_had_intervention):
+    """Real median/rate comparison — only computed once >=3 comparable
+    sessions with KNOWN usage exist for a given metric, per Section 29
+    ('do not invent statistics from tiny samples'). Only workbench_run has
+    a directly queryable per-id total-token figure (run_usage_summary);
+    other kinds report cohort size only for tokens/cost, honestly, rather
+    than a fabricated comparison. Wall time and human-intervention rate
+    are derivable for every kind from timestamps/event types alone."""
     result = {}
-    if len(token_totals) >= 3 and this_session_tokens is not None:
-        med = _median(token_totals)
-        result["tokens_vs_cohort_median"] = {
-            "this_session": this_session_tokens, "cohort_median": med,
-            "pct_diff": round(100 * (this_session_tokens - med) / med, 1) if med else None,
+    if not cohort_ids:
+        return result
+
+    if kind == KIND_WORKBENCH_RUN:
+        usage = _usage_for_workbench(conn, cohort_ids)
+        token_totals = [(u[0] or 0) + (u[1] or 0) for u in usage.values() if u[4] and u[0] is not None]
+        cost_values = [u[2] for u in usage.values() if u[4] and u[2] is not None]
+        if len(token_totals) >= 3 and this_session_tokens is not None:
+            med = _median(token_totals)
+            result["tokens_vs_cohort_median"] = {
+                "this_session": this_session_tokens, "cohort_median": med,
+                "pct_diff": round(100 * (this_session_tokens - med) / med, 1) if med else None,
+            }
+        if len(cost_values) >= 3 and this_session_cost is not None:
+            med = _median(cost_values)
+            result["cost_vs_cohort_median"] = {
+                "this_session": this_session_cost, "cohort_median": med,
+                "pct_diff": round(100 * (this_session_cost - med) / med, 1) if med else None,
+            }
+
+    wall_times, interventions = _cohort_wall_times_and_interventions(conn, kind, cohort_ids)
+    wall_values = list(wall_times.values())
+    if len(wall_values) >= 3 and this_session_wall_ms is not None:
+        med = _median(wall_values)
+        result["wall_time_vs_cohort_median_ms"] = {
+            "this_session": this_session_wall_ms, "cohort_median": med,
+            "pct_diff": round(100 * (this_session_wall_ms - med) / med, 1) if med else None,
         }
-    if len(cost_values) >= 3 and this_session_cost is not None:
-        med = _median(cost_values)
-        result["cost_vs_cohort_median"] = {
-            "this_session": this_session_cost, "cohort_median": med,
-            "pct_diff": round(100 * (this_session_cost - med) / med, 1) if med else None,
+    if len(interventions) >= 3:
+        rate = round(100 * sum(1 for v in interventions.values() if v) / len(interventions))
+        result["human_intervention_vs_cohort"] = {
+            "this_session": bool(this_session_had_intervention),
+            "cohort_intervention_rate_pct": rate,
         }
     return result
 
@@ -494,6 +670,18 @@ def get_session_detail(session_id: str) -> dict:
         }
         evidence_coverage_pct = round(100 * sum(1 for v in availability_dims.values() if v) / len(availability_dims))
         quality = {
+            # Real incident (2026-09-11, live production verification):
+            # the top summary card showed "QUALITY / 100% coverage",
+            # conflating two different questions -- "how good is this
+            # session" (a QUALITY score) vs. "how much of this evaluation
+            # is backed by captured evidence" (EVIDENCE COVERAGE). This
+            # project does not have a legitimate composite quality-scoring
+            # algorithm yet (rework/first-pass-success/etc. are not
+            # reliably derivable from the current ledger) -- rather than
+            # invent one, quality_score is honestly None/NOT_SCORED, kept
+            # structurally distinct from evidence_coverage_pct below.
+            "quality_score": None,
+            "quality_score_label": "NOT SCORED",
             "scored_dimensions": scored_dims,
             "evidence_availability": availability_dims,
             "evidence_coverage_pct": evidence_coverage_pct,
@@ -510,10 +698,17 @@ def get_session_detail(session_id: str) -> dict:
             if summary["tokens"].get("status") == "EXACT":
                 this_tokens = summary["tokens"]["input_tokens"] + summary["tokens"]["output_tokens"]
             this_cost = summary["cost"].get("cost_usd") if summary["cost"].get("status") == "ACTUAL" else None
+            this_had_intervention = len(human_interventions) > 0
+            comparison_metrics = _compare_to_cohort(
+                conn, kind, cohort_ids, this_tokens, this_cost,
+                summary["wall_clock_ms"], this_had_intervention,
+            )
             comparison = {
                 "status": "COMPARABLE", "cohort_size": len(cohort_ids), "cohort_basis": "same kind, previous 7 days",
-                **_compare_to_cohort(conn, kind, cohort_ids, this_tokens, this_cost),
+                **comparison_metrics,
             }
+            if not comparison_metrics:
+                comparison["note"] = "cohort exists but no individual metric had >=3 comparable known values"
         else:
             comparison = {"status": "INSUFFICIENT_COMPARABLE_HISTORY", "cohort_size": len(cohort_ids)}
 

@@ -94,6 +94,7 @@ main { max-width: 1150px; }
 .domain-grid { margin-top: 1rem; }
 .domain-card .topic-name { font-size: 1rem; }
 
+.referenced-from { margin: 0 0 0.6rem; font-style: italic; }
 .breadcrumb { margin-bottom: 0.75rem; font-size: 0.85rem; color: var(--muted); }
 .breadcrumb .crumb { color: var(--muted); text-decoration: none; }
 .breadcrumb a.crumb:hover { color: var(--accent, #5b93ff); text-decoration: underline; }

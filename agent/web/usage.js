@@ -257,9 +257,9 @@ function renderSessionCard(s) {
     <div class="hist-goal">${esc((s.goal || "").slice(0, 140))}</div>
     <div class="hist-meta">
       <span>Status: ${esc(s.status)}</span>
-      <span>Wall time: ${fmtMs(s.wall_clock_ms) || "UNKNOWN"}</span>
+      <span>${s.window_kind === "OBSERVED_EVENT_WINDOW" ? "Observed window" : "Wall time"}: ${wallTimeLabel(s)}</span>
       <span>Tokens: ${tokenSummary(s.tokens)}</span>
-      <span>Cost: ${costSummary(s.cost)}</span>
+      <span>Cost: ${esc(s.cost_display_label || costSummary(s.cost))}</span>
     </div>
   </a>`;
 }
@@ -305,6 +305,7 @@ async function loadMoreHistory() {
       historyState.nextCursor = data.next_cursor;
       historyState.hasMore = data.has_more;
       renderHistoryGroups();
+      if (data.cost_coverage_summary) renderCostCoverageSummary(data.cost_coverage_summary);
     }
   } finally {
     historyState.loading = false;
@@ -313,9 +314,21 @@ async function loadMoreHistory() {
   }
 }
 
+function renderCostCoverageSummary(s) {
+  const root = document.getElementById("cost-coverage-summary");
+  if (!root) return;
+  root.innerHTML = `
+    <div class="summary-stat"><div class="summary-label">Known Cost Total</div><div class="summary-value">$${s.known_cost_total_usd.toFixed(4)}</div></div>
+    <div class="summary-stat"><div class="summary-label">Sessions w/ Known Cost</div><div class="summary-value">${s.sessions_with_known_cost}</div></div>
+    <div class="summary-stat"><div class="summary-label">Sessions w/ Unknown Cost</div><div class="summary-value">${s.sessions_with_unknown_cost}</div></div>
+    <div class="summary-stat"><div class="summary-label">Cost Coverage</div><div class="summary-value">${s.cost_coverage_pct != null ? s.cost_coverage_pct + "%" : "N/A"}</div></div>
+  `;
+}
+
 function renderSessionHistoryPanel() {
   return section("Session History", `
     <p class="hint" style="margin-top:0;">Every real session captured (Claude Code development sessions, Workbench runs, V2 trial benchmarks) — grouped by Europe/Berlin calendar date, oldest reachable via Load More. Click a session for full detail.</p>
+    <div id="cost-coverage-summary" class="summary-grid cost-coverage-grid"></div>
     <div id="session-history-list" class="hist-scroll-area"></div>
     <button id="session-history-load-more" class="load-more-btn">LOAD MORE</button>
   `);
@@ -351,8 +364,18 @@ function shortId(id, max = 28) {
   return `<span title="${esc(id)}">${esc(id.slice(0, max - 1))}&hellip;</span>`;
 }
 
+function wallTimeLabel(d) {
+  if (d.wall_clock_ms == null) return "UNKNOWN";
+  const label = fmtMs(d.wall_clock_ms) || "UNKNOWN";
+  if (d.window_kind === "OBSERVED_EVENT_WINDOW") return `${label} <span class="value-note note-derived">observed window</span>`;
+  if (d.window_kind === "UNKNOWN") return "DURATION NOT CAPTURED";
+  return label;
+}
+
 function renderTopSummary(d) {
-  const qualityPct = d.quality ? d.quality.evidence_coverage_pct : null;
+  const q = d.quality || {};
+  const qualityDisplay = q.quality_score != null ? `${q.quality_score}` : (q.quality_score_label || "NOT SCORED");
+  const coverageDisplay = q.evidence_coverage_pct != null ? `${q.evidence_coverage_pct}%` : "N/A";
   return `<section class="panel session-summary-panel">
     <div class="summary-head">
       <span class="tag-type ${esc(d.kind)}">${esc(KIND_LABELS[d.kind] || d.kind)}</span>
@@ -363,10 +386,11 @@ function renderTopSummary(d) {
     <div class="summary-grid">
       <div class="summary-stat"><div class="summary-label">Status</div><div class="summary-value">${esc(d.status)}</div></div>
       <div class="summary-stat"><div class="summary-label">Start &rarr; End</div><div class="summary-value">${d.start_utc ? berlinTimeLabel(d.start_utc) : "?"} &rarr; ${d.end_utc ? berlinTimeLabel(d.end_utc) : "?"}</div></div>
-      <div class="summary-stat"><div class="summary-label">Wall time</div><div class="summary-value">${fmtMs(d.wall_clock_ms) || "UNKNOWN"}</div></div>
+      <div class="summary-stat"><div class="summary-label">Wall time</div><div class="summary-value">${wallTimeLabel(d)}</div></div>
       <div class="summary-stat"><div class="summary-label">Tokens</div><div class="summary-value">${tokenSummary(d.tokens)}</div></div>
-      <div class="summary-stat"><div class="summary-label">Cost</div><div class="summary-value">${costSummary(d.cost)}</div></div>
-      <div class="summary-stat"><div class="summary-label">Quality</div><div class="summary-value">${qualityPct != null ? qualityPct + "% coverage" : "N/A"}</div></div>
+      <div class="summary-stat"><div class="summary-label">Cost</div><div class="summary-value">${esc(d.cost_display_label || costSummary(d.cost))}</div></div>
+      <div class="summary-stat"><div class="summary-label">Quality</div><div class="summary-value">${esc(qualityDisplay)}</div></div>
+      <div class="summary-stat"><div class="summary-label">Evidence Coverage</div><div class="summary-value">${coverageDisplay}</div></div>
       <div class="summary-stat"><div class="summary-label">Value</div><div class="summary-value">${d.value ? d.value.technical_value.verified_changes_completed + " verified" : "N/A"}</div></div>
     </div>
   </section>`;
@@ -381,10 +405,13 @@ function renderQualityBlock(q) {
     `<li><span>${esc(k.replace(/_/g, " "))}</span><span class="value-note ${v ? "note-exact" : "note-unknown"}">${v ? "captured" : "not captured"}</span></li>`
   ).join("");
   const confClass = q.overall_confidence === "HIGH_CONFIDENCE" ? "note-exact" : q.overall_confidence === "PARTIAL" ? "note-derived" : "note-unknown";
+  const qualityDisplay = q.quality_score != null ? `${q.quality_score}/100` : (q.quality_score_label || "NOT SCORED");
   return `
+    <p><strong>Quality score:</strong> <span class="value-note ${q.quality_score != null ? "note-exact" : "note-unknown"}">${esc(qualityDisplay)}</span>
+      <span class="hint">— this project has no composite quality-scoring algorithm yet; this is intentionally NOT the same number as Evidence Coverage below.</span></p>
     <p class="hint" style="margin-top:0;">Session facts:</p>
     <ul class="score-breakdown">${factRows}</ul>
-    <p class="hint">Evidence actually captured (drives the coverage % below):</p>
+    <p class="hint">Evidence actually captured (drives Evidence Coverage below — this is NOT a quality score):</p>
     <ul class="score-breakdown">${availRows}</ul>
     <p><strong>Evidence coverage: ${q.evidence_coverage_pct}%</strong> — overall: <span class="value-note ${confClass}">${esc(q.overall_confidence)}</span></p>`;
 }
@@ -402,6 +429,17 @@ function renderComparisonBlock(c) {
   if (c.cost_vs_cohort_median) {
     const cst = c.cost_vs_cohort_median;
     parts.push(`<p>Cost: $${cst.this_session.toFixed(4)} vs. cohort median $${cst.cohort_median.toFixed(4)} (${cst.pct_diff > 0 ? "+" : ""}${cst.pct_diff}%)</p>`);
+  }
+  if (c.wall_time_vs_cohort_median_ms) {
+    const w = c.wall_time_vs_cohort_median_ms;
+    parts.push(`<p>Wall time: ${fmtMs(w.this_session)} vs. cohort median ${fmtMs(w.cohort_median)} (${w.pct_diff > 0 ? "+" : ""}${w.pct_diff}%)</p>`);
+  }
+  if (c.human_intervention_vs_cohort) {
+    const h = c.human_intervention_vs_cohort;
+    parts.push(`<p>Human intervention: ${h.this_session ? "yes" : "no"} this session vs. ${h.cohort_intervention_rate_pct}% of the cohort</p>`);
+  }
+  if (parts.length === 1) {
+    parts.push(`<p class="hint">No individual metric had enough comparable known values (needs &ge;3) — cohort size alone isn't a useful comparison.</p>`);
   }
   return parts.join("");
 }
@@ -436,16 +474,18 @@ async function renderSessionDetail(sessionId) {
       <ul class="score-breakdown">
         <li><span>Start (Europe/Berlin)</span><span>${d.start_utc ? berlinTimeLabel(d.start_utc) + " on " + berlinDateKey(d.start_utc) : "UNKNOWN"}</span></li>
         <li><span>End (Europe/Berlin)</span><span>${d.end_utc ? berlinTimeLabel(d.end_utc) + " on " + berlinDateKey(d.end_utc) : "UNKNOWN"}</span></li>
-        <li><span>Wall-clock duration</span><span>${fmtMs(d.wall_clock_ms) || "UNKNOWN"}</span></li>
+        <li><span>${d.window_kind === "OBSERVED_EVENT_WINDOW" ? "Observed event window" : "Wall-clock duration"}</span><span>${wallTimeLabel(d)}</span></li>
+        ${d.window_note ? `<li class="score-breakdown-note">${esc(d.window_note)}</li>` : ""}
         <li><span>AI active time</span><span>${fmtMs(d.ai_active_ms) || "UNKNOWN"} ${noteSpan(d.ai_active_ms_note)}</span></li>
         <li><span>AI waiting for human</span><span>${fmtMs(d.ai_waiting_for_human_ms) || "UNKNOWN"} ${noteSpan(d.ai_waiting_for_human_note)}</span></li>
         <li><span>Human active time</span><span>UNKNOWN ${noteSpan(d.human_active_note)}</span></li>
         <li><span>Human waiting for AI</span><span>${fmtMs(d.human_waiting_for_ai_ms) || "UNKNOWN"} ${noteSpan(d.human_waiting_for_ai_note)}</span></li>
       </ul>
     `)}
-    ${section("Model Usage, Tokens &amp; Cost", `
+    ${section("Model Usage, Tokens & Cost", `
       <p><strong>Tokens:</strong> ${tokenSummary(d.tokens)} <span class="value-note ${d.tokens && d.tokens.status === "EXACT" ? "note-exact" : d.tokens && d.tokens.status === "AGGREGATE_ONLY" ? "note-derived" : "note-unknown"}">${esc((d.tokens && d.tokens.status) || "")}</span></p>
-      <p><strong>Cost:</strong> ${costSummary(d.cost)} <span class="value-note ${d.cost && d.cost.status === "ACTUAL" ? "note-exact" : "note-unknown"}">${esc((d.cost && d.cost.status) || "")}</span></p>
+      <p><strong>Cost:</strong> ${esc(d.cost_display_label || costSummary(d.cost))}</p>
+      <p class="hint">Model: ${esc(d.model || "not recorded for this session kind")}</p>
     `)}
     ${section("Value", `
       <p><strong>Technical value:</strong> ${d.value.technical_value.verified_changes_completed} verified change(s), ${d.value.technical_value.failures} failure(s)</p>
@@ -453,10 +493,16 @@ async function renderSessionDetail(sessionId) {
     `)}
     ${section("Quality (evidence-coverage-gated, never assumed 100%)", renderQualityBlock(d.quality))}
     ${section("Comparison to Other Sessions", renderComparisonBlock(d.comparison))}
-    ${section(`Timeline &amp; Runs/Tasks (${d.tool_call_count} tool call(s))`, renderTimelineBlock(d.timeline))}
+    ${section(`Timeline & Runs/Tasks (${d.tool_call_count} tool call(s))`, renderTimelineBlock(d.timeline))}
     ${section("Human Interventions", d.human_interventions && d.human_interventions.length
       ? `<ul class="ledger-recent">${d.human_interventions.map(h => `<li>${esc(h.event_type)} — ${esc(h.status)} <span class="hint">${berlinTimeLabel(h.timestamp_utc)}</span></li>`).join("")}</ul>`
       : `<p class="hint">None captured for this session.</p>`)}
+    ${d.raw_capture ? section("Original Instruction / Raw Capture", `
+      <details class="raw-capture-details">
+        <summary>Show the complete original text (${d.raw_capture.length.toLocaleString()} characters)</summary>
+        <pre class="raw-capture-text">${esc(d.raw_capture)}</pre>
+      </details>
+    `) : ""}
     ${section("Full Session ID", `<p class="full-session-id">${esc(d.session_id)}</p>`)}
   `;
 }

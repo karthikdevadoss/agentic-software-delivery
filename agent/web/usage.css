@@ -117,6 +117,17 @@ main#sessions-main { max-width: 1100px; }
 
 .full-session-id { font-family: "SF Mono", Consolas, monospace; font-size: 0.8rem; color: var(--muted); overflow-wrap: anywhere; margin: 0; }
 
+.score-breakdown-note { list-style: none; padding: 0.3rem 0 0.5rem; color: var(--muted); font-size: 0.78rem; font-style: italic; }
+
+.raw-capture-details summary { cursor: pointer; color: var(--accent); font-size: 0.85rem; }
+.raw-capture-text {
+  white-space: pre-wrap; word-break: break-word; margin-top: 0.6rem; padding: 0.75rem;
+  background: #0d0f14; border: 1px solid var(--border); border-radius: 6px;
+  font-family: "SF Mono", Consolas, monospace; font-size: 0.78rem; max-height: 400px; overflow-y: auto;
+}
+
+.cost-coverage-grid { margin-bottom: 0.75rem; }
+
 /* Responsive: tablet-ish and mobile-ish widths --------------------------- */
 @media (max-width: 820px) {
   .summary-grid { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); }

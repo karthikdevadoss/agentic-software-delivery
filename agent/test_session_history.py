@@ -19,6 +19,56 @@ def _unique(prefix):
     return f"{prefix}-{uuid.uuid4().hex[:12]}"
 
 
+class MojibakeRepairTestCase(unittest.TestCase):
+    """Real incident (2026-09-11, Owner-observed on live production): a
+    reconstructed session's prompt text displayed as 'â†’' instead of
+    the real arrow character '→'. Root-caused to a genuine double
+    mis-encoding already present in the stored ledger data (confirmed via
+    raw byte inspection), not a rendering-only artifact."""
+
+    def test_repairs_the_exact_real_corrupted_arrow_sequence(self):
+        # Build the exact real mojibake independently of typing the
+        # corrupted form directly in this source file (avoids this
+        # environment's own console-encoding issues corrupting the test
+        # itself): take a real arrow, mis-decode its UTF-8 bytes as
+        # cp1252 -- that IS the real corrupted string this incident found.
+        real_arrow = "→"
+        corrupted = real_arrow.encode("utf-8").decode("cp1252")
+        repaired = sh.repair_mojibake(corrupted)
+        self.assertEqual(repaired, real_arrow)
+
+    def test_correct_ascii_text_is_never_altered(self):
+        text = "Change the Create button label from Create to Create Customer"
+        self.assertEqual(sh.repair_mojibake(text), text)
+
+    def test_correct_text_containing_a_real_arrow_is_never_altered(self):
+        text = "System Design → Databases"
+        self.assertEqual(sh.repair_mojibake(text), text)
+
+    def test_none_and_empty_string_pass_through_safely(self):
+        self.assertIsNone(sh.repair_mojibake(None))
+        self.assertEqual(sh.repair_mojibake(""), "")
+
+
+class ConciseTitleTestCase(unittest.TestCase):
+    """Real incident (2026-09-11, Owner-observed on live production): a
+    several-hundred-character raw Claude Code prompt was displayed
+    verbatim as a session's visible title, dominating the page."""
+
+    def test_long_multiline_prompt_becomes_a_short_title(self):
+        long_prompt = "Do the thing\n" + ("more detail " * 100)
+        title = sh.concise_title(long_prompt)
+        self.assertLess(len(title), 200)
+        self.assertTrue(title.startswith("Do the thing"))
+
+    def test_short_single_line_text_is_unchanged(self):
+        text = "Change the Create button label"
+        self.assertEqual(sh.concise_title(text), text)
+
+    def test_none_passes_through_safely(self):
+        self.assertIsNone(sh.concise_title(None))
+
+
 class ListSessionsTestCase(unittest.TestCase):
     def test_list_sessions_reachable_shape(self):
         data = sh.list_sessions(limit=5)
@@ -26,6 +76,18 @@ class ListSessionsTestCase(unittest.TestCase):
         self.assertIn("sessions", data)
         self.assertIn("next_cursor", data)
         self.assertIn("has_more", data)
+
+    def test_cost_coverage_summary_present_and_never_shows_unknown_as_zero(self):
+        data = sh.list_sessions(limit=5)
+        summary = data["cost_coverage_summary"]
+        for key in ("known_cost_total_usd", "sessions_with_known_cost",
+                    "sessions_with_unknown_cost", "cost_coverage_pct"):
+            self.assertIn(key, summary)
+        self.assertGreaterEqual(summary["sessions_with_known_cost"], 1)
+        self.assertGreaterEqual(summary["known_cost_total_usd"], 0)
+        total = summary["sessions_with_known_cost"] + summary["sessions_with_unknown_cost"]
+        if total:
+            self.assertEqual(summary["cost_coverage_pct"], round(100 * summary["sessions_with_known_cost"] / total))
 
     def test_malformed_before_cursor_returns_truthful_error_not_a_crash(self):
         """Real incident (2026-09-11, live production verification): a
@@ -122,6 +184,59 @@ class SessionDetailTestCase(unittest.TestCase):
                     "ai_active_ms", "human_active_note", "tokens", "cost"):
             self.assertIn(key, d)
         self.assertGreater(len(d["timeline"]), 0)
+
+    def test_quality_score_is_distinct_from_evidence_coverage(self):
+        """Real incident (2026-09-11, Owner-observed on live production):
+        the top summary showed 'QUALITY / 100% coverage', conflating a
+        quality score with evidence coverage. This project has no
+        legitimate composite quality-scoring algorithm -- quality_score
+        must be honestly None/NOT SCORED, structurally separate from
+        evidence_coverage_pct, never renamed or merged."""
+        d = sh.get_session_detail("trainer-4733d1c0")
+        q = d["quality"]
+        self.assertIn("quality_score", q)
+        self.assertIn("quality_score_label", q)
+        self.assertIsNone(q["quality_score"])
+        self.assertEqual(q["quality_score_label"], "NOT SCORED")
+        self.assertIn("evidence_coverage_pct", q)
+        self.assertNotEqual(q["quality_score_label"], q.get("overall_confidence"))
+
+    def test_reconstructed_window_is_never_labeled_a_captured_duration(self):
+        """Real incident (2026-09-11): a reconstructed Claude Code session
+        showed '12.1 hr' with AI active time UNKNOWN, visually implying
+        12.1 hours of continuous work. A session with no genuine
+        dev_session_ended event must be labeled OBSERVED_EVENT_WINDOW, not
+        CAPTURED_SESSION_DURATION, and must carry an explicit caveat."""
+        d = sh.get_session_detail("claude-code-session-73e068c1-p0-eventledger-task")
+        self.assertIsNotNone(d)
+        if d["provenance"] == "PARTIAL_RECONSTRUCTION":
+            self.assertEqual(d["window_kind"], "OBSERVED_EVENT_WINDOW")
+            self.assertIn("does not prove continuous activity", d["window_note"])
+
+    def test_zero_duration_is_never_shown_as_a_proven_0ms(self):
+        wall_ms, window_kind, note = sh._window_semantics(
+            datetime(2026, 1, 1, tzinfo=timezone.utc), datetime(2026, 1, 1, tzinfo=timezone.utc), True,
+        )
+        self.assertEqual(wall_ms, 0)
+        self.assertEqual(window_kind, "UNKNOWN")
+        self.assertIn("DURATION NOT CAPTURED", note)
+
+    def test_cost_display_label_covers_all_four_canonical_states(self):
+        actual = sh._cost_display_label({"status": "EXACT"}, {"status": "ACTUAL"})
+        agg_only = sh._cost_display_label({"status": "AGGREGATE_ONLY"}, {"status": "COST_UNAVAILABLE"})
+        not_captured = sh._cost_display_label({"status": "NOT_CAPTURED"}, {"status": "COST_UNAVAILABLE"})
+        self.assertIn("ACTUAL", actual)
+        self.assertIn("AGGREGATE_ONLY", agg_only)
+        self.assertIn("NOT CAPTURED", not_captured)
+        self.assertNotIn("$0", actual + agg_only + not_captured)
+
+    def test_long_raw_prompt_goal_has_concise_title_and_preserved_raw_capture(self):
+        d = sh.get_session_detail("4f0fd490-b705-4907-a2ba-6263b291e640")
+        self.assertIsNotNone(d)
+        self.assertLess(len(d["goal"]), 200)
+        self.assertIsNotNone(d["raw_capture"])
+        self.assertGreater(len(d["raw_capture"]), len(d["goal"]))
+        self.assertIn("→", d["raw_capture"])  # mojibake repaired in the full capture, not just truncated away
 
     def test_ai_active_time_is_derived_from_real_tool_call_durations(self):
         d = sh.get_session_detail("trainer-4733d1c0")

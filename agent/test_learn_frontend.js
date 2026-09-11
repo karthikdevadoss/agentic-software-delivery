@@ -46,13 +46,27 @@ const FIXTURE_TREE = {
               experience_classification: "CURRENT_PROJECT_EXPERIENCE",
               children: [],
               sections: { what: "Reuses DB connections.", why: "Opening one is expensive." },
-              related: ["hikaricp"],
+              related: ["hikaricp", "pool-sizing"],
             },
             {
               slug: "hikaricp", title: "HikariCP", kind: "topic",
               short_overview: "The default Spring Boot pool.",
               experience_classification: "CURRENT_PROJECT_EXPERIENCE",
               children: [], sections: { what: "A fast JDBC pool." },
+            },
+          ],
+        },
+        {
+          slug: "performance", title: "Performance", kind: "topic",
+          short_overview: "How fast and how much load a system can carry.",
+          children: [
+            {
+              // Canonically lives under Performance, NOT Databases -- the
+              // exact real Owner-reported scenario (2026-09-11).
+              slug: "pool-sizing", title: "Pool Sizing", kind: "topic",
+              short_overview: "How many pooled connections to allocate.",
+              experience_classification: "LEARNED_UNDERSTOOD",
+              children: [], sections: { what: "Sizing a pool correctly." },
             },
           ],
         },
@@ -87,7 +101,10 @@ function buildContext(initialPath) {
     querySelectorAll: () => [],
   };
 
-  const locationStub = { get pathname() { return currentPath; } };
+  const locationStub = {
+    get pathname() { return currentPath.split("?")[0]; },
+    get search() { const i = currentPath.indexOf("?"); return i === -1 ? "" : currentPath.slice(i); },
+  };
   const historyStub = {
     pushState: (_s, _t, href) => { currentPath = href; historyEntries.push(href); },
   };
@@ -114,6 +131,7 @@ function buildContext(initialPath) {
     fetch: fetchStub,
     console,
     setTimeout, clearTimeout,
+    URLSearchParams,
   };
   vm.createContext(sandbox);
   return { sandbox, elements, get currentPath() { return currentPath; }, set currentPath(p) { currentPath = p; }, historyEntries };
@@ -211,6 +229,52 @@ async function loadLearnJs(ctx) {
     const html = ctx.elements["learn-app"].innerHTML;
     assertIncludes(html, 'id="learn-pdf-download"', "PDF download button exists with its stable id");
     assertIncludes(html, 'href="/api/learn/book.pdf"', "PDF button points at the real endpoint");
+  }
+
+  // ---- Related-topic navigation context (Owner-observed defect,
+  // 2026-09-11): Connection Pooling -> related "Pool Sizing" must NOT
+  // silently lose the user's journey, and must NOT duplicate the node
+  // under two canonical parents ------------------------------------------
+  {
+    // Canonical direct/bookmarked visit: no ?from= -> normal canonical
+    // back-link to the REAL parent (Performance), no "Referenced from".
+    const ctx = buildContext("/learn/system-design/performance/pool-sizing");
+    await loadLearnJs(ctx);
+    const html = ctx.elements["learn-app"].innerHTML;
+    assertIncludes(html, "Back to Performance", "direct visit to Pool Sizing uses its real canonical parent");
+    assertIncludes(html, "System Design", "canonical breadcrumb still includes the true hierarchy");
+    assert(!html.includes("referenced-from"), "a direct/bookmarked visit shows no 'Referenced from' context");
+  }
+  {
+    // Clicking the related-topic chip from Connection Pooling's page must
+    // link with a ?from= context, not a bare canonical URL.
+    const ctx = buildContext("/learn/system-design/databases/connection-pooling");
+    await loadLearnJs(ctx);
+    const html = ctx.elements["learn-app"].innerHTML;
+    assertIncludes(html, "/learn/system-design/performance/pool-sizing?from=system-design%2Fdatabases%2Fconnection-pooling",
+      "related-topic link to Pool Sizing carries the Connection Pooling origin as context");
+  }
+  {
+    // Arriving at Pool Sizing WITH the origin context: contextual back
+    // link to Connection Pooling, a "Referenced from" trail, AND the
+    // canonical breadcrumb must still show the TRUE hierarchy (System
+    // Design / Performance / Pool Sizing) -- never duplicated content.
+    const ctx = buildContext("/learn/system-design/performance/pool-sizing?from=system-design%2Fdatabases%2Fconnection-pooling");
+    await loadLearnJs(ctx);
+    const html = ctx.elements["learn-app"].innerHTML;
+    assertIncludes(html, "Back to Connection Pooling", "contextual back-link points to the real origin, not the canonical parent");
+    assertIncludes(html, "referenced-from", "a 'Referenced from' trail is shown when arriving via context");
+    assertIncludes(html, "Databases", "referenced-from trail names the real origin path");
+    assertIncludes(html, "Pool Sizing", "canonical breadcrumb still shows this node's one true title");
+    assert(!html.includes("Back to Performance"), "contextual back-link replaces (not duplicates) the canonical one");
+  }
+  {
+    // An invalid/stale ?from= must fail safe to canonical navigation, not
+    // crash or dead-end.
+    const ctx = buildContext("/learn/system-design/performance/pool-sizing?from=does-not-exist%2Fanywhere");
+    await loadLearnJs(ctx);
+    const html = ctx.elements["learn-app"].innerHTML;
+    assertIncludes(html, "Back to Performance", "an unresolvable ?from= falls back to the canonical parent, not a crash");
   }
 
   console.log(`${passed} passed, ${failures} failed`);

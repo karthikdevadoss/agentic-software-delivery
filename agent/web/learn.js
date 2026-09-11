@@ -27,8 +27,25 @@ function currentSegments() {
   return path ? path.split("/").filter(Boolean) : [];
 }
 
-function pathFor(segments) {
-  return "/learn" + (segments.length ? "/" + segments.join("/") : "");
+function pathFor(segments, fromSegments) {
+  const base = "/learn" + (segments.length ? "/" + segments.join("/") : "");
+  // Contextual-origin mechanism (Owner-observed defect, 2026-09-11):
+  // Connection Pooling -> related topic "Pool Sizing" silently lost the
+  // user's journey, since Pool Sizing's CANONICAL parent is Performance,
+  // not Databases. Carrying the origin as a query param (never a second
+  // copy of the node itself, never altering the canonical URL/breadcrumb)
+  // lets the target page offer "<- Back to Connection Pooling" instead of
+  // the canonical "<- Back to Performance", while a direct/bookmarked
+  // visit to the same canonical URL (no ?from=) still behaves normally.
+  if (fromSegments && fromSegments.length) {
+    return base + "?from=" + encodeURIComponent(fromSegments.join("/"));
+  }
+  return base;
+}
+
+function currentFromParam() {
+  const from = new URLSearchParams(window.location.search).get("from");
+  return from ? from.split("/").filter(Boolean) : null;
 }
 
 function resolvePath(segments) {
@@ -170,13 +187,13 @@ function renderSections(sections) {
   return blocks.join("");
 }
 
-function renderRelated(related) {
+function renderRelated(related, originSegments) {
   if (!related || !related.length) return "";
   const links = related.map(slug => {
     const path = pathToSlugAnywhere(slug);
     const node = path ? findBySlugAnywhere(slug) : null;
     if (!path || !node) return `<span class="related-chip related-chip-unresolved">${esc(slug)}</span>`;
-    return `<a class="related-chip" data-link href="${pathFor(path)}">${esc(node.title)}</a>`;
+    return `<a class="related-chip" data-link href="${pathFor(path, originSegments)}">${esc(node.title)}</a>`;
   }).join(" ");
   return `<section class="learn-block"><h3>Related Topics</h3><div class="related-chips">${links}</div></section>`;
 }
@@ -184,17 +201,41 @@ function renderRelated(related) {
 function renderTopicPage(node, breadcrumb) {
   const badge = expBadge(node.experience_classification);
   const status = node.status ? `<span class="ev-badge">${esc(node.status)}</span>` : "";
-  const parent = breadcrumb.length >= 2 ? breadcrumb[breadcrumb.length - 2] : null;
-  const backLink = parent
-    ? `<a class="back-link" data-link href="${pathFor(parent.segments)}">&larr; Back to ${esc(parent.title)}</a>`
-    : `<a class="back-link" data-link href="/learn">&larr; Back to Learn</a>`;
+  const ownSegments = breadcrumb[breadcrumb.length - 1].segments;
+  const canonicalParent = breadcrumb.length >= 2 ? breadcrumb[breadcrumb.length - 2] : null;
+
+  // Contextual back-link: if the user arrived via a related-topic jump
+  // (?from=<origin path>), prefer "<- Back to <origin>" plus an explicit
+  // "Referenced from" line over the canonical parent -- without ever
+  // altering the canonical breadcrumb below, which always reflects this
+  // node's one true hierarchy position. Falls back to canonical parent
+  // navigation on a direct/bookmarked visit (no ?from=, or one that no
+  // longer resolves).
+  let backLink = null;
+  let referencedFrom = "";
+  const fromSegments = currentFromParam();
+  if (fromSegments && fromSegments.length) {
+    const fromResolved = resolvePath(fromSegments);
+    if (fromResolved.node) {
+      backLink = `<a class="back-link" data-link href="${pathFor(fromSegments)}">&larr; Back to ${esc(fromResolved.node.title)}</a>`;
+      const trail = fromResolved.breadcrumb.slice(1).map(b => esc(b.title)).join(" &rsaquo; ");
+      referencedFrom = `<p class="referenced-from hint">Referenced from: ${trail}</p>`;
+    }
+  }
+  if (!backLink) {
+    backLink = canonicalParent
+      ? `<a class="back-link" data-link href="${pathFor(canonicalParent.segments)}">&larr; Back to ${esc(canonicalParent.title)}</a>`
+      : `<a class="back-link" data-link href="/learn">&larr; Back to Learn</a>`;
+  }
+
   return `
     ${backLink}
+    ${referencedFrom}
     ${renderBreadcrumb(breadcrumb)}
     <h2 class="topic-title">${esc(node.title)} ${badge} ${status}</h2>
     ${node.short_overview ? `<p class="topic-overview">${esc(node.short_overview)}</p>` : ""}
-    ${renderChildGrid(node.children, breadcrumb[breadcrumb.length - 1].segments)}
-    ${renderRelated(node.related)}
+    ${renderChildGrid(node.children, ownSegments)}
+    ${renderRelated(node.related, ownSegments)}
     <section class="learn-block">${renderSections(node.sections)}</section>
   `;
 }
