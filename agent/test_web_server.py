@@ -515,6 +515,72 @@ class TestApplicabilityGateTestCase(unittest.TestCase):
                 self.assertTrue(ws._tests_applicable())
 
 
+class DetermineTestingStateTestCase(unittest.TestCase):
+    """Regression tests for the real semantic bug: NO TEST FILES !=
+    TESTING NOT APPLICABLE. A Java source change with zero test coverage
+    must be labeled NOT_CONFIGURED (a project-level gap), never
+    NOT_APPLICABLE (which must mean the change genuinely has no test
+    surface, e.g. a static resource). Real applicable tests that exist
+    but weren't run must be SKIPPED, and must block commit like FAILED."""
+
+    def _with_no_test_files(self):
+        tmp = tempfile.TemporaryDirectory()
+        fake_app_dir = Path(tmp.name) / "app"
+        (fake_app_dir / "src" / "test" / "java").mkdir(parents=True)
+        return tmp, mock.patch.object(ws, "APP_DIR", fake_app_dir)
+
+    def _with_real_test_file(self):
+        tmp = tempfile.TemporaryDirectory()
+        fake_app_dir = Path(tmp.name) / "app"
+        test_dir = fake_app_dir / "src" / "test" / "java"
+        test_dir.mkdir(parents=True)
+        (test_dir / "SomeTest.java").write_text("class SomeTest {}", encoding="utf-8")
+        return tmp, mock.patch.object(ws, "APP_DIR", fake_app_dir)
+
+    def test_real_test_results_produce_passed(self):
+        tmp, patcher = self._with_no_test_files()
+        with tmp, patcher:
+            result = ws._determine_testing_state("app/src/main/java/X.java", [{"success": True}])
+        self.assertEqual(result["state"], "PASSED")
+
+    def test_real_test_results_produce_failed(self):
+        tmp, patcher = self._with_no_test_files()
+        with tmp, patcher:
+            result = ws._determine_testing_state("app/src/main/java/X.java", [{"success": False}])
+        self.assertEqual(result["state"], "FAILED")
+
+    def test_static_resource_with_no_tests_is_not_applicable(self):
+        tmp, patcher = self._with_no_test_files()
+        with tmp, patcher:
+            result = ws._determine_testing_state("app/src/main/resources/static/index.html", [])
+        self.assertEqual(result["state"], "NOT_APPLICABLE")
+
+    def test_java_change_with_no_tests_is_not_configured_not_not_applicable(self):
+        """The exact bug this task fixes: a Java source change with zero
+        test coverage must never be labeled NOT_APPLICABLE."""
+        tmp, patcher = self._with_no_test_files()
+        with tmp, patcher:
+            result = ws._determine_testing_state("app/src/main/java/com/example/customer/model/Customer.java", [])
+        self.assertEqual(result["state"], "NOT_CONFIGURED")
+        self.assertNotEqual(result["state"], "NOT_APPLICABLE")
+
+    def test_real_tests_exist_but_not_run_is_skipped(self):
+        tmp, patcher = self._with_real_test_file()
+        with tmp, patcher:
+            result = ws._determine_testing_state("app/src/main/resources/static/index.html", [])
+        self.assertEqual(result["state"], "SKIPPED")
+
+    def test_passed_and_not_applicable_and_not_configured_allow_commit(self):
+        for state in ("PASSED", "NOT_APPLICABLE", "NOT_CONFIGURED"):
+            with self.subTest(state=state):
+                self.assertIn(state, ws._TESTING_STATES_ALLOWING_COMMIT)
+
+    def test_failed_and_skipped_block_commit(self):
+        for state in ("FAILED", "SKIPPED"):
+            with self.subTest(state=state):
+                self.assertNotIn(state, ws._TESTING_STATES_ALLOWING_COMMIT)
+
+
 class PublicRouteRedirectTestCase(unittest.IsolatedAsyncioTestCase):
     async def test_trainer_redirects_to_workbench(self):
         response = await ws.redirect_trainer_to_workbench(mock.Mock())

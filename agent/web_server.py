@@ -202,7 +202,18 @@ def _record_ledger_event(run: "Run", internal_type: str, data: dict) -> None:
     """Write-through bridge: every Run.emit() call also durably persists to
     the event ledger immediately, not batched to run-end. Never affects
     run.events/run.status either way — event_ledger.record_event() itself
-    never raises (falls back to the local spool on any failure)."""
+    never raises (falls back to the local spool on any failure).
+
+    Real incident: 'usage_summary' events only ever wrote their real
+    provider/model/token data into the JSONB `payload` column, never the
+    dedicated provider/model/input_tokens/output_tokens/cache_*
+    columns — so any query selecting those columns directly (e.g.
+    event_ledger.get_recent_events(), used by the Usage page's own
+    'Event Ledger (live)' section) saw NULL for exactly the rows that
+    actually had real cost data. Populate the real columns for this
+    event type so it's queryable the same way 'model_usage' events
+    already are."""
+    usage = data if internal_type == "usage_summary" and data.get("captured") else {}
     event_ledger.record_event(
         _canonical_event_type(internal_type, data),
         run_id=run.id,
@@ -213,7 +224,13 @@ def _record_ledger_event(run: "Run", internal_type: str, data: dict) -> None:
         status=run.status,
         stage=data.get("stage") if internal_type == "stage" else None,
         tool_name=data.get("tool"),
-        duration_ms=data.get("duration_ms"),
+        duration_ms=data.get("duration_ms") if internal_type != "usage_summary" else (data.get("elapsed_seconds") or 0) * 1000,
+        provider=usage.get("provider"),
+        model=usage.get("model"),
+        input_tokens=usage.get("input_tokens"),
+        output_tokens=usage.get("output_tokens"),
+        cache_read_tokens=usage.get("cache_read_tokens"),
+        cache_write_tokens=usage.get("cache_write_tokens"),
         training_eligibility=event_ledger.TRAINING_ALLOWED_AFTER_REDACTION,
         payload=data,
     )
@@ -695,12 +712,51 @@ def _check_repository_workspace_ready() -> dict:
 
 def _tests_applicable() -> bool:
     """Real, checkable fact — not a guess: does app/src/test/java contain
-    any .java file at all right now? If none exist, requiring a test run
-    before commit would be theater (Maven's surefire has nothing to
-    execute), so that state must be shown as an explicit, truthful
-    TESTING — NOT APPLICABLE rather than silently treated as passed."""
+    any .java file at all right now?"""
     test_dir = APP_DIR / "src" / "test" / "java"
     return test_dir.is_dir() and any(test_dir.rglob("*.java"))
+
+
+# Real incident (trainer-7769757e/trainer-4733d1c0 lineage): "no test
+# files exist" was being labeled TESTING — NOT APPLICABLE unconditionally.
+# That is only honestly true for a change with NO Java test surface at
+# all (a static resource) — for a Java source change, the correct label
+# is NOT CONFIGURED ("testing should reasonably apply, but this project
+# has no automated coverage for it yet"), a real, distinct, and more
+# actionable truth. NO TEST FILES != TESTING NOT APPLICABLE.
+_TESTING_STATES_ALLOWING_COMMIT = frozenset({"PASSED", "NOT_APPLICABLE", "NOT_CONFIGURED"})
+
+
+def _determine_testing_state(changed_path, test_events: list) -> dict:
+    """Returns {'state', 'reason'} — one real, checkable fact, never a
+    default/guess. `state` is one of PASSED/FAILED/NOT_APPLICABLE/
+    NOT_CONFIGURED/SKIPPED. Commit is permitted only when `state` is in
+    _TESTING_STATES_ALLOWING_COMMIT — SKIPPED (real applicable tests
+    existed but were not run) blocks exactly like FAILED, because unlike
+    NOT_CONFIGURED it is not a project-level gap, it is this run's own
+    omission."""
+    if test_events:
+        passed = all(e.get("success") for e in test_events)
+        return {
+            "state": "PASSED" if passed else "FAILED",
+            "reason": f"run_controlled_tests was actually invoked ({len(test_events)} result(s))",
+        }
+    has_any_test_file = _tests_applicable()
+    is_static_resource = bool(changed_path) and changed_path.startswith("app/src/main/resources/static/")
+    if has_any_test_file:
+        return {
+            "state": "SKIPPED",
+            "reason": "app/src/test/java has real test file(s), but none were run for this change",
+        }
+    if is_static_resource:
+        return {
+            "state": "NOT_APPLICABLE",
+            "reason": f"{changed_path} is a static resource; Maven's test phase has no mechanism to exercise HTML/JS content directly (see production-verify's HTTP content check for this class of change instead)",
+        }
+    return {
+        "state": "NOT_CONFIGURED",
+        "reason": "app/src/test/java has no test files yet — testing would reasonably apply to a Java source change, but no automated coverage exists in this project yet",
+    }
 
 
 def _run_trainer_thread(run: "Run", requirement: str, assessment: dict) -> None:
@@ -757,35 +813,30 @@ def _run_trainer_thread(run: "Run", requirement: str, assessment: dict) -> None:
             run.emit("stage", {"stage": "FAILED"})
             return
 
-        apply_ok = any(e for e in run.events if e["type"] == "tool_result" and e.get("tool") == "apply_approved_source_change" and e.get("success"))
-        compile_ok = any(e for e in run.events if e["type"] == "tool_result" and e.get("tool") == "run_controlled_compile" and e.get("success"))
-        test_events = [e for e in run.events if e["type"] == "tool_result" and e.get("tool") == "run_controlled_tests"]
-        # Real incident (trainer-6aedf022): an empty test_events list was
-        # silently treated as "tests passed," letting COMMIT proceed with
-        # no visible testing state at all. Now an explicit, truthful
-        # decision: tests are only skippable when app/src/test/java
-        # genuinely has zero test files (a real, checkable fact, not
-        # assumed) — otherwise a skipped test run blocks commit exactly
-        # like a failed one.
-        if test_events:
-            test_ok = all(e.get("success") for e in test_events)
-        elif not _tests_applicable():
-            run.emit("stage", {
-                "stage": "TESTING — NOT APPLICABLE",
-                "reason": "app/src/test/java currently has no test files, so there is nothing for Maven's test phase to execute.",
-            })
-            test_ok = True
-        else:
-            test_ok = False
-
-        if not (apply_ok and compile_ok and test_ok):
-            run.emit("error", {"message": "Implementation did not pass verification (apply/compile/test) — not deployed. Production is unchanged."})
+        if run.trainer_changed_path is None:
+            run.emit("error", {"message": "No file change was actually applied — nothing to deploy."})
             run.status = "FAILED"
             run.emit("stage", {"stage": "FAILED"})
             return
 
-        if run.trainer_changed_path is None:
-            run.emit("error", {"message": "No file change was actually applied — nothing to deploy."})
+        apply_ok = any(e for e in run.events if e["type"] == "tool_result" and e.get("tool") == "apply_approved_source_change" and e.get("success"))
+        compile_ok = any(e for e in run.events if e["type"] == "tool_result" and e.get("tool") == "run_controlled_compile" and e.get("success"))
+        test_events = [e for e in run.events if e["type"] == "tool_result" and e.get("tool") == "run_controlled_tests"]
+        testing = _determine_testing_state(run.trainer_changed_path, test_events)
+        # Only emit a distinct stage event for the states that don't already
+        # have one live from STAGE_LABELS ("TESTING" fires when
+        # run_controlled_tests is actually dispatched — PASSED/FAILED are
+        # distinguished from that same event by the frontend via
+        # verificationState.testResult, not by a second stage here).
+        if testing["state"] not in ("PASSED", "FAILED"):
+            run.emit("stage", {
+                "stage": f"TESTING — {testing['state'].replace('_', ' ')}",
+                "reason": testing["reason"],
+            })
+        test_ok = testing["state"] in _TESTING_STATES_ALLOWING_COMMIT
+
+        if not (apply_ok and compile_ok and test_ok):
+            run.emit("error", {"message": f"Implementation did not pass verification (apply/compile/test) — not deployed. Production is unchanged. Testing state: {testing['state']} ({testing['reason']})."})
             run.status = "FAILED"
             run.emit("stage", {"stage": "FAILED"})
             return

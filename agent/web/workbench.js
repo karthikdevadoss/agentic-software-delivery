@@ -282,12 +282,31 @@ function addVerificationLine(label, result) {
 // the generic seen/skipped logic below never recognized it as reached.
 // A terminal run must never leave Testing looking like it hasn't
 // happened yet — this returns one of the exact allowed explicit states.
+// Real production incident: "no test files exist" was labeled TESTING —
+// NOT APPLICABLE unconditionally, which is semantically wrong for a Java
+// source change (NO TEST FILES != TESTING NOT APPLICABLE — see
+// agent/web_server.py::_determine_testing_state). Each of these states is
+// a distinct, real, checkable fact — never a default/guess:
+//   NOT APPLICABLE  — the changed file genuinely has no test surface
+//                      (e.g. a static HTML/JS resource).
+//   NOT CONFIGURED  — testing would reasonably apply, but this project
+//                      has no automated coverage for it yet.
+//   SKIPPED         — real applicable tests exist but were not run for
+//                      this change (blocks commit, unlike the two above).
+const _EXPLICIT_TESTING_STAGES = {
+  "TESTING — NOT APPLICABLE": { cls: "skipped", mark: "—", label: "TESTING — NOT APPLICABLE" },
+  "TESTING — NOT CONFIGURED": { cls: "skipped", mark: "—", label: "TESTING — NOT CONFIGURED" },
+  "TESTING — SKIPPED": { cls: "failed", mark: "✗", label: "TESTING — SKIPPED" },
+};
+
 function testingChecklistState() {
-  if (run.stagesSeen.has("TESTING — NOT APPLICABLE")) {
-    return {
-      cls: "skipped", mark: "—", label: "TESTING — NOT APPLICABLE",
-      note: `<span class="skip-note">${esc(run.testingSkipReason || "verified not applicable")}</span>`,
-    };
+  for (const [stageKey, presentation] of Object.entries(_EXPLICIT_TESTING_STAGES)) {
+    if (run.stagesSeen.has(stageKey)) {
+      return {
+        ...presentation,
+        note: `<span class="skip-note">${esc(run.testingSkipReason || "see reason")}</span>`,
+      };
+    }
   }
   if (run.stagesSeen.has("TESTING")) {
     const passed = !verificationState.testResult || verificationState.testResult.success;
@@ -358,7 +377,7 @@ function applyEvent(evt) {
       setStatus(evt.stage);
       addActivityLine(`<span class="stage-marker">— ${esc(evt.stage)} —</span>`);
       if (evt.reason) addActivityLine(`<span class="hint">${esc(evt.reason)}</span>`);
-      if (evt.stage === "TESTING — NOT APPLICABLE") run.testingSkipReason = evt.reason;
+      if (evt.stage.startsWith("TESTING — ")) run.testingSkipReason = evt.reason;
       if (TERMINAL_STAGES.has(evt.stage)) {
         // Freeze total/stage elapsed at the real terminal duration —
         // "completed-stage duration must not continue increasing
