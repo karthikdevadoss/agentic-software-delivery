@@ -43,3 +43,41 @@ main { max-width: 1150px; }
 .ev-tested { background: #4a3a12; color: var(--amber); }
 .ev-runtime-verified { background: #124a35; color: var(--green); }
 .ev-production-verified { background: #124a35; color: var(--green); }
+
+/* Deep Dive (recursive WHAT/WHY/HOW/WHEN topics) — additive seed */
+.deep-domain { margin-bottom: 1.5rem; }
+.deep-domain h3 { margin-bottom: 0.6rem; }
+.deep-topic-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.7rem 1rem;
+  margin-bottom: 0.6rem;
+  background: #0d0f14;
+}
+.deep-topic-card summary {
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 700;
+  font-size: 0.92rem;
+  list-style: none;
+}
+.deep-topic-card summary::-webkit-details-marker { display: none; }
+.deep-topic-card[open] summary { margin-bottom: 0.6rem; }
+.deep-topic-name::before { content: "▸ "; color: var(--muted); }
+.deep-topic-card[open] .deep-topic-name::before { content: "▾ "; }
+.deep-topic-body { font-size: 0.85rem; line-height: 1.55; }
+.deep-block { margin: 0.5rem 0; color: var(--muted); }
+.deep-block strong { color: var(--text); }
+.deep-block ul { margin: 0.3rem 0 0; padding-left: 1.2rem; }
+.deep-interview {
+  margin-top: 0.7rem;
+  padding: 0.6rem 0.8rem;
+  border-left: 2px solid var(--accent);
+  background: rgba(91,147,255,0.06);
+}
+.deep-interview-q { font-weight: 700; margin-bottom: 0.4rem; }
+.deep-evidence { margin-top: 0.6rem; font-size: 0.76rem; color: var(--muted); }
+.deep-evidence code { background: #1a1d24; padding: 0.1rem 0.35rem; border-radius: 4px; }

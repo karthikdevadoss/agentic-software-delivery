@@ -1,0 +1,267 @@
+{
+  "_purpose": "A SEED of recursively-structured deep topics — WHAT/WHY/HOW/WHEN + our real experience + interview view — additive to, and never a replacement for, the existing 127-topic index in learn-data.json. Seeded from real evidence only (this project's own code/incidents/decisions); never fabricated depth. See docs/PROJECT_STATE.json's architecture_v2_trial_2_and_learn_seed entry for provenance.",
+  "_experience_classification_values": ["REAL_PROFESSIONAL_EXPERIENCE", "CURRENT_PROJECT_EXPERIENCE", "LEARNED_UNDERSTOOD", "PLANNED_NOT_YET_EXPERIENCED"],
+  "domains": [
+    {
+      "id": "system-design",
+      "title": "System Design",
+      "topics": [
+        {
+          "id": "production-verification",
+          "name": "Requested-Effect Verification (Production Verification)",
+          "what": "The practice of confirming a deployed change's SPECIFIC requested observable effect is genuinely live in production — not merely that a server responds, or that a deploy command exited 0.",
+          "why": "HTTP 200 and 'deployment succeeded' both prove the server is reachable, not that the requested content is there. Skipping this step is exactly how a false success gets reported to a human.",
+          "how": "Capture the exact expected new content (e.g. the literal new file bytes) before deploying. After the deploy is believed active, independently fetch the real production endpoint and compare against that captured expectation — not a paraphrase, not a status code. Only mark the change COMPLETED/verified when the comparison matches.",
+          "when": "Any time a system deploys or applies a change autonomously and needs to report success/failure to a human or another system. Unnecessary for read-only investigation with no mutation.",
+          "experience_classification": "CURRENT_PROJECT_EXPERIENCE",
+          "our_experience": "Real incident: Workbench run trainer-7769757e reported 'Deployment: VERIFIED (HTTP 200)' and claimed a footer changed to requested text, but the real Customer App still showed the OLD footer — the deploy-wait loop had exited early on a Railway CLI 'Online' signal that actually described the PREVIOUS deployment still serving traffic while the new one built in the background. Fixed in agent/web_server.py::_decide_deployment_outcome and the VERIFYING PRODUCTION polling loop: production is now polled directly for the exact expected content (agent/web_server.py's run.trainer_expected_content) for up to 15 minutes, and COMPLETED requires BOTH reachability AND content match.",
+          "development_steps": [
+            "Observed: Workbench UI showed VERIFIED but real production had old content.",
+            "Investigated event ledger for the real run (never guessed) — found content_changed_from_baseline=false was captured but unused by the decision function.",
+            "Root-caused the deploy-wait loop's premature exit on a Railway CLI text signal that doesn't distinguish OLD-still-serving from NEW-active.",
+            "Fixed _decide_deployment_outcome to require content_verified, not just HTTP 200.",
+            "Added regression tests reproducing the exact false-positive scenario.",
+            "Re-verified live with a real public acceptance run."
+          ],
+          "failures_lessons": [
+            "A CLI status text ('Online') can describe a stale deployment, not the one you just triggered.",
+            "Never treat 'the deploy command succeeded' as equivalent to 'the change is live'."
+          ],
+          "related_topics": ["independent-qa-evaluation", "event-ledger", "ai-guessing-and-failure"],
+          "evidence": ["agent/web_server.py::_decide_deployment_outcome", "docs/LESSONS.md (trainer-7769757e entry)", "agent/test_web_server.py::DeploymentOutcomeDecisionTestCase"],
+          "interview": {
+            "question": "How do you know a deployment actually worked?",
+            "short_answer": "Never trust HTTP 200 or a CLI exit code alone — independently fetch the real endpoint and check for the specific content you expected to change.",
+            "deep_answer": "Deployment transport success (the server is reachable, the deploy command exited 0) is a different claim from software-change success (the requested behavior is actually live). We had a real incident where a Workbench run reported 'VERIFIED' based on HTTP 200 while the old content was still being served — root cause was a CLI status signal describing a stale, still-serving deployment. The fix: capture the exact expected new content before deploying, then independently re-fetch production and do a real comparison — never a status code — before reporting success.",
+            "real_incident_story": "run trainer-7769757e claimed a footer change was live; the Customer App still showed the old text. The deploy had genuinely completed in the background moments later — the bug was in when and how we checked, not in the deploy itself."
+          }
+        },
+        {
+          "id": "event-ledger",
+          "name": "Durable Append-Only Event Ledger",
+          "what": "A single canonical, append-only Postgres table capturing every observable engineering event (model calls, tool calls, proposals, approvals, builds, tests, commits, deployments, human interventions) with a stable envelope schema.",
+          "why": "Before this existed, every observable event lived only in one process's memory and a small local gitignored log — a crash or a lost laptop meant losing all history. Historical trajectories cannot be reconstructed after the fact if never captured.",
+          "how": "One table (infra/event-ledger/schema.sql), a canonical envelope (event_id, timestamp, event_type, run_id, source, activity_class, provider/model/token columns, a JSONB payload for event-specific data), write-through inserts the moment each event happens (never batched), idempotent via ON CONFLICT DO NOTHING on event_id, with a local outage spool as a fallback so an insert failure never drops an event.",
+          "when": "Any system where 'what actually happened, in order, with evidence' needs to survive process restarts, crashes, or feed future analysis/evals — not needed for a purely stateless, disposable computation with no need to reconstruct history.",
+          "experience_classification": "CURRENT_PROJECT_EXPERIENCE",
+          "our_experience": "Built as the project's declared #1 near-term priority ('durability first'). Additive design proved itself repeatedly: new event types (repository_workspace_check, run_usage_summary, and this session's v2_trial events) were added without any schema migration, just new event_type strings and JSONB payload shapes — because the schema was designed with a flexible payload column from the start.",
+          "development_steps": [
+            "Chose Railway Postgres (already-trusted provider) over introducing a new datastore.",
+            "Designed one canonical envelope instead of a table per event type.",
+            "Wired write-through recording into every real event emission point.",
+            "Added an outage-safe local spool + idempotent retry.",
+            "Backfilled historical local logs with clear reconstructed-evidence tagging, never mixed with live-observed events."
+          ],
+          "failures_lessons": [
+            "A field only ever written into JSONB payload (never a dedicated column) is invisible to any query that selects columns directly — a real bug found this session when run_usage_summary's real cost data wasn't reaching a dashboard that queried columns."
+          ],
+          "related_topics": ["token-cost-economics", "production-verification"],
+          "evidence": ["infra/event-ledger/schema.sql", "agent/event_ledger.py", "docs/CONSTITUTION.md §17"],
+          "interview": {
+            "question": "How would you design durable observability for an agentic system?",
+            "short_answer": "One append-only table, one flexible envelope with a JSONB payload for event-specific fields, write-through inserts, idempotent by event_id, with an outage spool as a fallback — never batch-at-end.",
+            "deep_answer": "The core design decision is capturing broadly with provenance now and interpreting later — raw evidence that isn't captured at the moment it happens can never be reconstructed. One canonical envelope avoids table-per-event-type proliferation while a payload JSONB column lets new event types be added additively, with zero migrations, as long as the shape is a JSON object. Idempotent inserts (ON CONFLICT DO NOTHING on a UUID event_id) make retries after an outage safe. The real lesson from operating this: don't let a field live ONLY in the payload if a downstream query needs to select on or aggregate it directly.",
+            "real_incident_story": "A dashboard economics section showed 'NOT CAPTURED YET' even though real cost data existed the whole time in run_usage_summary events — because that data lived only inside the JSONB payload, and the dashboard's hardcoded display never queried the ledger at all. Root cause was two bugs stacked: a stale hardcoded UI plus a real column-vs-payload gap."
+          }
+        }
+      ]
+    },
+    {
+      "id": "ai-assisted-engineering",
+      "title": "AI-Assisted Software Engineering",
+      "topics": [
+        {
+          "id": "acceptance-contracts",
+          "name": "Acceptance Contracts (Define Success Before Coding)",
+          "what": "A small, machine-readable definition of what 'done' means for a change — requirement, target, expected observable effect, required deterministic gates, allowed terminal outcomes — captured BEFORE any implementation starts.",
+          "why": "Without an explicit contract, 'did this work?' gets answered by whoever implemented it, using whatever criteria occur to them after the fact — exactly the condition that produces false-success reports.",
+          "how": "A small schema (agent/acceptance_contract.py: requirement_id, requirement_text, target_application, expected_observable_effect, required_gates, allowed_terminal_outcomes, evidence_requirements) with a validate() that rejects a contract whose success criterion isn't independently checkable, and cross-checks that referenced gates/outcomes are real things the runtime can actually produce.",
+          "when": "Any autonomous or semi-autonomous change where success needs to be judged by someone/something other than the implementer. Overkill for a one-line change a human reviews directly with full context.",
+          "experience_classification": "CURRENT_PROJECT_EXPERIENCE",
+          "our_experience": "Designed and standalone-tested (agent/test_acceptance_contract.py, 7/7 passing) — not yet wired into the live Workbench pipeline. Used for real in both V2 shadow trials: each trial's contract explicitly required an EXACT expected string, which is precisely what let Trial #2's evaluator catch a one-character seeded defect.",
+          "development_steps": [
+            "Identified the false-success incident as a symptom of undefined success criteria.",
+            "Designed the smallest useful schema, not a general workflow engine.",
+            "Added a validate() that checks the contract itself for a checkable success criterion.",
+            "Cross-checked allowed_terminal_outcomes against the real runtime's TERMINAL_RUN_STATES via a test — proving the two can never silently drift apart."
+          ],
+          "failures_lessons": [],
+          "related_topics": ["independent-qa-evaluation", "production-verification"],
+          "evidence": ["agent/acceptance_contract.py", "agent/test_acceptance_contract.py", "docs/ARCHITECTURE_V2.md §4"],
+          "interview": {
+            "question": "How do you prevent an AI agent from grading its own homework?",
+            "short_answer": "Write down exactly what 'done' means, in a checkable form, before the agent starts — then have someone/something else check the real evidence against that definition, not the agent's own report.",
+            "deep_answer": "An Acceptance Contract makes the success criterion an artifact that exists independently of the implementation, created before any code is written. The critical design point is that the contract's own validator rejects vague or unverifiable success criteria — a requirement like 'the page looks better' isn't acceptable; 'the response contains this exact string' is. This doesn't replace independent evaluation — it's the input to it.",
+            "real_incident_story": "In Shadow Trial #2, the contract explicitly demanded an EXACT string. A seeded one-character capitalization defect ('Find A Customer' vs the required 'Find a Customer') would have been easy to wave away as 'close enough' without that exactness requirement — the evaluator caught it precisely because the bar was unambiguous."
+          }
+        },
+        {
+          "id": "independent-qa-evaluation",
+          "name": "Independent QA Evaluation (The Implementer May Not Certify Itself)",
+          "what": "A second, genuinely separate reasoning process that checks a proposed change's real evidence against its Acceptance Contract — without access to the implementer's own claims, reasoning trace, or self-assessment.",
+          "why": "Self-evaluation by the same agent/context that did the work tends toward optimism — it already believes its own reasoning was sound. Anthropic's own harness research and this project's own real incident both point the same direction: separating generator from evaluator improves reliability, especially exactly where self-evaluation is weakest.",
+          "how": "A distinct subagent definition (.claude/agents/qa-evaluator.md) with restricted tools (read/test/fetch only, no Write/Edit), given ONLY the Acceptance Contract and pointers to real evidence — never told the implementer's claimed outcome. It re-runs or re-reads deterministic checks itself (re-fetch, re-compile, re-read source) rather than trusting any prior report, and returns PASS/FAIL/UNKNOWN.",
+          "when": "Worth the extra cost/latency when a false positive is genuinely costly (production changes, security-relevant code, anything reported to a human as fact) and the task is hard enough that self-evaluation is known to be unreliable. Not worth it for trivial, easily-human-checked changes.",
+          "experience_classification": "CURRENT_PROJECT_EXPERIENCE",
+          "our_experience": "Built and run twice (V2 Shadow Trials #1 and #2). A real, honest limitation was found: the custom subagent type was not recognized as a native subagent_type in a session that predated its creation — worked around transparently by having a general-purpose agent read and follow the qa-evaluator.md definition verbatim, clearly labeled as not-native rather than silently pretended. Trial #2 proved the concept concretely: the evaluator caught a deliberately seeded, subtle defect (a capitalization mismatch) with byte-exact verification, having never been told a defect existed.",
+          "development_steps": [
+            "Designed the subagent with an explicit 'may not certify its own production success' non-negotiable rule for the IMPLEMENTER, and a symmetric independence rule for the evaluator itself.",
+            "Trial #1: ran a correct change through the evaluator — PASS, with real independent re-verification (re-fetch, re-compile, re-read source), plus one valuable unprompted process question about commit-gating semantics.",
+            "Trial #2: seeded exactly one controlled, harmless defect after a correct implementation, withheld this from the evaluator entirely, and confirmed it returned FAIL with exact matching evidence."
+          ],
+          "failures_lessons": [
+            "Native subagent definitions may not be visible to a session that was already running when the definition file was added — verify in a fresh session before relying on it (tracked as ACTION_QUEUE ACT-006).",
+            "The evaluator's own token/cost usage was not decomposed with the same rigor as the implementer's in either trial — a real measurement gap for future cost/benefit comparisons."
+          ],
+          "related_topics": ["acceptance-contracts", "human-role-and-approval-matrix", "ai-guessing-and-failure"],
+          "evidence": [".claude/agents/qa-evaluator.md", "docs/ARCHITECTURE_V2_EVALUATION_PLAN.md (Trial #1 and #2 sections)", "docs/ACTION_QUEUE.json ACT-006"],
+          "interview": {
+            "question": "Why not just let the same agent that made the change verify it?",
+            "short_answer": "Because it already believes its own reasoning — an independent evaluator with no access to the implementer's claims, checking real evidence itself, catches what self-review structurally can't.",
+            "deep_answer": "This mirrors an ordinary code-review principle (a reviewer shouldn't approve their own PR) applied to AI agents specifically because LLM self-evaluation has a documented tendency toward leniency. The design choices that make this actually work: (1) genuine context separation, so the evaluator never inherits the implementer's framing of the problem; (2) the evaluator re-does real checks itself instead of trusting reported results; (3) evidence requirements are defined by the Acceptance Contract in advance, so the evaluator can't quietly loosen the bar to reach a comfortable verdict.",
+            "real_incident_story": "In a controlled trial, we corrected a heading to 'Find a Customer', then secretly changed it to 'Find A Customer' before showing the evaluator anything. It independently fetched the live page, ran `cat -A` to check for hidden characters, and correctly reported FAIL — never told a defect existed or where."
+          }
+        },
+        {
+          "id": "human-role-and-approval-matrix",
+          "name": "Human Role, Approval, and Interruption",
+          "what": "The explicit division of what a human owns (purpose, risk tolerance, budget, production/security authority) versus what an AI agent may decide within an authorized boundary — plus the distinct categories of human involvement: approval (known in advance), interruption (human notices drift mid-run), clarification (agent asks because it's uncertain), and escalation (agent detects something outside its authority).",
+          "why": "Capability does not equal authority. An agent that CAN technically deploy to production, delete data, or spend money doesn't thereby have standing authorization to do so — and asking for approval on every trivial, reversible action causes real approval fatigue that erodes the value of asking at all.",
+          "how": "A deterministic, text-level risk policy (agent/risk_policy.py) decides auto-execute vs. requires-authorization BEFORE any agent reasoning happens — a keyword/complexity classifier, not an LLM judgment call, precisely because the gate itself must not be gameable by the same reasoning it's gating. Separately, a real approval boundary (agent/execution_tools.py) makes the approve/reject decision structurally unreachable from the model's own tool-calling surface — verified by exact set-membership tests, not a prompt instruction.",
+          "when": "Risk-based, not uniform: low-risk, reversible, well-specified, sandboxed actions can run without a human in the loop; ambiguous requirements, irreversible actions, secrets, security-boundary changes, and material scope expansion should not.",
+          "experience_classification": "CURRENT_PROJECT_EXPERIENCE",
+          "our_experience": "This project's risk_policy.py auto-executes TINY/LOW-risk demo changes (with zero human approvals needed in either V2 shadow trial) while requiring Owner authorization for anything touching security, infrastructure, or larger scope. The approval boundary was proven to fail closed (reject, never silently approve) when no human is present at all — the correct behavior when authority genuinely cannot be reached, not a crash and not a silent yes.",
+          "development_steps": [
+            "Deliberately kept risk classification as plain deterministic code, never an LLM prompt, so the gate can't be argued with by the same model it's gating.",
+            "Verified the approval boundary is structurally unreachable from the model (exact set-membership test, not a substring check — an earlier version of this exact test had a false-positive substring bug that was caught and fixed).",
+            "Verified fail-closed behavior: a non-interactive environment raises EOFError on an approval prompt; the fix treats 'cannot reach a human' as equivalent to reject, never to approve or to crashing."
+          ],
+          "failures_lessons": [
+            "A substring check for 'is this forbidden name present' produced a false positive once (matching 'apply_approved_source_change' against a check for 'approve') — exact set-membership checks are required for a security-boundary test to mean what it claims."
+          ],
+          "related_topics": ["independent-qa-evaluation", "ai-guessing-and-failure"],
+          "evidence": ["agent/risk_policy.py", "agent/execution_tools.py", "docs/CONSTITUTION.md §11", "docs/LESSONS.md (substring-vs-exact-match entry)"],
+          "interview": {
+            "question": "How do you decide when an AI agent needs human approval?",
+            "short_answer": "Risk-based, not uniform — gate on reversibility, scope, and ambiguity, decided by deterministic code before any agent reasoning happens, not by asking the agent to judge its own authority.",
+            "deep_answer": "The key architectural insight is that the GATE deciding auto-execute vs. needs-authorization must itself be deterministic and outside the reasoning it's gating — otherwise you're asking the same system to both propose an action and judge whether it's allowed to. Separately, the actual approve/reject mechanism needs to be structurally unreachable by the model (verified by exact tests, not a prompt instruction saying 'don't call this'), and must fail closed — treating 'no human available' as a rejection, never a default yes.",
+            "real_incident_story": "A security test asserting 'approve_edit is never exposed as a callable tool' used a substring check and passed even when it shouldn't have, because 'apply_approved_source_change' contains the substring 'approve'. Rewriting it to exact set-membership caught that the test itself had been theater, not a real guarantee."
+          }
+        },
+        {
+          "id": "ai-guessing-and-failure",
+          "name": "Where AI Guesses, and Why It Fails",
+          "what": "The recurring failure modes where an AI agent produces a confident-sounding but wrong claim — usually from an unverified assumption rather than a deliberate lie.",
+          "why": "Recognizing these patterns is what makes independent verification and deterministic gates necessary in the first place, rather than optional nice-to-haves.",
+          "how": "Detect by never trusting a claim about system behavior without checking the actual source/runtime; prevent by giving agents the means to check (tools, real environment access) rather than asking them to reason from memory about an unfamiliar codebase or a fast-moving external API.",
+          "when": "Always relevant wherever an agent reasons about code, APIs, or infrastructure it hasn't directly inspected in the current context.",
+          "experience_classification": "CURRENT_PROJECT_EXPERIENCE",
+          "our_experience": "Three real, distinct examples from this project's own recent work: (1) an implementer confidently claimed 'propose_source_change only allows .java files' — false, verified by reading the actual source, root cause was an incomplete prompt, not a real restriction; (2) a Spring Boot 4.1.1 test suite failed to compile against assumed classes (com.fasterxml.jackson.databind.ObjectMapper, TestRestTemplate, AutoConfigureMockMvc) that turned out to have moved or not be on the classpath in this exact dependency set — Spring Boot 4 restructured Jackson under a new tools.jackson namespace and split several test-support classes into different modules than in Spring Boot 3.x memory; (3) a seeded one-character capitalization defect was easy to visually skim past without an exact, byte-level check.",
+          "development_steps": [],
+          "failures_lessons": [
+            "Unsupported assumption about a tool's own restriction: verify against the actual source file, not the model's prior turn's own claim.",
+            "Wrong library/version assumption: a dependency tree and jar-content inspection settled in minutes what guessing from training-data memory would have gotten wrong (Jackson 3.x's tools.jackson.databind package, not com.fasterxml.jackson.databind, ships with Spring Boot 4.1.1).",
+            "Weak/skimmed verification: an exact string comparison (even `cat -A` for hidden characters) catches what a glance does not."
+          ],
+          "related_topics": ["independent-qa-evaluation", "production-verification"],
+          "evidence": ["docs/ARCHITECTURE_V2_EVALUATION_PLAN.md (Trial #1 attempt-1 entry)", "app/pom.xml + resolved dependency:tree (Jackson 3.x finding)", "docs/ARCHITECTURE_V2_EVALUATION_PLAN.md (Trial #2 entry)"],
+          "interview": {
+            "question": "Give a real example of an AI agent being confidently wrong, and how you caught it.",
+            "short_answer": "An implementer claimed a tool restriction that didn't exist in the actual source code — caught by reading write_tools.py directly instead of trusting the claim.",
+            "deep_answer": "The pattern across all three of our real examples is the same: an agent (or a person, in the Jackson 3 case, reasoning from training-data memory of Spring Boot 3.x) made a plausible-sounding claim about a system it hadn't actually inspected in the current context. The fix is always the same too — go check the real source, the real dependency tree, the real byte content — never accept a claim about system behavior as fact until it's independently verified against the thing itself.",
+            "real_incident_story": "Writing tests for Spring Boot 4.1.1, `com.fasterxml.jackson.databind.ObjectMapper` failed to compile. Instead of guessing at a fix, we ran `mvn dependency:tree` and found Jackson 3.x now ships under `tools.jackson.databind` — a genuine, documented major-version package rename we would not have known about from memory alone."
+          }
+        },
+        {
+          "id": "skills-and-subagents",
+          "name": "Skills and Subagents (Claude Code)",
+          "what": "Skills are reusable, on-demand instruction sets loaded when relevant to a task (.claude/skills/<name>/SKILL.md). Subagents are separate-context workers with their own restricted tool access, invoked for a focused, independent task (.claude/agents/<name>.md).",
+          "why": "Without Skills, procedural knowledge (how we verify production changes, what testing states mean, what a QA evaluator must never do) has to be re-derived or re-explained every session. Without subagents, there's no way to get a genuinely separate reasoning context for independent evaluation.",
+          "how": "Both are GA (general availability) Claude Code features as of version 2.1.267, verified via official documentation rather than assumed from memory. Skills need only `name` + `description` frontmatter; subagents add `tools`/`disallowedTools` for capability restriction. Full Agent Teams (multiple concurrent, peer-communicating sessions) is a separate, still-experimental feature requiring explicit opt-in.",
+          "when": "Skills: whenever the same procedural knowledge would otherwise be re-explained across sessions or re-derived from scratch. Subagents: when a task genuinely needs isolated context or a restricted capability set. Agent Teams: only once a measured need for concurrent, debating agents is established — not by default.",
+          "experience_classification": "CURRENT_PROJECT_EXPERIENCE",
+          "our_experience": "Created 5 project Skills (requirement-contract, implement-small-change, test-change, production-verify, incident-analysis) and one qa-evaluator subagent this session, each scoped to a single stated duty with explicit 'must not' boundaries and references to canonical existing code/docs rather than duplicated knowledge. Deliberately did NOT enable Agent Teams — confirmed experimental and disabled by default via direct documentation verification, and no measured need for concurrent agents exists yet for this project's actual workload.",
+          "development_steps": [
+            "Verified current Claude Code capability formats via a dedicated research subagent WebFetching official docs, rather than trusting recalled/memorized syntax.",
+            "Classified existing pipeline responsibilities into deterministic-stays-code vs. agentic-judgment BEFORE writing any Skill, to avoid converting a deterministic gate into an LLM prompt merely because Skills are the new mechanism.",
+            "Wrote each Skill to reference canonical sources (e.g. 'see agent/risk_policy.py') rather than restating rules that could drift out of sync with the actual code."
+          ],
+          "failures_lessons": [
+            "A custom subagent added mid-session is not necessarily visible as a subagent_type to a session that was already running when the file was created — confirmed empirically twice, tracked as ACTION_QUEUE ACT-006, worked around transparently rather than silently faked as native."
+          ],
+          "related_topics": ["independent-qa-evaluation", "acceptance-contracts"],
+          "evidence": [".claude/skills/", ".claude/agents/qa-evaluator.md", "docs/ARCHITECTURE_V2.md §1"],
+          "interview": {
+            "question": "When would you reach for a Skill vs. a subagent vs. a full multi-agent team?",
+            "short_answer": "Skill for reusable procedural knowledge in the same context; subagent when you need genuinely separate context or a restricted tool set; a full agent team only once concurrent, peer-communicating agents solve a real, measured problem plain subagents can't.",
+            "deep_answer": "These three mechanisms trade off cost and isolation differently. A Skill costs nothing extra in context isolation — it's just loaded knowledge in the same reasoning process, appropriate for organizing what's already true. A subagent is a genuinely separate context, at the cost of a new invocation and no shared reasoning trace — the right tool exactly when that separation is the point, as with an independent evaluator. Full Agent Teams add concurrent, peer-communicating sessions, at meaningfully higher token/coordination cost, and current guidance (both official and this project's own constitution's non-attachment-to-architecture principle) is: adopt only once evidence shows a real need, not because it's available.",
+            "real_incident_story": "We deliberately did not enable Agent Teams for two consecutive controlled trials, using a single independent evaluator subagent instead — which was sufficient to prove the core hypothesis (an independent evaluator catches what self-evaluation misses) without the added cost and experimental-feature risk of full concurrent teams."
+          }
+        },
+        {
+          "id": "token-cost-economics",
+          "name": "AI Token/Cost Economics and Accounting",
+          "what": "Capturing and aggregating REAL (never estimated post-hoc) token usage and USD cost per AI-driven run, from the actual API response's own usage field, using a versioned pricing table so historical cost never silently changes when prices change later.",
+          "why": "Without real capture, cost is invisible until a bill arrives with no way to attribute it. Without a versioned pricing table, a past run's recorded cost can silently become wrong when prices are updated. Without ledger-backed aggregation, a UI can show 'not captured' even when the underlying data has existed the whole time — a real bug this project hit directly.",
+          "how": "Capture real usage the moment an API response returns (never scraped from a UI counter). Calculate cost via a small versioned pricing module keyed by (provider, model), storing which pricing_version applied. Aggregate from the durable event ledger — the canonical historical source — rather than an in-memory counter that resets on restart or a separate, disconnected display constant.",
+          "when": "Any system making real, billed API calls that needs to answer 'how much did this cost' at the individual-run, hourly, daily, or lifetime level, especially when the answer needs to survive process restarts.",
+          "experience_classification": "CURRENT_PROJECT_EXPERIENCE",
+          "our_experience": "Built agent/pricing_config.py (versioned pricing verified against the live official Anthropic pricing page) and agent/estimation.py (pre-run estimate, clearly labeled ESTIMATED, from historical comparable runs) in an earlier task. This session found and fixed a REAL fragmentation bug: a Dashboard economics section had been hardcoded to 'NOT CAPTURED YET' since before real capture code existed, and was never updated afterward — even though the real ledger had genuine cost data (including the Creator's own observed example: 31,573 input / 2,797 output tokens / 5 API calls) the entire time. A second, deeper bug compounded it: the run_usage_summary event type stored its real cost/token data only inside a JSONB payload field, never in the dedicated queryable columns other usage events use — invisible to any column-based query.",
+          "development_steps": [
+            "Investigated the Creator's reported contradiction by directly querying the live event ledger, not by re-reading UI code first.",
+            "Found the real cost/token data existed exactly where reported, confirming the capture layer was correct.",
+            "Traced the display bug to a static, years-stale (in project-time) constant that predated the capture code and was never wired to it.",
+            "Found the second, compounding bug: JSONB-payload-only storage for one specific event type, invisible to column-based queries.",
+            "Fixed both: real columns now populated for that event type, plus a genuine ledger-backed aggregation function (last run / last hour / today / lifetime) replacing the hardcoded constant.",
+            "Wrote tests proving both pre-fix (payload-only) and post-fix (column-populated) rows aggregate correctly, so no historical data was orphaned by the fix."
+          ],
+          "failures_lessons": [
+            "A generic event-recording bridge that doesn't know an event type's specific fields will silently leave those fields as JSONB-only, invisible to any query selecting real columns — extend the bridge per-event-type when a new type carries data that needs to be queryable directly.",
+            "A 'known limitation' comment in code/docs needs to be re-checked and corrected once the limitation is actually fixed — an accurate comment left stale after code changes becomes a lie by omission."
+          ],
+          "related_topics": ["event-ledger", "acceptance-contracts"],
+          "evidence": ["agent/pricing_config.py", "agent/event_ledger.py::get_usage_economics", "agent/web_server.py::_record_ledger_event", "agent/test_event_ledger.py::UsageEconomicsTestCase"],
+          "interview": {
+            "question": "How do you track real cost for an AI-driven system, and what goes wrong if you don't design it carefully?",
+            "short_answer": "Capture real usage from the API response itself, price it with a versioned table so history never silently changes, and aggregate from a durable ledger rather than an in-memory counter or a hand-maintained UI constant.",
+            "deep_answer": "The subtle failure mode we actually hit wasn't missing capture — it was capture existing correctly while the DISPLAY layer stayed disconnected from it, plus one event type storing its data somewhere a standard column-based query couldn't see. Both bugs are instances of the same root problem: a data path that works for the common case (most events populate real columns) silently breaking for an edge case (one event type didn't), with no test catching it because the bug was in the wiring between capture and display, not in either half alone.",
+            "real_incident_story": "The Creator observed a real run showing captured tokens directly, while a Dashboard elsewhere in the same product still said 'NOT CAPTURED YET' for the same kind of data. Both bugs were real and root-caused from the actual live database, not guessed — the hardcoded Dashboard constant, and a JSONB-payload-only storage gap for one specific event type."
+          }
+        }
+      ]
+    },
+    {
+      "id": "testing",
+      "title": "Testing",
+      "topics": [
+        {
+          "id": "testing-truthfulness-states",
+          "name": "Truthful Testing Terminal States",
+          "what": "An explicit, distinct terminal state for every real testing situation a change can be in: PASSED, FAILED, NOT_APPLICABLE (no test surface exists for this kind of change at all), NOT_CONFIGURED (testing should reasonably apply, but no automated coverage exists yet), and SKIPPED (applicable tests exist but weren't run for this change).",
+          "why": "Collapsing 'no test files exist yet' into the same label as 'this genuinely can't be tested' hides a real, actionable gap (missing test infrastructure) behind a label that sounds like a deliberate, correct decision.",
+          "how": "A real, checkable fact decides the state — not a default. If a real test tool was invoked, its actual result is PASSED/FAILED. If not, check whether the changed file type genuinely has no test surface (e.g. a static HTML resource) for NOT_APPLICABLE, whether real test files exist elsewhere in the project but weren't run for SKIPPED (which blocks commit, like FAILED), or otherwise NOT_CONFIGURED (which doesn't block this run, since it's a project-level gap, not this change's fault).",
+          "when": "Any pipeline that needs to report a testing decision truthfully to a human or another system, especially one that gates further actions (like commit/deploy) on that decision.",
+          "experience_classification": "CURRENT_PROJECT_EXPERIENCE",
+          "our_experience": "Real bug found and fixed this session: this project's Workbench was labeling every Java source change as TESTING — NOT APPLICABLE purely because no test files existed yet — semantically wrong, since the Customer app has real testable business logic; the honest label is NOT_CONFIGURED. Fixed alongside writing the project's first real automated tests for that same app (7 tests: a context-load smoke test, 3 service-layer unit tests with a mocked repository, and 3 real HTTP integration tests against the actual running app and database).",
+          "development_steps": [
+            "Identified the semantic bug: 'no test files' was being treated as 'not applicable' unconditionally.",
+            "Designed a real decision function keyed off checkable facts: does a test tool result exist, does the changed file have any test surface at all, do test files exist elsewhere in the project.",
+            "Wrote regression tests proving each state is reached for the right reason, including that SKIPPED (unlike NOT_CONFIGURED/NOT_APPLICABLE) blocks commit.",
+            "Wrote the project's first-ever real Customer app tests, closing part of the actual gap the states now describe honestly."
+          ],
+          "failures_lessons": [
+            "NO TEST FILES != TESTING NOT APPLICABLE — the two are different claims and must never share a label."
+          ],
+          "related_topics": ["production-verification", "independent-qa-evaluation"],
+          "evidence": ["agent/web_server.py::_determine_testing_state", "agent/test_web_server.py::DetermineTestingStateTestCase", "app/src/test/java/"],
+          "interview": {
+            "question": "What's wrong with a system that reports 'tests not applicable' whenever no tests exist?",
+            "short_answer": "It conflates 'this genuinely can't be tested' with 'nobody has written tests for this yet' — the second is an actionable gap, not a settled, correct decision, and hiding it behind the first label makes the gap invisible.",
+            "deep_answer": "The fix requires distinguishing testing states by a real, checkable fact rather than a single boolean. A static HTML resource genuinely has no unit-test surface — NOT_APPLICABLE is honest there. A Java class with real business logic and zero test coverage is a different, actionable situation — NOT_CONFIGURED. And if tests DO exist but weren't run for a specific change, that's SKIPPED, which should block commit exactly like a failure, because unlike the other two, it's not a project-level gap — it's this run's own omission.",
+            "real_incident_story": "This project's own Workbench was silently mislabeling every Java change with zero test coverage as 'not applicable' — until this session's fix distinguished the states and, in the same pass, wrote the first real automated tests the Customer app has ever had."
+          }
+        }
+      ]
+    }
+  ]
+}

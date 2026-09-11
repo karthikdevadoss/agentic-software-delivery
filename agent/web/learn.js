@@ -78,3 +78,72 @@ async function load() {
 }
 
 load();
+
+// ---- Deep Dive: recursive WHAT/WHY/HOW/WHEN topics (additive seed) -------
+// Never touches or replaces the index above. Progressive disclosure via
+// native <details>/<summary> — nothing renders open by default, so
+// loading this page never dumps a wall of text at once (see the
+// project's own "Do not load thousands of details simultaneously" rule).
+
+const deepTopicsRoot = document.getElementById("deep-topics");
+
+function renderEvidenceList(items) {
+  if (!items || !items.length) return "";
+  return `<div class="deep-evidence"><strong>Evidence:</strong> ${items.map(e => `<code>${esc(e)}</code>`).join(", ")}</div>`;
+}
+
+function renderStepList(label, items) {
+  if (!items || !items.length) return "";
+  return `<div class="deep-block"><strong>${esc(label)}:</strong><ul>${items.map(i => `<li>${esc(i)}</li>`).join("")}</ul></div>`;
+}
+
+function renderInterview(interview) {
+  if (!interview) return "";
+  return `<div class="deep-interview">
+    <div class="deep-interview-q">Likely interview question: “${esc(interview.question)}”</div>
+    <div class="deep-block"><strong>Short answer:</strong> ${esc(interview.short_answer)}</div>
+    <div class="deep-block"><strong>Deep answer:</strong> ${esc(interview.deep_answer)}</div>
+    ${interview.real_incident_story ? `<div class="deep-block"><strong>Real incident:</strong> ${esc(interview.real_incident_story)}</div>` : ""}
+  </div>`;
+}
+
+function renderDeepTopic(topic) {
+  return `<details class="deep-topic-card">
+    <summary>
+      <span class="deep-topic-name">${esc(topic.name)}</span>
+      <span class="ev-badge ev-implemented">${esc(topic.experience_classification || "")}</span>
+    </summary>
+    <div class="deep-topic-body">
+      <div class="deep-block"><strong>WHAT:</strong> ${esc(topic.what)}</div>
+      <div class="deep-block"><strong>WHY:</strong> ${esc(topic.why)}</div>
+      <div class="deep-block"><strong>HOW:</strong> ${esc(topic.how)}</div>
+      <div class="deep-block"><strong>WHEN:</strong> ${esc(topic.when)}</div>
+      <div class="deep-block"><strong>Our experience:</strong> ${esc(topic.our_experience)}</div>
+      ${renderStepList("Development steps", topic.development_steps)}
+      ${renderStepList("Failures / lessons", topic.failures_lessons)}
+      ${topic.related_topics && topic.related_topics.length ? `<div class="deep-block"><strong>Related:</strong> ${topic.related_topics.map(esc).join(", ")}</div>` : ""}
+      ${renderInterview(topic.interview)}
+      ${renderEvidenceList(topic.evidence)}
+    </div>
+  </details>`;
+}
+
+function renderDeepDomain(domain) {
+  return `<div class="deep-domain">
+    <h3>${esc(domain.title)}</h3>
+    ${domain.topics.map(renderDeepTopic).join("")}
+  </div>`;
+}
+
+async function loadDeepTopics() {
+  try {
+    const resp = await fetch("/learn-deep-topics.json");
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    deepTopicsRoot.innerHTML = data.domains.map(renderDeepDomain).join("");
+  } catch (_) {
+    deepTopicsRoot.innerHTML = `<p class="hint">Could not load deep-dive content. Try reloading the page.</p>`;
+  }
+}
+
+loadDeepTopics();
