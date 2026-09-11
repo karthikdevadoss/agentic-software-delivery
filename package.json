@@ -1,0 +1,29 @@
+{
+  "name": "agentic-software-delivery",
+  "version": "1.0.0",
+  "description": "This is the smallest possible baseline for an agentic software delivery system built around a real Spring Boot application. It contains:",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test:e2e": "playwright test",
+    "test:e2e:report": "playwright show-report"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/karthikdevadoss/agentic-software-delivery.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/karthikdevadoss/agentic-software-delivery/issues"
+  },
+  "homepage": "https://github.com/karthikdevadoss/agentic-software-delivery#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
+  }
+}
