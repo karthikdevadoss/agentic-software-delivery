@@ -253,6 +253,103 @@ evaluator (not caught earlier), to actually measure catch rate rather
 than confirmation, and (c) capture the evaluator's own token/cost
 breakdown with the same rigor as the implementer's.
 
+## Trial #2 (B) — real seeded-defect detection, 2026-09-11
+
+Trial ID `v2-shadow-trial-2-heading-2026-09-11`. Directly answers Trial
+#1's open question: **can the independent evaluator catch a real
+behavioral defect that a successful build does not catch?** Same
+isolation discipline as Trial #1 (disposable worktree, zero diff from
+`trainer-preview-v1-stable`'s `app/` at branch time, worktree removed
+after evidence extraction, public Workbench/Customer App never touched).
+
+**(a) Native evaluator confirmation — result: NOT AVAILABLE, confirmed
+again.** Directly re-tested `subagent_type='qa-evaluator'` in this same
+long-running session — same "Agent type not found" result as Trial #1.
+Per this task's own instruction ("do not fake native isolation"), this
+is reported honestly rather than silently worked around as if native:
+the same transparent workaround as Trial #1 was used (a `general-purpose`
+subagent instructed to read and follow `.claude/agents/qa-evaluator.md`
+verbatim), because the property that actually matters for the
+experiment's validity — genuine separation of reasoning context, no
+visibility into the implementer's claims — holds regardless of whether
+the subagent *type* is natively recognized. ACT-006 remains open;
+verifying this in a genuinely fresh session is still the right next
+step before treating "qa-evaluator" as a reliable native `subagent_type`.
+
+**Requirement:** "Change the Find Customer section heading from 'Find
+Customer' to 'Find a Customer'" — a different heading than Trial #1's,
+chosen so the trial isn't just re-running the same fixture.
+
+**Implementer — correct on the first attempt** (using the corrected
+harness from Trial #1's lesson, the real `TRAINER_SYSTEM_PROMPT_SUFFIX`
+verbatim, from the start): claude-sonnet-5, 38,834 input + 2,869 output
+tokens, $0.106358, 45.8s. Real change applied: exactly
+`<h2>Find a Customer</h2>`, one file, one line.
+
+**Seeded defect (orchestrator, after correct implementation, before
+evaluator invocation):** `<h2>Find a Customer</h2>` → `<h2>Find A
+Customer</h2>` (capital "A" instead of lowercase "a") — harmless, the
+build still passes (independently re-confirmed: `BUILD SUCCESS`),
+isolated to one character, a real violation of the Acceptance Contract's
+explicit exact-string requirement. The evaluator was told nothing about
+a defect existing or its location.
+
+**QA Evaluator — verdict: FAIL. Benchmark succeeded.** Independent,
+evidence-based, byte-exact verification: fetched the live isolated app
+directly and confirmed the actual served text was `Find A Customer`
+(verified with `cat -A` to rule out hidden/trailing characters), compared
+it against the contract's required exact string, correctly identified
+the one-character mismatch as "exactly such a variant" the contract
+explicitly excludes, independently re-ran `mvnw compile` itself (BUILD
+SUCCESS — confirming the defect does NOT show up as a build failure,
+exactly why an independent content check is necessary), and correctly
+identified `TESTING — NOT APPLICABLE` (no test directory exists). No
+prompting toward a particular verdict; no visibility into the seeded
+mutation. 53,586 aggregate subagent tokens (still not decomposed into
+input/output/cache/cost — the same gap as Trial #1, not yet closed),
+12 tool uses, 80.717s.
+
+**Combined trial cost:** implementer $0.106358 + Trial #1's $0.106852 =
+this trial alone stayed at $0.106358 (implementer only; evaluator cost
+not separately billed/decomposed) — well under the $0.50 budget guard
+for this trial.
+
+**Statistical conclusion: definitive at n=1 for the specific question
+asked (can it catch a real seeded defect), but still not a rate.** This
+trial and Trial #1 together give one FAIL (correctly caught) and one
+PASS (correctly confirmed a genuinely correct change) — 2 for 2 correct
+verdicts, zero false positives, zero false negatives observed so far.
+This is real, positive evidence for the evaluator's core value
+proposition, but n=2 still does not support a catch-rate percentage —
+continue calling this INSUFFICIENT DATA for a statistical claim while
+treating the qualitative result (it caught a real, subtle, seeded defect
+with genuine independent verification) as meaningful.
+
+**EVALUATOR USEFULNESS (Trial #2): HIGH.** Unlike Trial #1, a real
+defect existed in what the evaluator was shown, and it caught it with
+precise, correctly-reasoned, independently-gathered evidence — this is
+the first trial to actually test (not just exercise) the evaluator's
+core value proposition, and it passed cleanly.
+
+**Lessons confirmed/added:**
+1. The corrected harness (production system-prompt suffix verbatim)
+   worked correctly on the first attempt this time — Trial #1's lesson
+   held up.
+2. ACT-006 (native subagent visibility) reproduced identically — this is
+   very likely a real, stable limitation of this specific long-running
+   session, not a one-off fluke; still needs a fresh-session test to
+   close out.
+3. The evaluator's own token/cost decomposition gap persisted across
+   both trials — worth fixing before a Trial #3 if evaluator cost ever
+   needs to factor into a real cutover decision.
+
+**Recommended next experiment:** Trial #3 (not run automatically, per
+this task's explicit instruction) should run in a genuinely fresh
+session to close ACT-006, and — now that both a correct-change PASS and
+a seeded-defect FAIL have been demonstrated — consider a harder case:
+a defect that requires reasoning across multiple files, or an
+ambiguous/borderline case where UNKNOWN is the honestly correct verdict.
+
 ## Review cadence
 
 Re-open this plan whenever: a new Claude model materially changes

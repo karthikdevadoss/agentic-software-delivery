@@ -274,3 +274,76 @@ surprising verified behavior would otherwise get rediscovered later.
   do so from measured `estimate_error` data, not intuition — the labels
   TINY/SMALL describe the size of the *change*, not the size of the
   *investigation* needed to confirm it.
+
+- **Spring Boot 4.1.1 renamed/relocated several classes commonly assumed
+  stable from Spring Boot 3.x memory — verify against the real resolved
+  dependency tree and jar contents, never assume.** Writing this
+  project's first-ever Customer app tests, `com.fasterxml.jackson.databind.ObjectMapper`,
+  `TestRestTemplate`, and `@AutoConfigureMockMvc` all failed to compile
+  despite `spring-boot-starter-web` + `spring-boot-starter-test` being
+  present. Root cause, confirmed via `mvn dependency:tree` and `jar tf`
+  on the actual resolved jars (not guessed): Spring Boot 4.1.1 ships
+  Jackson 3.x under a new `tools.jackson.*` package (only
+  `jackson-annotations` remains under the legacy `com.fasterxml.jackson.core`
+  groupId), and `TestRestTemplate`/`AutoConfigureMockMvc` are not present
+  in any 4.1.1 jar resolved with just those two starters — Spring Boot
+  4's module split appears to have moved or gated them behind a
+  different/additional module not currently in this project's `pom.xml`.
+  Correction: used `org.springframework.web.client.RestTemplate` (plain,
+  always available via `spring-web`) + `@LocalServerPort` (confirmed
+  present at `org.springframework.boot.test.web.server.LocalServerPort`
+  via direct jar inspection) instead — avoids the uncertain module
+  entirely. Future rule: when a "definitely available" Spring Boot test
+  class fails to compile after a major-version bump, do not keep
+  guessing import paths — run `mvn dependency:tree` and `jar tf` on the
+  actually-resolved jars to find the real current location, or pick an
+  alternative that doesn't depend on an unconfirmed module.
+
+- **A display surface can silently drift from its own capture layer even
+  after the capture layer is fixed — "not captured" and "captured but
+  never wired to this display" look identical to a user.** Real incident
+  (2026-09-11): `agent/dashboard_data.py`'s economics section was a
+  static dict hardcoded to "NOT CAPTURED YET"/"NOT CALCULATED YET",
+  written before `agent/pricing_config.py` and the real `run_usage_summary`
+  event existed, and never updated afterward — even though real cost
+  data (matching the Creator's own directly-observed example: 31,573
+  input / 2,797 output tokens / 5 API calls) existed in the event ledger
+  the whole time. A second, compounding bug made it worse: `run_usage_summary`
+  events stored their real provider/model/token data only inside the
+  JSONB `payload` column, never in the dedicated queryable columns other
+  usage events use (`agent/web_server.py::_record_ledger_event` didn't
+  know this event type carried that data) — invisible to any query
+  selecting real columns directly, including the Usage page's own
+  `get_recent_events()`. Correction: extended `_record_ledger_event` to
+  populate real columns for `usage_summary` events; added
+  `event_ledger.get_usage_economics()` as a genuine ledger-backed
+  aggregation (last run / last hour / today / lifetime, using COALESCE
+  so both pre-fix payload-only rows and post-fix column-populated rows
+  aggregate correctly — no historical row lost or ignored); replaced the
+  static dict entirely. Future rule: whenever a new event type is added
+  to a generic write-through bridge, explicitly decide whether its
+  fields need to be queryable as real columns, not just present in
+  payload — "the data is captured somewhere" is not the same claim as
+  "the data is captured somewhere any consumer can actually query."
+
+- **"No test files exist" and "this kind of change cannot be tested" are
+  different claims and must never share a label.** Real semantic bug:
+  this project's Workbench labeled every real Java source change
+  `TESTING — NOT APPLICABLE` purely because `app/src/test/java` had zero
+  files — technically true about the files, but wrong as a quality
+  policy, since the Customer app has real testable business logic. NOT
+  APPLICABLE must mean the changed artifact genuinely has no test
+  surface (e.g. a static HTML resource, which Maven's JUnit phase
+  literally cannot exercise); the honest label for "testing should
+  apply here but nothing is configured yet" is NOT_CONFIGURED — a
+  project-level gap, not a settled correct decision. A third state,
+  SKIPPED (real applicable tests exist but weren't run for this change),
+  must block commit like a failure, since unlike the other two it's this
+  run's own omission, not a pre-existing gap. Correction:
+  `agent/web_server.py::_determine_testing_state` now decides from real,
+  checkable facts (was a test tool actually invoked; does the changed
+  path have any test surface at all; do test files exist anywhere in the
+  project) rather than a single boolean. Future rule: when a "not
+  applicable" label can be produced by two different real conditions
+  with different implications (one benign, one an actionable gap), give
+  them different labels — collapsing them hides the actionable one.
