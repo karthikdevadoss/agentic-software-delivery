@@ -187,18 +187,26 @@ economics, Security/Risk, Competitive/Market — initially just structured
 lenses over shared evidence, not separate agents. No role-play agents with
 no data to reason over.
 
-## Multi-agent roadmap (not built — currently ONE reasoning agent; RAG/MCP/deterministic functions are tools, not agents)
+## Multi-agent roadmap (foundation only — one implementer + one independent QA evaluator subagent exist as of 2026-09-11; neither is wired into the live public pipeline yet; RAG/MCP/deterministic functions remain tools, not agents)
 
-Possible future agents (create only when there's a real job, isolated
-context/specialization provides measurable benefit, evidence exists to
-reason over, and benefit exceeds coordination/token/cost overhead):
-orchestrator, requirement/business analyst, context/retrieval, planner,
-architecture, coding, build/test, failure diagnosis, reviewer, security,
-runtime/UI verification, Git/PR, release/deploy, production observer, eval,
-FinOps/model router, memory curator, standards checker, product/customer
-value, sales/GTM, finance. Before retaining any new agent, eventually
-compare quality/latency/tokens/cost/human-effort/redundancy/coordination
-against not having it. Remove unnecessary agents.
+`qa-evaluator` (`.claude/agents/qa-evaluator.md`) was created as the
+first real step down this roadmap — see docs/ARCHITECTURE_V2.md for the
+full design, why it exists (a real false-success incident,
+`trainer-7769757e`), and why full Agent Teams were deliberately NOT
+enabled (experimental, no measured need yet). It has not replaced the
+live implementer path and is not yet measured against it — see
+docs/ARCHITECTURE_V2_EVALUATION_PLAN.md.
+
+Possible further future agents (create only when there's a real job,
+isolated context/specialization provides measurable benefit, evidence
+exists to reason over, and benefit exceeds coordination/token/cost
+overhead): orchestrator, requirement/business analyst, context/retrieval,
+planner, architecture, coding, build/test, failure diagnosis, security,
+runtime/UI verification, Git/PR, release/deploy, production observer,
+eval, FinOps/model router, memory curator, standards checker,
+product/customer value, sales/GTM, finance. Before retaining any new
+agent, eventually compare quality/latency/tokens/cost/human-effort/
+redundancy/coordination against not having it. Remove unnecessary agents.
 
 ## Data as a strategic company asset (accepted top priority, not implemented)
 
