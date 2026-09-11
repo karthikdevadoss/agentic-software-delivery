@@ -347,3 +347,27 @@ surprising verified behavior would otherwise get rediscovered later.
   applicable" label can be produced by two different real conditions
   with different implications (one benign, one an actionable gap), give
   them different labels — collapsing them hides the actionable one.
+
+- **Python's `zoneinfo` has no IANA tz database on stock Windows.**
+  `ZoneInfo("Europe/Berlin")` raised `ZoneInfoNotFoundError` on this
+  machine even though the stdlib module imported fine — Windows doesn't
+  ship a system tzdata the way most Linux/macOS installs do. Fix: add the
+  `tzdata` PyPI package (pure data, no compiled extension) as an explicit
+  dependency wherever `zoneinfo` is used for anything beyond UTC/fixed
+  offsets — don't assume `zoneinfo` "just works" cross-platform just
+  because it's stdlib.
+
+- **A "required evidence is missing" acceptance criterion is not
+  automatically a genuine-uncertainty (UNKNOWN) test.** Distinguish
+  criteria the evaluator can conclusively rule out (an artifact provably
+  never existed, checkable via e.g. `git log --all` across full history)
+  from criteria that are genuinely unreachable by any tool the evaluator
+  has. Only the second category should produce UNKNOWN; the first is a
+  well-evidenced FAIL, and a rigorous evaluator will correctly call it
+  that. V2 Shadow Trial #3 tried to elicit UNKNOWN with a "human must
+  have logged a browser-confirmation file" criterion; the qa-evaluator
+  proved the file had never existed anywhere in history and correctly
+  returned FAIL — the trial design conflated "missing" with "unknowable."
+  See docs/ARCHITECTURE_V2_EVALUATION_PLAN.md's Trial #3 section and the
+  Learn topic `evaluator-uncertainty-and-verdict-design` for the reusable
+  framework.

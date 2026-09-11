@@ -50,14 +50,14 @@
       "source": "architecture",
       "title": "qa-evaluator custom subagent was not available as a subagent_type in a session that predated its creation",
       "priority": "low",
-      "status": "open",
+      "status": "verified",
       "scope": "verification only, no production code changes expected",
-      "reason": "During Architecture V2 Shadow Trial #1 (docs/ARCHITECTURE_V2_EVALUATION_PLAN.md), invoking the Agent tool with subagent_type='qa-evaluator' (.claude/agents/qa-evaluator.md, added in the immediately prior task) failed with 'Agent type not found' -- worked around by having a general-purpose subagent read and follow that file's instructions directly. Suspected cause: custom subagent definitions load once at session start, and this was a long-running session from before the file existed.",
-      "evidence": "Agent tool call with subagent_type='qa-evaluator' returned an error listing only built-in agent types, not including qa-evaluator, despite .claude/agents/qa-evaluator.md existing and being committed at the time.",
+      "reason": "During Architecture V2 Shadow Trial #1 (docs/ARCHITECTURE_V2_EVALUATION_PLAN.md), invoking the Agent tool with subagent_type='qa-evaluator' (.claude/agents/qa-evaluator.md, added in the immediately prior task) failed with 'Agent type not found' -- worked around by having a general-purpose subagent read and follow that file's instructions directly. Root cause confirmed (not just suspected): custom subagent definitions load once at session start; both prior sessions (Trial #1 and Trial #2) were long-running sessions that started before/without a reload after the file existed in a state the harness's project-scan picked up. A genuinely fresh Claude Code v2.1.268 session in this repo lists qa-evaluator natively in its available-agent-types system reminder from the first turn.",
+      "evidence": "Fresh-session probe (2026-09-11): Agent tool invoked with subagent_type='qa-evaluator' and a trivial read-only task ('report the latest V2 trial number without changing any files'). Result returned as a genuinely separate subagent context: it self-identified in its own reply as 'the qa-evaluator subagent' with the exact prescribed duty from .claude/agents/qa-evaluator.md, used only its allowed tools (Read/Grep, 4 tool_uses, 22186ms), and reported real findings (highest trial = Trial #2) with correct source citations. This is direct evidence of native separate-context execution, not a general-purpose fallback silently answering in the requested persona.",
       "safe_to_auto_execute": false,
-      "verification_required": "In a freshly-started Claude Code session in this repo, confirm subagent_type='qa-evaluator' is recognized and invokable directly (no workaround needed) before relying on it for Trial #2.",
+      "verification_required": "DONE: native invocation confirmed live in a fresh session; the subagent's own self-reported identity plus tool-call telemetry is the proof.",
       "created_at_commit": "9cbc7dd",
-      "resolved_at_commit": null
+      "resolved_at_commit": "PENDING_THIS_TASK_COMMIT"
     }
   ]
 }

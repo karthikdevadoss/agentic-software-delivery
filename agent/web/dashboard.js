@@ -206,11 +206,15 @@ function renderEconomics(d) {
   if (e.status !== "REACHABLE") {
     return section("Economics / Consumption", `<div class="econ-note">Event ledger ${badge(e.status)} — ${esc(e.error || "no further detail")}</div>`);
   }
+  const tz = e.display_timezone || "Europe/Berlin";
   const html = `
     <div class="econ-grid">
       ${renderEconWindow("Last run", e.last_run)}
-      ${renderEconWindow("Last hour (UTC)", e.last_hour_utc)}
-      ${renderEconWindow("Today (UTC calendar day)", e.today_utc_calendar_day)}
+      ${renderEconWindow("This hour (rolling)", e.this_hour)}
+      ${renderEconWindow("Last 24 hours (rolling)", e.last_24_hours)}
+      ${renderEconWindow(`Today (${tz})`, e.today)}
+      ${renderEconWindow(`This week (${tz})`, e.this_week)}
+      ${renderEconWindow(`This month (${tz})`, e.this_month)}
       ${renderEconWindow("Lifetime", e.lifetime)}
     </div>
     <div class="econ-note">

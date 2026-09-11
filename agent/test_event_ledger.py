@@ -367,12 +367,19 @@ class UsageEconomicsTestCase(unittest.TestCase):
         )
         result = el.get_usage_economics()
         self.assertEqual(result["status"], "REACHABLE")
-        for key in ("last_run", "last_hour_utc", "today_utc_calendar_day", "lifetime"):
+        for key in ("last_run", "last_hour_utc", "today_utc_calendar_day", "lifetime",
+                    "this_hour", "last_24_hours", "today", "this_week", "this_month"):
             self.assertIn(key, result)
             self.assertIn("runs_total", result[key])
         # Lifetime spans everything -- must include what we just inserted.
         self.assertGreaterEqual(result["lifetime"]["runs_total"], 1)
         self.assertGreaterEqual(result["today_utc_calendar_day"]["runs_total"], 1)
+        self.assertGreaterEqual(result["today"]["runs_total"], 1)
+        self.assertGreaterEqual(result["this_week"]["runs_total"], 1)
+        self.assertGreaterEqual(result["this_month"]["runs_total"], 1)
+        self.assertEqual(result["display_timezone"], "Europe/Berlin")
+        self.assertEqual(result["this_hour"]["window_kind"], "ROLLING")
+        self.assertEqual(result["today"]["window_kind"], "CALENDAR")
 
     def test_captured_false_row_is_not_counted_as_zero_cost(self):
         """A run where no real API call happened must never be counted
@@ -394,6 +401,93 @@ class UsageEconomicsTestCase(unittest.TestCase):
         finally:
             conn.close()
         self.assertFalse(captured_flag)
+
+
+class DisplayTimezoneWindowTestCase(unittest.TestCase):
+    """L. compute_display_windows() — Europe/Berlin display-timezone
+    aggregation windows (Phase D). Pure function, no DB dependency, so
+    DST-transition correctness can be proven deterministically for fixed
+    'now' instants rather than depending on when the suite happens to run.
+
+    Europe/Berlin: CEST (+02:00) in summer, CET (+01:00) in winter.
+    2026 spring-forward: 2026-03-29 01:00 UTC (02:00->03:00 local).
+    2026 fall-back: 2026-10-25 01:00 UTC (03:00->02:00 local)."""
+
+    def test_calendar_today_boundary_correct_during_cet_winter(self):
+        from datetime import datetime, timezone
+        now_utc = datetime(2026, 1, 15, 10, 0, 0, tzinfo=timezone.utc)  # 11:00 CET local
+        windows = el.compute_display_windows(now_utc)
+        # Local midnight 2026-01-15 00:00 CET == 2026-01-14 23:00 UTC.
+        self.assertEqual(
+            windows["today_calendar_start_utc"],
+            datetime(2026, 1, 14, 23, 0, 0, tzinfo=timezone.utc),
+        )
+
+    def test_calendar_today_boundary_correct_during_cest_summer(self):
+        from datetime import datetime, timezone
+        now_utc = datetime(2026, 7, 15, 10, 0, 0, tzinfo=timezone.utc)  # 12:00 CEST local
+        windows = el.compute_display_windows(now_utc)
+        # Local midnight 2026-07-15 00:00 CEST == 2026-07-14 22:00 UTC.
+        self.assertEqual(
+            windows["today_calendar_start_utc"],
+            datetime(2026, 7, 14, 22, 0, 0, tzinfo=timezone.utc),
+        )
+
+    def test_calendar_today_boundary_shifts_correctly_across_spring_forward(self):
+        from datetime import datetime, timezone
+        # Just after the 2026-03-29 spring-forward instant (01:00 UTC).
+        # Local time is now CEST (+02:00): 2026-03-29 05:00 local.
+        now_utc = datetime(2026, 3, 29, 3, 0, 0, tzinfo=timezone.utc)
+        windows = el.compute_display_windows(now_utc)
+        # Local midnight 2026-03-29 00:00 CET (still +01:00, before the
+        # 01:00 UTC transition) == 2026-03-28 23:00 UTC. If DST were
+        # handled with a naive fixed offset instead of the real IANA
+        # transition, this would be wrong by an hour.
+        self.assertEqual(
+            windows["today_calendar_start_utc"],
+            datetime(2026, 3, 28, 23, 0, 0, tzinfo=timezone.utc),
+        )
+
+    def test_calendar_today_boundary_shifts_correctly_across_fall_back(self):
+        from datetime import datetime, timezone
+        # Just after the 2026-10-25 fall-back instant (01:00 UTC). Local
+        # time is now CET (+01:00): 2026-10-25 02:30 local.
+        now_utc = datetime(2026, 10, 25, 1, 30, 0, tzinfo=timezone.utc)
+        windows = el.compute_display_windows(now_utc)
+        # Local midnight 2026-10-25 00:00 CEST (still +02:00, before the
+        # 01:00 UTC transition) == 2026-10-24 22:00 UTC.
+        self.assertEqual(
+            windows["today_calendar_start_utc"],
+            datetime(2026, 10, 24, 22, 0, 0, tzinfo=timezone.utc),
+        )
+
+    def test_rolling_windows_are_pure_duration_independent_of_dst(self):
+        from datetime import datetime, timedelta, timezone
+        now_utc = datetime(2026, 3, 29, 3, 0, 0, tzinfo=timezone.utc)
+        windows = el.compute_display_windows(now_utc)
+        self.assertEqual(windows["this_hour_rolling_start_utc"], now_utc - timedelta(hours=1))
+        self.assertEqual(windows["last_24_hours_rolling_start_utc"], now_utc - timedelta(hours=24))
+
+    def test_this_week_starts_monday_local(self):
+        from datetime import datetime, timezone
+        # 2026-09-11 is a Friday.
+        now_utc = datetime(2026, 9, 11, 10, 0, 0, tzinfo=timezone.utc)
+        windows = el.compute_display_windows(now_utc)
+        # Monday 2026-09-07 00:00 CEST (+02:00) == 2026-09-06 22:00 UTC.
+        self.assertEqual(
+            windows["this_week_calendar_start_utc"],
+            datetime(2026, 9, 6, 22, 0, 0, tzinfo=timezone.utc),
+        )
+
+    def test_this_month_starts_first_of_month_local(self):
+        from datetime import datetime, timezone
+        now_utc = datetime(2026, 9, 11, 10, 0, 0, tzinfo=timezone.utc)
+        windows = el.compute_display_windows(now_utc)
+        # 2026-09-01 00:00 CEST (+02:00) == 2026-08-31 22:00 UTC.
+        self.assertEqual(
+            windows["this_month_calendar_start_utc"],
+            datetime(2026, 8, 31, 22, 0, 0, tzinfo=timezone.utc),
+        )
 
 
 if __name__ == "__main__":

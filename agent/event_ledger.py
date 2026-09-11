@@ -26,6 +26,7 @@ import threading
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
 
@@ -40,6 +41,17 @@ SCHEMA_VERSION = 2
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SPOOL_PATH = Path(__file__).resolve().parent / "event_spool.jsonl"
 SYNC_LOCK_PATH = Path(__file__).resolve().parent / "event_ledger_sync.lock"
+
+# Canonical storage remains UTC (timestamp_utc, always tz-aware UTC) — never
+# changed. This is ONLY the display/aggregation timezone for user-facing
+# "today"/"this week"/"this month" windows. Real IANA zone (not a fixed
+# +02:00 offset) so Europe/Berlin's DST transitions are handled correctly
+# by the tz database itself rather than by a hand-maintained offset that
+# would silently go wrong twice a year. Overridable via env var for a
+# future multi-user/multi-timezone setup; the Creator currently operates
+# in Europe/Berlin, so that is the honest default, not a guess.
+DISPLAY_TIMEZONE_NAME = os.environ.get("DISPLAY_TIMEZONE", "Europe/Berlin")
+DISPLAY_TZ = ZoneInfo(DISPLAY_TIMEZONE_NAME)
 
 # activity_class values — distinguishes what this platform BUILDS (our own
 # Claude Code development activity) from what this platform DOES at
@@ -564,6 +576,33 @@ def count_events():
         conn.close()
 
 
+def compute_display_windows(now_utc: datetime, tz: ZoneInfo = None) -> dict:
+    """Pure function (no DB) computing real-clock aggregation window
+    boundaries, each returned as a UTC datetime so callers can filter
+    timestamp_utc rows directly. Deliberately separated from
+    get_usage_economics() so DST-transition correctness can be unit
+    tested without a live database.
+
+    Distinguishes ROLLING windows (fixed duration back from now,
+    timezone-independent by construction) from CALENDAR windows
+    (start-of-period boundary in the given IANA display timezone,
+    genuinely DST-sensitive since "start of today/week/month local time"
+    shifts in UTC terms whenever the zone's offset changes).
+    """
+    tz = tz or DISPLAY_TZ
+    now_local = now_utc.astimezone(tz)
+    today_start_local = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
+    week_start_local = today_start_local - timedelta(days=now_local.weekday())  # Monday
+    month_start_local = today_start_local.replace(day=1)
+    return {
+        "this_hour_rolling_start_utc": now_utc - timedelta(hours=1),
+        "last_24_hours_rolling_start_utc": now_utc - timedelta(hours=24),
+        "today_calendar_start_utc": today_start_local.astimezone(timezone.utc),
+        "this_week_calendar_start_utc": week_start_local.astimezone(timezone.utc),
+        "this_month_calendar_start_utc": month_start_local.astimezone(timezone.utc),
+    }
+
+
 def get_usage_economics() -> dict:
     """Real, ledger-backed token/cost economics — the canonical historical
     source (never a hardcoded placeholder). Root-caused real incident
@@ -582,10 +621,13 @@ def get_usage_economics() -> dict:
     Each row's own recorded pricing_version is preserved; a later price
     change never silently rewrites a past run's cost.
 
-    'Today'/'this hour' use UTC calendar boundaries — no per-user
-    timezone is configured anywhere in this system yet, so this is
-    honestly labeled rather than silently assumed correct for a specific
-    timezone."""
+    Canonical storage stays UTC (timestamp_utc). Display windows now
+    distinguish ROLLING (this_hour, last_24_hours — timezone-independent)
+    from CALENDAR (today, this_week, this_month — computed in
+    DISPLAY_TIMEZONE_NAME via compute_display_windows(), DST-safe because
+    it uses the real IANA tz database rather than a hardcoded offset).
+    last_hour_utc/today_utc_calendar_day are kept unchanged for backward
+    compatibility with existing consumers (dashboard.js)."""
     try:
         conn = _connect()
     except Exception as exc:  # noqa: BLE001 - Dashboard must never break because the ledger is unreachable
@@ -614,7 +656,8 @@ def get_usage_economics() -> dict:
 
     now = datetime.now(timezone.utc)
     hour_ago = now - timedelta(hours=1)
-    today_start_utc = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start_utc = now.replace(hour=0, minute=0, second=0, microsecond=0)  # kept for backward compatibility (pre-existing UTC-only key)
+    windows = compute_display_windows(now)
 
     def _aggregate(subset: list) -> dict:
         captured_rows = [r for r in subset if r["captured"] and r["input_tokens"] is not None]
@@ -634,6 +677,12 @@ def get_usage_economics() -> dict:
     hour_rows = [r for r in rows if r["timestamp_utc"] >= hour_ago]
     today_rows = [r for r in rows if r["timestamp_utc"] >= today_start_utc]
 
+    this_hour_rows = [r for r in rows if r["timestamp_utc"] >= windows["this_hour_rolling_start_utc"]]
+    last_24h_rows = [r for r in rows if r["timestamp_utc"] >= windows["last_24_hours_rolling_start_utc"]]
+    today_local_rows = [r for r in rows if r["timestamp_utc"] >= windows["today_calendar_start_utc"]]
+    this_week_local_rows = [r for r in rows if r["timestamp_utc"] >= windows["this_week_calendar_start_utc"]]
+    this_month_local_rows = [r for r in rows if r["timestamp_utc"] >= windows["this_month_calendar_start_utc"]]
+
     lifetime = _aggregate(rows)
     completed_with_cost = [r for r in rows if r["status"] == "COMPLETED" and r["cost_usd"] is not None]
     cost_per_verified_change = (
@@ -647,11 +696,22 @@ def get_usage_economics() -> dict:
         "last_run": {**_aggregate(last_run_rows), "timestamp_utc": rows[0]["timestamp_utc"].isoformat() if rows else None},
         "last_hour_utc": _aggregate(hour_rows),
         "today_utc_calendar_day": _aggregate(today_rows),
+        "display_timezone": DISPLAY_TIMEZONE_NAME,
+        "this_hour": {**_aggregate(this_hour_rows), "window_kind": "ROLLING", "note": "last 60 minutes, timezone-independent by construction"},
+        "last_24_hours": {**_aggregate(last_24h_rows), "window_kind": "ROLLING", "note": "last 24 hours, timezone-independent by construction"},
+        "today": {**_aggregate(today_local_rows), "window_kind": "CALENDAR", "note": f"calendar day in {DISPLAY_TIMEZONE_NAME}, DST-safe via IANA tz database"},
+        "this_week": {**_aggregate(this_week_local_rows), "window_kind": "CALENDAR", "note": f"Monday 00:00 in {DISPLAY_TIMEZONE_NAME} to now, DST-safe"},
+        "this_month": {**_aggregate(this_month_local_rows), "window_kind": "CALENDAR", "note": f"1st of month 00:00 in {DISPLAY_TIMEZONE_NAME} to now, DST-safe"},
         "lifetime": lifetime,
         "cost_per_verified_change_usd": cost_per_verified_change,
         "cost_per_verified_change_note": "INSUFFICIENT DATA" if cost_per_verified_change is None else "lifetime COMPLETED runs with known cost only",
         "pricing_versions_seen": sorted({r["pricing_version"] for r in rows if r["pricing_version"]}),
-        "timezone_note": "last_hour/today use UTC — no per-user timezone is configured in this system yet",
+        "timezone_note": (
+            f"last_hour_utc/today_utc_calendar_day (kept for backward compatibility) are UTC-only. "
+            f"this_hour/last_24_hours are rolling windows (timezone-independent). "
+            f"today/this_week/this_month are calendar windows in {DISPLAY_TIMEZONE_NAME} "
+            f"(IANA tz, DST-safe), the Creator's configured display timezone."
+        ),
     }
 
 
