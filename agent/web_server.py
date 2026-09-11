@@ -42,7 +42,7 @@ from pathlib import Path
 import uvicorn
 from starlette.applications import Starlette
 from starlette.requests import Request
-from starlette.responses import FileResponse, JSONResponse, RedirectResponse
+from starlette.responses import FileResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 from sse_starlette.sse import EventSourceResponse
@@ -54,9 +54,12 @@ import dashboard_data
 import estimation
 import event_ledger
 import execution_tools
+import learn_pdf
+import learn_tree
 import metrics
 import pricing_config
 import risk_policy
+import session_history
 import sessions_data
 import write_tools
 
@@ -1042,7 +1045,41 @@ async def redirect_sessions_to_usage(request: Request):
 
 
 async def learn_page(request: Request):
+    """Serves the Learn SPA shell for the landing page AND every nested
+    recursive topic route (/learn/system-design/databases/...). The path
+    is validated against the real canonical tree here, server-side, so an
+    unknown slug path genuinely returns HTTP 404 rather than a client-side
+    illusion of one — the client-side router (learn.js) then renders the
+    resolved node from the same tree data, never re-deciding validity."""
+    raw_path = request.path_params.get("path", "")
+    segments = [s for s in raw_path.split("/") if s]
+    if segments:
+        node, _breadcrumb = learn_tree.resolve_path(segments)
+        if node is None:
+            return PlainTextResponse(
+                f"404 — no Learn topic found at /learn/{raw_path}", status_code=404,
+            )
     return FileResponse(str(WEB_DIR / "learn.html"))
+
+
+async def get_learn_tree_data(request: Request):
+    return JSONResponse(learn_tree.load_tree())
+
+
+async def get_learn_book_pdf(request: Request):
+    try:
+        pdf_bytes, generated_at, is_fresh = learn_pdf.get_or_generate_pdf()
+    except Exception as exc:  # noqa: BLE001 - never crash the endpoint; report truthfully instead
+        return JSONResponse({"error": f"PDF generation failed: {exc}"}, status_code=500)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": 'attachment; filename="agentic-software-delivery-learn-book.pdf"',
+            "X-Learn-Book-Generated-At": generated_at,
+            "X-Learn-Book-Cache": "fresh" if is_fresh else "cached",
+        },
+    )
 
 
 async def profile_page(request: Request):
@@ -1117,7 +1154,26 @@ async def get_sessions_data(request: Request):
 
 
 async def usage_page(request: Request):
+    """Serves the Usage SPA shell for both the main history view (/usage)
+    and a dedicated session detail route (/usage/session/{id}) — the
+    client-side router (usage.js) decides which to render based on
+    window.location.pathname, fetching real data from the API routes
+    below rather than the server pre-resolving it into the HTML."""
     return FileResponse(str(WEB_DIR / "usage.html"))
+
+
+async def get_session_history(request: Request):
+    limit = int(request.query_params.get("limit", "20"))
+    before = request.query_params.get("before")
+    return JSONResponse(session_history.list_sessions(before_cursor=before, limit=limit))
+
+
+async def get_session_detail(request: Request):
+    session_id = request.path_params["session_id"]
+    detail = session_history.get_session_detail(session_id)
+    if detail is None:
+        return JSONResponse({"error": "no such session"}, status_code=404)
+    return JSONResponse(detail)
 
 
 async def start_dev_session_route(request: Request):
@@ -1153,6 +1209,10 @@ routes = [
     Route("/api/runs/{run_id}", get_run, methods=["GET"]),
     Route("/api/runs/{run_id}/events", stream_events, methods=["GET"]),
     Route("/api/runs/{run_id}/decide", decide, methods=["POST"]),
+    Route("/api/learn/tree", get_learn_tree_data, methods=["GET"]),
+    Route("/api/learn/book.pdf", get_learn_book_pdf, methods=["GET"]),
+    Route("/api/sessions/history", get_session_history, methods=["GET"]),
+    Route("/api/sessions/history/{session_id}", get_session_detail, methods=["GET"]),
     # Five public surfaces (see docs/COMPANY_VISION.md's public product
     # structure decision). "/" and "/workbench" both serve the same public
     # preview page — Workbench is the flagship/default landing surface.
@@ -1160,7 +1220,9 @@ routes = [
     Route("/workbench", workbench_page, methods=["GET"]),
     Route("/dashboard", dashboard_page, methods=["GET"]),
     Route("/usage", usage_page, methods=["GET"]),
+    Route("/usage/session/{session_id}", usage_page, methods=["GET"]),
     Route("/learn", learn_page, methods=["GET"]),
+    Route("/learn/{path:path}", learn_page, methods=["GET"]),
     Route("/profile", profile_page, methods=["GET"]),
     # Retired public terminology — kept as redirects, not dead links.
     Route("/trainer", redirect_trainer_to_workbench, methods=["GET"]),

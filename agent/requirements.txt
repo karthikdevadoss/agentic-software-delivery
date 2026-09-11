@@ -6,3 +6,5 @@ numpy
 requests
 psycopg2-binary
 tzdata
+reportlab
+pypdf

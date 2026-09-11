@@ -51,3 +51,39 @@ main#sessions-main { max-width: 1100px; }
 .ledger-recent { list-style: none; margin: 0.3rem 0 0; padding: 0; font-size: 0.82rem; font-family: "SF Mono", Consolas, monospace; }
 .ledger-recent li { padding: 0.3rem 0; border-bottom: 1px solid var(--border); }
 .ledger-recent li:last-child { border-bottom: none; }
+
+/* Session History panel (P0-B) ------------------------------------------ */
+
+.tag-type.claude_code_dev_session { background: #124a35; color: var(--green); }
+.tag-type.workbench_run { background: #1e3a5f; color: #7db4ff; }
+.tag-type.v2_trial_benchmark { background: #4a3a12; color: var(--amber); }
+
+.hist-scroll-area {
+  max-height: 520px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.6rem;
+  margin: 0.6rem 0;
+}
+.hist-date-group h4 { margin: 0.8rem 0 0.4rem; color: var(--muted); font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.03em; }
+.hist-date-group:first-child h4 { margin-top: 0; }
+
+.hist-session-card {
+  display: block; border: 1px solid var(--border); border-radius: 6px; padding: 0.6rem 0.8rem;
+  margin-bottom: 0.5rem; text-decoration: none; color: var(--text); background: #0d0f14;
+}
+.hist-session-card:hover { border-color: var(--accent); }
+.hist-row-top { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
+.hist-goal { font-size: 0.85rem; margin-top: 0.35rem; }
+.hist-meta { display: flex; flex-wrap: wrap; gap: 0.7rem; color: var(--muted); font-size: 0.78rem; margin-top: 0.3rem; }
+
+.load-more-btn {
+  width: 100%; padding: 0.6rem; background: #1a1d24; color: var(--text); border: 1px solid var(--border);
+  border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 0.85rem;
+}
+.load-more-btn:hover { border-color: var(--accent); }
+.load-more-btn:disabled { opacity: 0.6; cursor: default; }
+
+.back-link { display: inline-block; margin-bottom: 0.75rem; color: var(--accent); text-decoration: none; }
+.back-link:hover { text-decoration: underline; }

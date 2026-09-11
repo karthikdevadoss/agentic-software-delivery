@@ -1,0 +1,2265 @@
+==================== START FULL P0 PROMPT ====================
+
+P0 PRODUCT COMPLETION — TECHNICAL WIKIPEDIA + COMPLETE SESSION HISTORY + PDF BOOK
+
+THIS TASK HAS EXACTLY THREE PRIMARY USER-VISIBLE OUTCOMES.
+
+P0-A:
+TURN LEARN INTO A REAL RECURSIVE TECHNICAL WIKIPEDIA / ENGINEERING BOOK /
+INTERVIEW KNOWLEDGE SYSTEM.
+
+P0-B:
+TURN USAGE INTO A COMPLETE HISTORICAL SESSION SYSTEM WITH TIME, TOKENS, COST,
+VALUE, QUALITY, COMPARISON, AND DRILL-DOWN FOR ALL CAPTURED DATES.
+
+P0-C:
+ADD A DOWNLOADABLE COMPLETE LEARN PDF BOOK GENERATED FROM THE SAME CANONICAL
+LEARN KNOWLEDGE MODEL USED BY THE INTERACTIVE UI.
+
+DO NOT RUN TRIAL #4.
+
+DO NOT ENABLE AGENT TEAMS.
+
+DO NOT CHANGE V2 EXECUTION ARCHITECTURE.
+
+DO NOT START ANOTHER AI EXPERIMENT.
+
+DO NOT START SCRIPTURE RESEARCH.
+
+DO NOT ADD UNRELATED FEATURES.
+
+DO NOT SPEND TIME POLISHING OTHER PAGES.
+
+FINISH THESE THREE P0 OUTCOMES FIRST.
+
+======================================================================
+0. FIRST UNDERSTAND THE ACTUAL CURRENT PRODUCT
+======================================================================
+
+Read the current repository and durable project knowledge before changing code.
+
+At minimum inspect:
+
+- CLAUDE.md
+- docs/CONSTITUTION.md
+- docs/COMPANY_VISION.md
+- docs/PROJECT_STATE.json
+- docs/PROJECT_STATUS.md
+- docs/ROADMAP.md
+- docs/ACTION_QUEUE.json
+- docs/DECISIONS.md
+- docs/LESSONS.md
+- docs/EXPERIENCE_EVIDENCE.md
+- current Learn implementation/data
+- current Usage/session implementation
+- current Dashboard implementation
+- event ledger implementation/schema
+- Claude Code development telemetry
+- runtime telemetry
+- Git history
+- pricing/cost code
+- existing tests
+
+Verify current Git HEAD.
+
+Do NOT assume an old commit from prompt history.
+
+Preserve all existing valid knowledge and historical evidence.
+
+DO NOT DELETE:
+
+- the existing broad Learn concept catalog
+- current deep-dive content
+- historical event data
+- failed runs
+- Git history
+- reconstructed evidence
+- testing regressions
+- session telemetry
+- cost/token evidence
+
+==================================================
+1. CURRENT OBSERVED PRODUCT DEFECTS
+==================================================
+
+The Creator has manually inspected the live public product.
+
+CURRENT LEARN PROBLEM:
+
+/learn currently appears primarily as a long flat page of cards such as:
+
+Embeddings
+Semantic Search
+Vector Database
+Similarity
+Chunking
+etc.
+
+Each card mostly contains:
+
+- topic name
+- short definition
+- status such as IMPLEMENTED / RUNTIME VERIFIED / NOT USED
+
+This is NOT the requested technical Wikipedia.
+
+The Creator cannot currently click through naturally:
+
+System Design
+  -> Databases
+      -> Connection Pools
+          -> HikariCP
+              -> Pool sizing
+                  -> detailed explanation
+
+with a dedicated page containing rich sections.
+
+The existing Deep Dive content is either too small, too low in the page,
+or not exposed through the required navigation experience.
+
+THIS MUST BE CORRECTED.
+
+CURRENT SESSION/USAGE PROBLEM:
+
+/usage currently visibly shows only a small current/today section such as a
+reconstructed project-evidence session.
+
+The Creator does NOT have a clear, complete historical browse experience for all
+captured sessions from previous days.
+
+Current cards also do not consistently show:
+
+- real start time
+- real end time
+- wall-clock duration
+- AI/Claude active time
+- human active time
+- time AI waited for human
+- time human waited for AI where measurable
+- tokens
+- USD cost
+- model/API calls
+- value produced
+- quality rating
+- comparison against previous sessions
+
+THIS MUST BE CORRECTED.
+
+======================================================================
+2. HARD SUCCESS RULE
+======================================================================
+
+THIS TASK IS NOT COMPLETE because:
+
+- backend data exists
+- JSON exists
+- tests pass
+- routes return 200
+- markdown contains detailed content
+- a Deep Dive appears somewhere lower on the same giant page
+
+THIS TASK IS COMPLETE ONLY WHEN THE CREATOR CAN VISIBLY USE THE PUBLIC PRODUCT
+AS DESCRIBED BELOW.
+
+REAL PUBLIC BROWSER ACCEPTANCE IS REQUIRED.
+
+======================================================================
+P0-A — LEARN = RECURSIVE TECHNICAL WIKIPEDIA
+======================================================================
+
+3. CORE MODEL — TOPICS ARE RECURSIVE
+==================================================
+
+A topic is nothing but:
+
+A SET OF MORE TOPICS
++
+DETAILED KNOWLEDGE.
+
+There is no hard distinction between:
+
+TOPIC
+SUBTOPIC
+SUB-SUBTOPIC
+
+Use one recursive knowledge-node model.
+
+Example:
+
+System Design
+  -> Databases
+      -> Connection Management
+          -> Connection Pool
+              -> HikariCP
+                  -> Pool Sizing
+                      -> final detailed explanation
+
+Another:
+
+AI-Assisted Software Engineering
+  -> Human + AI Responsibility
+      -> Approval
+      -> Interruption
+      -> Clarification
+      -> Escalation
+
+Another:
+
+Java
+  -> JVM
+      -> Memory
+          -> Heap
+              -> GC
+                  -> G1
+                      -> detailed knowledge
+
+A node may contain:
+
+- child topics
+- content sections
+- related topics
+- evidence
+- experience classification
+
+Continue decomposing until additional decomposition no longer improves
+understanding.
+
+==================================================
+4. /learn MUST BECOME A LANDING/NAVIGATION PAGE
+==================================================
+
+Do NOT dump the full encyclopedia on /learn.
+
+The landing page should primarily show:
+
+- major domains
+- topic groups
+- counts
+- short descriptions
+- search if practical
+- experience/status signals where useful
+
+Examples of top-level domains:
+
+- System Design
+- Java
+- JVM
+- Spring / Spring Boot
+- APIs / REST / GraphQL
+- Databases
+- Redis / Caching
+- Distributed Systems
+- Security
+- Cloud / AWS
+- CI/CD / Deployment
+- Observability
+- Testing / Quality
+- AI Foundations
+- LLMs
+- Prompt / Context Engineering
+- Embeddings / Retrieval
+- RAG
+- MCP
+- Agents
+- Agentic Software Engineering
+- AI-Assisted Software Engineering
+- Human + AI Software Delivery
+- AI Security / Governance
+- AI Economics
+- NRG / Professional Experience
+- Current Agentic Delivery Project
+
+Preserve the current broad catalog.
+
+Reorganize it.
+
+Do NOT lose it.
+
+==================================================
+5. CLICKING ANY TOPIC MUST OPEN A DEDICATED PAGE
+==================================================
+
+THIS IS NON-NEGOTIABLE.
+
+Click:
+
+Learn
+-> System Design
+
+must open a dedicated page.
+
+Example clean route:
+
+/learn/system-design
+
+Click:
+
+System Design
+-> Databases
+
+opens:
+
+/learn/system-design/databases
+
+Click:
+
+Databases
+-> Connection Pooling
+
+opens:
+
+/learn/system-design/databases/connection-pooling
+
+Use a clean recursive route design.
+
+Do NOT substitute:
+
+- one giant page
+- anchor scrolling
+- only modal popups
+- only expanding the same original card
+
+Each meaningful topic needs a shareable/bookmarkable route.
+
+Browser Back/Forward must work naturally.
+
+==================================================
+6. EACH TOPIC PAGE MUST START WITH CHILD TOPICS
+==================================================
+
+Topic page structure:
+
+TITLE
+
+BREADCRUMB
+
+SHORT OVERVIEW
+
+EXPERIENCE CLASSIFICATION
+
+CHILD TOPICS / SUBTOPICS
+
+RELATED TOPICS
+
+DETAILED SECTIONS
+
+If the topic contains child topics, make them visually clickable first.
+
+The Creator should be able to drill deeper and deeper.
+
+==================================================
+7. DETAILED SECTIONS ON A TOPIC
+==================================================
+
+Every mature topic should support relevant sections such as:
+
+WHAT
+
+WHY
+
+HOW
+
+WHEN
+
+SYSTEM DESIGN
+
+ARCHITECTURE
+
+HOW IT WAS BUILT
+
+DEVELOPMENT STEPS
+
+RUNTIME FLOW
+
+CODE / CLASS / METHOD FLOW
+
+PROCESS / THREAD FLOW
+
+JVM / CPU / MEMORY FLOW
+
+NETWORK FLOW
+
+DATABASE FLOW
+
+CLOUD / DEPLOYMENT FLOW
+
+DECISIONS
+
+ALTERNATIVES
+
+TRADEOFFS
+
+TESTING
+
+RELIABILITY
+
+SECURITY
+
+PERFORMANCE
+
+OBSERVABILITY
+
+SCALING
+
+COST / ECONOMICS
+
+AI ROLE
+
+HUMAN ROLE
+
+HUMAN APPROVAL
+
+INTERRUPTION
+
+CLARIFICATION
+
+ESCALATION
+
+FAILURE MODES
+
+REAL INCIDENTS
+
+LESSONS
+
+BEST PRACTICES
+
+OUR PROFESSIONAL EXPERIENCE
+
+OUR CURRENT PROJECT EXPERIENCE
+
+EVIDENCE
+
+INTERVIEW PREPARATION
+
+Do NOT force irrelevant sections.
+
+No fake filler.
+
+==================================================
+8. SECTIONS MAY THEMSELVES CONTAIN CLICKABLE TOPICS
+==================================================
+
+Example:
+
+Connection Pooling
+
+HOW
+  -> Pool lifecycle
+  -> Borrowing
+  -> Returning
+  -> Pool sizing
+  -> Waiting threads
+  -> Timeout
+  -> DB connection limits
+
+Each of those can itself be clickable.
+
+The UI should support recursive knowledge navigation rather than only accordions
+with paragraphs.
+
+Use accordions/progressive disclosure for detailed text where useful,
+but child concepts that deserve their own knowledge identity should have their
+own routes.
+
+==================================================
+9. FINAL/LEAF TOPICS — REQUIRED DEPTH
+==================================================
+
+At the leaf level, answer thoroughly:
+
+WHAT IS THIS?
+
+WHY DOES IT EXIST?
+
+WHAT BUSINESS/TECHNICAL PROBLEM DOES IT SOLVE?
+
+WHO ARE THE ACTORS?
+
+WHO REQUESTS WHAT?
+
+WHAT PROCESS EXECUTES?
+
+WHAT THREAD EXECUTES?
+
+WHAT HAPPENS IN JVM?
+
+WHAT HAPPENS IN RAM?
+
+WHAT HAPPENS IN CPU?
+
+WHAT HAPPENS ON NETWORK?
+
+WHAT HAPPENS IN DATABASE?
+
+where relevant.
+
+HOW DOES IT WORK STEP BY STEP?
+
+WHEN SHOULD IT BE USED?
+
+WHEN SHOULD IT NOT BE USED?
+
+WHAT ALTERNATIVES EXIST?
+
+WHY CHOOSE THIS OVER THE ALTERNATIVES?
+
+WHAT TRADEOFFS EXIST?
+
+WHAT CAN FAIL?
+
+HOW IS IT TESTED?
+
+HOW IS IT OBSERVED?
+
+HOW IS IT SECURED?
+
+HOW DOES IT SCALE?
+
+WHAT DOES IT COST?
+
+HOW DID WE USE IT IN REAL PROFESSIONAL WORK?
+
+HOW DID WE USE IT IN THIS PROJECT?
+
+WHAT ACTUAL DEVELOPMENT STEPS DID WE TAKE?
+
+WHAT BUGS / FAILURES OCCURRED?
+
+WHAT DECISIONS DID WE MAKE?
+
+WHAT DID WE LEARN?
+
+HOW DO I EXPLAIN THIS IN AN INTERVIEW?
+
+==================================================
+10. SYSTEM DESIGN MUST BE A LARGE FIRST-CLASS DOMAIN
+==================================================
+
+Do NOT leave System Design with only a couple of topics.
+
+Create a real recursive structure from evidence and legitimate technical
+knowledge.
+
+At minimum include:
+
+System Design
+  -> Requirements
+      -> Functional Requirements
+      -> Non-Functional Requirements
+      -> Scale
+      -> Constraints
+      -> SLO/SLA concepts
+      -> Acceptance Criteria
+
+  -> APIs
+      -> REST
+      -> GraphQL
+      -> Contracts
+      -> Validation
+      -> Versioning
+      -> Idempotency
+      -> Error Handling
+
+  -> Networking
+      -> DNS
+      -> TCP
+      -> TLS
+      -> HTTP
+      -> Proxy
+      -> Load Balancer
+      -> Timeout
+      -> Retry
+
+  -> Compute
+      -> Process
+      -> Thread
+      -> CPU
+      -> Memory
+      -> JVM
+      -> Concurrency
+
+  -> Databases
+      -> Relational DB
+      -> Oracle
+      -> JDBC
+      -> JPA
+      -> Transactions
+      -> Indexing
+      -> Connection Pooling
+      -> Replication
+      -> Partitioning
+
+  -> Caching
+      -> Redis
+      -> Cache-Aside
+      -> TTL
+      -> Invalidation
+      -> Consistency
+
+  -> Distributed Systems
+      -> Availability
+      -> Consistency
+      -> Retry
+      -> Idempotency
+      -> Queues
+      -> Kafka
+      -> Event-driven architecture
+
+  -> Security
+      -> Authentication
+      -> Authorization
+      -> JWT
+      -> Spring Security
+      -> Cognito
+      -> FusionAuth
+      -> Secrets
+      -> Least Privilege
+
+  -> Reliability
+      -> Failure Modes
+      -> Retry
+      -> Timeout
+      -> Circuit Breaker
+      -> Deployment Verification
+      -> Rollback
+      -> Recovery
+
+  -> Observability
+      -> Logs
+      -> Metrics
+      -> Traces
+      -> Event Ledger
+      -> Correlation IDs
+
+  -> Cloud / Deployment
+      -> AWS
+      -> Lambda
+      -> API Gateway
+      -> CloudFormation
+      -> Docker
+      -> Jenkins
+      -> CI/CD
+      -> Railway
+      -> Production verification
+
+  -> Performance
+      -> Latency
+      -> Throughput
+      -> Concurrency
+      -> Bottlenecks
+      -> DB connections
+      -> Pool sizing
+      -> Resource cost
+
+Use the Creator's actual NRG/current-project experience heavily where evidence
+supports it.
+
+==================================================
+11. AI-ASSISTED ENGINEERING MUST ALSO BE A LARGE DOMAIN
+==================================================
+
+Create/deepen:
+
+AI-Assisted Software Engineering
+
+including:
+
+- requirements with AI
+- context engineering
+- repository grounding
+- prompting
+- Skills
+- subagents
+- agent loops
+- Acceptance Contracts
+- deterministic gates
+- testing/evals
+- independent QA
+- deployment
+- production verification
+- debugging
+- observability
+- token/cost economics
+- multi-agent systems
+- progressive autonomy
+- continuous learning
+
+==================================================
+12. HUMAN ROLE IN AI-ASSISTED ENGINEERING
+==================================================
+
+This is a MUST-HAVE knowledge branch.
+
+Cover:
+
+HUMAN OWNS
+
+- purpose
+- business intent
+- requirement meaning
+- priorities
+- budget
+- architecture boundaries
+- risk tolerance
+- security authority
+- production authority
+- ethical/dharmic boundaries
+- final accountability
+
+AI MAY EXECUTE WITHIN AUTHORITY
+
+- repository investigation
+- implementation
+- routine refactoring
+- bounded testing
+- evidence collection
+- documentation
+- debugging hypotheses
+- isolated experiments
+
+Explain WHY.
+
+==================================================
+13. APPROVAL / INTERRUPTION / CLARIFICATION / ESCALATION
+==================================================
+
+Make these separate topics.
+
+APPROVAL:
+AI knows authorization is required before action.
+
+INTERRUPTION:
+Human observes drift/risk during autonomous work and stops/reorients it.
+
+CLARIFICATION:
+AI recognizes requirement/context is insufficient and asks.
+
+ESCALATION:
+AI recognizes matter is outside its authority.
+
+For each:
+
+WHAT
+WHY
+HOW
+WHEN
+REAL EXAMPLE
+FAILURE MODE
+BEST PRACTICE
+INTERVIEW ANSWER
+
+Also teach:
+
+WHEN HUMAN APPROVAL SHOULD NOT BE REQUIRED
+
+for low-risk, reversible, bounded, deterministic actions.
+
+Avoid approval fatigue.
+
+==================================================
+14. AI FAILURE / GUESSING KNOWLEDGE
+==================================================
+
+Create a deep branch around:
+
+- ambiguous requirements
+- missing context
+- stale documentation
+- hallucinated APIs
+- wrong framework/version assumptions
+- environment mismatch
+- hidden state
+- deployment races
+- tool-output misunderstanding
+- self-evaluation optimism
+- false completion
+- weak tests
+- long-task drift
+- context loss
+- scope explosion
+- authorization assumptions
+- security blind spots
+- prompt injection
+- incorrect cost estimates
+- multi-agent coordination errors
+
+For each:
+
+WHAT
+WHY
+SYMPTOMS
+DETECTION
+PREVENTION
+WHEN HUMAN INTERVENES
+WHEN AI CAN SELF-CORRECT
+REAL PROJECT EXAMPLE
+INTERVIEW ANSWER
+
+Use actual incidents heavily.
+
+==================================================
+15. HOW IT WAS BUILT / DEVELOPMENT STEPS IS P0
+==================================================
+
+For every meaningful real project feature/topic, reconstruct chronology:
+
+REQUIREMENT
+-> BUSINESS REASON
+-> INITIAL UNDERSTANDING
+-> DESIGN
+-> ARCHITECTURE
+-> ALTERNATIVES
+-> DECISION
+-> IMPLEMENTATION
+-> FILES / CLASSES / FUNCTIONS
+-> BUILD
+-> TEST
+-> FAILURE
+-> OBSERVATION
+-> INVESTIGATION
+-> ROOT CAUSE
+-> CORRECTION
+-> REGRESSION
+-> DEPLOYMENT
+-> PRODUCTION VERIFICATION
+-> HUMAN INTERVENTION
+-> AI INVOLVEMENT
+-> TOKEN/COST
+-> RESULT
+-> LESSON
+-> FUTURE IMPROVEMENT
+-> INTERVIEW STORY
+
+Do NOT clean up history to make us look perfect.
+
+Real failures are valuable knowledge.
+
+==================================================
+16. INTERVIEW MODE
+==================================================
+
+Every mature topic should include:
+
+LIKELY INTERVIEW QUESTION
+
+15-SECOND ANSWER
+
+30-SECOND ANSWER
+
+2-MINUTE ANSWER
+
+DEEP TECHNICAL ANSWER
+
+SYSTEM DESIGN ANSWER
+
+BUSINESS VALUE ANSWER
+
+AI/HUMAN LEADERSHIP ANSWER
+
+REAL INCIDENT STORY
+
+LIKELY FOLLOW-UP QUESTIONS
+
+EVIDENCE
+
+Clearly distinguish:
+
+REAL PROFESSIONAL EXPERIENCE
+
+CURRENT PROJECT EXPERIENCE
+
+LEARNED / UNDERSTOOD
+
+PLANNED / NOT EXPERIENCED
+
+Never fabricate resume claims.
+
+==================================================
+17. EXISTING TOPICS MUST BE MIGRATED, NOT LOST
+==================================================
+
+The existing broad catalog already contains many concepts.
+
+Do not throw it away.
+
+Convert/reuse it in the recursive model.
+
+Status badges such as:
+
+IMPLEMENTED
+RUNTIME VERIFIED
+NOT USED
+LEARNED
+
+should remain useful metadata.
+
+But a status badge is NOT a substitute for knowledge.
+
+Clicking a topic must take the user to its actual page.
+
+==================================================
+18. LEARN METRICS
+==================================================
+
+Do not report a misleading single number.
+
+Track separately:
+
+TOTAL REFERENCE TOPICS
+
+TOTAL DEEP/DETAILED TOPICS
+
+TOTAL DOMAINS
+
+VERIFIED EXPERIENCE TOPICS
+
+PROFESSIONAL EXPERIENCE TOPICS
+
+CURRENT PROJECT EXPERIENCE TOPICS
+
+LEARNED-ONLY TOPICS
+
+KNOWLEDGE CANDIDATES
+
+VERIFIED KNOWLEDGE CANDIDATES
+
+======================================================================
+P0-B — COMPLETE HISTORICAL SESSION SYSTEM
+======================================================================
+
+19. SESSION HISTORY MUST SHOW ALL CAPTURED SESSIONS
+==================================================
+
+Usage must not show only Today/current session.
+
+The user must be able to browse ALL captured historical sessions since telemetry
+began.
+
+Sources may include:
+
+- Claude Code development session events
+- runtime session events
+- Workbench runs
+- reconstructed historical sessions
+- Git-cluster reconstructed sessions where no better evidence exists
+
+But classifications must stay honest.
+
+Do not fabricate missing sessions.
+
+If no data exists for a period:
+show no data.
+
+Do NOT hide old sessions because some fields are incomplete.
+
+Show:
+
+PARTIAL HISTORICAL EVIDENCE
+
+where appropriate.
+
+==================================================
+20. SESSION LIST UX
+==================================================
+
+On /usage create a clear:
+
+SESSION HISTORY
+
+area.
+
+Group by local calendar date.
+
+Example:
+
+Today — Sep 11
+  Session A
+  Session B
+  Session C
+
+Sep 10
+  Session D
+  Session E
+
+Sep 9
+  Session F
+  Session G
+
+etc.
+
+The session-history area should be independently scrollable if appropriate so the
+page does not become infinitely long.
+
+Also provide:
+
+LOAD MORE
+or
+pagination
+
+for older sessions.
+
+The Creator should be able to reach the earliest known session.
+
+Do not impose a fake cutoff.
+
+==================================================
+21. EACH SESSION SUMMARY CARD
+==================================================
+
+Each session row/card should show enough information immediately:
+
+- date
+- start time
+- end time
+- status
+- session/activity type
+- session ID
+- goal/current duty
+- model(s)
+- total wall-clock elapsed
+- AI/Claude active time if measurable
+- human active time if measurable
+- AI waiting for human if measurable
+- human waiting for AI if measurable
+- tokens
+- USD cost
+- API calls
+- verified changes
+- failures
+- human interventions
+- value summary
+- quality score
+- evidence coverage
+- comparison indicator
+
+Do NOT fabricate unavailable timing.
+
+Use labels such as:
+
+NOT CAPTURED
+UNKNOWN
+PARTIAL
+DERIVED
+
+where necessary.
+
+==================================================
+22. START / END / TIME DEFINITIONS
+==================================================
+
+This is important.
+
+Define clearly:
+
+SESSION START
+first real session_start event or earliest reliable event.
+
+SESSION END
+session_end / terminal event when captured.
+
+WALL-CLOCK DURATION
+end - start.
+
+AI ACTIVE TIME
+sum of measured active Claude/model/tool execution intervals when reliable.
+
+AI WAITING FOR HUMAN
+time execution was blocked waiting for approval/input where observable.
+
+HUMAN ACTIVE TIME
+only actual captured human-interaction intervals if available.
+
+HUMAN WAITING FOR AI
+periods after human request while AI is actively processing where derivable from
+timestamps.
+
+IDLE / TAB OPEN TIME
+must NOT automatically count as human active time.
+
+If a component cannot be accurately calculated:
+show UNKNOWN.
+
+Do not guess.
+
+==================================================
+23. CLICK SESSION -> DEDICATED DETAIL PAGE
+==================================================
+
+THIS IS REQUIRED.
+
+Clicking a session must open:
+
+/usage/session/{session_id}
+
+or equivalent stable route.
+
+Do NOT only expand everything in the main list.
+
+Dedicated session page should contain clickable/expandable sections:
+
+OVERVIEW
+
+GOAL / DUTY
+
+START / END / TIMING
+
+AI ACTIVITY
+
+HUMAN ACTIVITY
+
+TIMELINE
+
+RUNS / TASKS
+
+MODEL USAGE
+
+TOKEN USAGE
+
+COST
+
+QUALITY
+
+VALUE
+
+EFFICIENCY
+
+FAILURES / REWORK
+
+HUMAN INTERVENTIONS
+
+COMMITS
+
+DEPLOYMENTS
+
+TESTS / VERIFICATION
+
+EVIDENCE
+
+LEARNING GENERATED
+
+COMPARISON TO OTHER SESSIONS
+
+==================================================
+24. SESSION TOKEN USAGE
+==================================================
+
+Where evidence exists show:
+
+input tokens
+output tokens
+cache read
+cache write/creation
+aggregate tokens
+API call count
+models
+actor/agent role if available
+
+If only aggregate tokens exist:
+
+display:
+
+AGGREGATE ONLY
+
+Do not pretend input/output split exists.
+
+==================================================
+25. SESSION COST
+==================================================
+
+The Creator explicitly requires DOLLAR COST.
+
+If actual provider input/output/cache usage and pricing version exist:
+
+calculate/show:
+
+ACTUAL/CALCULATED FROM ACTUAL USAGE
+
+If only aggregate tokens exist and USD cannot be calculated honestly:
+
+show:
+
+COST UNAVAILABLE
+Reason: aggregate token count does not expose input/output/cache split.
+
+Do not show tokens and silently omit cost.
+
+Every session page must show a Cost section even when result is UNKNOWN.
+
+==================================================
+26. COST CONSISTENCY ACROSS PRODUCT
+==================================================
+
+Audit:
+
+Workbench
+Dashboard
+Usage
+Session list
+Session detail
+Run detail if one exists
+
+The same run/session must not produce contradictory token/cost claims.
+
+Create one canonical read/aggregation path wherever possible.
+
+Event ledger remains canonical historical evidence.
+
+==================================================
+27. SESSION VALUE
+==================================================
+
+Do NOT fabricate monetary business value.
+
+Display evidence-backed dimensions such as:
+
+TECHNICAL VALUE
+
+- verified changes completed
+- bugs corrected
+- regressions created
+- incidents resolved
+- architecture decisions validated
+
+LEARNING VALUE
+
+- knowledge topics added/updated
+- lessons captured
+- interview stories produced
+- failed assumptions corrected
+
+CUSTOMER VALUE
+
+only if customer evidence exists.
+
+OWNER VALUE
+
+only if economic/revenue evidence exists.
+
+The session can have high technical/learning value without invented monetary
+value.
+
+==================================================
+28. SESSION QUALITY
+==================================================
+
+Quality must be explainable.
+
+Possible evidence-backed dimensions:
+
+- goal completion
+- first-pass success
+- verification quality
+- testing quality
+- escaped defects
+- false-success claims
+- retries
+- rework
+- scope discipline
+- architecture churn
+- production stability
+- human intervention
+- human waiting
+- time-to-value
+- token efficiency
+- cost efficiency
+- learning correction
+
+Do not score a dimension without data.
+
+Display:
+
+QUALITY OF SCORED DIMENSIONS
+
+EVIDENCE COVERAGE
+
+EFFICIENCY if available
+
+OVERALL status such as:
+
+HIGH CONFIDENCE
+PARTIAL
+LOW COVERAGE
+
+Do NOT display an unqualified 100/100 when only 33% or 67% of meaningful evidence
+exists.
+
+==================================================
+29. COMPARE EACH SESSION TO PREVIOUS SESSIONS
+==================================================
+
+This is REQUIRED.
+
+Each session should answer:
+
+HOW DID THIS SESSION PERFORM RELATIVE TO OUR OTHER SESSIONS?
+
+Use a sensible comparable cohort.
+
+Examples:
+
+same activity class
+same complexity/risk
+previous N comparable sessions
+previous 7 days
+
+Show comparison basis.
+
+Metrics can include:
+
+QUALITY
+TOKENS
+COST
+WALL TIME
+REWORK
+FAILURES
+FIRST-PASS SUCCESS
+HUMAN INTERVENTION
+VERIFIED VALUE
+
+Examples:
+
+Quality: 82 vs comparable median 67
+Tokens: 18% lower
+Cost: 11% lower
+Rework: better
+Human intervention: lower
+
+If history is insufficient:
+
+INSUFFICIENT COMPARABLE HISTORY
+
+Do not invent statistics from tiny samples.
+
+==================================================
+30. SESSION TIMELINE
+==================================================
+
+Reconstruct observable chronological events:
+
+session started
+user instruction
+requirement
+risk assessment
+agent/subagent
+tool call
+code change
+build
+test
+failure
+human approval
+commit
+deploy
+verify
+completion
+session end
+
+Do NOT expose hidden chain-of-thought.
+
+Only observable engineering events.
+
+==================================================
+31. ALL DATES / HISTORICAL COMPLETENESS
+==================================================
+
+Query actual available history.
+
+Verify the user can navigate:
+
+Today
+Yesterday
+Previous days
+Earliest known telemetry date
+
+If old Claude development sessions exist in event ledger, show them.
+
+If historical runs were reconstructed partially, show them.
+
+Do not create fake sessions to make the UI look full.
+
+Provide a visible indicator such as:
+
+LIVE CAPTURED
+
+PARTIAL RECONSTRUCTION
+
+GIT-RECONSTRUCTED
+
+depending on provenance.
+
+==================================================
+32. SESSION HISTORY PANEL UX
+==================================================
+
+The Creator specifically wants this part usable without endless page scrolling.
+
+Implement a clean session-history panel with:
+
+- grouped dates
+- internal vertical scroll where appropriate
+- reasonable fixed/min/max height
+- Load More / pagination
+- clickable session cards
+- current selection or dedicated page navigation
+
+Do not hide data behind tiny controls.
+
+Desktop usability matters.
+
+==================================================
+33. SESSION -> LEARN CONNECTION
+==================================================
+
+On session detail show:
+
+LEARNING GENERATED
+
+including, where evidence exists:
+
+- Learn topics updated
+- new knowledge candidate
+- incident
+- lesson
+- regression test
+- architecture decision
+- interview story
+
+And Learn Evidence should link back to relevant real session/run where possible.
+
+This completes:
+
+WORK
+-> EVIDENCE
+-> KNOWLEDGE
+-> INTERVIEW PREP
+
+==================================================
+34. DASHBOARD SUMMARY
+==================================================
+
+Dashboard remains summary, not full history.
+
+Show useful rollups:
+
+THIS HOUR
+TODAY
+THIS WEEK
+THIS MONTH
+LIFETIME
+
+including where supported:
+
+- sessions
+- tokens
+- cost
+- verified changes
+- failures
+- quality trend
+- cost per verified change
+
+Detailed history belongs in Usage.
+
+==================================================
+35. TIMEZONE
+==================================================
+
+Canonical storage remains UTC.
+
+Display/group sessions by:
+
+Europe/Berlin
+
+using IANA timezone logic.
+
+Preserve DST-safe behavior.
+
+==================================================
+36. PERFORMANCE
+==================================================
+
+Do not load the full ledger into browser memory.
+
+Use server-side pagination/aggregation.
+
+Avoid N+1 queries.
+
+Add indexes only if evidence shows current query paths need them.
+
+Do not introduce new infrastructure.
+
+======================================================================
+P0-C — DOWNLOADABLE COMPLETE LEARN PDF BOOK
+======================================================================
+
+37. PDF BOOK OVERVIEW
+==================================================
+
+The interactive Learn UI remains the PRIMARY reading experience.
+
+Users should navigate Learn like a technical Wikipedia:
+
+domain
+-> topic
+-> child topic
+-> deeper topic
+-> detailed sections
+
+However, the Creator also wants an OPTIONAL complete downloadable BOOK.
+
+Add a clear button on the Learn landing page:
+
+DOWNLOAD COMPLETE BOOK (PDF)
+
+or an equivalent concise label.
+
+The PDF must NOT be a screenshot of the website.
+
+It must be a properly generated book/document derived from the SAME canonical
+Learn knowledge model used by the interactive UI.
+
+There must be ONE knowledge source.
+
+Do NOT maintain separate handwritten PDF content that can drift from Learn.
+
+Conceptually:
+
+CANONICAL LEARN KNOWLEDGE
+        |
+        +----> Interactive Learn UI
+        |
+        +----> Complete PDF Book
+
+==================================================
+38. PDF BOOK CONTENT
+==================================================
+
+The PDF should contain the complete currently publishable Learn knowledge,
+organized hierarchically.
+
+Suggested structure:
+
+TITLE PAGE
+
+TABLE OF CONTENTS
+
+DOMAIN
+
+  TOPIC
+
+    CHILD TOPIC
+
+      CHILD TOPIC
+
+        WHAT
+        WHY
+        HOW
+        WHEN
+
+        SYSTEM DESIGN
+
+        ARCHITECTURE
+
+        DEVELOPMENT STEPS
+
+        REAL EXPERIENCE
+
+        DECISIONS
+
+        ALTERNATIVES / TRADEOFFS
+
+        TESTING
+
+        FAILURE MODES
+
+        AI ROLE
+
+        HUMAN ROLE
+
+        BEST PRACTICES
+
+        EVIDENCE
+
+        INTERVIEW PREPARATION
+
+Only include sections that actually contain supported content.
+
+Do not fill missing sections with invented text.
+
+==================================================
+39. BOOK ORGANIZATION
+==================================================
+
+Preserve the exact conceptual hierarchy used by Learn.
+
+Examples:
+
+System Design
+  -> Databases
+      -> Connection Pooling
+          -> HikariCP
+              -> Pool Sizing
+
+AI-Assisted Software Engineering
+  -> Human Role
+      -> Approval
+      -> Interruption
+      -> Clarification
+      -> Escalation
+
+Java
+  -> JVM
+      -> Memory
+          -> Heap
+              -> GC
+
+The book should read naturally from broad concept -> detailed concept.
+
+==================================================
+40. BOOK METADATA
+==================================================
+
+Include useful generated metadata such as:
+
+- Book title
+- generated date/time
+- knowledge version / Git commit
+- number of domains
+- number of reference topics
+- number of deep evidence-backed topics
+- experience-classification legend
+
+Include a short disclaimer:
+
+Professional-experience claims are evidence-backed.
+LEARNED/UNDERSTOOD topics are educational knowledge and are not represented as
+professional experience.
+
+==================================================
+41. EVIDENCE / INTERVIEW CONTENT
+==================================================
+
+For evidence-backed topics include:
+
+- actual project/professional experience where supported
+- real incidents
+- real architecture decisions
+- development chronology
+- interview questions/answers
+- evidence references
+
+Do NOT expose:
+
+- secrets
+- private credentials
+- hidden chain-of-thought
+- sensitive private data
+
+Do not include raw internal telemetry that does not improve learning.
+
+==================================================
+42. PDF GENERATION
+==================================================
+
+Choose the simplest robust server-side/document-generation approach compatible
+with the existing platform.
+
+Requirements:
+
+- generated from canonical Learn data
+- correct hierarchy
+- readable typography
+- headings/subheadings
+- page numbers if reasonably supported
+- table of contents
+- sensible page breaks
+- links where practical
+- code/technical text formatted readably
+- no clipped/overflowing text
+- works for a large future knowledge base
+
+Do NOT introduce a heavy service or paid infrastructure merely for PDF generation
+without clear justification.
+
+If a library/dependency is required:
+use a mature, appropriate dependency and document why.
+
+The PDF may be generated on demand or cached/versioned if that is materially
+more efficient.
+
+Do NOT regenerate a huge document unnecessarily on every page view.
+
+==================================================
+43. PDF VERSION / FRESHNESS
+==================================================
+
+The downloaded book must clearly identify the Learn content version / Git commit
+or generated timestamp.
+
+If caching is used:
+
+invalidate/update when relevant Learn knowledge changes.
+
+A user should not unknowingly download a stale book while the UI has newer
+knowledge.
+
+==================================================
+44. PUBLIC UX (PDF BUTTON)
+==================================================
+
+On /learn visibly provide:
+
+DOWNLOAD COMPLETE BOOK (PDF)
+
+The button should:
+
+- clearly indicate PDF
+- initiate a real downloadable PDF
+- not navigate to an HTML imitation
+- handle generation failure truthfully
+- not freeze the Learn UI while generating
+
+Optional if simple:
+
+show:
+Last generated: <timestamp>
+Topics: <count>
+
+Do NOT let this distract from the recursive Learn navigation P0.
+
+IMPORTANT PRIORITY:
+
+PDF is part of the Learn P0 deliverable, but do NOT use it as an excuse to leave
+the interactive recursive Learn UI incomplete.
+
+Priority remains:
+
+1. Recursive Learn navigation/pages/content
+2. Complete Session history/economics/quality
+3. PDF export from the same canonical Learn data
+
+All three must be publicly verified before final completion.
+
+======================================================================
+45. AUTOMATED TESTS — REQUIRED
+======================================================================
+
+LEARN tests must cover:
+
+- /learn landing page
+- domain click
+- dedicated topic route
+- child-topic route
+- deeper recursion
+- breadcrumbs
+- invalid slug -> 404
+- WHAT/WHY/HOW/WHEN rendering
+- development steps
+- system-design branch
+- AI/human responsibility
+- interview section
+- experience classification
+- existing reference topics preserved
+- related-topic links
+
+SESSION tests must cover:
+
+- multiple dates
+- all-date history
+- pagination/load-more
+- earliest known session reachable
+- session detail route
+- start/end time
+- wall-clock duration
+- AI active time when evidence exists
+- waiting-time semantics
+- token aggregation
+- cost calculation
+- aggregate-only cost unavailable state
+- failed sessions included
+- partial sessions included
+- session value
+- quality
+- evidence coverage
+- historical comparison
+- Europe/Berlin grouping
+- session -> Learn linkage
+
+PDF tests must prove:
+
+- PDF endpoint/button exists
+- response is actual PDF MIME type
+- generated PDF is non-empty
+- canonical Learn topics appear in the generated document
+- hierarchy/order is preserved
+- generation excludes secrets
+- empty/missing optional sections do not break generation
+- current knowledge version/timestamp is included
+- download failure returns truthful error
+
+Preserve all existing regressions.
+
+======================================================================
+46. REAL PUBLIC ACCEPTANCE — MANDATORY
+======================================================================
+
+After deployment, verify the REAL public system.
+
+Use actual HTTP/browser capability available.
+
+Do NOT call complete from tests alone.
+
+LEARN ACCEPTANCE:
+
+1. Open /learn.
+2. Confirm it is no longer a giant flat encyclopedia dump.
+3. Click System Design or another top-level domain.
+4. Confirm dedicated URL/page opens.
+5. Click a child topic.
+6. Confirm deeper dedicated route.
+7. Click another child where applicable.
+8. Verify breadcrumbs.
+9. Verify What / Why / How / When.
+10. Verify Development Steps.
+11. Verify System Design section.
+12. Verify real project usage/evidence.
+13. Verify interview section.
+14. Verify browser Back works.
+
+SESSION ACCEPTANCE:
+
+15. Open /usage.
+16. Confirm sessions from multiple dates appear if real historical evidence exists.
+17. Scroll inside session history.
+18. Load More / next page.
+19. Confirm genuinely older records arrive.
+20. Open one older session.
+21. Dedicated session route opens.
+22. Verify start time.
+23. Verify end time or honest UNKNOWN.
+24. Verify wall duration.
+25. Verify AI-active/wait timing if captured.
+26. Verify tokens.
+27. Verify cost or explicit honest reason cost is unavailable.
+28. Verify value.
+29. Verify quality.
+30. Verify evidence coverage.
+31. Verify comparison against prior comparable sessions.
+32. Verify timeline.
+33. Verify learning generated.
+34. Navigate back and open another session.
+
+PDF ACCEPTANCE:
+
+35. Open /learn.
+36. Confirm recursive topic navigation works.
+37. Confirm DOWNLOAD COMPLETE BOOK (PDF) is visible.
+38. Click it.
+39. Confirm an actual PDF is produced/downloaded.
+40. Verify the PDF contains multiple real domains/topics.
+41. Verify detailed WHAT / WHY / HOW / WHEN content.
+42. Verify at least one real Development Steps section.
+43. Verify at least one Interview section.
+44. Verify book metadata/version.
+45. Verify no secret/private data exposure.
+
+Do NOT mark P0-A complete if the interactive Wikipedia works but the PDF button
+does not.
+
+If any required interaction fails:
+
+DO NOT REPORT COMPLETE.
+
+======================================================================
+47. KNOWN BUG REGRESSION
+======================================================================
+
+Re-verify known repaired issues:
+
+- Target Application Loading forever
+- HTTP 200 falsely equaling requested-effect success
+- deployment activation race
+- old deployment falsely verified
+- terminal timing drift
+- no-tests != NOT_APPLICABLE
+- truthful testing states
+- Customer App tests
+- cloud Git workspace precondition
+- timeout != failure
+- NO_CHANGE_NEEDED != failure
+- failed-run consumption counted
+- token/cost dashboard contradiction
+- Europe/Berlin economics
+
+No known regression is acceptable.
+
+======================================================================
+48. BACKLOG / ROADMAP
+======================================================================
+
+Update canonical ACTION_QUEUE/ROADMAP.
+
+Create or update P0 items such as:
+
+LEARN-WIKI-P0
+SESSION-HISTORY-P0
+SESSION-ECONOMICS-P0
+SESSION-QUALITY-P0
+LEARN-PDF-BOOK-P0
+
+Only mark VERIFIED after PUBLIC acceptance.
+
+Do not automatically pull another item.
+
+======================================================================
+49. BUDGET
+======================================================================
+
+Track:
+
+- task model tokens
+- API/model cost where observable
+- wall time
+- human intervention
+- retries/rework
+
+Do not waste tokens on unrelated research or agent experiments.
+
+======================================================================
+50. GIT / DEPLOYMENT
+======================================================================
+
+Use logical commits if useful.
+
+Do not squash meaningful development history.
+
+Run:
+
+- focused tests
+- relevant full regression
+- secret scan
+
+Push origin/master.
+
+Deploy the platform changes.
+
+Fresh fetch.
+
+Verify:
+
+local HEAD == origin/master HEAD
+working tree clean
+stable trainer baseline preserved
+
+======================================================================
+FINAL REPORT
+======================================================================
+
+P0-A — LEARN WIKIPEDIA
+
+PUBLIC URL:
+...
+
+LANDING PAGE NAVIGATION:
+PASS / FAIL
+
+REFERENCE TOPICS PRESERVED:
+count:
+
+DEDICATED TOPIC ROUTES:
+PASS / FAIL
+
+RECURSIVE CHILD TOPICS:
+PASS / FAIL
+
+MAX VERIFIED DRILL-DOWN EXAMPLE:
+Learn -> ... -> ... -> ...
+
+BREADCRUMBS:
+PASS / FAIL
+
+WHAT:
+PASS / FAIL
+
+WHY:
+PASS / FAIL
+
+HOW:
+PASS / FAIL
+
+WHEN:
+PASS / FAIL
+
+SYSTEM DESIGN:
+PASS / FAIL
+
+DEVELOPMENT STEPS:
+PASS / FAIL
+
+AI ROLE / HUMAN ROLE:
+PASS / FAIL
+
+APPROVAL:
+PASS / FAIL
+
+INTERRUPTION:
+PASS / FAIL
+
+CLARIFICATION:
+PASS / FAIL
+
+ESCALATION:
+PASS / FAIL
+
+AI FAILURE MODES:
+PASS / FAIL
+
+REAL PROJECT EXPERIENCE:
+PASS / FAIL
+
+PROFESSIONAL EXPERIENCE CLASSIFICATION:
+PASS / FAIL
+
+INTERVIEW MODE:
+PASS / FAIL
+
+PUBLIC CLICK-THROUGH ACCEPTANCE:
+PASS / FAIL
+
+
+P0-B — SESSIONS
+
+PUBLIC URL:
+...
+
+EARLIEST SESSION DATE AVAILABLE:
+...
+
+LATEST SESSION DATE:
+...
+
+TOTAL SESSIONS FOUND:
+...
+
+LIVE-CAPTURED:
+...
+
+PARTIAL/RECONSTRUCTED:
+...
+
+MULTIPLE-DATE HISTORY:
+PASS / FAIL
+
+SCROLLABLE SESSION HISTORY:
+PASS / FAIL
+
+LOAD MORE / PAGINATION:
+PASS / FAIL
+
+OLDEST SESSION REACHABLE:
+YES / NO
+
+SESSION DETAIL ROUTE:
+PASS / FAIL
+
+START TIME:
+PASS / FAIL
+
+END TIME:
+PASS / FAIL / UNKNOWN WHEN NOT CAPTURED
+
+WALL TIME:
+PASS / FAIL
+
+AI ACTIVE TIME:
+PASS / PARTIAL / UNKNOWN
+
+AI WAITING FOR HUMAN:
+PASS / PARTIAL / UNKNOWN
+
+HUMAN ACTIVE TIME:
+PASS / PARTIAL / UNKNOWN
+
+HUMAN WAITING FOR AI:
+PASS / PARTIAL / UNKNOWN
+
+TOKEN USAGE:
+PASS / FAIL
+
+USD COST:
+PASS / FAIL / HONESTLY UNAVAILABLE
+
+COST EVIDENCE CLASS:
+EXACT / DERIVED / AGGREGATE_ONLY / MIXED
+
+API CALLS:
+PASS / FAIL
+
+MODEL DETAILS:
+PASS / FAIL / PARTIAL
+
+SESSION VALUE:
+PASS / FAIL
+
+SESSION QUALITY:
+PASS / FAIL
+
+EVIDENCE COVERAGE:
+PASS / FAIL
+
+QUALITY VS PREVIOUS SESSIONS:
+PASS / FAIL / INSUFFICIENT HISTORY
+
+FAILED SESSIONS INCLUDED:
+YES / NO
+
+OLDER PARTIAL SESSIONS INCLUDED:
+YES / NO
+
+SESSION TIMELINE:
+PASS / FAIL
+
+SESSION -> LEARN:
+PASS / FAIL
+
+EUROPE/BERLIN GROUPING:
+PASS / FAIL
+
+
+P0-C — LEARN PDF BOOK
+
+PDF BUTTON VISIBLE ON /learn:
+PASS / FAIL
+
+PDF DOWNLOADS SUCCESSFULLY:
+PASS / FAIL
+
+PDF MIME TYPE CORRECT:
+PASS / FAIL
+
+PDF NON-EMPTY:
+PASS / FAIL
+
+PDF GENERATED FROM CANONICAL LEARN DATA (SINGLE SOURCE):
+PASS / FAIL
+
+PDF CONTAINS MULTIPLE REAL DOMAINS/TOPICS:
+PASS / FAIL
+
+PDF HIERARCHY/ORDER PRESERVED:
+PASS / FAIL
+
+PDF WHAT/WHY/HOW/WHEN CONTENT:
+PASS / FAIL
+
+PDF DEVELOPMENT STEPS SECTION PRESENT:
+PASS / FAIL
+
+PDF INTERVIEW SECTION PRESENT:
+PASS / FAIL
+
+PDF METADATA/VERSION/GIT COMMIT INCLUDED:
+PASS / FAIL
+
+PDF EXCLUDES SECRETS/PRIVATE DATA:
+PASS / FAIL
+
+PDF HANDLES MISSING/EMPTY SECTIONS WITHOUT BREAKING:
+PASS / FAIL
+
+PDF GENERATION FAILURE HANDLED TRUTHFULLY:
+PASS / FAIL
+
+PDF PUBLIC ACCEPTANCE (STEPS 35-45):
+PASS / FAIL
+
+
+CROSS-PAGE ECONOMICS
+
+WORKBENCH:
+tokens:
+cost:
+
+DASHBOARD:
+tokens:
+cost:
+
+USAGE:
+tokens:
+cost:
+
+CONTRADICTION FOUND:
+YES / NO
+
+
+REGRESSION
+
+KNOWN OLD BUGS REGRESSED:
+NONE / details
+
+CUSTOMER APP TESTS:
+...
+
+PLATFORM TESTS:
+...
+
+LEARN TESTS:
+...
+
+SESSION TESTS:
+...
+
+PDF TESTS:
+...
+
+
+BUDGET
+
+TASK TOKENS:
+...
+
+TASK API/MODEL COST:
+...
+
+WALL TIME:
+...
+
+HUMAN INTERVENTIONS:
+...
+
+REWORK:
+...
+
+
+GIT
+
+LOCAL HEAD:
+...
+
+REMOTE HEAD:
+...
+
+PUSH VERIFIED:
+YES / NO
+
+WORKING TREE:
+CLEAN / DIRTY
+
+
+OPEN GAPS:
+...
+
+Finish exactly:
+
+P0 LEARN WIKIPEDIA + COMPLETE SESSION HISTORY + PDF BOOK PUBLICLY VERIFIED
+
+or
+
+P0 NOT COMPLETE — EXACT REMAINING BLOCKER: ...
+
+Then STOP.
+
+DO NOT RUN TRIAL #4.
+DO NOT ENABLE AGENT TEAMS.
+DO NOT START ANOTHER FEATURE.
+DO NOT AUTOMATICALLY PULL ANOTHER BACKLOG ITEM.
+
+===================== END FULL P0 PROMPT =====================

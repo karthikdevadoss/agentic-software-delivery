@@ -81,3 +81,55 @@ main { max-width: 1150px; }
 .deep-interview-q { font-weight: 700; margin-bottom: 0.4rem; }
 .deep-evidence { margin-top: 0.6rem; font-size: 0.76rem; color: var(--muted); }
 .deep-evidence code { background: #1a1d24; padding: 0.1rem 0.35rem; border-radius: 4px; }
+
+/* Recursive Learn Wikipedia navigation ---------------------------------- */
+
+.topic-card-link { text-decoration: none; color: inherit; display: block; cursor: pointer; transition: border-color 0.15s; }
+.topic-card-link:hover { border-color: var(--accent, #5b93ff); }
+.domain-grid { margin-top: 1rem; }
+.domain-card .topic-name { font-size: 1rem; }
+
+.breadcrumb { margin-bottom: 0.75rem; font-size: 0.85rem; color: var(--muted); }
+.breadcrumb .crumb { color: var(--muted); text-decoration: none; }
+.breadcrumb a.crumb:hover { color: var(--accent, #5b93ff); text-decoration: underline; }
+.breadcrumb .crumb.current { color: var(--text); font-weight: 600; }
+.breadcrumb .crumb-sep { margin: 0 0.4rem; }
+
+.topic-title { display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; }
+.topic-overview { color: var(--muted); font-size: 0.95rem; line-height: 1.55; margin: 0.4rem 0 1rem; }
+
+.learn-block { margin: 1.2rem 0; }
+.learn-block h3 { margin-bottom: 0.6rem; }
+
+.learn-section-block { margin: 0.9rem 0; padding-bottom: 0.6rem; border-bottom: 1px solid var(--border); }
+.learn-section-block:last-child { border-bottom: none; }
+.learn-section-block h4 {
+  font-size: 0.78rem; letter-spacing: 0.04em; color: var(--accent, #5b93ff);
+  text-transform: uppercase; margin-bottom: 0.35rem;
+}
+.learn-section-block p, .learn-section-block ul { color: var(--muted); font-size: 0.9rem; line-height: 1.55; }
+.learn-section-block ul { margin: 0.2rem 0 0; padding-left: 1.2rem; }
+.learn-section-block.deep-interview { border-left: 2px solid var(--accent, #5b93ff); padding-left: 0.8rem; background: rgba(91,147,255,0.06); }
+
+.related-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.related-chip {
+  display: inline-block; font-size: 0.8rem; padding: 0.25rem 0.6rem; border-radius: 999px;
+  border: 1px solid var(--border); color: var(--text); text-decoration: none; background: #0d0f14;
+}
+.related-chip:hover { border-color: var(--accent, #5b93ff); }
+.related-chip-unresolved { opacity: 0.5; cursor: default; }
+
+.pdf-download-btn {
+  display: inline-block; margin-top: 0.75rem; padding: 0.55rem 1rem;
+  background: var(--accent, #5b93ff); color: #0b0d12; font-weight: 700;
+  border-radius: 6px; text-decoration: none; font-size: 0.9rem;
+}
+.pdf-download-btn:hover { filter: brightness(1.08); }
+
+.search-result {
+  display: block; padding: 0.6rem 0.8rem; border: 1px solid var(--border); border-radius: 6px;
+  margin-bottom: 0.4rem; text-decoration: none; color: var(--text); background: #0d0f14;
+}
+.search-result:hover { border-color: var(--accent, #5b93ff); }
+.search-result-title { font-weight: 700; font-size: 0.9rem; }
+.search-result-path { font-size: 0.75rem; color: var(--muted); margin-top: 0.15rem; }

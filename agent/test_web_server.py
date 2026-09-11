@@ -593,5 +593,97 @@ class PublicRouteRedirectTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.status_code, 308)
 
 
+class LearnRecursiveRouteTestCase(unittest.IsolatedAsyncioTestCase):
+    """P0-A: /learn and every nested topic route are validated against
+    the real canonical tree server-side — an unknown slug path must
+    genuinely 404, not silently serve the SPA shell."""
+
+    def _route_map(self):
+        return {r.path: r for r in ws.routes if hasattr(r, "path")}
+
+    def test_nested_learn_route_is_registered(self):
+        routes = self._route_map()
+        self.assertIn("/learn/{path:path}", routes)
+        self.assertIs(routes["/learn/{path:path}"].endpoint, ws.learn_page)
+
+    async def test_landing_page_has_no_path_param(self):
+        response = await ws.learn_page(mock.Mock(path_params={}))
+        self.assertEqual(response.status_code, 200)
+
+    async def test_valid_deep_path_serves_the_shell(self):
+        response = await ws.learn_page(mock.Mock(path_params={"path": "system-design/databases/connection-pooling"}))
+        self.assertEqual(response.status_code, 200)
+
+    async def test_unknown_path_returns_real_404(self):
+        response = await ws.learn_page(mock.Mock(path_params={"path": "does-not-exist-at-all"}))
+        self.assertEqual(response.status_code, 404)
+
+    async def test_partially_valid_path_still_404s(self):
+        """A valid domain slug followed by a bogus child must still 404
+        -- the whole path is validated, not just its first segment."""
+        response = await ws.learn_page(mock.Mock(path_params={"path": "system-design/does-not-exist"}))
+        self.assertEqual(response.status_code, 404)
+
+    async def test_learn_tree_api_route_returns_real_tree(self):
+        response = await ws.get_learn_tree_data(mock.Mock())
+        body = json.loads(response.body)
+        self.assertIn("domains", body)
+        self.assertGreater(len(body["domains"]), 0)
+
+
+class LearnPdfRouteTestCase(unittest.IsolatedAsyncioTestCase):
+    def test_pdf_route_is_registered(self):
+        routes = {r.path: r for r in ws.routes if hasattr(r, "path")}
+        self.assertIn("/api/learn/book.pdf", routes)
+
+    async def test_pdf_response_has_correct_mime_and_is_non_empty(self):
+        response = await ws.get_learn_book_pdf(mock.Mock())
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.media_type, "application/pdf")
+        self.assertGreater(len(response.body), 1000)
+        self.assertTrue(response.body.startswith(b"%PDF-"))
+
+    async def test_pdf_response_has_download_disposition_and_generated_at(self):
+        response = await ws.get_learn_book_pdf(mock.Mock())
+        self.assertIn("attachment", response.headers["content-disposition"])
+        self.assertIn("X-Learn-Book-Generated-At", response.headers)
+
+
+class SessionHistoryRouteTestCase(unittest.IsolatedAsyncioTestCase):
+    """P0-B: the paginated session-history API and the dedicated session
+    detail route (/usage/session/{id})."""
+
+    def _route_map(self):
+        return {r.path: r for r in ws.routes if hasattr(r, "path")}
+
+    def test_session_history_routes_are_registered(self):
+        routes = self._route_map()
+        self.assertIn("/api/sessions/history", routes)
+        self.assertIn("/api/sessions/history/{session_id}", routes)
+        self.assertIn("/usage/session/{session_id}", routes)
+        self.assertIs(routes["/usage/session/{session_id}"].endpoint, ws.usage_page)
+
+    async def test_session_history_list_returns_reachable_shape(self):
+        response = await ws.get_session_history(mock.Mock(query_params={}))
+        body = json.loads(response.body)
+        self.assertEqual(body["status"], "REACHABLE")
+        self.assertIn("sessions", body)
+
+    async def test_session_history_list_respects_limit_param(self):
+        response = await ws.get_session_history(mock.Mock(query_params={"limit": "3"}))
+        body = json.loads(response.body)
+        self.assertLessEqual(len(body["sessions"]), 3)
+
+    async def test_session_detail_route_returns_404_for_unknown_id(self):
+        response = await ws.get_session_detail(mock.Mock(path_params={"session_id": "no-such-session-xyz"}))
+        self.assertEqual(response.status_code, 404)
+
+    async def test_session_detail_route_returns_real_detail_for_known_id(self):
+        response = await ws.get_session_detail(mock.Mock(path_params={"session_id": "trainer-4733d1c0"}))
+        self.assertEqual(response.status_code, 200)
+        body = json.loads(response.body)
+        self.assertIn("timeline", body)
+
+
 if __name__ == "__main__":
     unittest.main()
