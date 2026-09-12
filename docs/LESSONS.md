@@ -401,3 +401,46 @@ surprising verified behavior would otherwise get rediscovered later.
   isn't declared." Always check for `<meta name="viewport"
   content="width=device-width, initial-scale=1">` first, before writing
   or debugging any responsive CSS.
+
+- **A named HTML entity inside reportlab `Paragraph` markup has no
+  guaranteed PDF ToUnicode mapping — it can render visually correct while
+  extracting as garbage.** Real defect found by an independent qa-evaluator
+  pass on the Master Interview Book PDF (2026-09-12): `learn_pdf.py` used
+  `&bull;`/`&middot;` for list bullets. Both displayed as the correct glyph
+  when the PDF was opened visually, but text extraction was
+  library-dependent: PyMuPDF decoded them as U+FFFD (165 occurrences),
+  pypdf as a DEL control character — and the project's own existing
+  mojibake regression test (`assertNotIn("�", text)`) missed it
+  entirely because it only checked pypdf's specific decode path for one
+  specific glyph. Fix: use the real literal Unicode character (`•`, `·`)
+  directly in the Python source instead of a named entity — reportlab maps
+  a literal character correctly regardless of which library later extracts
+  it. Future rule: in any reportlab/PDF-generation code, only the three
+  characters produced by an escaping function's own `&amp;`/`&lt;`/`&gt;`
+  substitution should ever appear as named entities in markup passed to
+  `Paragraph` — every other special character should be a real literal
+  Unicode character, never a named entity, and a visual "it displays fine"
+  check is not sufficient proof of correct extraction; verify with at
+  least one independent text-extraction library, not just the one already
+  used by the existing test suite. A cheap, durable guard for this class of
+  bug is a static source-scan test asserting no other named entity appears
+  in the generator's own source at all (see
+  `agent/test_learn_pdf.py::test_no_named_html_entities_other_than_the_escaping_triad`).
+
+- **A long content-generation task should checkpoint-commit-and-push
+  BEFORE running expensive verification (QA/regression), not after —**
+  the checkpoint's own bar is "internally consistent and deterministically
+  regenerable," not "fully QA'd." Real operational lesson from resuming
+  the Master Interview Book V1 task after a prior session hit its usage
+  limit mid-task: a large body of genuinely good, mostly-finished work
+  (interview_topics.py + 13 new domains) sat uncommitted across a session
+  boundary purely because the previous session was still mid-verification
+  when it ran out of quota. This session's explicit instruction (verify
+  minimally -> commit+push -> THEN do the expensive QA/regression/deploy
+  work) meant a second interruption at any later point could not have lost
+  that work again. Future rule: on any task expected to span a real risk
+  of a session/quota boundary, checkpoint (commit + push + independently
+  verify `git fetch` shows local HEAD == origin) as soon as the work is
+  internally consistent and minimally test-passing — treat the full
+  independent-QA/deploy pass as a separate, later step that a checkpoint
+  should never be blocked on.

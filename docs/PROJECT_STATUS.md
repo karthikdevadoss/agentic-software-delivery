@@ -712,3 +712,46 @@ rule from the incident above: the real producer emitted events and the
 durable store has them, confirmed independently rather than assumed from
 passing tests. See `verification_state.claude_code_hooks_config_incident_fix`
 in `docs/PROJECT_STATE.json` for the full evidence trail.
+
+# Current Reality (2026-09-12): Master Interview Book V1
+
+**Learn now includes a complete, evidence-honest interview-preparation
+book**, resumed and finished after a prior session hit its usage limit
+mid-task. `agent/interview_topics.py` adds 23 new deep topics (Java
+concurrency/JVM/Spring/DB/REST/microservices/Redis/Kafka/resilience/
+security/testing/observability/deployment/System-Design-methodology/
+CAP-PACELC/AI-context-engineering/AI-agent-tool-calling) using the full
+17-part schema, plus 13 new broad top-level domains (Java Core through
+Architecture & Delivery Leadership) — merged into the same canonical
+`agent/web/learn-tree.json` used by both the interactive Learn UI and the
+PDF book generator (396 reference topics, 45 deep topics, 31 domains, 21
+INTERVIEW_ESSENTIAL topics). Zero fabricated `REAL_PROFESSIONAL_EXPERIENCE`
+claims anywhere — independently confirmed. The PDF book
+(`agent/learn_pdf.py`) is now 185 A4 pages with front matter (reading
+paths, domain index, label legend) and sequential page numbers on every
+page.
+
+**Checkpointed before expensive verification, per this task's own
+explicit operational instruction** (see the new "checkpoint before QA"
+lesson in `docs/LESSONS.md`): committed and pushed (`16e033b`) as soon as
+one full regression pass was green, independently re-verified via a fresh
+`git fetch`, before running the slower independent-QA/deploy steps.
+
+**Independent QA (native `qa-evaluator` subagent, not this session's own
+claims) returned PASS** on all 8 acceptance criteria, and found one real
+defect no existing test caught: `agent/learn_pdf.py` used named HTML
+entities (`&bull;`, `&middot;`) with no guaranteed PDF ToUnicode mapping —
+visually correct but decoding as replacement/control characters under
+different extraction libraries (165 occurrences). Fixed (`7d9c329`) by
+using real literal Unicode characters instead, with a new static
+regression test that immediately caught a second occurrence before it
+shipped.
+
+**Deployed and independently re-verified live** (not from Railway CLI
+"Online" status alone): the live `/learn-tree.json` metrics match exactly,
+new routes (`/learn/java-core`, `/learn/system-design/cap-theorem-pacelc`)
+return HTTP 200, the live-generated PDF was re-downloaded and re-inspected
+fresh (185 pages, zero mojibake), and all 5 public surfaces + control
+plane + the Customer App remain HTTP 200 with zero regression. See
+`verification_state.master_interview_book_v1` in `docs/PROJECT_STATE.json`
+for the full evidence trail.
