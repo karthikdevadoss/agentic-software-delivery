@@ -444,3 +444,36 @@ surprising verified behavior would otherwise get rediscovered later.
   internally consistent and minimally test-passing — treat the full
   independent-QA/deploy pass as a separate, later step that a checkpoint
   should never be blocked on.
+
+- **A deployed container's own local git/filesystem state is not
+  authoritative for "does the real deployed service need to change" —
+  only the real deployed service's own live response is.** Real incident
+  (JOB-SEARCH P0, 2026-09-12), found twice in the same feature before it
+  shipped correctly: a "Reset Demo" operation first tried reading a
+  canonical baseline from a git tag, which failed live because the
+  deployed platform-backend container's Dockerfile deliberately
+  `git init`s a fresh, disconnected local repo with no history/tags at
+  all (a decision made in an earlier incident, before this feature
+  existed). Fixed to read a baseline from a plain file — but the SAME
+  container's own local *file* was then used as the go/no-go signal for
+  whether a reset was needed, and this was independently proven false
+  live: redeploying the platform-backend rebuilds that container fresh
+  from this repo's own checkout (`COPY . .`), silently resetting the
+  CONTAINER's local file to baseline, while the ACTUALLY DEPLOYED target
+  service (a separate Railway service, only updated by its own explicit
+  deploy command) still served the old, unreset content. A `git commit`
+  in that same container then genuinely had "nothing to commit" — correct
+  about that container's own repo, wrong as a signal that no action was
+  needed. Both bugs were caught only by independently `curl`-ing the real
+  live target service, never by trusting the operation's own report.
+  Fix: any go/no-go or already-done check for a deployed target must ask
+  that target directly (an HTTP fetch of its real content, a real status
+  check) — never infer it from the state of the machine/container running
+  the orchestration code, even when that state seems obviously related.
+  Future rule: whenever an orchestrator and its deploy target are
+  different processes/services with independently rebuildable state
+  (a redeployable container driving a separately-redeployable app), any
+  "is this already correct" decision must be answered by the target's own
+  live behavior, and a "nothing to do" branch that skips deploy needs the
+  same live-target check as the "did it work" branch that follows deploy
+  — not a shortcut based on the orchestrator's own local state.
