@@ -1,34 +1,213 @@
-main { max-width: 800px; }
+/* Profile — the resume-facing landing page. Reuses style.css's shared
+   design tokens (--bg/--panel/--border/--text/--muted/--accent/--green)
+   so Profile stays visually one product with Workbench/Dashboard/Usage,
+   rather than a separate marketing skin. */
 
-.profile-headline {
-  font-size: 1.05rem;
-  font-weight: 600;
-  color: var(--text);
-  margin-bottom: 0.75rem;
+.profile-main { max-width: 1080px; }
+
+/* ---------------------------------------------------------------- HERO */
+
+.hero {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 2rem;
+  align-items: start;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2.25rem 2rem;
+  margin-bottom: 1.5rem;
+  position: relative;
+  overflow: hidden;
 }
-
-.evidence-list { list-style: none; margin: 0; padding: 0; }
-.evidence-list li {
-  padding: 0.55rem 0;
-  border-bottom: 1px solid var(--border);
-  font-size: 0.92rem;
-  line-height: 1.55;
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(700px 260px at 90% -20%, rgba(91,147,255,0.14), transparent),
+              radial-gradient(500px 220px at -10% 110%, rgba(62,207,142,0.08), transparent);
+  pointer-events: none;
 }
-.evidence-list li:last-child { border-bottom: none; }
+.hero-text, .hero-stats { position: relative; z-index: 1; }
 
-.ev-tag {
-  display: inline-block;
-  margin-left: 0.4rem;
-  font-size: 0.68rem;
+.hero-name {
+  margin: 0 0 0.3rem;
+  font-size: 2.1rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  background: linear-gradient(135deg, var(--text) 55%, var(--muted));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.hero-role {
+  margin: 0 0 0.2rem;
+  font-size: 1.15rem;
   font-weight: 700;
-  padding: 0.12rem 0.5rem;
-  border-radius: 999px;
-  background: #124a35;
+  color: var(--accent);
+}
+.hero-stack {
+  margin: 0 0 0.15rem;
+  font-size: 0.92rem;
+  color: var(--text);
+  font-weight: 500;
+}
+.hero-focus {
+  margin: 0 0 1rem;
+  font-size: 0.8rem;
   color: var(--green);
-  vertical-align: middle;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.hero-summary {
+  margin: 0 0 1.35rem;
+  font-size: 0.96rem;
+  line-height: 1.65;
+  color: var(--text);
+  max-width: 620px;
 }
 
-.link-list { list-style: none; margin: 0; padding: 0; }
-.link-list li { padding: 0.4rem 0; font-size: 0.92rem; }
-.link-list a { color: var(--accent); text-decoration: none; font-weight: 600; }
-.link-list a:hover { text-decoration: underline; }
+.hero-ctas { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem; }
+.cta-primary, .cta-secondary, .cta-tertiary {
+  display: inline-block;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 0.65rem 1.3rem;
+  border-radius: 8px;
+  transition: filter .15s, background .15s, border-color .15s, transform .1s;
+}
+.cta-primary {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 0 0 1px rgba(91,147,255,0.35), 0 6px 18px rgba(91,147,255,0.25);
+}
+.cta-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.cta-secondary {
+  background: var(--accent-soft);
+  color: #bcd1ff;
+  border: 1px solid rgba(91,147,255,0.4);
+}
+.cta-secondary:hover { background: rgba(91,147,255,0.28); }
+.cta-tertiary {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+.cta-tertiary:hover { color: var(--text); border-color: rgba(255,255,255,0.25); }
+
+.hero-links { display: flex; gap: 1.25rem; }
+.hero-links a { color: var(--muted); font-size: 0.85rem; font-weight: 600; text-decoration: none; }
+.hero-links a:hover { color: var(--text); text-decoration: underline; }
+
+.hero-stats { display: flex; flex-direction: column; gap: 0.75rem; }
+.stat-tile {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+}
+.stat-num {
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, var(--text), var(--muted));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.stat-label { font-size: 0.75rem; color: var(--muted); margin-top: 0.2rem; line-height: 1.4; }
+.stat-sub { color: #5c6478; }
+
+@media (max-width: 760px) {
+  .hero { grid-template-columns: 1fr; padding: 1.5rem 1.25rem; }
+  .hero-name { font-size: 1.6rem; }
+}
+
+/* --------------------------------------------------------- EXPERIENCE */
+
+.exp-grid { display: flex; flex-direction: column; }
+.exp-row {
+  display: grid;
+  grid-template-columns: 180px 140px 1fr;
+  gap: 1rem;
+  align-items: start;
+  padding: 0.8rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.exp-row:last-child { border-bottom: none; }
+.exp-co { font-weight: 700; font-size: 0.94rem; color: var(--text); }
+.exp-loc { font-size: 0.82rem; color: var(--muted); }
+.exp-desc { font-size: 0.88rem; color: var(--text); line-height: 1.5; }
+.exp-tags { grid-column: 3; display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.35rem; }
+.exp-tags span {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #9fb3d9;
+  background: rgba(91,147,255,0.1);
+  border: 1px solid rgba(91,147,255,0.22);
+  border-radius: 5px;
+  padding: 0.15rem 0.5rem;
+}
+
+@media (max-width: 640px) {
+  .exp-row { grid-template-columns: 1fr; gap: 0.25rem; }
+  .exp-tags { grid-column: 1; }
+}
+
+/* ----------------------------------------------------------- STRENGTHS */
+
+.strengths-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.9rem;
+}
+.strength-card {
+  background: rgba(255,255,255,0.025);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem 1.1rem;
+}
+.strength-card.ai {
+  border-color: rgba(62,207,142,0.3);
+  background: rgba(62,207,142,0.04);
+  grid-column: span 3;
+}
+.strength-title { font-size: 0.88rem; font-weight: 700; color: var(--text); margin-bottom: 0.4rem; }
+.strength-tags { font-size: 0.8rem; color: var(--muted); line-height: 1.6; }
+.strength-evidence { margin-top: 0.5rem; }
+.strength-evidence a { color: var(--green); font-size: 0.82rem; font-weight: 600; text-decoration: none; }
+.strength-evidence a:hover { text-decoration: underline; }
+
+@media (max-width: 760px) {
+  .strengths-grid { grid-template-columns: 1fr 1fr; }
+  .strength-card.ai { grid-column: span 2; }
+}
+@media (max-width: 500px) {
+  .strengths-grid { grid-template-columns: 1fr; }
+  .strength-card.ai { grid-column: span 1; }
+}
+
+/* ------------------------------------------------------------ FEATURED */
+
+.panel.featured {
+  border-color: rgba(91,147,255,0.3);
+  background: linear-gradient(160deg, rgba(91,147,255,0.06), var(--panel) 60%);
+}
+.featured-title { font-size: 1.25rem; font-weight: 800; color: var(--text); margin-bottom: 0.6rem; }
+.featured-desc { font-size: 0.94rem; line-height: 1.65; color: var(--text); max-width: 720px; margin-bottom: 1.1rem; }
+.featured-ctas { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+
+/* ---------------------------------------------------------- PHILOSOPHY */
+
+.panel.philosophy { border-left: 3px solid var(--green); }
+.philosophy-line {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 0.6rem;
+  line-height: 1.4;
+}
+.philosophy p:not(.philosophy-line) { font-size: 0.9rem; color: var(--muted); line-height: 1.65; margin: 0; }
