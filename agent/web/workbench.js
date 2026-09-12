@@ -63,6 +63,7 @@ const WORKFLOW_STAGES = [
   { key: "BUILDING", label: "Building (compile)" },
   { key: "TESTING", label: "Testing" },
   { key: "COMMITTING", label: "Committing" },
+  { key: "PUSHING", label: "Pushing to GitHub" },
   { key: "DEPLOYING", label: "Deploying" },
   { key: "VERIFYING PRODUCTION", label: "Verifying production" },
 ];
@@ -412,6 +413,11 @@ function applyEvent(evt) {
       run.commitInfo = evt;
       deployBody.innerHTML = `<div class="kv"><span class="k">Production commit</span><span class="v"><code>${esc(evt.sha)}</code></span></div><div class="kv"><span class="k">Changed file</span><span class="v"><code>${esc(evt.path)}</code></span></div>`;
       break;
+    case "push":
+      deployPanel.hidden = false;
+      run.pushInfo = evt;
+      deployBody.innerHTML += `<div class="kv"><span class="k">Pushed to GitHub</span><span class="v">${evt.ok ? '<span style="color:var(--green)">yes — origin/master</span>' : '<span style="color:var(--amber)">no (deploy continues from local working tree)</span>'}</span></div>`;
+      break;
     case "deployment": {
       deployPanel.hidden = false;
       run.deploymentInfo = evt;
@@ -579,7 +585,7 @@ function subscribeToRun(runId) {
     try { applyEventIfNew(JSON.parse(e.data)); } catch (_) { /* malformed frame, ignore */ }
   };
   ["risk_assessment", "stage", "no_change_needed", "tool_call", "tool_result",
-   "approval_decision", "commit", "deployment", "final_result", "error", "usage_summary"]
+   "approval_decision", "commit", "push", "deployment", "final_result", "error", "usage_summary"]
     .forEach(type => eventSource.addEventListener(type, onMessage));
 }
 
@@ -703,6 +709,14 @@ async function submit() {
     body: JSON.stringify({ requirement }),
   });
   const data = await resp.json();
+  if (data.busy) {
+    assessmentPanel.hidden = false;
+    assessmentBody.innerHTML = `<div class="kv"><span class="k">Status</span><span class="v"><strong style="color:var(--amber)">BUSY</strong></span></div><p class="hint">${esc(data.message || "A demo deployment is currently running. Try again shortly.")}</p>`;
+    setStatus("IDLE");
+    submitBtn.disabled = false;
+    runStatusPanel.hidden = true;
+    return;
+  }
   if (data.blocked) {
     renderAssessment(data.assessment, true);
     setStatus("IDLE");

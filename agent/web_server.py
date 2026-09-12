@@ -144,6 +144,47 @@ API_KEY = None
 RUNS = {}
 _CURRENT_RUN_ID = None  # process-global: metrics.py is single-run-at-a-time (see its own docstring)
 
+# JOB-SEARCH P0 (2026-09-12): the public trainer demo can trigger a real
+# git commit + push + Railway deploy against the real Customer App. Before
+# this, nothing prevented two simultaneous public submissions from racing
+# on the same repository working tree and the same deployment — a real
+# safety gap, not a hypothetical one, once /workbench became recruiter-
+# reachable. _RUN_LOCK guards a synchronous reserve-then-release of
+# _CURRENT_RUN_ID so at most one trainer (or control-plane) run can ever
+# be in flight at a time; the slot is reserved in the request handler
+# itself, before the background thread even starts, closing the race
+# window a thread-internal-only check would leave open.
+_RUN_LOCK = threading.Lock()
+# A short mandatory gap after a trainer run finishes, before the next one
+# may start — cheap, deterministic abuse/cost protection (a recruiter
+# rapid-double-clicking submit, or a scripted retry loop) additional to
+# the one-at-a-time lock above, which only prevents true overlap.
+TRAINER_COOLDOWN_SECONDS = 20
+_LAST_TRAINER_RUN_FINISHED_AT = 0.0
+# Hard input-length cap, checked BEFORE risk_policy.classify's word-based
+# heuristic — defense in depth against a recruiter (or a scripted abuser)
+# pasting a very large block of text to spike model-call cost before the
+# complexity heuristic would otherwise catch it.
+TRAINER_REQUIREMENT_MAX_CHARS = 400
+
+
+def _reserve_run_slot(run_id: str) -> bool:
+    """Atomically reserve the single global run slot. Returns True if this
+    call reserved it (caller must eventually clear it), False if another
+    run is already in flight."""
+    global _CURRENT_RUN_ID
+    with _RUN_LOCK:
+        if _CURRENT_RUN_ID is not None:
+            return False
+        _CURRENT_RUN_ID = run_id
+        return True
+
+
+def _release_run_slot() -> None:
+    global _CURRENT_RUN_ID
+    with _RUN_LOCK:
+        _CURRENT_RUN_ID = None
+
 
 def _run_source(run_id: str) -> str:
     """Honest provenance tag derived from this codebase's own existing
@@ -507,7 +548,7 @@ def _run_agent_thread(run: Run) -> None:
         run.emit("error", {"message": str(exc)})
     finally:
         execution_tools.set_approval_prompt(execution_tools._default_approval_prompt)
-        _CURRENT_RUN_ID = None
+        _release_run_slot()
         _persist_run_history(run, usage_start_index=usage_start_index)
 
 
@@ -744,17 +785,27 @@ def _determine_testing_state(changed_path, test_events: list) -> dict:
             "state": "PASSED" if passed else "FAILED",
             "reason": f"run_controlled_tests was actually invoked ({len(test_events)} result(s))",
         }
-    has_any_test_file = _tests_applicable()
+    # Real recruiter-facing defect (JOB-SEARCH P0, 2026-09-12): this check
+    # must be decided from the CHANGED FILE's own test surface, never from
+    # "does the project have ANY test file anywhere." The previous version
+    # checked has_any_test_file before is_static_resource, so a genuine
+    # static-only UI change (e.g. a heading/footer text edit) was labeled
+    # SKIPPED — and therefore BLOCKED commit — the moment the Customer app
+    # had ANY Java test file at all, even though that static resource can
+    # never have Java tests targeting it. Static resources are decided
+    # first and unconditionally: Maven's test phase has no mechanism to
+    # exercise HTML/JS content regardless of what else exists in the repo.
     is_static_resource = bool(changed_path) and changed_path.startswith("app/src/main/resources/static/")
-    if has_any_test_file:
-        return {
-            "state": "SKIPPED",
-            "reason": "app/src/test/java has real test file(s), but none were run for this change",
-        }
     if is_static_resource:
         return {
             "state": "NOT_APPLICABLE",
             "reason": f"{changed_path} is a static resource; Maven's test phase has no mechanism to exercise HTML/JS content directly (see production-verify's HTTP content check for this class of change instead)",
+        }
+    has_any_test_file = _tests_applicable()
+    if has_any_test_file:
+        return {
+            "state": "SKIPPED",
+            "reason": "app/src/test/java has real test file(s), but none were run for this Java source change",
         }
     return {
         "state": "NOT_CONFIGURED",
@@ -763,11 +814,13 @@ def _determine_testing_state(changed_path, test_events: list) -> dict:
 
 
 def _run_trainer_thread(run: "Run", requirement: str, assessment: dict) -> None:
-    global _CURRENT_RUN_ID
+    # NOTE: the run slot is reserved synchronously by start_trainer_run()
+    # BEFORE this thread is even started (see _reserve_run_slot) — this
+    # thread only ever runs once that reservation already succeeded, and
+    # is responsible for releasing it in `finally` below.
     run.trainer_changed_path = None
     execution_tools.set_approval_prompt(_trainer_approval_prompt_factory(run))
     baseline_status, baseline_html = _fetch_public_app()
-    _CURRENT_RUN_ID = run.id
 
     try:
         workspace = _check_repository_workspace_ready()
@@ -860,6 +913,22 @@ def _run_trainer_thread(run: "Run", requirement: str, assessment: dict) -> None:
         production_commit = sha_out.strip()
         run.emit("commit", {"sha": production_commit, "path": run.trainer_changed_path})
 
+        # PUSH — a local commit is not durably saved (see docs/CLAUDE.md's
+        # durable-state rules); a real recruiter demo must not leave its
+        # own commit unpushed, dependent on some later, unrelated session
+        # to notice and push it. Deliberately non-fatal to the deploy
+        # itself: Railway's `up` below deploys from the local working
+        # tree, not from GitHub, so a transient push failure (network,
+        # auth) should not silently discard an otherwise-good, already
+        # deployed and verified demo change — but it is always reported
+        # honestly, never silently swallowed or claimed to have happened.
+        run.status = "PUSHING"
+        run.emit("stage", {"stage": "PUSHING"})
+        push_ok, push_out = _run_controlled(["git", "push", "origin", "master"], REPO_ROOT, 60)
+        run.emit("push", {"ok": push_ok, "output": push_out[-400:] if not push_ok else None})
+        if not push_ok:
+            run.emit("error", {"message": f"git push to origin failed (deploy continues regardless — Railway deploys from the local working tree, not GitHub): {push_out[-400:]}"})
+
         # DEPLOY
         run.status = "DEPLOYING"
         run.emit("stage", {"stage": "DEPLOYING"})
@@ -932,7 +1001,9 @@ def _run_trainer_thread(run: "Run", requirement: str, assessment: dict) -> None:
         run.emit("stage", {"stage": "FAILED"})
     finally:
         execution_tools.set_approval_prompt(execution_tools._default_approval_prompt)
-        _CURRENT_RUN_ID = None
+        _release_run_slot()
+        global _LAST_TRAINER_RUN_FINISHED_AT
+        _LAST_TRAINER_RUN_FINISHED_AT = time.monotonic()
         # ACTUAL usage — emitted for every terminal outcome (COMPLETED,
         # FAILED, NO_CHANGE_NEEDED, DEPLOYMENT_STATUS_UNKNOWN) as long as at
         # least one real API call happened in this run's window, never only
@@ -964,6 +1035,11 @@ async def start_run(request: Request):
         return JSONResponse({"error": "requirement is required"}, status_code=400)
 
     run_id = uuid.uuid4().hex[:8]
+    if not _reserve_run_slot(run_id):
+        return JSONResponse({
+            "busy": True,
+            "message": "Another run is currently in progress. Try again shortly.",
+        }, status_code=409)
     run = Run(run_id, requirement)
     RUNS[run_id] = run
 
@@ -1004,6 +1080,32 @@ async def start_trainer_run(request: Request):
     if not requirement:
         return JSONResponse({"error": "requirement is required"}, status_code=400)
 
+    # Hard input-length cap, checked before any classification/model call —
+    # cheap defense in depth against a scripted or pasted large input
+    # spiking cost before risk_policy's own word-count heuristic would
+    # otherwise catch it.
+    if len(requirement) > TRAINER_REQUIREMENT_MAX_CHARS:
+        return JSONResponse({
+            "blocked": True,
+            "assessment": {
+                "complexity": "N/A", "risk": "HIGH", "decision": "blocked",
+                "reason": f"Requirement exceeds the demo's {TRAINER_REQUIREMENT_MAX_CHARS}-character limit.",
+                "matched_keywords": [], "suggested_alternatives": risk_policy.SUGGESTED_ALTERNATIVES,
+            },
+        })
+
+    # Cooldown: a short mandatory gap after the previous trainer run
+    # finished, before another may start — cheap abuse/cost protection
+    # distinct from the one-at-a-time lock below (which only prevents
+    # true overlap, not rapid-fire sequential submissions).
+    cooldown_remaining = TRAINER_COOLDOWN_SECONDS - (time.monotonic() - _LAST_TRAINER_RUN_FINISHED_AT)
+    if cooldown_remaining > 0:
+        return JSONResponse({
+            "busy": True,
+            "message": f"A demo deployment just finished. Please wait {int(cooldown_remaining) + 1}s before trying again.",
+            "cooldown_seconds": int(cooldown_remaining) + 1,
+        }, status_code=429)
+
     # Re-classify server-side — never trust a client-displayed assessment
     # as the actual authorization decision.
     assessment = risk_policy.classify(requirement)
@@ -1012,6 +1114,15 @@ async def start_trainer_run(request: Request):
     assessment["estimate"] = estimation.estimate_run(assessment)
 
     run_id = "trainer-" + uuid.uuid4().hex[:8]
+    # Reserve the single global run slot SYNCHRONOUSLY, before the
+    # background thread starts — a real production Git/Railway pipeline
+    # runs behind this, so two overlapping public submissions could
+    # otherwise race on the same working tree and the same deployment.
+    if not _reserve_run_slot(run_id):
+        return JSONResponse({
+            "busy": True,
+            "message": "A demo deployment is currently running. Try again shortly.",
+        }, status_code=409)
     run = Run(run_id, requirement)
     run.trainer_usage_start_index = len(metrics.get_model_usage_events())
     RUNS[run_id] = run

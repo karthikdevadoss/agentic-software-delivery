@@ -347,6 +347,13 @@ class PreRunEstimateTestCase(unittest.IsolatedAsyncioTestCase):
         unavailable.' Forces estimation to report ESTIMATE NOT AVAILABLE
         and proves start_trainer_run still creates and starts a real run
         for an auto-decision requirement."""
+        # start_trainer_run now reserves the global run slot synchronously
+        # (see _reserve_run_slot) before the (here, mocked-out) thread ever
+        # starts — since the real thread body that would normally release
+        # it in `finally` never runs under this mock, this test must
+        # release it itself so later tests in this process don't see a
+        # permanently "busy" slot.
+        self.addCleanup(lambda: setattr(ws, "_CURRENT_RUN_ID", None))
         with mock.patch.object(ws.estimation, "estimate_run",
                                 return_value={"available": False, "reason": "ESTIMATE NOT AVAILABLE — test", "method_version": "test"}), \
              mock.patch.object(ws.threading, "Thread") as mock_thread:
@@ -366,6 +373,81 @@ class PreRunEstimateTestCase(unittest.IsolatedAsyncioTestCase):
                 if c.kwargs.get("target") is ws._run_trainer_thread
             ]
             self.assertEqual(len(trainer_thread_calls), 1)
+
+
+class TrainerConcurrencyAndAbuseProtectionTestCase(unittest.IsolatedAsyncioTestCase):
+    """JOB-SEARCH P0 (2026-09-12): the public trainer demo can trigger a
+    real git commit + push + Railway deploy against the real Customer
+    App — before this task, nothing prevented two simultaneous public
+    submissions from racing on the same working tree/deployment, nor any
+    input-length/cooldown abuse protection. These are the real safety
+    gaps this task closes, verified directly rather than assumed."""
+
+    def setUp(self):
+        # Every test in this class touches process-global state; always
+        # restore it, regardless of pass/fail, so no test here can leak
+        # state into a later test in this process.
+        self.addCleanup(lambda: setattr(ws, "_CURRENT_RUN_ID", None))
+        self.addCleanup(lambda: setattr(ws, "_LAST_TRAINER_RUN_FINISHED_AT", 0.0))
+
+    def test_reserve_run_slot_blocks_a_second_reservation_until_released(self):
+        self.assertTrue(ws._reserve_run_slot("run-a"))
+        self.assertFalse(ws._reserve_run_slot("run-b"))
+        ws._release_run_slot()
+        self.assertTrue(ws._reserve_run_slot("run-b"))
+
+    async def test_second_concurrent_submission_is_busy_not_started(self):
+        ws._CURRENT_RUN_ID = "trainer-already-running"
+        with mock.patch.object(ws.threading, "Thread") as mock_thread:
+            request = mock.Mock()
+            request.json = mock.AsyncMock(return_value={"requirement": 'Add a small "Agent Demo" status badge'})
+            response = await ws.start_trainer_run(request)
+        self.assertEqual(response.status_code, 409)
+        body = json.loads(response.body)
+        self.assertTrue(body["busy"])
+        mock_thread.assert_not_called()
+
+    async def test_requirement_exceeding_max_chars_is_blocked_before_classification(self):
+        with mock.patch.object(ws.risk_policy, "classify") as mock_classify:
+            request = mock.Mock()
+            request.json = mock.AsyncMock(return_value={"requirement": "x" * (ws.TRAINER_REQUIREMENT_MAX_CHARS + 1)})
+            response = await ws.start_trainer_run(request)
+        body = json.loads(response.body)
+        self.assertTrue(body["blocked"])
+        self.assertEqual(body["assessment"]["decision"], "blocked")
+        # Never even reaches the (real, model-adjacent) classification path
+        # for an input this large — the length cap is checked first.
+        mock_classify.assert_not_called()
+
+    async def test_cooldown_blocks_immediately_after_a_run_finished(self):
+        ws._LAST_TRAINER_RUN_FINISHED_AT = ws.time.monotonic()
+        with mock.patch.object(ws.threading, "Thread") as mock_thread:
+            request = mock.Mock()
+            request.json = mock.AsyncMock(return_value={"requirement": 'Add a small "Agent Demo" status badge'})
+            response = await ws.start_trainer_run(request)
+        self.assertEqual(response.status_code, 429)
+        body = json.loads(response.body)
+        self.assertTrue(body["busy"])
+        self.assertGreater(body["cooldown_seconds"], 0)
+        mock_thread.assert_not_called()
+
+    async def test_cooldown_elapsed_allows_a_new_run(self):
+        ws._LAST_TRAINER_RUN_FINISHED_AT = ws.time.monotonic() - (ws.TRAINER_COOLDOWN_SECONDS + 5)
+        with mock.patch.object(ws.threading, "Thread") as mock_thread:
+            request = mock.Mock()
+            request.json = mock.AsyncMock(return_value={"requirement": 'Add a small "Agent Demo" status badge'})
+            response = await ws.start_trainer_run(request)
+        body = json.loads(response.body)
+        self.assertFalse(body.get("busy"))
+        self.assertFalse(body.get("blocked"))
+        # threading.Thread is also used internally by subprocess.run's own
+        # reader threads for estimation.estimate_run()'s real git calls —
+        # assert on the specific trainer-thread call, not call count.
+        trainer_thread_calls = [
+            c for c in mock_thread.call_args_list
+            if c.kwargs.get("target") is ws._run_trainer_thread
+        ]
+        self.assertEqual(len(trainer_thread_calls), 1)
 
 
 class ActualUsageSummaryTestCase(unittest.TestCase):
@@ -564,11 +646,24 @@ class DetermineTestingStateTestCase(unittest.TestCase):
         self.assertEqual(result["state"], "NOT_CONFIGURED")
         self.assertNotEqual(result["state"], "NOT_APPLICABLE")
 
-    def test_real_tests_exist_but_not_run_is_skipped(self):
+    def test_real_tests_exist_but_not_run_is_skipped_for_java_change(self):
+        tmp, patcher = self._with_real_test_file()
+        with tmp, patcher:
+            result = ws._determine_testing_state("app/src/main/java/com/example/customer/model/Customer.java", [])
+        self.assertEqual(result["state"], "SKIPPED")
+
+    def test_static_resource_change_is_not_applicable_even_when_unrelated_java_tests_exist(self):
+        """The exact real recruiter-facing defect this task fixes (JOB-SEARCH
+        P0, 2026-09-12): a genuine static-only UI change (e.g. a heading/
+        footer text edit) must never be blocked as SKIPPED just because the
+        Customer app happens to have SOME Java test file elsewhere — a
+        static resource can never have Java tests targeting it, regardless
+        of what else exists in the project."""
         tmp, patcher = self._with_real_test_file()
         with tmp, patcher:
             result = ws._determine_testing_state("app/src/main/resources/static/index.html", [])
-        self.assertEqual(result["state"], "SKIPPED")
+        self.assertEqual(result["state"], "NOT_APPLICABLE")
+        self.assertNotEqual(result["state"], "SKIPPED")
 
     def test_passed_and_not_applicable_and_not_configured_allow_commit(self):
         for state in ("PASSED", "NOT_APPLICABLE", "NOT_CONFIGURED"):
