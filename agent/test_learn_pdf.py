@@ -71,5 +71,76 @@ class PdfGenerationTestCase(unittest.TestCase):
         self.assertFalse(is_fresh_again)
 
 
+class MasterInterviewBookTestCase(unittest.TestCase):
+    """P0 'JOB-FIRST MASTER INTERVIEW BOOK V1' -- programmatic validation
+    so PDF defects are caught by the test suite, never discovered manually
+    by the Owner (P0_PROMPT.txt Section 13)."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.pdf_bytes, _, _ = learn_pdf.get_or_generate_pdf()
+        cls.reader = PdfReader(io.BytesIO(cls.pdf_bytes))
+        cls.pages_text = [p.extract_text() or "" for p in cls.reader.pages]
+        cls.text = "\n".join(cls.pages_text)
+
+    def test_page_size_is_a4(self):
+        box = self.reader.pages[0].mediabox
+        self.assertAlmostEqual(float(box.width), 595.27, delta=2)
+        self.assertAlmostEqual(float(box.height), 841.89, delta=2)
+
+    def test_every_page_has_a_matching_sequential_page_number(self):
+        import re
+        for i, text in enumerate(self.pages_text):
+            self.assertRegex(text, r"Page " + str(i + 1) + r"\b",
+                              f"page {i + 1} is missing its own footer page number")
+
+    def test_front_matter_present(self):
+        for marker in ("How to Use This Book", "2-Day Priority Reading Path",
+                        "Fast Interview Revision Path", "Domain Index",
+                        "Labels Used in This Book"):
+            self.assertIn(marker, self.text)
+
+    def test_all_13_new_broad_domains_present(self):
+        for domain in ("Java Core", "JVM Internals", "Spring / Spring Boot",
+                        "Database / SQL / JPA", "REST / API Design",
+                        "Microservices / Distributed Systems", "Redis / Caching",
+                        "Kafka / Event-Driven Architecture", "Application Security",
+                        "Testing / Quality", "Observability / Production",
+                        "Cloud / DevOps", "Architecture & Delivery Leadership"):
+            self.assertIn(domain, self.text)
+
+    def test_17_part_schema_labels_present(self):
+        for label in ("HISTORY & EVOLUTION", "WHY NOW / WHEN", "BIG-PICTURE SYSTEM DESIGN",
+                       "DESIGN INTELLECT", "HOW EXACTLY", "LOW-LEVEL INTERNALS",
+                       "INDUSTRY KNOWLEDGE", "BUSINESS KNOWLEDGE", "PRODUCT KNOWLEDGE",
+                       "COST / ECONOMICS / PROFIT", "FAILURE / INCIDENT",
+                       "ALTERNATIVES / TRADE-OFFS", "CURRENT INDUSTRY STATUS"):
+            self.assertIn(label, self.text)
+
+    def test_priority_and_classification_tags_present(self):
+        for tag in ("INTERVIEW ESSENTIAL", "STUDY SCENARIO", "CURRENT PROJECT EXPERIENCE"):
+            self.assertIn(tag, self.text)
+
+    def test_no_fabricated_real_professional_experience_claim(self):
+        # The front-matter legend legitimately NAMES the label to explain
+        # it, so this checks the canonical tree's own metrics (no node is
+        # ever actually tagged with it) rather than raw PDF text.
+        import learn_tree
+        metrics = learn_tree.load_tree()["metrics"]
+        self.assertEqual(metrics.get("real_professional_experience_topics"), 0)
+
+    def test_no_literal_html_entities_leaked(self):
+        import re
+        leaked = re.findall(r"&amp;amp;|&lt;[a-z]|&gt;[a-z]", self.text)
+        self.assertEqual(leaked, [])
+
+    def test_no_mojibake_replacement_characters(self):
+        self.assertNotIn("�", self.text)
+
+    def test_interview_mode_answers_present(self):
+        for label in ("15-SECOND ANSWER", "30-SECOND ANSWER", "2-MINUTE ANSWER"):
+            self.assertIn(label, self.text)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

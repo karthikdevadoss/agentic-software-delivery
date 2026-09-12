@@ -86,3 +86,48 @@ test.describe("Learn recursive journey", () => {
     await expect(page.getByText("INTERVIEW PREPARATION")).toBeVisible();
   });
 });
+
+// Master Interview Book V1 (P0_PROMPT.txt) -- Learn sync regression: the
+// same canonical tree that feeds the PDF book must render correctly here
+// too, including direct navigation to a new nested deep-topic route
+// (not just click-through), the full 17-part section schema, and the new
+// priority/experience badges.
+test.describe("Master Interview Book topics in Learn", () => {
+  test("new Java Core domain is reachable directly and lists its topics", async ({ page }) => {
+    const response = await page.goto("/learn/java-core");
+    expect(response.status()).toBe(200);
+    await expect(page.getByRole("heading", { name: "Java Core" })).toBeVisible();
+    await expect(page.locator(".topic-name", { hasText: "Virtual Threads" })).toBeVisible();
+  });
+
+  test("direct deep-link to a new deep topic renders the full 17-part schema and INTERVIEW MODE", async ({ page }) => {
+    const response = await page.goto("/learn/java-core/java-concurrency-the-java-memory-model");
+    expect(response.status()).toBe(200);
+    await expect(page.getByRole("heading", { name: /Java Concurrency/ })).toBeVisible();
+    for (const label of ["HISTORY & EVOLUTION", "WHY NOW / WHEN", "BIG-PICTURE SYSTEM DESIGN",
+      "LOW-LEVEL INTERNALS", "INDUSTRY KNOWLEDGE", "COST / ECONOMICS / PROFIT",
+      "FAILURE / INCIDENT", "INTERVIEW MODE", "CURRENT INDUSTRY STATUS — 2026"]) {
+      await expect(page.locator("h4", { hasText: label })).toBeVisible();
+    }
+    await expect(page.getByText("15-Second Answer:")).toBeVisible();
+    // STUDY_SCENARIO experience badge and INTERVIEW ESSENTIAL priority badge.
+    await expect(page.locator(".exp-badge-study-scenario")).toBeVisible();
+    await expect(page.locator(".priority-badge-essential")).toBeVisible();
+  });
+
+  test("a new deep topic nested under the existing System Design domain resolves directly", async ({ page }) => {
+    const response = await page.goto("/learn/system-design/cap-theorem-pacelc");
+    expect(response.status()).toBe(200);
+    await expect(page.getByRole("heading", { name: /CAP Theorem/ })).toBeVisible();
+    await expect(page.locator(".breadcrumb")).toContainText("System Design");
+  });
+
+  test("no literal HTML entity or mojibake on a new deep topic page", async ({ page }) => {
+    await page.goto("/learn/java-core/java-concurrency-the-java-memory-model");
+    await expect(page.locator("h2.topic-title")).toBeVisible();
+    const bodyText = await page.locator("body").innerText();
+    expect(bodyText).not.toContain("&AMP;");
+    expect(bodyText).not.toContain("&amp;amp;");
+    expect(bodyText).not.toMatch(/â€|â†’|Ã¢|�/);
+  });
+});

@@ -615,7 +615,8 @@ def count_nodes(nodes):
     total = 0
     deep = 0
     domains = 0
-    exp_counts = {CURRENT: 0, LEARNED: 0, PLANNED: 0, "REAL_PROFESSIONAL_EXPERIENCE": 0}
+    exp_counts = {CURRENT: 0, LEARNED: 0, PLANNED: 0,
+                  "REAL_PROFESSIONAL_EXPERIENCE": 0, "STUDY_SCENARIO": 0}
     def walk(ns, depth):
         nonlocal total, deep, domains
         for n in ns:
@@ -649,6 +650,23 @@ def main():
     system_design = build_system_design_domain(deep_topics_by_id)
     ai_assisted = build_ai_assisted_engineering_domain(deep_topics_by_id)
 
+    # Master Interview Book V1 (P0_PROMPT.txt "JOB-FIRST MASTER INTERVIEW
+    # BOOK"): imported here, not at module scope, so interview_topics.py's
+    # own top-level `from build_learn_tree import leaf, branch` succeeds
+    # against a fully-initialized module rather than a circular partial one.
+    import interview_topics
+    new_deep = interview_topics.all_new_deep_topics()
+    system_design["children"].extend([
+        new_deep["system-design-capacity-estimation"],
+        new_deep["cap-theorem-pacelc"],
+        new_deep["system-design-interview-methodology"],
+    ])
+    ai_assisted["children"].extend([
+        new_deep["ai-context-engineering-tokenization"],
+        new_deep["ai-agent-tool-calling-loop"],
+    ])
+    interview_broad_domains = interview_topics.build_broad_domains(new_deep)
+
     # Attach the remaining un-placed deep topics (testing-truthfulness-states)
     # to a Testing / Quality domain so nothing from the existing deep-dive
     # seed is ever lost.
@@ -657,7 +675,7 @@ def main():
                   "human-role-and-approval-matrix", "ai-guessing-and-failure",
                   "skills-and-subagents", "token-cost-economics"}
     remaining = [v for k, v in deep_topics_by_id.items() if k not in placed_ids]
-    domains_final = [system_design, ai_assisted] + domains
+    domains_final = [system_design, ai_assisted] + interview_broad_domains + domains
     if remaining:
         testing_domain = branch("Testing / Quality (Deep Dive)", "Evidence-backed deep topics about this project's own testing truthfulness.", remaining)
         testing_domain["kind"] = "domain"

@@ -107,7 +107,26 @@ const EXP_BADGE_CLASS = {
   CURRENT_PROJECT_EXPERIENCE: "exp-badge-project",
   LEARNED_UNDERSTOOD: "exp-badge-learned",
   PLANNED_NOT_EXPERIENCED: "exp-badge-planned",
+  // Master Interview Book V1 (P0_PROMPT.txt Section 2): a realistic,
+  // clearly-labeled interview-rehearsal hypothetical -- never presented
+  // as real experience, so it gets its own distinct badge, never reusing
+  // exp-badge-planned/-learned styling.
+  STUDY_SCENARIO: "exp-badge-study-scenario",
 };
+
+const PRIORITY_LABEL = {
+  INTERVIEW_ESSENTIAL: "INTERVIEW ESSENTIAL",
+  IMPORTANT: "IMPORTANT",
+  MASTERY_DEPTH: "MASTERY DEPTH",
+};
+
+function priorityBadge(priority) {
+  if (!priority) return "";
+  const label = PRIORITY_LABEL[priority] || priority.replace(/_/g, " ");
+  const cls = priority === "INTERVIEW_ESSENTIAL" ? "priority-badge-essential"
+    : priority === "MASTERY_DEPTH" ? "priority-badge-mastery" : "priority-badge-important";
+  return `<span class="priority-badge ${cls}" title="Interview priority">${esc(label)}</span>`;
+}
 
 function expBadge(classification) {
   if (!classification) return "";
@@ -148,17 +167,49 @@ function renderChildGrid(children, parentSegments) {
   </section>`;
 }
 
+// Legacy 15-section labels (existing reference/deep-dive catalog) plus the
+// Master Interview Book V1's 17-part schema (P0_PROMPT.txt Section 3) --
+// same ONE canonical tree drives both Learn and the PDF book, so this
+// list is kept in sync with agent/learn_pdf.py's _SECTION_LABELS.
 const SECTION_LABELS = [
-  ["what", "WHAT"], ["why", "WHY"], ["how", "HOW"], ["when", "WHEN"],
+  ["what", "WHAT"], ["why", "WHY"],
+  ["history_evolution", "HISTORY & EVOLUTION"], ["why_now", "WHY NOW / WHEN"],
+  ["how", "HOW"], ["when", "WHEN"],
+  ["big_picture", "BIG-PICTURE SYSTEM DESIGN"], ["design_intellect", "DESIGN INTELLECT"],
+  ["how_exactly", "HOW EXACTLY"], ["low_level_internals", "LOW-LEVEL INTERNALS"],
+  ["who", "WHO"], ["industry", "INDUSTRY KNOWLEDGE"], ["business", "BUSINESS KNOWLEDGE"],
+  ["product", "PRODUCT KNOWLEDGE"], ["cost_economics", "COST / ECONOMICS / PROFIT"],
   ["system_design", "SYSTEM DESIGN"], ["real_experience", "REAL EXPERIENCE / OUR EXPERIENCE"],
   ["development_steps", "DEVELOPMENT STEPS"], ["decisions", "DECISIONS"],
-  ["alternatives", "ALTERNATIVES / TRADEOFFS"], ["testing", "TESTING"],
-  ["failure_modes", "FAILURE MODES / LESSONS"], ["real_incidents", "REAL INCIDENTS"],
+  ["failure_incident", "FAILURE / INCIDENT"], ["failure_modes", "FAILURE MODES / LESSONS"],
+  ["alternatives_tradeoffs", "ALTERNATIVES / TRADE-OFFS"], ["alternatives", "ALTERNATIVES / TRADEOFFS"],
+  ["testing", "TESTING"], ["scenario", "SCENARIO"],
+  ["real_incidents", "REAL INCIDENTS"],
   ["ai_role", "AI ROLE"], ["human_role", "HUMAN ROLE"],
   ["best_practices", "BEST PRACTICES"], ["evidence", "EVIDENCE"],
+  ["interview_mode", "INTERVIEW MODE"],
+  ["current_status_2026", "CURRENT INDUSTRY STATUS — 2026"],
 ];
 
-function renderSectionValue(value) {
+const INTERVIEW_MODE_LABELS = [
+  ["sec_15", "15-Second Answer"], ["sec_30", "30-Second Answer"],
+  ["min_2", "2-Minute Answer"], ["deep_technical", "Deep Technical Follow-up"],
+  ["system_design", "System Design Framing"], ["business_value", "Business-Value Framing"],
+  ["incident_debugging", "Incident-Debugging Framing"],
+];
+
+function renderSectionValue(value, key) {
+  if (key === "interview_mode" && value && typeof value === "object") {
+    const parts = INTERVIEW_MODE_LABELS
+      .filter(([k]) => value[k])
+      .map(([k, label]) => `<div class="deep-block"><strong>${esc(label)}:</strong> ${esc(value[k])}</div>`);
+    const followups = (value.followups || []).map(fu => `
+      <div class="deep-block deep-followup">
+        ${fu.q ? `<div><strong>Likely follow-up:</strong> ${esc(fu.q)}</div>` : ""}
+        ${fu.a ? `<div><em>Strong answer:</em> ${esc(fu.a)}</div>` : ""}
+      </div>`);
+    return parts.join("") + followups.join("");
+  }
   if (Array.isArray(value)) {
     return `<ul>${value.map(v => `<li>${esc(v)}</li>`).join("")}</ul>`;
   }
@@ -176,7 +227,7 @@ function renderSections(sections) {
     .filter(([key]) => sections[key] && (!Array.isArray(sections[key]) || sections[key].length))
     .map(([key, label]) => `<div class="learn-section-block">
       <h4>${label}</h4>
-      ${renderSectionValue(sections[key])}
+      ${renderSectionValue(sections[key], key)}
     </div>`);
   if (sections.interview) {
     blocks.push(`<div class="learn-section-block deep-interview">
@@ -200,6 +251,7 @@ function renderRelated(related, originSegments) {
 
 function renderTopicPage(node, breadcrumb) {
   const badge = expBadge(node.experience_classification);
+  const priority = priorityBadge(node.priority);
   const status = node.status ? `<span class="ev-badge">${esc(node.status)}</span>` : "";
   const ownSegments = breadcrumb[breadcrumb.length - 1].segments;
   const canonicalParent = breadcrumb.length >= 2 ? breadcrumb[breadcrumb.length - 2] : null;
@@ -232,7 +284,7 @@ function renderTopicPage(node, breadcrumb) {
     ${backLink}
     ${referencedFrom}
     ${renderBreadcrumb(breadcrumb)}
-    <h2 class="topic-title">${esc(node.title)} ${badge} ${status}</h2>
+    <h2 class="topic-title">${esc(node.title)} ${priority} ${badge} ${status}</h2>
     ${node.short_overview ? `<p class="topic-overview">${esc(node.short_overview)}</p>` : ""}
     ${renderChildGrid(node.children, ownSegments)}
     ${renderRelated(node.related, ownSegments)}
@@ -260,6 +312,7 @@ function renderLegend() {
   const items = [
     ["REAL_PROFESSIONAL_EXPERIENCE", "The Creator's own verified professional work"],
     ["CURRENT_PROJECT_EXPERIENCE", "This project's own code/incidents"],
+    ["STUDY_SCENARIO", "A realistic interview-rehearsal hypothetical — never real experience"],
     ["LEARNED_UNDERSTOOD", "Correct general knowledge, not personal experience"],
     ["PLANNED_NOT_EXPERIENCED", "Roadmap only — not yet built or used"],
   ];
