@@ -1137,6 +1137,102 @@ async def get_target_app(request: Request):
     return JSONResponse(TARGET_APPLICATION)
 
 
+# --- Demo lifecycle: explicit Reset Demo -----------------------------------
+#
+# JOB-SEARCH P0 (2026-09-12): the public trainer demo can mutate the real
+# Customer App's static homepage. Multiple recruiters may use it, so a
+# safe lifecycle is required — this project chose the "explicit Reset
+# Demo" approach (not a background TTL scheduler, which would need to
+# survive process restarts to be trustworthy, and not a silent reset,
+# which could discard a recruiter's own result before they've seen it).
+# `demo-baseline` is a real git tag pinned to the canonical pre-demo
+# content of the one file the trainer flow is allowed to touch for a
+# static UI change — reset checks that exact historical blob back out,
+# commits, pushes, and redeploys through the identical pipeline a normal
+# trainer run uses, then verifies the real production content matches.
+DEMO_BASELINE_REF = "demo-baseline"
+DEMO_RESETTABLE_PATH = "app/src/main/resources/static/index.html"
+
+_reset_state = {"status": "idle", "message": None}
+
+
+def _read_git_blob(ref: str, path: str):
+    ok, out = _run_controlled(["git", "show", f"{ref}:{path}"], REPO_ROOT, 15)
+    return out if ok else None
+
+
+def _run_reset_thread():
+    global _reset_state
+    try:
+        _reset_state = {"status": "running", "message": "Resetting demo to canonical baseline…"}
+        baseline_content = _read_git_blob(DEMO_BASELINE_REF, DEMO_RESETTABLE_PATH)
+        if baseline_content is None:
+            _reset_state = {"status": "failed", "message": f"Could not read {DEMO_RESETTABLE_PATH} from git tag '{DEMO_BASELINE_REF}'."}
+            return
+
+        ok, out = _run_controlled(["git", "checkout", DEMO_BASELINE_REF, "--", DEMO_RESETTABLE_PATH], REPO_ROOT, 30)
+        if not ok:
+            _reset_state = {"status": "failed", "message": f"git checkout of baseline failed: {out[-300:]}"}
+            return
+
+        _, status_out = _run_controlled(["git", "status", "--porcelain", "--", DEMO_RESETTABLE_PATH], REPO_ROOT, 15)
+        if not status_out.strip():
+            _reset_state = {"status": "completed", "message": "Already at canonical baseline — nothing to reset."}
+            return
+
+        ok, out = _run_controlled(["git", "add", "--", DEMO_RESETTABLE_PATH], REPO_ROOT, 15)
+        if ok:
+            ok, out = _run_controlled(["git", "commit", "-m", "Trainer demo: reset to canonical baseline"], REPO_ROOT, 30)
+        if not ok:
+            _reset_state = {"status": "failed", "message": f"git commit failed: {out[-300:]}"}
+            return
+
+        push_ok, push_out = _run_controlled(["git", "push", "origin", "master"], REPO_ROOT, 60)
+        if not push_ok:
+            # Non-fatal, same as the main trainer flow — deploy below still
+            # deploys from the local working tree, not GitHub.
+            _reset_state = {"status": "running", "message": f"Committed locally; git push to origin failed (deploy continues): {push_out[-200:]}"}
+
+        deploy_ok, deploy_out = _run_controlled(
+            ["railway", "up", "--detach", "--service", RAILWAY_SERVICE_NAME], APP_DIR, 60)
+        if not deploy_ok:
+            _reset_state = {"status": "failed", "message": f"Railway deploy failed: {deploy_out[-300:]}"}
+            return
+
+        max_wait_s, poll_interval_s, waited_s = 10 * 60, 10, 0
+        content_verified = False
+        while waited_s < max_wait_s:
+            time.sleep(poll_interval_s)
+            waited_s += poll_interval_s
+            after_status, after_html = _fetch_public_app()
+            if after_status == 200 and after_html == baseline_content:
+                content_verified = True
+                break
+        if content_verified:
+            _reset_state = {"status": "completed", "message": "Demo reset to canonical baseline — verified live in production."}
+        else:
+            _reset_state = {"status": "unknown", "message": "Reset deployed, but production content could not be confirmed matching baseline within the wait window — check manually."}
+    except Exception as exc:  # noqa: BLE001
+        _reset_state = {"status": "failed", "message": str(exc)}
+    finally:
+        _release_run_slot()
+
+
+async def start_demo_reset(request: Request):
+    if not _reserve_run_slot("demo-reset"):
+        return JSONResponse({
+            "busy": True,
+            "message": "A demo run or reset is already in progress. Try again shortly.",
+        }, status_code=409)
+    thread = threading.Thread(target=_run_reset_thread, daemon=True)
+    thread.start()
+    return JSONResponse({"started": True})
+
+
+async def get_demo_reset_status(request: Request):
+    return JSONResponse(_reset_state)
+
+
 async def workbench_page(request: Request):
     return FileResponse(str(WEB_DIR / "workbench.html"))
 
@@ -1317,6 +1413,8 @@ routes = [
     Route("/api/dev-sessions/start", start_dev_session_route, methods=["POST"]),
     Route("/api/dev-sessions/stop", stop_dev_session_route, methods=["POST"]),
     Route("/api/target-app", get_target_app, methods=["GET"]),
+    Route("/api/trainer/reset", start_demo_reset, methods=["POST"]),
+    Route("/api/trainer/reset", get_demo_reset_status, methods=["GET"]),
     Route("/api/trainer/assess", assess_trainer_requirement, methods=["POST"]),
     Route("/api/trainer/runs", start_trainer_run, methods=["POST"]),
     Route("/api/runs/{run_id}", get_run, methods=["GET"]),

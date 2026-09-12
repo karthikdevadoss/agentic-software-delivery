@@ -745,3 +745,33 @@ async function submit() {
 }
 
 submitBtn.addEventListener("click", submit);
+
+// ---- Demo lifecycle: Reset Demo -------------------------------------------
+
+const resetDemoBtn = document.getElementById("reset-demo-btn");
+const resetDemoStatus = document.getElementById("reset-demo-status");
+
+async function pollResetStatus() {
+  const resp = await fetch("/api/trainer/reset");
+  const data = await resp.json();
+  if (data.status === "running") {
+    resetDemoStatus.textContent = data.message || "Resetting…";
+    setTimeout(pollResetStatus, 3000);
+  } else {
+    resetDemoBtn.disabled = false;
+    resetDemoStatus.textContent = data.message || "";
+  }
+}
+
+resetDemoBtn.addEventListener("click", async () => {
+  resetDemoBtn.disabled = true;
+  resetDemoStatus.textContent = "Starting reset…";
+  const resp = await fetch("/api/trainer/reset", { method: "POST" });
+  const data = await resp.json();
+  if (data.busy) {
+    resetDemoBtn.disabled = false;
+    resetDemoStatus.textContent = data.message || "Busy — try again shortly.";
+    return;
+  }
+  setTimeout(pollResetStatus, 1500);
+});

@@ -375,6 +375,77 @@ class PreRunEstimateTestCase(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(len(trainer_thread_calls), 1)
 
 
+class DemoResetTestCase(unittest.IsolatedAsyncioTestCase):
+    """JOB-SEARCH P0 (2026-09-12): the public demo lifecycle's explicit
+    Reset Demo path — a shared public demo must have a safe, verifiable
+    way back to canonical baseline. Every git/Railway/network call is
+    mocked here (no real repository or production mutation from tests);
+    the real end-to-end reset was separately exercised live."""
+
+    def setUp(self):
+        self.addCleanup(lambda: setattr(ws, "_CURRENT_RUN_ID", None))
+        self.addCleanup(lambda: setattr(ws, "_reset_state", {"status": "idle", "message": None}))
+
+    async def test_reset_route_returns_busy_when_a_run_is_in_flight(self):
+        ws._CURRENT_RUN_ID = "trainer-already-running"
+        with mock.patch.object(ws.threading, "Thread") as mock_thread:
+            response = await ws.start_demo_reset(mock.Mock())
+        self.assertEqual(response.status_code, 409)
+        self.assertTrue(json.loads(response.body)["busy"])
+        mock_thread.assert_not_called()
+
+    async def test_reset_route_starts_a_background_thread_when_free(self):
+        with mock.patch.object(ws.threading, "Thread") as mock_thread:
+            response = await ws.start_demo_reset(mock.Mock())
+        body = json.loads(response.body)
+        self.assertTrue(body["started"])
+        reset_thread_calls = [c for c in mock_thread.call_args_list if c.kwargs.get("target") is ws._run_reset_thread]
+        self.assertEqual(len(reset_thread_calls), 1)
+        ws._release_run_slot()
+
+    def test_already_at_baseline_is_a_clean_no_op_not_an_empty_commit(self):
+        ws._reserve_run_slot("demo-reset")
+        with mock.patch.object(ws, "_read_git_blob", return_value="<html>baseline</html>"), \
+             mock.patch.object(ws, "_run_controlled") as mock_run:
+            mock_run.side_effect = [
+                (True, ""),   # git checkout
+                (True, ""),   # git status --porcelain -> empty = no diff
+            ]
+            ws._run_reset_thread()
+        self.assertEqual(ws._reset_state["status"], "completed")
+        self.assertIn("Already at canonical baseline", ws._reset_state["message"])
+        # No commit/push/deploy call was ever attempted for a genuine no-op.
+        called_argvs = [c.args[0] for c in mock_run.call_args_list]
+        self.assertTrue(all(argv[0] != "railway" for argv in called_argvs))
+
+    def test_successful_reset_commits_pushes_deploys_and_verifies(self):
+        ws._reserve_run_slot("demo-reset")
+        baseline_html = "<html>canonical baseline</html>"
+        with mock.patch.object(ws, "_read_git_blob", return_value=baseline_html), \
+             mock.patch.object(ws, "_run_controlled") as mock_run, \
+             mock.patch.object(ws, "_fetch_public_app", return_value=(200, baseline_html)), \
+             mock.patch.object(ws.time, "sleep"):
+            mock_run.side_effect = [
+                (True, ""),                         # git checkout
+                (True, "M app/.../index.html"),      # git status --porcelain -> real diff
+                (True, ""),                          # git add
+                (True, ""),                          # git commit
+                (True, ""),                          # git push
+                (True, ""),                          # railway up
+            ]
+            ws._run_reset_thread()
+        self.assertEqual(ws._reset_state["status"], "completed")
+        self.assertIn("verified live", ws._reset_state["message"])
+
+    def test_reset_releases_the_run_slot_even_on_failure(self):
+        ws._reserve_run_slot("demo-reset")
+        with mock.patch.object(ws, "_read_git_blob", return_value=None):
+            ws._run_reset_thread()
+        self.assertEqual(ws._reset_state["status"], "failed")
+        # The slot must be free again for a future run/reset.
+        self.assertTrue(ws._reserve_run_slot("some-later-run"))
+
+
 class TrainerConcurrencyAndAbuseProtectionTestCase(unittest.IsolatedAsyncioTestCase):
     """JOB-SEARCH P0 (2026-09-12): the public trainer demo can trigger a
     real git commit + push + Railway deploy against the real Customer
