@@ -170,6 +170,34 @@
       "verification_required": "A future task: implement Update Email (preferably executed THROUGH the real Workbench/agentic-delivery pipeline where practical, per the original instruction's Section 12, not hand-coded directly), with Java unit + API/integration tests, browser E2E, native qa-evaluator gate, real deployment, production requested-effect verification, and evidence-backed Learn content generated from the real development chronology.",
       "created_at_commit": "6ddc628",
       "resolved_at_commit": null
+    },
+    {
+      "id": "ACT-007",
+      "source": "production_incident",
+      "title": "NEEDS_OWNER_DECISION: the deployed platform-backend container can never git-push to origin/GitHub (real, confirmed live, not guessed)",
+      "priority": "medium",
+      "status": "open",
+      "scope": "Dockerfile, agent/web_server.py's _run_trainer_thread/_run_reset_thread PUSHING stage",
+      "reason": "JOB-SEARCH P0 (2026-09-12) added a required git-push step to the public trainer demo pipeline (a local commit is not durably saved). The FIRST real live production demo run (trainer-7e098fb3) proved every other stage genuinely works (investigation, apply, compile, testing-state, commit, deploy, independent production content verification) but push failed with \"fatal: 'origin' does not appear to be a git repository\". Root cause confirmed directly in the Dockerfile's own pre-existing, documented comment: this image deliberately `git init`s a fresh, disconnected local repository with no history/remote at all when none is uploaded (a decision made before push was a requirement, to fix an earlier real incident where the container had no usable git repo at all for `git commit`/`git rev-parse`). Fixing this for real requires the deployed container to have a configured `origin` remote with WRITE credentials (a GitHub PAT or deploy key) -- provisioning that is a secrets/architecture decision this task deliberately did NOT make unilaterally, per this project's own policy that writing secrets/changing deploy architecture requires explicit Owner approval, not autonomous action.",
+      "evidence": "Real live run trainer-7e098fb3 (2026-09-12) push event: {\"ok\": false, \"output\": \"fatal: 'origin' does not appear to be a git repository...\"}. Dockerfile lines ~63-77 (search \"ROOT CAUSE\") document the deliberate disconnected-repo decision this predates. The run still reached COMPLETED (push failure is non-fatal by design -- Railway deploys from the local working tree, not GitHub), and the requested production content change was independently verified live regardless.",
+      "safe_to_auto_execute": false,
+      "verification_required": "Owner decision: either (a) provision a GitHub PAT/deploy key as a Railway secret and wire `git remote add origin` + credential injection into the Dockerfile/container startup (a real secrets + architecture change), or (b) accept that trainer-demo commits only ever exist in the deployed container's ephemeral local repo (lost on next redeploy) and that only a local developer/Claude Code session's own push keeps canonical history in sync with what a live demo actually shipped -- and update the Workbench's own \"Push\" UI copy to state this honestly rather than implying full durability today.",
+      "created_at_commit": "cf8186f",
+      "resolved_at_commit": null
+    },
+    {
+      "id": "ACT-008",
+      "source": "product",
+      "title": "Real backend/API demo (e.g. the customer-not-found 404 message) is currently unverifiable by the trainer pipeline's existing content check -- deliberately not attempted live",
+      "priority": "medium",
+      "status": "deferred",
+      "scope": "agent/web_server.py's _run_trainer_thread VERIFYING PRODUCTION step (_fetch_public_app + trainer_expected_content substring check)",
+      "reason": "JOB-SEARCH P0 (2026-09-12) asked for a second, bounded backend demo (the Customer App's 404 message) in addition to the UI demo. Inspection before attempting it found a structural gap: production verification currently checks whether `edit.new_content` (the ENTIRE new file's source text) appears as a substring of the Customer App's ROOT PAGE HTML -- which only works by coincidence for a static HTML file (the file IS what gets served) and is meaningless for a compiled Java change, since a deployed JAR never echoes its own Java source in any HTTP response, and the root page is not even the right endpoint to check for a controller-level message change. Attempting a real backend demo without fixing this first would either produce a false DEPLOYMENT_STATUS_UNKNOWN/FAILED for a genuinely correct change, or require rushing an unverified new verification subsystem into a real production deploy under time pressure -- both explicitly against this task's own instruction ('Do not fabricate success' / 'choose a safer bounded backend example' when a mutation would introduce unsafe/unverifiable state).",
+      "evidence": "Direct code inspection of _fetch_public_app() (only ever fetches PUBLIC_CUSTOMER_APP_URL's root page) and _run_trainer_thread's content_verified check (run.trainer_expected_content in after_html) -- confirmed this is the only production-verification mechanism that exists today. The real UI demo (trainer-7e098fb3) exercised this path successfully because a static HTML change's own new content genuinely is what the root page serves.",
+      "safe_to_auto_execute": false,
+      "verification_required": "A future task: design a real verification mechanism for non-static changes (e.g., derive the actual requested-effect assertion from a diff of old_content/new_content plus a designated endpoint to check, rather than a whole-file substring match against the wrong page) BEFORE attempting a live backend demo against the real Customer App -- then run it for real, with the same independent-production-verification discipline the UI demo used.",
+      "created_at_commit": "cf8186f",
+      "resolved_at_commit": null
     }
   ]
 }

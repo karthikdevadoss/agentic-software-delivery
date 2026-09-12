@@ -35,10 +35,12 @@ BLOCK_KEYWORDS = [
     "upgrade java", "version bump", "shell", "subprocess", "exec(",
     "eval(", "os.system", ".env", "environment variable", "ci/cd",
     "github action", "git history", "force push", "rebase", "reset --hard",
-    "vercel", "railway account", "railway.json", "dns", "domain",
+    "vercel", "railway", "dns", "domain",
     "microservice", "multi-service", "kafka", "redis", "postgres",
     "docker", "kubernetes", "aws", "cloud config", "refactor the entire",
     "rewrite the entire", "redesign the architecture", "new service",
+    "risk_policy", "risk policy", "disable the test", "disable tests",
+    "skip the test", "skip tests", "bypass",
 ]
 
 # Requirements this short/vague rarely give the agent enough to safely

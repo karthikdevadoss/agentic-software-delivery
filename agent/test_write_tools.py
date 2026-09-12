@@ -115,6 +115,21 @@ class WriteToolsTestCase(unittest.TestCase):
         with self.assertRaises(wt.WriteToolError):
             wt.propose_edit("app/pom.xml", "x")
 
+    def test_safety_infrastructure_and_deploy_config_paths_rejected(self):
+        """JOB-SEARCH P0 adversarial testing (2026-09-12): confirms the
+        file-scope allowlist — the boundary the LLM cannot expand — really
+        does independently reject every one of the specific real paths a
+        risk_policy.py text-classifier gap let through as 'auto' at the
+        text layer (agent/risk_policy.py itself, and Railway/Docker deploy
+        config), not merely assumed safe because the text layer usually
+        blocks them first. Defense-in-depth verified directly, not just
+        documented."""
+        for path in ("agent/risk_policy.py", "railway.json", "Dockerfile",
+                     "agent/write_tools.py", ".env", "agent/.env"):
+            with self.subTest(path=path):
+                with self.assertRaises(wt.WriteToolError):
+                    wt.propose_edit(path, "malicious content")
+
     def test_wrong_extension_in_scope_rejected(self):
         with self.assertRaises(wt.WriteToolError) as ctx:
             wt.propose_edit(
