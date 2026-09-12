@@ -1181,21 +1181,38 @@ def _run_reset_thread():
             _reset_state = {"status": "failed", "message": f"Could not read baseline snapshot file {DEMO_BASELINE_FILE}."}
             return
 
+        # Real production finding (2026-09-12, this exact task): the
+        # platform-backend container's own local working-tree file is NOT
+        # authoritative for "does a reset actually need to happen." A
+        # platform-backend redeploy rebuilds that container fresh from
+        # this repository's own checkout (COPY . .), silently resetting
+        # the CONTAINER's local file back to baseline even while the
+        # actually-deployed Customer App (a separate Railway service) can
+        # still be serving an older demo change — comparing the local
+        # file alone reported a false "already at baseline" once, caught
+        # only by an independent curl of the real live Customer App. Only
+        # the real deployed content can answer this question.
+        current_status, current_html = _fetch_public_app()
+        if current_status == 200 and current_html == baseline_content:
+            _reset_state = {"status": "completed", "message": "Already at canonical baseline — verified live, nothing to reset."}
+            return
+
         live_path = REPO_ROOT / DEMO_RESETTABLE_PATH
         try:
-            current_content = live_path.read_text(encoding="utf-8")
+            live_path.write_text(baseline_content, encoding="utf-8")
         except OSError as exc:
-            _reset_state = {"status": "failed", "message": f"Could not read {DEMO_RESETTABLE_PATH}: {exc}"}
+            _reset_state = {"status": "failed", "message": f"Could not write {DEMO_RESETTABLE_PATH}: {exc}"}
             return
-        if current_content == baseline_content:
-            _reset_state = {"status": "completed", "message": "Already at canonical baseline — nothing to reset."}
-            return
-        live_path.write_text(baseline_content, encoding="utf-8")
 
         ok, out = _run_controlled(["git", "add", "--", DEMO_RESETTABLE_PATH], REPO_ROOT, 15)
         if ok:
             ok, out = _run_controlled(["git", "commit", "-m", "Trainer demo: reset to canonical baseline"], REPO_ROOT, 30)
-        if not ok:
+        # "nothing to commit" is expected and NOT fatal here: it means this
+        # container's own local file/git already matched baseline (e.g. a
+        # fresh redeploy), which is exactly the case production can still
+        # disagree with — deployment must still proceed so the real
+        # Customer App actually gets the baseline content.
+        if not ok and "nothing to commit" not in out.lower():
             _reset_state = {"status": "failed", "message": f"git commit failed: {out[-300:]}"}
             return
 

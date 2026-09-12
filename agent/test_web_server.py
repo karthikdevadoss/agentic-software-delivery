@@ -403,29 +403,38 @@ class DemoResetTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(reset_thread_calls), 1)
         ws._release_run_slot()
 
-    def _with_live_file(self, content):
+    def _with_repo_root(self):
         """Real recruiter-facing finding (2026-09-12, run trainer-7e098fb3):
         the deployed platform-backend container's local git repo has no
         history/tags at all (a deliberate prior decision — see the
         Dockerfile's own documented ROOT CAUSE comment — made before real
         push/reset were requirements), so a git-tag-based baseline design
         failed live in production even though it passed every mocked test.
-        Reset now reads/writes plain files instead — these tests patch
-        REPO_ROOT/DEMO_BASELINE_FILE to real temp files so the fix is
-        exercised against real file I/O, not just mocked git calls."""
+        Reset now reads the baseline from a plain file and writes the live
+        path as a plain file too — these tests patch REPO_ROOT/
+        DEMO_BASELINE_FILE to real temp paths so the fix is exercised
+        against real file I/O, not just mocked git calls."""
         tmp = tempfile.TemporaryDirectory()
         repo_root = Path(tmp.name)
         live_path = repo_root / ws.DEMO_RESETTABLE_PATH
         live_path.parent.mkdir(parents=True)
-        live_path.write_text(content, encoding="utf-8")
+        live_path.write_text("<html>whatever this container's own local file happens to say</html>", encoding="utf-8")
         baseline_path = repo_root / "baseline.html"
-        baseline_path.write_text(content, encoding="utf-8")
-        return tmp, live_path, mock.patch.object(ws, "REPO_ROOT", repo_root), mock.patch.object(ws, "DEMO_BASELINE_FILE", baseline_path)
+        return tmp, live_path, baseline_path, mock.patch.object(ws, "REPO_ROOT", repo_root), mock.patch.object(ws, "DEMO_BASELINE_FILE", baseline_path)
 
     def test_already_at_baseline_is_a_clean_no_op_not_an_empty_commit(self):
+        # Real finding this exact task made live: the CONTAINER's own local
+        # file is never checked for the go/no-go decision — a redeploy can
+        # silently reset it to baseline while the real deployed Customer
+        # App still shows an old change. Only a real fetch of production
+        # decides whether a reset is actually needed.
         ws._reserve_run_slot("demo-reset")
-        tmp, live_path, repo_patch, baseline_patch = self._with_live_file("<html>baseline</html>")
-        with tmp, repo_patch, baseline_patch, mock.patch.object(ws, "_run_controlled") as mock_run:
+        baseline_html = "<html>baseline</html>"
+        tmp, live_path, baseline_path, repo_patch, baseline_patch = self._with_repo_root()
+        baseline_path.write_text(baseline_html, encoding="utf-8")
+        with tmp, repo_patch, baseline_patch, \
+             mock.patch.object(ws, "_fetch_public_app", return_value=(200, baseline_html)), \
+             mock.patch.object(ws, "_run_controlled") as mock_run:
             ws._run_reset_thread()
         self.assertEqual(ws._reset_state["status"], "completed")
         self.assertIn("Already at canonical baseline", ws._reset_state["message"])
@@ -435,14 +444,15 @@ class DemoResetTestCase(unittest.IsolatedAsyncioTestCase):
     def test_successful_reset_writes_baseline_commits_pushes_deploys_and_verifies(self):
         ws._reserve_run_slot("demo-reset")
         baseline_html = "<html>canonical baseline</html>"
-        tmp, live_path, repo_patch, baseline_patch = self._with_live_file("<html>changed by a demo run</html>")
-        # Overwrite the temp baseline file with the real intended baseline
-        # (the helper above seeds it identical to the live file on purpose
-        # for the no-op test; this test needs them to differ).
-        (Path(tmp.name) / "baseline.html").write_text(baseline_html, encoding="utf-8")
+        tmp, live_path, baseline_path, repo_patch, baseline_patch = self._with_repo_root()
+        baseline_path.write_text(baseline_html, encoding="utf-8")
+        # First _fetch_public_app call is the authoritative pre-check
+        # (production still shows an old demo change); later calls are the
+        # post-deploy verification poll (production now shows baseline).
         with tmp, repo_patch, baseline_patch, \
              mock.patch.object(ws, "_run_controlled") as mock_run, \
-             mock.patch.object(ws, "_fetch_public_app", return_value=(200, baseline_html)), \
+             mock.patch.object(ws, "_fetch_public_app",
+                                side_effect=[(200, "<html>changed by a demo run</html>")] + [(200, baseline_html)] * 5), \
              mock.patch.object(ws.time, "sleep"):
             mock_run.side_effect = [
                 (True, ""),   # git add
@@ -455,6 +465,34 @@ class DemoResetTestCase(unittest.IsolatedAsyncioTestCase):
             self.assertIn("verified live", ws._reset_state["message"])
             # The live file itself was really overwritten with the baseline.
             self.assertEqual(live_path.read_text(encoding="utf-8"), baseline_html)
+
+    def test_reset_still_deploys_when_container_local_git_has_nothing_to_commit(self):
+        """The exact real defect this task found live: a fresh container
+        redeploy can leave the container's OWN file/git already matching
+        baseline while the real deployed Customer App still shows an old
+        change. `git commit` then genuinely has "nothing to commit" — this
+        must NOT abort the reset; deploy must still run so the actually-
+        stale Customer App gets the (already-correct) content."""
+        ws._reserve_run_slot("demo-reset")
+        baseline_html = "<html>canonical baseline</html>"
+        tmp, live_path, baseline_path, repo_patch, baseline_patch = self._with_repo_root()
+        baseline_path.write_text(baseline_html, encoding="utf-8")
+        live_path.write_text(baseline_html, encoding="utf-8")  # container's own file already correct
+        with tmp, repo_patch, baseline_patch, \
+             mock.patch.object(ws, "_run_controlled") as mock_run, \
+             mock.patch.object(ws, "_fetch_public_app",
+                                side_effect=[(200, "<html>production is still stale</html>")] + [(200, baseline_html)] * 5), \
+             mock.patch.object(ws.time, "sleep"):
+            mock_run.side_effect = [
+                (True, ""),                                     # git add
+                (False, "nothing to commit, working tree clean"),  # git commit
+                (True, ""),                                     # git push
+                (True, ""),                                     # railway up
+            ]
+            ws._run_reset_thread()
+        self.assertEqual(ws._reset_state["status"], "completed")
+        deploy_calls = [c for c in mock_run.call_args_list if c.args[0][0] == "railway"]
+        self.assertEqual(len(deploy_calls), 1)
 
     def test_reset_releases_the_run_slot_even_on_failure(self):
         ws._reserve_run_slot("demo-reset")
