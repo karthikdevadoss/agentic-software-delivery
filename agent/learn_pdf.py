@@ -171,7 +171,7 @@ def _render_section_value(value, styles, story, key=None):
             if isinstance(item, dict):
                 _render_section_value(item, styles, story)
             else:
-                story.append(Paragraph(f"&bull; {_esc(item)}", styles["list_item"]))
+                story.append(Paragraph(f"• {_esc(item)}", styles["list_item"]))
     elif isinstance(value, dict):
         for k, v in value.items():
             if not v:
@@ -261,11 +261,11 @@ def _front_matter(tree, styles, story):
     story.append(Paragraph("Labels Used in This Book", styles["domain"]))
     story.append(Paragraph("<b>Priority labels</b> (how much interview weight a topic carries):", styles["body"]))
     for k, v in _PRIORITY_LABEL.items():
-        story.append(Paragraph(f"&bull; <b>{_esc(v)}</b>", styles["list_item"]))
+        story.append(Paragraph(f"• <b>{_esc(v)}</b>", styles["list_item"]))
     story.append(Paragraph("<b>Experience classification labels</b> (how a claim is evidenced — never fabricated):", styles["body"]))
     for k in ("REAL_PROFESSIONAL_EXPERIENCE", "CURRENT_PROJECT_EXPERIENCE", "STUDY_SCENARIO", "LEARNED_UNDERSTOOD", "PLANNED_NOT_EXPERIENCED"):
         v = _CLASSIFICATION_LABEL[k]
-        story.append(Paragraph(f"&bull; <b>{_esc(v)}</b>", styles["list_item"]))
+        story.append(Paragraph(f"• <b>{_esc(v)}</b>", styles["list_item"]))
     story.append(Paragraph(
         "REAL PROFESSIONAL EXPERIENCE is used only where real job/resume evidence supports it. CURRENT "
         "PROJECT EXPERIENCE is used only where this platform's own code/incidents genuinely demonstrate the "
@@ -288,7 +288,7 @@ def _front_matter(tree, styles, story):
         if domain_title != last_domain:
             story.append(Paragraph(_esc(domain_title), styles["toc_h2"]))
             last_domain = domain_title
-        story.append(Paragraph(f"&bull; {_esc(topic_title)}", styles["list_item"]))
+        story.append(Paragraph(f"• {_esc(topic_title)}", styles["list_item"]))
     story.append(PageBreak())
 
     story.append(Paragraph("Fast Interview Revision Path (Day-Of)", styles["domain"]))
@@ -319,7 +319,7 @@ def _build_story(tree: dict, styles) -> list:
     story.append(Paragraph(f"Generated: {_esc(generated_at)}", styles["meta"]))
     story.append(Paragraph(f"Knowledge version (git commit): {_esc(tree.get('git_commit', 'UNKNOWN'))}", styles["meta"]))
     story.append(Paragraph(
-        f"{m.get('total_domains', '?')} domains &middot; {m.get('total_reference_topics', '?')} reference topics &middot; "
+        f"{m.get('total_domains', '?')} domains · {m.get('total_reference_topics', '?')} reference topics · "
         f"{m.get('total_deep_topics', '?')} deep evidence-backed topics",
         styles["meta"],
     ))

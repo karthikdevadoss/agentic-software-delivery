@@ -8,6 +8,7 @@ Run: python agent/test_learn_pdf.py
 
 import io
 import unittest
+from pathlib import Path
 
 import learn_pdf
 from pypdf import PdfReader
@@ -136,6 +137,27 @@ class MasterInterviewBookTestCase(unittest.TestCase):
 
     def test_no_mojibake_replacement_characters(self):
         self.assertNotIn("�", self.text)
+
+    def test_no_named_html_entities_other_than_the_escaping_triad(self):
+        # Real defect found by independent QA (2026-09-12): a named entity
+        # like &bull; has no guaranteed ToUnicode mapping in reportlab's
+        # generated PDF, so some extractors (PyMuPDF) decode it as U+FFFD
+        # while others (pypdf) decode it as a control character -- neither
+        # of which this test's own sibling check above happens to catch,
+        # since it only looks for the literal U+FFFD glyph under pypdf's
+        # specific decode path. The real fix is structural: learn_pdf.py's
+        # Paragraph markup must only ever contain a real literal Unicode
+        # character (e.g. the actual "•" bullet), never a named HTML
+        # entity, except the three produced by _esc()'s own escaping
+        # (&amp; &lt; &gt;). This statically guards the source itself so
+        # the defect class can't quietly return via a different entity.
+        import re
+        source = (Path(__file__).resolve().parent / "learn_pdf.py").read_text(encoding="utf-8")
+        named_entities = set(re.findall(r"&(?!amp;|lt;|gt;)[a-zA-Z]+;", source))
+        self.assertEqual(named_entities, set(),
+                          f"found named HTML entities with no guaranteed PDF ToUnicode "
+                          f"mapping: {named_entities} -- use a real literal Unicode "
+                          f"character instead")
 
     def test_interview_mode_answers_present(self):
         for label in ("15-SECOND ANSWER", "30-SECOND ANSWER", "2-MINUTE ANSWER"):
