@@ -1145,40 +1145,52 @@ async def get_target_app(request: Request):
 # Demo" approach (not a background TTL scheduler, which would need to
 # survive process restarts to be trustworthy, and not a silent reset,
 # which could discard a recruiter's own result before they've seen it).
-# `demo-baseline` is a real git tag pinned to the canonical pre-demo
-# content of the one file the trainer flow is allowed to touch for a
-# static UI change — reset checks that exact historical blob back out,
-# commits, pushes, and redeploys through the identical pipeline a normal
-# trainer run uses, then verifies the real production content matches.
-DEMO_BASELINE_REF = "demo-baseline"
+#
+# REAL FINDING from the first live production demo run this task performed
+# (trainer-7e098fb3, 2026-09-12): an earlier design read the baseline from
+# a git tag (`demo-baseline`) via `git show <tag>:<path>`. That works on
+# any real developer checkout, but the DEPLOYED platform-backend container
+# has no such tag — its Dockerfile deliberately `git init`s a fresh,
+# disconnected local repo with no history/remote at all when none is
+# uploaded (see the Dockerfile's own documented ROOT CAUSE comment; this
+# predates today's push/reset requirements). Reset therefore uses a plain
+# file snapshot (agent/demo_baseline/) instead — it ships with the image
+# via `COPY . .` regardless of git history, so it works identically in
+# local dev and in the real deployed container. Commit/push/deploy still
+# run for real; only the SOURCE of the baseline content stopped depending
+# on git history.
+DEMO_BASELINE_FILE = Path(__file__).resolve().parent / "demo_baseline" / "index.html"
 DEMO_RESETTABLE_PATH = "app/src/main/resources/static/index.html"
 
 _reset_state = {"status": "idle", "message": None}
 
 
-def _read_git_blob(ref: str, path: str):
-    ok, out = _run_controlled(["git", "show", f"{ref}:{path}"], REPO_ROOT, 15)
-    return out if ok else None
+def _read_demo_baseline():
+    try:
+        return DEMO_BASELINE_FILE.read_text(encoding="utf-8")
+    except OSError:
+        return None
 
 
 def _run_reset_thread():
     global _reset_state
     try:
         _reset_state = {"status": "running", "message": "Resetting demo to canonical baseline…"}
-        baseline_content = _read_git_blob(DEMO_BASELINE_REF, DEMO_RESETTABLE_PATH)
+        baseline_content = _read_demo_baseline()
         if baseline_content is None:
-            _reset_state = {"status": "failed", "message": f"Could not read {DEMO_RESETTABLE_PATH} from git tag '{DEMO_BASELINE_REF}'."}
+            _reset_state = {"status": "failed", "message": f"Could not read baseline snapshot file {DEMO_BASELINE_FILE}."}
             return
 
-        ok, out = _run_controlled(["git", "checkout", DEMO_BASELINE_REF, "--", DEMO_RESETTABLE_PATH], REPO_ROOT, 30)
-        if not ok:
-            _reset_state = {"status": "failed", "message": f"git checkout of baseline failed: {out[-300:]}"}
+        live_path = REPO_ROOT / DEMO_RESETTABLE_PATH
+        try:
+            current_content = live_path.read_text(encoding="utf-8")
+        except OSError as exc:
+            _reset_state = {"status": "failed", "message": f"Could not read {DEMO_RESETTABLE_PATH}: {exc}"}
             return
-
-        _, status_out = _run_controlled(["git", "status", "--porcelain", "--", DEMO_RESETTABLE_PATH], REPO_ROOT, 15)
-        if not status_out.strip():
+        if current_content == baseline_content:
             _reset_state = {"status": "completed", "message": "Already at canonical baseline — nothing to reset."}
             return
+        live_path.write_text(baseline_content, encoding="utf-8")
 
         ok, out = _run_controlled(["git", "add", "--", DEMO_RESETTABLE_PATH], REPO_ROOT, 15)
         if ok:

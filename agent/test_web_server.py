@@ -403,43 +403,62 @@ class DemoResetTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(reset_thread_calls), 1)
         ws._release_run_slot()
 
+    def _with_live_file(self, content):
+        """Real recruiter-facing finding (2026-09-12, run trainer-7e098fb3):
+        the deployed platform-backend container's local git repo has no
+        history/tags at all (a deliberate prior decision — see the
+        Dockerfile's own documented ROOT CAUSE comment — made before real
+        push/reset were requirements), so a git-tag-based baseline design
+        failed live in production even though it passed every mocked test.
+        Reset now reads/writes plain files instead — these tests patch
+        REPO_ROOT/DEMO_BASELINE_FILE to real temp files so the fix is
+        exercised against real file I/O, not just mocked git calls."""
+        tmp = tempfile.TemporaryDirectory()
+        repo_root = Path(tmp.name)
+        live_path = repo_root / ws.DEMO_RESETTABLE_PATH
+        live_path.parent.mkdir(parents=True)
+        live_path.write_text(content, encoding="utf-8")
+        baseline_path = repo_root / "baseline.html"
+        baseline_path.write_text(content, encoding="utf-8")
+        return tmp, live_path, mock.patch.object(ws, "REPO_ROOT", repo_root), mock.patch.object(ws, "DEMO_BASELINE_FILE", baseline_path)
+
     def test_already_at_baseline_is_a_clean_no_op_not_an_empty_commit(self):
         ws._reserve_run_slot("demo-reset")
-        with mock.patch.object(ws, "_read_git_blob", return_value="<html>baseline</html>"), \
-             mock.patch.object(ws, "_run_controlled") as mock_run:
-            mock_run.side_effect = [
-                (True, ""),   # git checkout
-                (True, ""),   # git status --porcelain -> empty = no diff
-            ]
+        tmp, live_path, repo_patch, baseline_patch = self._with_live_file("<html>baseline</html>")
+        with tmp, repo_patch, baseline_patch, mock.patch.object(ws, "_run_controlled") as mock_run:
             ws._run_reset_thread()
         self.assertEqual(ws._reset_state["status"], "completed")
         self.assertIn("Already at canonical baseline", ws._reset_state["message"])
-        # No commit/push/deploy call was ever attempted for a genuine no-op.
-        called_argvs = [c.args[0] for c in mock_run.call_args_list]
-        self.assertTrue(all(argv[0] != "railway" for argv in called_argvs))
+        # No git/railway call was ever attempted for a genuine no-op.
+        mock_run.assert_not_called()
 
-    def test_successful_reset_commits_pushes_deploys_and_verifies(self):
+    def test_successful_reset_writes_baseline_commits_pushes_deploys_and_verifies(self):
         ws._reserve_run_slot("demo-reset")
         baseline_html = "<html>canonical baseline</html>"
-        with mock.patch.object(ws, "_read_git_blob", return_value=baseline_html), \
+        tmp, live_path, repo_patch, baseline_patch = self._with_live_file("<html>changed by a demo run</html>")
+        # Overwrite the temp baseline file with the real intended baseline
+        # (the helper above seeds it identical to the live file on purpose
+        # for the no-op test; this test needs them to differ).
+        (Path(tmp.name) / "baseline.html").write_text(baseline_html, encoding="utf-8")
+        with tmp, repo_patch, baseline_patch, \
              mock.patch.object(ws, "_run_controlled") as mock_run, \
              mock.patch.object(ws, "_fetch_public_app", return_value=(200, baseline_html)), \
              mock.patch.object(ws.time, "sleep"):
             mock_run.side_effect = [
-                (True, ""),                         # git checkout
-                (True, "M app/.../index.html"),      # git status --porcelain -> real diff
-                (True, ""),                          # git add
-                (True, ""),                          # git commit
-                (True, ""),                          # git push
-                (True, ""),                          # railway up
+                (True, ""),   # git add
+                (True, ""),   # git commit
+                (True, ""),   # git push
+                (True, ""),   # railway up
             ]
             ws._run_reset_thread()
-        self.assertEqual(ws._reset_state["status"], "completed")
-        self.assertIn("verified live", ws._reset_state["message"])
+            self.assertEqual(ws._reset_state["status"], "completed")
+            self.assertIn("verified live", ws._reset_state["message"])
+            # The live file itself was really overwritten with the baseline.
+            self.assertEqual(live_path.read_text(encoding="utf-8"), baseline_html)
 
     def test_reset_releases_the_run_slot_even_on_failure(self):
         ws._reserve_run_slot("demo-reset")
-        with mock.patch.object(ws, "_read_git_blob", return_value=None):
+        with mock.patch.object(ws, "_read_demo_baseline", return_value=None):
             ws._run_reset_thread()
         self.assertEqual(ws._reset_state["status"], "failed")
         # The slot must be free again for a future run/reset.
