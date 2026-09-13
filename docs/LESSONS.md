@@ -477,3 +477,29 @@ surprising verified behavior would otherwise get rediscovered later.
   live behavior, and a "nothing to do" branch that skips deploy needs the
   same live-target check as the "did it work" branch that follows deploy
   — not a shortcut based on the orchestrator's own local state.
+
+- **Never identify "the new deployment" by mere difference from a prior
+  reference ID — verify recency/creation-time directly.** Real incident
+  (WORKBENCH RELIABILITY P0, 2026-09-13): `wait_for_new_deployment()`
+  originally captured a single "previous deployment id" before triggering
+  a deploy, then polled `railway deployment list --json` for any entry
+  whose id differed from it. This matched an OLD, unrelated deployment
+  that had genuinely FAILED 46 minutes earlier (still present near the
+  top of the recent-N list) and reported the whole pipeline as FAILED,
+  even though the real new deployment had genuinely SUCCEEDED and the
+  live Customer App was already correctly serving the new content —
+  a false failure discovered only by fetching the raw run event payload
+  (`GET /api/runs/<id>`, not the categorized session history) and
+  cross-referencing it against `railway deployment list --json` by hand.
+  Fixed by recording a real UTC timestamp immediately before triggering
+  the deploy (`utc_now_iso()`) and filtering candidates by
+  `createdAt > deploy_triggered_after_iso` (ISO 8601 UTC string
+  comparison) instead of id inequality — "new" means "created after I
+  triggered it," never "not equal to some earlier id I happened to note."
+  This bug survived 3 earlier real production acceptance-run failures
+  being misdiagnosed as other causes (unlinked deploy directory, then a
+  missing content-verification retry window) before the raw event
+  payload evidence exposed the real root cause — a reminder that each
+  layer of plausible-but-wrong hypothesis should be checked against raw
+  evidence before being treated as the fix, especially when a "fix"
+  doesn't fully resolve the symptom.
