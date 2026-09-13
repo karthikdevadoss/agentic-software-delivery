@@ -366,6 +366,51 @@ class PreRunEstimateTestCase(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(passed_normalized.new_value, "Agent Demo")
 
 
+class ContentVerificationRetryTestCase(unittest.TestCase):
+    """Real gap found live (2026-09-13, this exact task's first real
+    production acceptance run): a deployment's own record can say SUCCESS
+    while the traffic-serving container hasn't finished its cutover yet —
+    a single immediate content check can observe stale content and
+    report a false FAILED. _verify_content_with_retry() must retry
+    briefly, but ONLY when deployment identity is actually confirmed."""
+
+    def test_returns_immediately_when_content_already_matches(self):
+        with mock.patch.object(demo_catalogue, "extract_current_value", return_value="X"), \
+             mock.patch.object(ws, "_fetch_public_app", return_value=(200, "<p>X</p>")) as mock_fetch, \
+             mock.patch.object(ws.time, "sleep") as mock_sleep:
+            status, html, value, verified = ws._verify_content_with_retry("op", "X", True)
+        self.assertTrue(verified)
+        mock_fetch.assert_called_once()
+        mock_sleep.assert_not_called()
+
+    def test_retries_until_content_matches_within_the_window(self):
+        with mock.patch.object(demo_catalogue, "extract_current_value", side_effect=["OLD", "OLD", "NEW"]), \
+             mock.patch.object(ws, "_fetch_public_app", return_value=(200, "<p>whatever</p>")), \
+             mock.patch.object(ws.time, "sleep") as mock_sleep:
+            status, html, value, verified = ws._verify_content_with_retry("op", "NEW", True)
+        self.assertTrue(verified)
+        self.assertEqual(value, "NEW")
+        self.assertEqual(mock_sleep.call_count, 2)
+
+    def test_gives_up_honestly_after_the_wait_window_when_deployment_identity_confirmed(self):
+        with mock.patch.object(demo_catalogue, "extract_current_value", return_value="STILL OLD"), \
+             mock.patch.object(ws, "_fetch_public_app", return_value=(200, "<p>x</p>")), \
+             mock.patch.object(ws.time, "sleep"):
+            status, html, value, verified = ws._verify_content_with_retry("op", "NEW", True, max_wait_s=30, poll_interval_s=10)
+        self.assertFalse(verified)
+        self.assertEqual(value, "STILL OLD")
+
+    def test_does_not_retry_at_all_when_deployment_identity_was_never_confirmed(self):
+        """No real new deployment to wait on — retrying would just be a
+        slow way to reach the same honest DEPLOYMENT_STATUS_UNKNOWN."""
+        with mock.patch.object(demo_catalogue, "extract_current_value", return_value="OLD"), \
+             mock.patch.object(ws, "_fetch_public_app", return_value=(200, "<p>x</p>")) as mock_fetch, \
+             mock.patch.object(ws.time, "sleep") as mock_sleep:
+            ws._verify_content_with_retry("op", "NEW", False)
+        mock_fetch.assert_called_once()
+        mock_sleep.assert_not_called()
+
+
 class DemoResetTestCase(unittest.IsolatedAsyncioTestCase):
     """JOB-SEARCH P0 (2026-09-12): the public demo lifecycle's explicit
     Reset Demo path — a shared public demo must have a safe, verifiable

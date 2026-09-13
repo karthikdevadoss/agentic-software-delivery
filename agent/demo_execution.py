@@ -196,20 +196,16 @@ def get_latest_deployment_id(project_id: str, service_name: str, environment: st
 
 
 def link_workspace_to_railway(app_dir: Path, project_id: str, service_name: str, environment: str):
-    """Real bug found live (2026-09-13, this exact task): calling
-    `railway up` with explicit --project/--service/--environment flags
-    from a directory Railway has NEVER seen before (a fresh isolated
-    clone's app/ dir has no entry in the user-global ~/.railway/
-    config.json, which is keyed by absolute path) failed fast every time
-    (~10-15s, never reaching an actual build step) — `railway up --help`
-    documents that a cold/unlinked directory can imply `--new` (create a
-    NEW project) under certain flag combinations, and an unattended,
-    non-interactive `up` from such a directory is not a documented-safe
-    combination. Explicitly `railway link`ing the workspace to the EXACT
-    existing project/service/environment first (confirmed empirically to
-    resolve non-interactively and exit 0 when all three are given — no
-    prompt, no ambiguity, no risk of creating a stray project) removes
-    that ambiguity before any deploy is attempted."""
+    """Best-effort only — see the real-evidence caveat in trigger_deploy's
+    docstring on why this is NOT treated as fatal. Confirmed empirically
+    (2026-09-13, this exact task) to resolve non-interactively and exit 0
+    from a real user-authenticated local machine when all three of
+    --project/--service/--environment are given. NOT re-confirmed against
+    the deployed container's own project-scoped RAILWAY_TOKEN, which may
+    legitimately reject a `link` call (a scoped token is already locked
+    to one project, so re-linking may be a disallowed operation under it)
+    — that is a real, distinct authentication context this function's
+    caller must tolerate failing, not treat as blocking."""
     return run_controlled(
         ["railway", "link", "--project", project_id, "--service", service_name, "--environment", environment],
         app_dir, 30,
@@ -218,18 +214,32 @@ def link_workspace_to_railway(app_dir: Path, project_id: str, service_name: str,
 
 def trigger_deploy(app_dir: Path, project_id: str, service_name: str, environment: str):
     """Deploys FROM the isolated workspace's own app/ directory — never
-    the long-lived platform-backend server's own APP_DIR. Links the
-    workspace to the exact target project/service/environment first (see
-    link_workspace_to_railway) — a real, confirmed-live prerequisite for
-    a fresh, never-before-seen directory to deploy successfully at all."""
+    the long-lived platform-backend server's own APP_DIR.
+
+    Real incident (2026-09-13, this exact task, two real production
+    acceptance runs): the first attempt found `railway up` failing fast
+    from a fresh isolated (Railway-unlinked) directory and hypothesized
+    `railway link` first as the fix — but a SECOND real run proved that
+    hypothesis incomplete: `railway link` itself failed near-instantly
+    when run from inside the deployed container (which authenticates via
+    a project-scoped RAILWAY_TOKEN, not full user OAuth like the machine
+    this was first tested from) and blocking the deploy on that failure
+    made the SAME real defect fail differently, not fixed. Correction:
+    `railway link` is now attempted but explicitly NON-FATAL — if it
+    fails (e.g. disallowed under a scoped token), `railway up` is still
+    attempted directly with explicit --project/--service/--environment,
+    exactly as this function did before the link step existed. Link is
+    kept as a best-effort attempt because it did resolve one real local
+    dev-machine scenario; it must never be allowed to block a deploy the
+    explicit flags could otherwise have succeeded at."""
     link_ok, link_out = link_workspace_to_railway(app_dir, project_id, service_name, environment)
-    if not link_ok:
-        return False, f"railway link failed: {link_out}"
     ok, out = run_controlled(
         ["railway", "up", str(app_dir), "--detach",
          "--project", project_id, "--service", service_name, "--environment", environment],
         app_dir, 60,
     )
+    if not link_ok:
+        out = f"[railway link non-fatal failure, deploy attempted anyway: {link_out[-200:]}] {out}"
     return ok, out
 
 

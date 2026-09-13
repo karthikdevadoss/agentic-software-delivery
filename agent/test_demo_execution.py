@@ -187,24 +187,29 @@ class DeployTriggerTestCase(unittest.TestCase):
         self.assertIn("svc-name", calls[0])
         self.assertEqual(calls[1][:2], ["railway", "up"])
 
-    def test_trigger_deploy_never_calls_up_when_link_fails(self):
-        """The exact real failure mode: an unlinked/misconfigured
-        directory must not proceed to a real `railway up` attempt at
-        all — link failure blocks deploy, it doesn't just get ignored."""
+    def test_trigger_deploy_still_attempts_up_when_link_fails(self):
+        """Real incident (2026-09-13, this exact task, two real
+        production acceptance runs): a first fix made link failure
+        BLOCK the deploy, and a second real run proved that wrong — the
+        deployed container's project-scoped RAILWAY_TOKEN can legitimately
+        reject `railway link` (already locked to one project), and that
+        must never prevent `railway up`'s own explicit
+        --project/--service/--environment flags from being tried for
+        real. Link is best-effort only, never gating."""
         calls = []
 
         def fake_run(argv, cwd, timeout_s):
             calls.append(argv)
             if argv[:2] == ["railway", "link"]:
                 return False, "could not resolve project"
-            return True, ""
+            return True, "deployed"
 
         with mock.patch.object(de, "run_controlled", side_effect=fake_run):
             ok, out = de.trigger_deploy(Path("/fake/app"), "proj-id", "svc-name", "production")
-        self.assertFalse(ok)
-        self.assertIn("railway link failed", out)
+        self.assertTrue(ok)
+        self.assertIn("non-fatal", out)
         up_calls = [c for c in calls if c[:2] == ["railway", "up"]]
-        self.assertEqual(len(up_calls), 0)
+        self.assertEqual(len(up_calls), 1)
 
     def test_link_workspace_to_railway_passes_exact_project_service_environment(self):
         with mock.patch.object(de, "run_controlled", return_value=(True, "linked")) as mock_run:

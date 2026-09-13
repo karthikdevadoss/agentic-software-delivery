@@ -709,6 +709,30 @@ def _fetch_public_app(timeout_s=15):
         return None, str(exc)
 
 
+def _verify_content_with_retry(operation_id, expected_value, deployment_identity_confirmed,
+                                max_wait_s=90, poll_interval_s=10):
+    """Real gap found live (2026-09-13, this exact task's first real
+    production acceptance run): Railway's own deployment record can
+    report a build as SUCCESS while the actual traffic-serving container
+    has not yet fully replaced the old one — a single immediate content
+    check right after deployment-identity confirmation can therefore
+    observe stale content and report a false FAILED, even though the
+    real deploy is genuinely still completing its cutover. This retries
+    the TARGETED content assertion (never a whole-page substring check)
+    for a bounded window, but ONLY when deployment identity is already
+    confirmed — if identity itself was never confirmed, a single fetch is
+    enough (there's no real deployment to wait on)."""
+    max_wait_s = max_wait_s if deployment_identity_confirmed else 0
+    waited = 0
+    while True:
+        after_status, after_html = _fetch_public_app()
+        live_value = demo_catalogue.extract_current_value(after_html, operation_id) if after_html else None
+        if live_value == expected_value or waited >= max_wait_s:
+            return after_status, after_html, live_value, live_value == expected_value
+        time.sleep(poll_interval_s)
+        waited += poll_interval_s
+
+
 def _check_repository_workspace_ready() -> dict:
     """REPOSITORY_WORKSPACE_READY precondition — verified explicitly
     before any source-mutating trainer run, never assumed from an
@@ -899,9 +923,8 @@ def _run_trainer_thread(run: "Run", requirement: str, normalized: "demo_catalogu
             CUSTOMER_APP_PROJECT_ID, RAILWAY_SERVICE_NAME, RAILWAY_ENVIRONMENT, previous_deployment_id, workspace)
         deployment_identity_confirmed = new_deployment_id is not None and deploy_status.upper() == "SUCCESS"
 
-        after_status, after_html = _fetch_public_app()
-        live_value = demo_catalogue.extract_current_value(after_html, normalized.operation_id) if after_html else None
-        content_verified = live_value == normalized.new_value
+        after_status, after_html, live_value, content_verified = _verify_content_with_retry(
+            normalized.operation_id, normalized.new_value, deployment_identity_confirmed)
 
         run.emit("deployment", {
             "production_commit": production_commit,
@@ -1227,8 +1250,20 @@ def _run_reset_thread():
             max_wait_s=10 * 60)
         deployment_identity_confirmed = new_deployment_id is not None and deploy_status.upper() == "SUCCESS"
 
-        after_status, after_html = _fetch_public_app()
-        content_verified = after_status == 200 and after_html == baseline_content
+        # Same real gap fixed for the main trainer flow (see
+        # _verify_content_with_retry's docstring): a SUCCESS deployment
+        # record does not guarantee the traffic-serving container has
+        # finished its cutover yet — retry the content check briefly
+        # rather than trusting one immediate fetch.
+        content_verified = False
+        content_wait_s, content_max_wait_s = 0, (90 if deployment_identity_confirmed else 0)
+        while True:
+            after_status, after_html = _fetch_public_app()
+            content_verified = after_status == 200 and after_html == baseline_content
+            if content_verified or content_wait_s >= content_max_wait_s:
+                break
+            time.sleep(10)
+            content_wait_s += 10
 
         if deployment_identity_confirmed and content_verified:
             _reset_state = {"status": "completed", "message": f"Demo reset to canonical baseline — verified live in production (deployment {new_deployment_id})."}
