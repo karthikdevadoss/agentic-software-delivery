@@ -40,27 +40,29 @@ const resultText = document.getElementById("result-text");
 const usageSummaryBox = document.getElementById("usage-summary-box");
 const targetAppBody = document.getElementById("target-app-body");
 
-const EXAMPLES = [
-  'Add a small "Agent Demo" status badge near the page title',
-  "Change the wording of the Create Customer success message",
-  'Add a small "Powered by Agentic Delivery" footer line to the page',
-  "Change the page title text",
-  "Change a button label to something clearer",
-  "Add a short informational helper line under the page title",
+// RELIABILITY/CORRECTION PHASE (2026-09-13): a small hardcoded fallback
+// matching the real deterministic catalogue (agent/demo_catalogue.py) —
+// used only if the live /api/trainer/catalogue fetch fails; the real
+// examples are loaded dynamically below so this can never silently drift
+// from the actual supported operations.
+let EXAMPLES = [
+  'Change the heading text to "Customer Portal"',
+  'Change the subtitle text to "A live demo application"',
+  'Change the Find button label to "Search"',
+  'Change the Create button label to "Add Customer"',
+  'Change the footer text to "Built with care"',
 ];
 
 // The real workflow stages a trainer run can pass through, in order.
 // Must stay in sync with agent/web_server.py's TERMINAL_RUN_STATES and
-// the stage strings it actually emits (STAGE_LABELS + trainer-specific
-// COMMITTING/DEPLOYING/VERIFYING PRODUCTION) — this is a UI-side
-// consumer of that state machine, see CLAUDE.md's state-drift rule.
+// the stage strings _run_trainer_thread actually emits — this is a
+// UI-side consumer of that state machine, see CLAUDE.md's state-drift
+// rule. The deterministic catalogue path never emits REPOSITORY
+// INVESTIGATION/PROPOSING CHANGE/BUILDING (no agent, no compile step).
 const WORKFLOW_STAGES = [
   { key: "RECEIVED", label: "Requirement received" },
   { key: "RISK_ASSESSMENT", label: "Risk assessment" },
-  { key: "REPOSITORY INVESTIGATION", label: "Repository investigation" },
-  { key: "PROPOSING CHANGE", label: "Proposing change" },
   { key: "APPLYING CHANGE", label: "Applying change" },
-  { key: "BUILDING", label: "Building (compile)" },
   { key: "TESTING", label: "Testing" },
   { key: "COMMITTING", label: "Committing" },
   { key: "PUSHING", label: "Pushing to GitHub" },
@@ -86,13 +88,31 @@ function esc(s) {
   return div.innerHTML;
 }
 
-EXAMPLES.forEach(ex => {
-  const btn = document.createElement("button");
-  btn.className = "secondary example-btn";
-  btn.textContent = ex;
-  btn.addEventListener("click", () => { requirementInput.value = ex; });
-  examplesList.appendChild(btn);
-});
+function renderExampleButtons() {
+  examplesList.innerHTML = "";
+  EXAMPLES.forEach(ex => {
+    const btn = document.createElement("button");
+    btn.className = "secondary example-btn";
+    btn.textContent = ex;
+    btn.addEventListener("click", () => { requirementInput.value = ex; });
+    examplesList.appendChild(btn);
+  });
+}
+renderExampleButtons();
+
+// Load the REAL supported examples from the backend — never trust the
+// hardcoded fallback above as anything but a last resort, since the
+// actual deterministic catalogue (agent/demo_catalogue.py) is this
+// list's only source of truth.
+fetch("/api/trainer/catalogue")
+  .then(resp => resp.ok ? resp.json() : Promise.reject())
+  .then(data => {
+    if (Array.isArray(data.examples) && data.examples.length) {
+      EXAMPLES = data.examples;
+      renderExampleButtons();
+    }
+  })
+  .catch(() => { /* keep the hardcoded fallback — never leave the panel empty */ });
 
 // ---- Target application (shown before any requirement is submitted) -----
 // Fetched from the backend rather than hardcoded here, so this can never
@@ -198,23 +218,22 @@ function renderAssessment(a, blocked) {
   assessmentPanel.hidden = false;
   let html = "";
   if (blocked) {
-    html += `<p class="owner-auth-notice">This change requires Owner Authorization. Larger authorized builds are not enabled in this preview yet.</p>`;
-  }
-  html += `<div class="kv"><span class="k">Complexity</span><span class="v">${esc(a.complexity)}</span></div>`;
-  html += `<div class="kv"><span class="k">Risk</span><span class="v">${esc(a.risk)}</span></div>`;
-  html += `<div class="kv"><span class="k">Decision</span><span class="v">${blocked ? '<strong style="color:var(--red)">REQUIRES OWNER AUTHORIZATION</strong>' : '<strong style="color:var(--green)">AUTO-EXECUTE</strong>'}</span></div>`;
-  html += `<div class="kv"><span class="k">Reason</span><span class="v">${esc(a.reason)}</span></div>`;
-  if (blocked) {
-    html += `<p class="hint" style="margin-top:0.8rem;">Try one of these safe, bounded changes instead:</p><div id="alt-list"></div>`;
-  } else if (a.estimate) {
-    html += renderEstimateBlock(a.estimate);
+    html += `<p class="owner-auth-notice">${esc(a.message || "Authorization required. This request is outside the autonomous public-demo scope.")}</p>`;
+    html += `<div class="kv"><span class="k">Reason</span><span class="v">${esc(a.reason)}</span></div>`;
+    html += `<p class="hint" style="margin-top:0.8rem;">Try one of these verified demo changes instead:</p><div id="alt-list"></div>`;
+  } else {
+    html += `<div class="kv"><span class="k">Field</span><span class="v">${esc(a.human_name)}</span></div>`;
+    html += `<div class="kv"><span class="k">New value</span><span class="v">"${esc(a.new_value)}"</span></div>`;
+    html += `<div class="kv"><span class="k">Decision</span><span class="v"><strong style="color:var(--green)">AUTO-EXECUTE</strong></span></div>`;
+    html += `<div class="kv"><span class="k">Verification method</span><span class="v">${esc(a.expected_verification_method)}</span></div>`;
+    html += `<div class="kv"><span class="k">Production assertion</span><span class="v">${esc(a.expected_production_assertion)}</span></div>`;
+    html += `<div class="kv"><span class="k">Actual cost</span><span class="v">$0.00 — deterministic operation, no AI model call</span></div>`;
   }
   assessmentBody.innerHTML = html;
 
   if (blocked) {
     const altList = document.getElementById("alt-list");
-    const alternatives = (a.suggested_alternatives && a.suggested_alternatives.length)
-      ? a.suggested_alternatives : EXAMPLES;
+    const alternatives = (a.suggested_examples && a.suggested_examples.length) ? a.suggested_examples : EXAMPLES;
     alternatives.forEach(alt => {
       const btn = document.createElement("button");
       btn.className = "secondary example-btn";
@@ -223,34 +242,6 @@ function renderAssessment(a, blocked) {
       altList.appendChild(btn);
     });
   }
-}
-
-function fmtUsd(n) {
-  if (n === null || n === undefined) return "—";
-  return "$" + n.toFixed(n < 0.01 ? 4 : 2);
-}
-
-function renderEstimateBlock(estimate) {
-  let html = `<div class="estimate-box"><p class="estimate-label">ESTIMATED EXECUTION</p>`;
-  if (!estimate.available) {
-    html += `<p class="hint">${esc(estimate.reason || "ESTIMATE NOT AVAILABLE.")}</p>`;
-    html += `</div>`;
-    return html;
-  }
-  const [tokLow, tokHigh] = estimate.estimated_total_tokens_range;
-  html += `<div class="kv"><span class="k">Complexity</span><span class="v">${esc(estimate.complexity)}</span></div>`;
-  html += `<div class="kv"><span class="k">Risk</span><span class="v">${esc(estimate.risk)}</span></div>`;
-  html += `<div class="kv"><span class="k">Estimated AI token range</span><span class="v">${tokLow.toLocaleString()} – ${tokHigh.toLocaleString()} tokens (ESTIMATED)</span></div>`;
-  if (estimate.estimated_cost_range_usd) {
-    const [costLow, costHigh] = estimate.estimated_cost_range_usd;
-    html += `<div class="kv"><span class="k">Estimated API cost range</span><span class="v">${fmtUsd(costLow)} – ${fmtUsd(costHigh)} (ESTIMATED)</span></div>`;
-  } else {
-    html += `<div class="kv"><span class="k">Estimated API cost range</span><span class="v">ESTIMATE NOT AVAILABLE (no pricing for ${esc(estimate.provider)}/${esc(estimate.model)})</span></div>`;
-  }
-  html += `<div class="kv"><span class="k">Estimate confidence</span><span class="v">${esc(estimate.confidence)}</span></div>`;
-  html += `<p class="hint estimate-basis">Basis: ${esc(estimate.basis)} · method ${esc(estimate.method_version)}</p>`;
-  html += `</div>`;
-  return html;
 }
 
 function addActivityLine(html) {
@@ -430,10 +421,22 @@ function applyEvent(evt) {
         : '<span style="color:var(--red)">NOT VERIFIED' + (evt.http_status === 200 && !evt.content_verified ? " — requested content not found in production" : "") + '</span>';
       deployBody.innerHTML += `<div class="kv"><span class="k">Public app</span><span class="v"><a href="${esc(evt.public_url)}" target="_blank" rel="noopener">${esc(evt.public_url)}</a></span></div>`;
       deployBody.innerHTML += `<div class="kv"><span class="k">HTTP status</span><span class="v">${esc(evt.http_status)}</span></div>`;
-      deployBody.innerHTML += `<div class="kv"><span class="k">Requested content live</span><span class="v">${evt.content_verified ? "yes" : "no"}</span></div>`;
+      if (evt.new_deployment_id) {
+        deployBody.innerHTML += `<div class="kv"><span class="k">New deployment ID</span><span class="v"><code>${esc(evt.new_deployment_id)}</code> (${esc(evt.deployment_status)})</span></div>`;
+        deployBody.innerHTML += `<div class="kv"><span class="k">Deployment identity confirmed</span><span class="v">${evt.deployment_identity_confirmed ? "yes — real Railway deployment record" : "no"}</span></div>`;
+      }
+      deployBody.innerHTML += `<div class="kv"><span class="k">Requested content live</span><span class="v">${evt.content_verified ? "yes" : `no${evt.live_value !== undefined ? ` (found "${esc(evt.live_value)}")` : ""}`}</span></div>`;
       deployBody.innerHTML += `<div class="kv"><span class="k">Verification</span><span class="v">${verifiedBadge}</span></div>`;
       break;
     }
+    case "workspace":
+      deployPanel.hidden = false;
+      deployBody.innerHTML += `<div class="kv"><span class="k">Workspace</span><span class="v">${evt.ok ? "isolated clone created" : "isolated clone FAILED"}</span></div>`;
+      break;
+    case "diff":
+      verificationPanel.hidden = false;
+      addVerificationLine("Change", { success: true, summary: `${evt.file}:${evt.line_changed}\n- ${evt.old_line}\n+ ${evt.new_line}` });
+      break;
     case "final_result":
       resultPanel.hidden = false;
       run.finalResultText = evt.text;
@@ -585,7 +588,8 @@ function subscribeToRun(runId) {
     try { applyEventIfNew(JSON.parse(e.data)); } catch (_) { /* malformed frame, ignore */ }
   };
   ["risk_assessment", "stage", "no_change_needed", "tool_call", "tool_result",
-   "approval_decision", "commit", "push", "deployment", "final_result", "error", "usage_summary"]
+   "approval_decision", "workspace", "diff", "commit", "push", "deployment",
+   "final_result", "error", "usage_summary"]
     .forEach(type => eventSource.addEventListener(type, onMessage));
 }
 
