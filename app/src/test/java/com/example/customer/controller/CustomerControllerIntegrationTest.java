@@ -9,6 +9,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.Map;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -73,5 +75,58 @@ class CustomerControllerIntegrationTest {
         assertThatThrownBy(() -> restTemplate.getForEntity(url("/customers/999999"), String.class))
                 .isInstanceOf(HttpClientErrorException.NotFound.class)
                 .satisfies(ex -> assertThat(((HttpClientErrorException) ex).getResponseBodyAsString()).contains("999999"));
+    }
+
+    /**
+     * FOUNDATIONAL IMPROVEMENT (2026-09-13): GlobalExceptionHandler
+     * (@RestControllerAdvice) replaces the previous inline
+     * @ExceptionHandler on the controller, and now returns structured
+     * JSON (an "error" field) instead of a raw plain-text string body —
+     * a real gap since every OTHER endpoint on this API already returns
+     * JSON.
+     */
+    @Test
+    void getCustomer_nonExistentId_returnsStructuredJsonErrorBody() {
+        assertThatThrownBy(() -> restTemplate.getForEntity(url("/customers/999999"), Map.class))
+                .isInstanceOf(HttpClientErrorException.NotFound.class)
+                .satisfies(ex -> {
+                    HttpClientErrorException httpEx = (HttpClientErrorException) ex;
+                    assertThat(httpEx.getResponseHeaders().getContentType()).isNotNull();
+                    assertThat(httpEx.getResponseHeaders().getContentType().toString()).contains("json");
+                    assertThat(httpEx.getResponseBodyAsString()).contains("\"error\"");
+                });
+    }
+
+    /**
+     * FOUNDATIONAL IMPROVEMENT (2026-09-13): Bean Validation was declared
+     * as a dependency (spring-boot-starter-validation) but genuinely
+     * unused anywhere in this codebase — POST /customers accepted a
+     * blank name or malformed email with no rejection at all. Customer's
+     * fields now carry @NotBlank/@Email constraints, enforced via
+     * @Valid on the controller method, with structured 400 responses
+     * from GlobalExceptionHandler.
+     */
+    @Test
+    void createCustomer_withBlankName_returns400WithFieldError() {
+        Customer request = new Customer("", "valid@example.com");
+
+        assertThatThrownBy(() -> restTemplate.postForEntity(url("/customers"), request, Map.class))
+                .isInstanceOf(HttpClientErrorException.BadRequest.class)
+                .satisfies(ex -> {
+                    String body = ((HttpClientErrorException) ex).getResponseBodyAsString();
+                    assertThat(body).contains("\"name\"");
+                });
+    }
+
+    @Test
+    void createCustomer_withMalformedEmail_returns400WithFieldError() {
+        Customer request = new Customer("Valid Name", "not-an-email");
+
+        assertThatThrownBy(() -> restTemplate.postForEntity(url("/customers"), request, Map.class))
+                .isInstanceOf(HttpClientErrorException.BadRequest.class)
+                .satisfies(ex -> {
+                    String body = ((HttpClientErrorException) ex).getResponseBodyAsString();
+                    assertThat(body).contains("\"email\"");
+                });
     }
 }
