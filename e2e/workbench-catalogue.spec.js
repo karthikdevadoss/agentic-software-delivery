@@ -50,8 +50,7 @@ test.describe("Workbench — deterministic catalogue (safe, non-mutating)", () =
     await page.goto("/workbench");
     await page.locator("#requirement-input").fill("Change the Update Email section to say something else");
     await page.locator("#submit-btn").click();
-    const bodyText = await page.locator("#assessment-body").innerText();
-    expect(bodyText).toContain("Authorization required");
+    await expect(page.locator("#assessment-body")).toContainText("Authorization required");
     await expect(page.locator("#run-status-panel")).toBeHidden();
   });
 
@@ -59,8 +58,14 @@ test.describe("Workbench — deterministic catalogue (safe, non-mutating)", () =
     await page.goto("/workbench");
     await page.locator("#requirement-input").fill('Change the subtitle and the footer to "X"');
     await page.locator("#submit-btn").click();
-    const bodyText = await page.locator("#assessment-body").innerText();
-    expect(bodyText).toContain("Authorization required");
+    // Real test bug found via this task's own reliability discipline: this
+    // assertion previously read innerText() immediately after click() with
+    // no wait for the async assess response — passed locally by lucky
+    // timing, failed consistently against real production's higher
+    // latency. The backend was always correct (confirmed directly via the
+    // API); only this test's missing wait was wrong.
+    await expect(page.locator("#assessment-panel")).toBeVisible();
+    await expect(page.locator("#assessment-body")).toContainText("Authorization required");
   });
 
   test("a genuinely supported requirement's preview shows the exact field, value, and $0.00 cost", async ({ page }) => {
