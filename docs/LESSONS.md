@@ -576,19 +576,32 @@ surprising verified behavior would otherwise get rediscovered later.
   to tolerate "index missing" as if that were an equally valid outcome
   for a test whose entire point is verifying real retrieval.
 
-- **Spring Boot's separate-file `application-{profile}.properties`
-  profile-precedence behaved unexpectedly for this project's Spring Boot
-  4.1.1 setup: a base `application.properties` setting
-  (`spring.flyway.enabled=false`) was NOT overridden by
-  `application-postgres.properties`'s `spring.flyway.enabled=true` with
-  `@ActiveProfiles("postgres")` active** — confirmed via a real GitHub
-  Actions run against a genuine Testcontainers Postgres instance (zero
-  Flyway log lines, then `Schema validation: missing table
-  [contract_plan]`), not a local guess. Root cause was not fully
-  isolated in the time available (documented as unresolved, not silently
-  worked around). The fix that removed the ambiguity entirely: merge
-  both files into ONE `application.properties` using the modern
-  multi-document `#---` / `spring.config.activate.on-profile=postgres`
-  form (the officially recommended mechanism since Spring Boot 2.4).
-  Prefer this form over separate profile files for any new
-  profile-specific config in this project going forward.
+- **A profile-activated `spring.flyway.enabled=true` did not override the
+  base `application.properties`'s `spring.flyway.enabled=false` in a
+  `@SpringBootTest` + `@ActiveProfiles("postgres")` context, against a
+  real Testcontainers Postgres instance in real GitHub Actions CI —
+  confirmed via two independent real CI runs, not a local guess or a
+  one-off fluke.** First attempt: a separate `application-postgres.properties`
+  file (the legacy per-profile-file convention). Second attempt: the
+  modern single-file multi-document form (`#---` /
+  `spring.config.activate.on-profile=postgres`), documented as the
+  officially recommended mechanism since Spring Boot 2.4 — this ALSO
+  failed identically (zero Flyway log lines, then Hibernate's
+  `Schema validation: missing table [contract_plan]`). The exact root
+  cause was not fully isolated in the time available — plausible
+  candidates not yet ruled out: an interaction specific to
+  `@ActiveProfiles` in a test `ApplicationContext` (vs. real
+  `SPRING_PROFILES_ACTIVE` env-var activation), or something about how
+  `@ServiceConnection`'s dynamically-injected Testcontainers DataSource
+  properties layer against profile-activated documents in this Spring
+  Boot 4.1.1 / Flyway 12.4.0 combination. Documented honestly as
+  unresolved, not silently worked around. The fix that actually worked:
+  asserting `spring.flyway.enabled=true` directly via
+  `@SpringBootTest(properties = "spring.flyway.enabled=true")` — Spring's
+  one documented, unambiguous highest-precedence config source, which
+  cannot be shadowed by anything profile-related. **Consequence: this
+  test alone does NOT prove a real production cutover
+  (`SPRING_PROFILES_ACTIVE=postgres` via a real env var, a different
+  activation path) will actually run Flyway** — that must be
+  independently re-verified before any real Postgres cutover, not
+  assumed from this test passing.
