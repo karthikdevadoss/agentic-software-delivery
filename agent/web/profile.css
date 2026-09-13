@@ -126,42 +126,12 @@
   .hero-name { font-size: 1.6rem; }
 }
 
-/* --------------------------------------------------------- EXPERIENCE */
-
-.exp-grid { display: flex; flex-direction: column; }
-.exp-row {
-  display: grid;
-  grid-template-columns: 180px 140px 1fr;
-  gap: 1rem;
-  align-items: start;
-  padding: 0.8rem 0;
-  border-bottom: 1px solid var(--border);
-}
-.exp-row:last-child { border-bottom: none; }
-.exp-co { font-weight: 700; font-size: 0.94rem; color: var(--text); }
-.exp-loc { font-size: 0.82rem; color: var(--muted); }
-.exp-desc { font-size: 0.88rem; color: var(--text); line-height: 1.5; }
-.exp-tags { grid-column: 3; display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.35rem; }
-.exp-tags span {
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: #9fb3d9;
-  background: rgba(91,147,255,0.1);
-  border: 1px solid rgba(91,147,255,0.22);
-  border-radius: 5px;
-  padding: 0.15rem 0.5rem;
-}
-
-@media (max-width: 640px) {
-  .exp-row { grid-template-columns: 1fr; gap: 0.25rem; }
-  .exp-tags { grid-column: 1; }
-}
 
 /* ----------------------------------------------------------- STRENGTHS */
 
 .strengths-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 0.9rem;
 }
 .strength-card {
@@ -173,7 +143,7 @@
 .strength-card.ai {
   border-color: rgba(62,207,142,0.3);
   background: rgba(62,207,142,0.04);
-  grid-column: span 3;
+  grid-column: 1 / -1;
 }
 .strength-title { font-size: 0.88rem; font-weight: 700; color: var(--text); margin-bottom: 0.4rem; }
 .strength-tags { font-size: 0.8rem; color: var(--muted); line-height: 1.6; }
@@ -183,11 +153,44 @@
 
 @media (max-width: 760px) {
   .strengths-grid { grid-template-columns: 1fr 1fr; }
-  .strength-card.ai { grid-column: span 2; }
 }
 @media (max-width: 500px) {
   .strengths-grid { grid-template-columns: 1fr; }
-  .strength-card.ai { grid-column: span 1; }
+}
+
+/* ---------------------------------------------------------- AI SECTION */
+
+.ai-distinction {
+  font-size: 0.9rem;
+  color: var(--muted);
+  line-height: 1.65;
+  margin-bottom: 1rem;
+  max-width: 780px;
+}
+
+/* --------------------------------------------------------- PLATFORM SURFACES */
+
+.surface-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.9rem;
+}
+.surface-card {
+  background: rgba(255,255,255,0.025);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.1rem 1.2rem;
+  display: flex;
+  flex-direction: column;
+}
+.surface-title { font-size: 0.95rem; font-weight: 700; color: var(--text); margin-bottom: 0.5rem; }
+.surface-desc { font-size: 0.82rem; color: var(--muted); line-height: 1.6; flex: 1; }
+.surface-link { margin-top: 0.7rem; }
+.surface-link a { color: var(--accent); font-size: 0.82rem; font-weight: 600; text-decoration: none; }
+.surface-link a:hover { text-decoration: underline; }
+
+@media (max-width: 760px) {
+  .surface-grid { grid-template-columns: 1fr; }
 }
 
 /* ------------------------------------------------------------ FEATURED */
