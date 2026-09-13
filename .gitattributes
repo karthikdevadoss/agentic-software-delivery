@@ -1,0 +1,14 @@
+# Real bug fixed here (2026-09-13): core.autocrlf=true on a Windows dev
+# machine converts app/mvnw's shebang line ("#!/bin/sh") to CRLF on every
+# local checkout/clone, corrupting it to "#!/bin/sh\r\n" -- which then
+# fails "no such file or directory" the moment anything tries to execute
+# it on Linux (the shell interprets the interpreter path as literally
+# "/bin/sh\r", which does not exist). This broke agent/demo_execution.py's
+# create_isolated_workspace() (a fresh git clone, done on this machine)
+# feeding a real Railway build for the first time this project ever
+# deployed a Java change through that pipeline (see docs/LESSONS.md and
+# docs/ACTION_QUEUE.json's ACT-008 entry). Forcing LF here, regardless of
+# any given machine's core.autocrlf setting, is the standard, durable fix
+# -- not something every future clone/developer needs to remember.
+app/mvnw       text eol=lf
+app/.mvn/**    text eol=lf
