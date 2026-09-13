@@ -195,12 +195,36 @@ def get_latest_deployment_id(project_id: str, service_name: str, environment: st
         return None
 
 
+def link_workspace_to_railway(app_dir: Path, project_id: str, service_name: str, environment: str):
+    """Real bug found live (2026-09-13, this exact task): calling
+    `railway up` with explicit --project/--service/--environment flags
+    from a directory Railway has NEVER seen before (a fresh isolated
+    clone's app/ dir has no entry in the user-global ~/.railway/
+    config.json, which is keyed by absolute path) failed fast every time
+    (~10-15s, never reaching an actual build step) — `railway up --help`
+    documents that a cold/unlinked directory can imply `--new` (create a
+    NEW project) under certain flag combinations, and an unattended,
+    non-interactive `up` from such a directory is not a documented-safe
+    combination. Explicitly `railway link`ing the workspace to the EXACT
+    existing project/service/environment first (confirmed empirically to
+    resolve non-interactively and exit 0 when all three are given — no
+    prompt, no ambiguity, no risk of creating a stray project) removes
+    that ambiguity before any deploy is attempted."""
+    return run_controlled(
+        ["railway", "link", "--project", project_id, "--service", service_name, "--environment", environment],
+        app_dir, 30,
+    )
+
+
 def trigger_deploy(app_dir: Path, project_id: str, service_name: str, environment: str):
     """Deploys FROM the isolated workspace's own app/ directory — never
-    the long-lived platform-backend server's own APP_DIR — using
-    explicit --project/--service/--environment flags (confirmed to work
-    without directory-based Railway linking, which a fresh temp clone
-    would never have)."""
+    the long-lived platform-backend server's own APP_DIR. Links the
+    workspace to the exact target project/service/environment first (see
+    link_workspace_to_railway) — a real, confirmed-live prerequisite for
+    a fresh, never-before-seen directory to deploy successfully at all."""
+    link_ok, link_out = link_workspace_to_railway(app_dir, project_id, service_name, environment)
+    if not link_ok:
+        return False, f"railway link failed: {link_out}"
     ok, out = run_controlled(
         ["railway", "up", str(app_dir), "--detach",
          "--project", project_id, "--service", service_name, "--environment", environment],
