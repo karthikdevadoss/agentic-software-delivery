@@ -207,6 +207,31 @@ def utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _parse_iso_utc(value: str):
+    """Real bug found live (2026-09-13, ACT-008's first live acceptance
+    run): utc_now_iso() emits a "+00:00"-suffixed, microsecond-precision
+    timestamp, while Railway's own `createdAt` values are
+    "Z"-suffixed with millisecond precision. wait_for_new_deployment()
+    previously compared these as raw strings (correct ONLY because ISO
+    8601 UTC timestamps sort lexicographically when both operands share
+    an identical format) — a real, genuinely new deployment created
+    within the same wall-clock second as the trigger timestamp can
+    compare incorrectly under the differing suffix/precision formats,
+    since '+' (ASCII 43) sorts before any digit while 'Z' (ASCII 90)
+    sorts after every digit. Parsing both into real datetime objects
+    before comparing removes this entire class of bug regardless of
+    which of these two (or any other valid ISO 8601 UTC) formats either
+    side happens to use. Returns None (never raises) for a value this
+    cannot parse — callers must treat that candidate as unusable, never
+    silently order it as before/after anything."""
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
 def link_workspace_to_railway(app_dir: Path, project_id: str, service_name: str, environment: str):
     """Best-effort only — see the real-evidence caveat in trigger_deploy's
     docstring on why this is NOT treated as fatal. Confirmed empirically
@@ -284,7 +309,21 @@ def wait_for_new_deployment(project_id: str, service_name: str, environment: str
 
     Returns (new_deployment_id_or_None, status, waited_seconds). status
     is one of: 'SUCCESS', a real Railway failure status string, or
-    'TIMEOUT' if no new terminal deployment appeared in the window."""
+    'TIMEOUT' if no new terminal deployment appeared in the window.
+
+    Real bug found live (2026-09-13, ACT-008's first live acceptance
+    run): the candidate filter previously compared `createdAt` against
+    `deploy_triggered_after_iso` as raw strings — see _parse_iso_utc's
+    docstring for why that is not reliably correct when the two sides
+    use different (but both valid) ISO 8601 UTC formats, as
+    utc_now_iso() and Railway's own `createdAt` genuinely do. Two real
+    deploys (Railway deployments 8c64f794/1da5acf1) both genuinely
+    FAILED at the platform (a separate, since-fixed defect — see
+    docs/LESSONS.md's app/mvnw executable-bit entry), yet this function
+    reported TIMEOUT after the full 900s wait instead of the real
+    FAILED status within one poll interval — consistent with the
+    candidate filter never matching the real new deployment at all."""
+    trigger_dt = _parse_iso_utc(deploy_triggered_after_iso)
     waited = 0
     while waited < max_wait_s:
         time.sleep(poll_interval_s)
@@ -300,7 +339,11 @@ def wait_for_new_deployment(project_id: str, service_name: str, environment: str
             deployments = json.loads(out)
         except ValueError:
             continue
-        candidates = [d for d in deployments if str(d.get("createdAt", "")) > deploy_triggered_after_iso]
+        candidates = []
+        for d in deployments:
+            created_dt = _parse_iso_utc(str(d.get("createdAt", "")))
+            if created_dt is not None and trigger_dt is not None and created_dt > trigger_dt:
+                candidates.append(d)
         for d in candidates:
             status = str(d.get("status", ""))
             if status.upper() == _SUCCESS_STATUS:

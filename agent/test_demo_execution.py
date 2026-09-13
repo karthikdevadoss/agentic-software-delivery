@@ -288,6 +288,30 @@ class DeploymentIdentityTestCase(unittest.TestCase):
         self.assertIsNone(new_id)
         self.assertEqual(status, "TIMEOUT")
 
+    def test_wait_for_new_deployment_compares_real_datetimes_not_raw_strings(self):
+        """THE EXACT REAL BUG found live by ACT-008's first live
+        acceptance run (2026-09-13): utc_now_iso() emits a
+        "+00:00"-suffixed, microsecond-precision timestamp; Railway's
+        own `createdAt` can be "Z"-suffixed with NO fractional-seconds
+        component at all for an exact-second timestamp. Raw string
+        comparison then breaks: '.' (0x2E) sorts before 'Z' (0x5A), so
+        a trigger timestamp of "...T10:00:01.000001+00:00" compared
+        against a createdAt of "...T10:00:01Z" (the SAME second, but
+        genuinely a fraction of a second EARLIER — an old, unrelated
+        deployment, not a new one) would incorrectly sort as
+        createdAt > trigger under raw strings, wrongly admitting an old
+        deployment as a candidate. Real parsed-datetime comparison must
+        correctly exclude it."""
+        fixture = json.dumps([
+            {"id": "old-same-second-id", "status": "SUCCESS", "createdAt": "2026-09-13T10:00:01Z"},
+        ])
+        with mock.patch.object(de, "run_controlled", return_value=(True, fixture)), \
+             mock.patch.object(de.time, "sleep"):
+            new_id, status, waited = de.wait_for_new_deployment(
+                "proj", "svc", "production", "2026-09-13T10:00:01.000001+00:00", Path("."), max_wait_s=20, poll_interval_s=10)
+        self.assertIsNone(new_id, "an old deployment from the same second, genuinely created before the trigger, must never be admitted as a candidate")
+        self.assertEqual(status, "TIMEOUT")
+
     def test_wait_for_new_deployment_times_out_honestly_when_nothing_new_appears(self):
         with mock.patch.object(de, "run_controlled", return_value=(False, "cli error")), \
              mock.patch.object(de.time, "sleep"):
@@ -303,6 +327,31 @@ class DeploymentIdentityTestCase(unittest.TestCase):
         _time.sleep(0.01)
         after = de.utc_now_iso()
         self.assertLess(before, after)
+
+    def test_parse_iso_utc_handles_z_suffix(self):
+        dt = de._parse_iso_utc("2026-09-13T10:00:01.500Z")
+        self.assertEqual(dt.year, 2026)
+        self.assertEqual(dt.microsecond, 500000)
+
+    def test_parse_iso_utc_handles_offset_suffix(self):
+        dt = de._parse_iso_utc("2026-09-13T10:00:01.500000+00:00")
+        self.assertEqual(dt.microsecond, 500000)
+
+    def test_parse_iso_utc_handles_no_fractional_seconds(self):
+        dt = de._parse_iso_utc("2026-09-13T10:00:01Z")
+        self.assertEqual(dt.second, 1)
+        self.assertEqual(dt.microsecond, 0)
+
+    def test_parse_iso_utc_z_and_offset_forms_of_the_same_instant_compare_equal(self):
+        self.assertEqual(
+            de._parse_iso_utc("2026-09-13T10:00:01.500Z"),
+            de._parse_iso_utc("2026-09-13T10:00:01.500000+00:00"),
+        )
+
+    def test_parse_iso_utc_returns_none_never_raises_on_garbage(self):
+        self.assertIsNone(de._parse_iso_utc(""))
+        self.assertIsNone(de._parse_iso_utc("not a timestamp"))
+        self.assertIsNone(de._parse_iso_utc(None))
 
 
 if __name__ == "__main__":
