@@ -24,11 +24,65 @@ from unittest import mock
 
 import demo_execution as de
 
+REPO_ROOT = Path(__file__).resolve().parent.parent
+
 
 def _git(args, cwd):
     result = subprocess.run(["git", *args], cwd=str(cwd), capture_output=True, text=True, encoding="utf-8")
     assert result.returncode == 0, f"git {args} failed: {result.stderr}"
     return result.stdout
+
+
+class MvnwCheckoutIntegrityTestCase(unittest.TestCase):
+    """REAL BUG found live by ACT-008's first live acceptance run
+    (2026-09-13): this machine's core.autocrlf=true converted app/mvnw's
+    shebang line ("#!/bin/sh") to CRLF on every local git clone/checkout
+    — including agent/demo_execution.create_isolated_workspace()'s own
+    fresh clones — corrupting it to "#!/bin/sh\\r\\n", which then fails
+    "no such file or directory" the instant anything tries to execute it
+    (three real Railway build attempts failed this exact way: deployments
+    8c64f794/1da5acf1/9083bbaf). A separate real gap (the executable bit
+    was never git-tracked at all, mode 100644 not 100755) was fixed
+    first via `git update-index --chmod=+x`, but Railway's own build log
+    showed it explicitly re-running `chmod +x mvnw` itself and still
+    hitting the identical shebang failure immediately after — proving
+    the uploaded CONTENT, not the permission bit, was the remaining
+    problem. Fixed via .gitattributes (`app/mvnw text eol=lf`), which
+    forces LF regardless of any given machine's core.autocrlf setting.
+    This test clones the REAL current repository into a real temporary
+    directory (exercising real git checkout normalization, not a mock)
+    and asserts the checked-out file is genuinely executable-shaped and
+    LF-only — the exact real precondition every previous build silently
+    assumed and never verified until it broke live."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp_root = tempfile.mkdtemp(prefix="test-mvnw-checkout-")
+        cls.clone_dir = Path(cls.tmp_root) / "clone"
+        result = subprocess.run(
+            ["git", "clone", str(REPO_ROOT), str(cls.clone_dir)],
+            capture_output=True, text=True, encoding="utf-8",
+        )
+        assert result.returncode == 0, f"local clone failed: {result.stderr}"
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.tmp_root, ignore_errors=True)
+
+    def test_checked_out_mvnw_has_no_crlf_line_endings(self):
+        content = (self.clone_dir / "app" / "mvnw").read_bytes()
+        self.assertNotIn(b"\r\n", content, "a real checkout produced CRLF line endings — the exact incident this .gitattributes entry exists to prevent")
+
+    def test_checked_out_mvnw_shebang_is_intact(self):
+        first_line = (self.clone_dir / "app" / "mvnw").read_bytes().split(b"\n", 1)[0]
+        self.assertEqual(first_line, b"#!/bin/sh", "a corrupted shebang (e.g. a trailing \\r) makes the interpreter path unresolvable at execution time")
+
+    def test_mvnw_is_git_tracked_as_executable(self):
+        result = subprocess.run(
+            ["git", "ls-files", "-s", "app/mvnw"], cwd=str(REPO_ROOT),
+            capture_output=True, text=True, encoding="utf-8",
+        )
+        self.assertTrue(result.stdout.startswith("100755"), f"expected mode 100755, got: {result.stdout!r}")
 
 
 class RealLocalGitWorkflowTestCase(unittest.TestCase):
