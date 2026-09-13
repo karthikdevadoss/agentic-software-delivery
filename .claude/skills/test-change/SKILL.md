@@ -51,6 +51,16 @@ defect) — never repeat that class of mistake.
 - If claiming PASSED: the real tool_result payload from
   `run_controlled_tests`.
 
+## Scope note
+
+This Skill's prescribed duty is narrowly the Workbench-run testing
+terminal state for one applied change (PASSED/NOT APPLICABLE/FAILED). It
+is not a general "what tests does an AI/RAG/MCP change need" procedure —
+see [[ai-feature-evaluation]] for that (evals are a separate concern from
+this Skill's deterministic PASSED/FAILED/NOT-APPLICABLE decision; do not
+let an eval result substitute for this Skill's gate, and do not let this
+Skill's gate substitute for running the eval suite).
+
 ## Must NOT
 
 - Must NOT default to "passed" or "not applicable" when neither has been

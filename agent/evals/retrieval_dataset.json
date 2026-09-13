@@ -1,0 +1,95 @@
+{
+  "_purpose": "Eval 1 -- retrieval quality. Version-controlled, hand-labeled cases against the curated backend RAG corpus (agent/backend_rag_corpus.py). expected_sources lists repo-relative source_path values; a retrieved chunk counts as a hit if its source_path is in this list. Run: python agent/eval_runner.py retrieval",
+  "_metrics": ["recall_at_3", "recall_at_5", "mrr"],
+  "cases": [
+    {
+      "id": "rq-01",
+      "query": "Where is the customer-not-found error handled in the service layer?",
+      "category": "backend_behavior",
+      "expected_sources": [
+        "app/src/main/java/com/example/customer/service/CustomerService.java",
+        "app/src/test/java/com/example/customer/service/CustomerServiceTest.java",
+        "app/src/main/java/com/example/customer/exception/GlobalExceptionHandler.java"
+      ]
+    },
+    {
+      "id": "rq-02",
+      "query": "How does the controller expose the customer lookup endpoint?",
+      "category": "backend_behavior",
+      "expected_sources": ["app/src/main/java/com/example/customer/controller/CustomerController.java"]
+    },
+    {
+      "id": "rq-03",
+      "query": "Where is the not-found exception converted into an HTTP JSON error response?",
+      "category": "backend_behavior",
+      "expected_sources": [
+        "app/src/main/java/com/example/customer/exception/GlobalExceptionHandler.java",
+        "app/src/test/java/com/example/customer/controller/CustomerControllerIntegrationTest.java"
+      ]
+    },
+    {
+      "id": "rq-04",
+      "query": "What validation errors exist for creating a customer with bad input?",
+      "category": "backend_behavior",
+      "expected_sources": [
+        "app/src/main/java/com/example/customer/exception/GlobalExceptionHandler.java",
+        "app/src/main/java/com/example/customer/model/Customer.java",
+        "app/src/test/java/com/example/customer/controller/CustomerControllerIntegrationTest.java"
+      ]
+    },
+    {
+      "id": "rq-05",
+      "query": "How is a new customer persisted to the database?",
+      "category": "backend_behavior",
+      "expected_sources": [
+        "app/src/main/java/com/example/customer/service/CustomerService.java",
+        "app/src/main/java/com/example/customer/repository/CustomerRepository.java"
+      ]
+    },
+    {
+      "id": "rq-06",
+      "query": "What fields does the Customer entity have?",
+      "category": "backend_behavior",
+      "expected_sources": ["app/src/main/java/com/example/customer/model/Customer.java"]
+    },
+    {
+      "id": "rq-07",
+      "query": "How does this platform verify a backend deployment actually reached real production?",
+      "category": "architecture",
+      "expected_sources": [
+        "docs/ACTION_QUEUE.json",
+        "docs/WORKBENCH_RELIABILITY_GAP_ANALYSIS.md"
+      ]
+    },
+    {
+      "id": "rq-08",
+      "query": "What is the ACT-008 internal backend acceptance scenario?",
+      "category": "architecture",
+      "expected_sources": ["docs/ACTION_QUEUE.json"]
+    },
+    {
+      "id": "rq-09",
+      "query": "What real incident caused a deployment to be falsely verified as successful?",
+      "category": "incident_lesson",
+      "expected_sources": ["docs/LESSONS.md", "docs/WORKBENCH_RELIABILITY_GAP_ANALYSIS.md"]
+    },
+    {
+      "id": "rq-10",
+      "query": "What is the rule about RAG or an LLM never being allowed to authorize a change?",
+      "category": "incident_lesson",
+      "expected_sources": ["docs/LESSONS.md", "docs/ACTION_QUEUE.json"]
+    },
+    {
+      "id": "rq-11",
+      "query": "Why can't the deployed platform backend push commits to GitHub on its own?",
+      "category": "architecture",
+      "expected_sources": ["docs/ACTION_QUEUE.json"]
+    },
+    {
+      "id": "rq-12",
+      "query": "What test covers submitting a customer with a malformed email address?",
+      "category": "test_coverage",
+      "expected_sources": ["app/src/test/java/com/example/customer/controller/CustomerControllerIntegrationTest.java"]
+    }
+  ]
+}

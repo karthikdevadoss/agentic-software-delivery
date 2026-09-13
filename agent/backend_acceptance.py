@@ -49,6 +49,7 @@ from pathlib import Path
 
 import backend_catalogue as bc
 import backend_execution as be
+import backend_planning as bp
 import demo_execution as de
 
 CUSTOMER_APP_PROJECT_ID = "e19ceaff-846f-4d4a-b840-ce1248dd3325"
@@ -164,6 +165,21 @@ def main():
     print(f"  current live production value: {baseline_value!r} (HTTP {status})")
     if baseline_value != EXPECTED_BASELINE:
         _fail(f"live production baseline is {baseline_value!r}, expected {EXPECTED_BASELINE!r} — refusing to proceed against an unexpected starting state")
+
+    _step("1.5", "RAG/MCP-assisted impact analysis (additive evidence only -- see agent/backend_planning.py)")
+    analysis = bp.analyze_backend_requirement(bc.BACKEND_OPERATIONS[0].example)
+    print(f"  route: {analysis.route} ({analysis.route_reason})")
+    print(f"  rag_status: {analysis.rag_status}")
+    if analysis.retrieval is not None:
+        print(f"  retrieved {len(analysis.retrieval['results'])} chunks in {analysis.retrieval['duration_ms']}ms:")
+        for r in analysis.retrieval["results"]:
+            print(f"    [{r['rank']}] {r['source_path']} :: {r['symbol']} (score={r['score']})")
+    if analysis.analysis is not None:
+        print(f"  model_called={analysis.analysis.get('model_called')}: {analysis.analysis.get('explanation')}")
+    if analysis.groundedness is not None:
+        print(f"  groundedness: {'OK' if analysis.groundedness['ok'] else 'VIOLATIONS: ' + str(analysis.groundedness['violations'])}")
+    print("  (NOTE: this analysis is advisory only -- it did not and cannot change which file/operation "
+          "the deterministic steps below actually perform; that remains agent/backend_catalogue.py alone.)")
 
     _step(2, "apply the test probe value end-to-end (clone -> compile -> test -> commit -> push -> deploy -> verify)")
     probe_ok = run_one_cycle(TEST_VALUE, "probe")
