@@ -126,7 +126,41 @@ def _connect():
     url = _connection_string()
     if not url:
         raise RuntimeError("EVENT_LEDGER_DATABASE_URL not configured")
-    return psycopg2.connect(url, connect_timeout=8)
+    # RELIABILITY P0 (2026-09-13): connect_timeout alone only bounds
+    # establishing the TCP/auth handshake — it does nothing once a query
+    # is actually running. A real incident (see web_server.py's
+    # get_dashboard_data et al.) found a query against this exact
+    # database able to hang indefinitely with no bound at all, freezing
+    # the caller. statement_timeout is real, server-enforced defense in
+    # depth on top of moving these calls off the asyncio event loop
+    # (the primary fix) — a genuinely slow/stuck query now fails fast
+    # and honestly instead of hanging forever.
+    # 15s, not a stricter value: ensure_schema()'s multi-statement DDL
+    # (5 CREATE INDEX IF NOT EXISTS + 1 ALTER TABLE, one execute() call)
+    # was empirically observed taking ~12s under this session's own
+    # concurrent test-generated write load (real evidence, not a guess)
+    # — still bounded, never indefinite, but with real margin over that
+    # observed case.
+    # RELIABILITY P0 (2026-09-13), second layer of defense: a real
+    # incident this session found the ACTUAL originating cause of a
+    # full-service outage was a connection left "idle in transaction"
+    # for 16+ real minutes (confirmed via a direct pg_stat_activity
+    # query), holding a lock that blocked every subsequent
+    # ensure_schema() DDL call — which nearly every code path in this
+    # file calls first. Every connection-opening function here already
+    # uses try/finally: conn.close() correctly (audited this incident,
+    # no leak found in this module's own Python code) — the most
+    # consistent explanation is a container killed mid-query during a
+    # deploy cutover, orphaning the connection on the Postgres side
+    # faster than Postgres's own default dead-peer detection notices.
+    # idle_in_transaction_session_timeout makes Postgres itself kill any
+    # such connection after 30s of real idle-in-transaction time,
+    # regardless of what orphaned it — defense in depth this
+    # application's own code cannot provide on its own.
+    return psycopg2.connect(
+        url, connect_timeout=8,
+        options="-c statement_timeout=15000 -c idle_in_transaction_session_timeout=30000",
+    )
 
 
 def ensure_schema():

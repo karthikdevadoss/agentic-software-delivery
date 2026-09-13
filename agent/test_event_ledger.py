@@ -28,6 +28,7 @@ Run: python agent/test_event_ledger.py
 """
 
 import json
+import time
 import unittest
 import uuid
 from pathlib import Path
@@ -38,6 +39,51 @@ import event_ledger as el
 
 def _unique(prefix):
     return f"{prefix}-{uuid.uuid4().hex[:12]}"
+
+
+class ConnectionResilienceTestCase(unittest.TestCase):
+    """RELIABILITY P0 (2026-09-13): a real production incident traced a
+    full-service outage to a single connection left "idle in
+    transaction" for 16+ real minutes (found live via a direct
+    pg_stat_activity query), holding a lock that blocked every
+    subsequent ensure_schema() DDL call. Every connection-opening
+    function in this module already used try/finally correctly (audited
+    during the incident) — the most consistent explanation is a
+    container killed mid-query during a deploy cutover, orphaning the
+    connection faster than Postgres's own default dead-peer detection.
+    These two real (not mocked) session parameters are the fix: a bound
+    on any single statement's runtime, and a bound on how long a
+    connection may sit idle-in-transaction before Postgres itself kills
+    it — defense in depth this application's own code cannot provide by
+    itself against an externally-orphaned connection."""
+
+    def test_real_connection_has_a_bounded_statement_timeout(self):
+        conn = el._connect()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SHOW statement_timeout")
+                self.assertEqual(cur.fetchone()[0], "15s")
+        finally:
+            conn.close()
+
+    def test_real_connection_has_a_bounded_idle_in_transaction_timeout(self):
+        conn = el._connect()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SHOW idle_in_transaction_session_timeout")
+                self.assertEqual(cur.fetchone()[0], "30s")
+        finally:
+            conn.close()
+
+    def test_ensure_schema_completes_well_within_the_statement_timeout(self):
+        """Direct regression for the exact incident: ensure_schema()'s
+        multi-statement DDL must complete comfortably inside the
+        timeout, not merely avoid raising by accident."""
+        el._schema_ready = False
+        start = time.monotonic()
+        el.ensure_schema()
+        elapsed = time.monotonic() - start
+        self.assertLess(elapsed, 15.0, f"ensure_schema() took {elapsed:.1f}s — dangerously close to or over the 15s statement_timeout")
 
 
 class RealRemoteInsertTestCase(unittest.TestCase):

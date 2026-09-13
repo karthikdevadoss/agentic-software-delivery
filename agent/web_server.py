@@ -42,6 +42,7 @@ from pathlib import Path
 
 import uvicorn
 from starlette.applications import Starlette
+from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
 from starlette.responses import FileResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response
 from starlette.routing import Mount, Route
@@ -1470,8 +1471,31 @@ async def decide(request: Request):
     return JSONResponse({"ok": True})
 
 
+# RELIABILITY P0 INCIDENT (2026-09-13): build_dashboard_snapshot()/
+# build_sessions_snapshot()/session_history.list_sessions()/
+# get_session_detail() all make real synchronous psycopg2 queries against
+# the remote event-ledger Postgres (over its public TCP proxy). Calling
+# them directly inside an `async def` route handler runs them ON the
+# single asyncio event loop -- a real incident, found live this session,
+# proved this: right after a routine platform-backend deploy, /api/
+# dashboard hung indefinitely (confirmed via `curl -v`: TCP+TLS connect
+# succeeded, request fully sent, then zero bytes received even after
+# 30s), and — far more seriously — EVERY other route on the same
+# service (/workbench, the custom domain, everything) was simultaneously
+# unreachable too, even though `railway logs` showed a clean, error-free
+# startup. A production redeploy incidentally recovered general
+# reachability, but /api/dashboard alone kept reproducing the same
+# indefinite hang afterward — consistent with one slow/stuck synchronous
+# DB call blocking the entire single-threaded event loop for ALL
+# concurrent requests, not just its own. This plausibly also explains
+# the earlier, never-root-caused PRODUCTION-TRANSIENT-502-OBSERVATION
+# (docs/ACTION_QUEUE.json) observed under concurrent Playwright load.
+# Fix: run each of these four handlers' real work in Starlette's thread
+# pool (run_in_threadpool) so a slow/stuck DB call can only ever block
+# ITS OWN request, never the whole service.
+
 async def get_dashboard_data(request: Request):
-    return JSONResponse(dashboard_data.build_dashboard_snapshot())
+    return JSONResponse(await run_in_threadpool(dashboard_data.build_dashboard_snapshot))
 
 
 async def dashboard_page(request: Request):
@@ -1479,7 +1503,7 @@ async def dashboard_page(request: Request):
 
 
 async def get_sessions_data(request: Request):
-    return JSONResponse(sessions_data.build_sessions_snapshot())
+    return JSONResponse(await run_in_threadpool(sessions_data.build_sessions_snapshot))
 
 
 async def usage_page(request: Request):
@@ -1494,14 +1518,14 @@ async def usage_page(request: Request):
 async def get_session_history(request: Request):
     limit = int(request.query_params.get("limit", "20"))
     before = request.query_params.get("before")
-    result = session_history.list_sessions(before_cursor=before, limit=limit)
+    result = await run_in_threadpool(session_history.list_sessions, before_cursor=before, limit=limit)
     status_code = 400 if result.get("status") == "INVALID_CURSOR" else 200
     return JSONResponse(result, status_code=status_code)
 
 
 async def get_session_detail(request: Request):
     session_id = request.path_params["session_id"]
-    detail = session_history.get_session_detail(session_id)
+    detail = await run_in_threadpool(session_history.get_session_detail, session_id)
     if detail is None:
         return JSONResponse({"error": "no such session"}, status_code=404)
     return JSONResponse(detail)
