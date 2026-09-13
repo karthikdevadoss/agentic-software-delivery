@@ -37,6 +37,21 @@ jobs:
           cache: pip
           cache-dependency-path: agent/requirements.txt
       - run: pip install -r agent/requirements.txt
+      # Both RAG indexes are gitignored, build-derived data (see
+      # .gitignore) -- a real bug found via this exact CI run: several
+      # tests (the pre-existing test_semantic_search_invocable_through_mcp
+      # and this session's own test_dangerous_query_text_does_not_gain_
+      # privilege) implicitly assumed an index already existed on disk,
+      # which was always true on a long-lived dev machine but false on a
+      # genuinely fresh checkout -- exactly what CI is. Building both
+      # indexes BEFORE running any test is the real fix (not loosening the
+      # tests' assertions).
+      - name: Build the whole-repo RAG index (needed by semantic_repository_search tests)
+        working-directory: agent
+        run: python rag_index.py
+      - name: Build the curated backend RAG index (needed by search_project_context tests + evals)
+        working-directory: agent
+        run: python backend_rag_index.py
       # Scoped deliberately to the fully offline/mocked test modules (no
       # live Railway URL, no real Anthropic/Postgres credential needed) --
       # NOT yet the full agent/ suite. Several existing test files touch
@@ -49,9 +64,6 @@ jobs:
       - name: Python unit/contract tests (RAG/MCP/Evals vertical slice)
         working-directory: agent
         run: python -m unittest test_backend_rag_index test_mcp_server test_backend_planning test_eval_runner -v
-      - name: Build the curated backend RAG index (needed by evals)
-        working-directory: agent
-        run: python backend_rag_index.py
       - name: RAG/MCP retrieval + routing evals (must meet recorded thresholds)
         working-directory: agent
         run: python eval_runner.py all
