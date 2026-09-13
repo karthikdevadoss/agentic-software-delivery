@@ -255,18 +255,23 @@ class ContentVerificationTestCase(unittest.TestCase):
 
 
 class PublicRouteStructureTestCase(unittest.TestCase):
-    """Regression lock for TRAINER PREVIEW V1's route structure — the
-    exact 5 public surfaces (Workbench/Dashboard/Usage/Learn/Profile),
-    retired-terminology redirects, and the still-reachable internal
-    Control Plane. Protects against a future change silently dropping a
-    public route or re-breaking a retired-terminology link."""
+    """Regression lock for the platform's route structure — the exact 4
+    public surfaces (Workbench/Dashboard/Usage/Learn), retired-terminology
+    redirects, and the still-reachable internal Control Plane. Protects
+    against a future change silently dropping a public route or
+    re-breaking a retired-terminology link.
+
+    Profile was deliberately made non-public (privacy P0, 2026-09-13) —
+    see ProfilePrivacyTestCase below for the regression lock protecting
+    that decision. Source is preserved at
+    docs/archive/profile_preserved/ for later restoration, not deleted."""
 
     def _route_map(self):
         return {r.path: r for r in ws.routes if hasattr(r, "path")}
 
-    def test_all_five_public_surfaces_are_registered_get_routes(self):
+    def test_all_four_public_surfaces_are_registered_get_routes(self):
         routes = self._route_map()
-        for path in ("/", "/workbench", "/dashboard", "/usage", "/learn", "/profile"):
+        for path in ("/", "/workbench", "/dashboard", "/usage", "/learn"):
             self.assertIn(path, routes, f"{path} is not registered")
             self.assertIn("GET", routes[path].methods)
 
@@ -286,9 +291,43 @@ class PublicRouteStructureTestCase(unittest.TestCase):
         routes = self._route_map()
         self.assertIn("/control-plane", routes)
         self.assertIs(routes["/control-plane"].endpoint, ws.control_plane_page)
-        # The 5 public surface paths must never include internal-tool naming.
-        for public_path in ("/", "/workbench", "/dashboard", "/usage", "/learn", "/profile"):
+        # The public surface paths must never include internal-tool naming.
+        for public_path in ("/", "/workbench", "/dashboard", "/usage", "/learn"):
             self.assertNotIn("control-plane", public_path)
+
+
+class ProfilePrivacyTestCase(unittest.TestCase):
+    """P0 privacy regression lock (2026-09-13): /profile must never be a
+    reachable route, must not exist inside the publicly-served WEB_DIR
+    static tree (which would let Starlette's StaticFiles fallback serve
+    it even with no explicit Route), and must not be linked from any
+    public page's navigation. Source is preserved at
+    docs/archive/profile_preserved/{profile.html,profile.css} for later
+    restoration — this test intentionally does not check that directory,
+    since files there must never be reachable via the running server."""
+
+    def test_profile_route_is_not_registered(self):
+        routes = {r.path: r for r in ws.routes if hasattr(r, "path")}
+        self.assertNotIn("/profile", routes)
+
+    def test_profile_page_handler_no_longer_exists(self):
+        self.assertFalse(
+            hasattr(ws, "profile_page"),
+            "profile_page handler must be removed, not merely unrouted",
+        )
+
+    def test_profile_html_and_css_absent_from_served_web_dir(self):
+        served_dir = ws.WEB_DIR
+        self.assertFalse((served_dir / "profile.html").exists())
+        self.assertFalse((served_dir / "profile.css").exists())
+
+    def test_no_public_html_page_links_to_profile(self):
+        for html_file in ws.WEB_DIR.glob("*.html"):
+            content = html_file.read_text(encoding="utf-8")
+            self.assertNotIn(
+                "/profile", content,
+                f"{html_file.name} must not reference /profile",
+            )
 
 
 class TargetApplicationTestCase(unittest.IsolatedAsyncioTestCase):

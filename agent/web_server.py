@@ -1354,10 +1354,6 @@ async def get_learn_book_pdf(request: Request):
     )
 
 
-async def profile_page(request: Request):
-    return FileResponse(str(WEB_DIR / "profile.html"))
-
-
 async def get_run(request: Request):
     run = RUNS.get(request.path_params["run_id"])
     if run is None:
@@ -1500,7 +1496,6 @@ routes = [
     Route("/usage/session/{session_id}", usage_page, methods=["GET"]),
     Route("/learn", learn_page, methods=["GET"]),
     Route("/learn/{path:path}", learn_page, methods=["GET"]),
-    Route("/profile", profile_page, methods=["GET"]),
     # Retired public terminology — kept as redirects, not dead links.
     Route("/trainer", redirect_trainer_to_workbench, methods=["GET"]),
     Route("/sessions", redirect_sessions_to_usage, methods=["GET"]),
@@ -1521,5 +1516,5 @@ if __name__ == "__main__":
     # only, port 8420 — so this never changes local-laptop usage.
     port = int(os.environ.get("PORT", "8420"))
     host = "0.0.0.0" if "PORT" in os.environ else "127.0.0.1"
-    print(f"Agentic Software Delivery: http://{host}:{port} (Workbench/Dashboard/Usage/Learn/Profile)", file=sys.stderr)
+    print(f"Agentic Software Delivery: http://{host}:{port} (Workbench/Dashboard/Usage/Learn)", file=sys.stderr)
     uvicorn.run(app, host=host, port=port)

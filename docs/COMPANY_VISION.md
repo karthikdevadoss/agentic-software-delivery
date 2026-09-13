@@ -53,7 +53,22 @@ implementation detail, not a claim of exclusivity or dependency lock-in.
 
 ## Public product structure (current accepted decision)
 
-Five public surfaces, one flagship product (Profile added 2026-09-10):
+**UPDATE (2026-09-13, Owner-directed privacy P0 — supersedes the "five
+public surfaces" framing below):** `/profile` was made non-public.
+Direct access now returns a real 404; it is unlinked from every page's
+navigation. This reverses the 2026-09-10/09-12 decision to make Profile
+a public recruiter-facing surface, per an explicit, current Owner
+instruction prioritizing privacy protection above the recruiter-demo use
+case. Source is preserved, not deleted, at
+`docs/archive/profile_preserved/{profile.html,profile.css}` so it can be
+restored later if the Owner decides to re-expose it (e.g. behind auth, or
+simply re-published) — restoring it is a deliberate future decision, not
+implied by this note. The platform's public surface count is therefore
+**four**: Workbench, Dashboard, Usage, Learn. The section below is left
+intact as a historical decision record rather than rewritten in place.
+
+Five public surfaces, one flagship product (Profile added 2026-09-10,
+made non-public again 2026-09-13 — see update note above):
 
 1. **Workbench** — the main product surface. Requirement → analysis →
    implementation → verification → deployment → production verification.
