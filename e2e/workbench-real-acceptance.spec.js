@@ -54,10 +54,15 @@ test.describe("Workbench — REAL production acceptance journey (Layer 9)", () =
     await page.locator("#submit-btn").click();
 
     // 4. Observe status progression — the run-status panel appears and a
-    // real run ID is assigned.
+    // real run ID is assigned. Real UI finding from this task's first
+    // live run: the panel becomes visible slightly BEFORE #rs-runid is
+    // populated (the panel is shown, then the POST /api/trainer/runs
+    // response arrives and sets the text) — wait for the actual value,
+    // don't assume it's synchronously present the instant the panel
+    // appears.
     await expect(page.locator("#run-status-panel")).toBeVisible({ timeout: 15000 });
+    await expect(page.locator("#rs-runid")).toHaveText(/^trainer-/, { timeout: 10000 });
     const runId = await page.locator("#rs-runid").textContent();
-    expect(runId).toMatch(/^trainer-/);
 
     // 5. Wait for genuine terminal completion (COMPLETED, not a fabricated
     // intermediate state) — polling the real backend directly as the

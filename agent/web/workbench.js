@@ -706,6 +706,11 @@ async function submit() {
 
   activityPanel.hidden = false;
   runStatusPanel.hidden = false;
+  // Real UI gap found during this task's live acceptance testing: the
+  // panel became visible before the POST response set a real run ID,
+  // leaving the stale "—" placeholder briefly visible with no indication
+  // anything was actually happening yet.
+  rsRunId.textContent = "starting…";
   setStatus("STARTING");
 
   const resp = await fetch("/api/trainer/runs", {
