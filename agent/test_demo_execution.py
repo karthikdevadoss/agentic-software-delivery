@@ -139,12 +139,19 @@ class RealLocalGitWorkflowTestCase(unittest.TestCase):
         self.assertTrue(push_out)  # real, non-empty git error text
 
     def test_push_change_without_token_is_honest_and_does_not_touch_network(self):
+        """WORKBENCH TRUTHFULNESS FIX (2026-09-13): this exact case — no
+        DEMO_GIT_PUSH_TOKEN configured — is an honest, expected
+        precondition, not a failure. It must return the distinct
+        NOT_CONFIGURED status, never PUSH_STATUS_FAILED, so the caller
+        can render it calmly instead of as an alarming error (the real
+        Owner-observed defect this fixes, see docs/LESSONS.md)."""
         with mock.patch.object(de, "DEMO_GIT_PUSH_TOKEN", None):
             workspace = self._clone()
             (workspace / self.target_rel).write_text("<footer>X</footer>\n", encoding="utf-8")
             branch, _, _ = de.commit_change(workspace, "run-no-token", self.target_rel, "Demo")
-            ok, message = de.push_change(workspace, branch)
-        self.assertFalse(ok)
+            status, message = de.push_change(workspace, branch)
+        self.assertEqual(status, de.PUSH_STATUS_NOT_CONFIGURED)
+        self.assertNotEqual(status, de.PUSH_STATUS_FAILED)
         self.assertIn("not configured", message)
 
     def test_push_change_redacts_the_token_from_any_returned_output(self):
@@ -157,7 +164,8 @@ class RealLocalGitWorkflowTestCase(unittest.TestCase):
             # fake token / may not even resolve in this environment as
             # this exact host) — the point is that IF the token leaked
             # into output, this test would catch it either way.
-            ok, message = de.push_change(workspace, branch)
+            status, message = de.push_change(workspace, branch)
+        self.assertEqual(status, de.PUSH_STATUS_FAILED)
         self.assertNotIn(fake_token, message)
 
 

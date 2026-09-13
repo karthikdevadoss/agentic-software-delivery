@@ -76,8 +76,30 @@ const TERMINAL_STAGES = new Set(["COMPLETED", "FAILED", "NO_CHANGE_NEEDED", "DEP
 // this session (a genuine Railway cold-build deploy took ~11.5-19 min).
 // Anything else uses a much shorter default before flagging no-progress,
 // since those steps normally finish in seconds.
-const STAGE_MAX_QUIET_SECONDS = { DEPLOYING: 20 * 60, TESTING: 120, BUILDING: 90 };
+//
+// Real incident this fixes (WORKBENCH RELIABILITY, 2026-09-13): the
+// backend's "VERIFYING PRODUCTION" stage legitimately polls silently —
+// wait_for_new_deployment() alone allows up to 15 minutes, plus up to a
+// further 90s content-verification retry window (see web_server.py's
+// _verify_content_with_retry) — with no intermediate progress event
+// emitted until it resolves. This key was previously MISSING from this
+// map, so it silently fell through to DEFAULT_MAX_QUIET_SECONDS (30s),
+// meaning any real verification run slower than 30s showed
+// "STALLED / NO RECENT PROGRESS" while genuinely, correctly still
+// working — exactly what the Owner observed and reported as confusing.
+const STAGE_MAX_QUIET_SECONDS = { DEPLOYING: 20 * 60, "VERIFYING PRODUCTION": 20 * 60, TESTING: 120, BUILDING: 90 };
 const DEFAULT_MAX_QUIET_SECONDS = 30;
+
+// A stage genuinely waiting on an external system gets a calm, specific
+// "waiting" label instead of a bare "RUNNING" once it's been quiet for a
+// few seconds — and, critically, well before STAGE_MAX_QUIET_SECONDS
+// would otherwise flag it STALLED. Never invents progress; only relabels
+// a known-slow, still-healthy wait.
+const STAGE_WAITING_LABEL = {
+  DEPLOYING: "WAITING FOR NEW DEPLOYMENT (Railway)",
+  "VERIFYING PRODUCTION": "VERIFYING LIVE PRODUCTION (waiting for traffic cutover)",
+};
+const WAITING_LABEL_QUIET_THRESHOLD_S = 5;
 
 const POLL_INTERVAL_MS = 3000;
 const SSE_LIVE_WINDOW_MS = 6000; // how recently an SSE message must have arrived to call the transport "live"
@@ -402,12 +424,35 @@ function applyEvent(evt) {
     case "commit":
       deployPanel.hidden = false;
       run.commitInfo = evt;
-      deployBody.innerHTML = `<div class="kv"><span class="k">Production commit</span><span class="v"><code>${esc(evt.sha)}</code></span></div><div class="kv"><span class="k">Changed file</span><span class="v"><code>${esc(evt.path)}</code></span></div>`;
+      // Never call this a "GitHub commit" — it is a real local commit
+      // inside this run's disposable isolated-workspace clone, on a
+      // dedicated demo/<run_id> branch, and it may never reach GitHub at
+      // all (see the "push" case below). Since it already passed the
+      // diff-safety check (unexpected-file-changed guard) before this
+      // event was ever emitted, that fact is surfaced here too — real,
+      // derived evidence, not a fabricated claim.
+      deployBody.innerHTML = `<div class="kv"><span class="k">Local commit (isolated workspace)</span><span class="v"><code>${esc(evt.sha)}</code> <span class="hint">CREATED</span></span></div><div class="kv"><span class="k">Branch</span><span class="v"><code>${esc(evt.branch)}</code></span></div><div class="kv"><span class="k">Changed file</span><span class="v"><code>${esc(evt.path)}</code></span></div>`;
+      addVerificationLine("Diff Safety Verification (no unexpected files changed)", { success: true, duration_ms: 0 });
       break;
     case "push":
       deployPanel.hidden = false;
       run.pushInfo = evt;
-      deployBody.innerHTML += `<div class="kv"><span class="k">Pushed to GitHub</span><span class="v">${evt.ok ? '<span style="color:var(--green)">yes — origin/master</span>' : '<span style="color:var(--amber)">no (deploy continues from local working tree)</span>'}</span></div>`;
+      // Three distinct, truthful states — never a bare pass/fail. Only
+      // FAILED (a real attempted push that genuinely failed) is alarming;
+      // NOT_CONFIGURED is an honest, expected precondition (no
+      // DEMO_GIT_PUSH_TOKEN provisioned, see ACT-007) and must render
+      // calmly, not as if something broke. Real incident this fixes: the
+      // Owner's "Built with DOSS care" run genuinely COMPLETED, but this
+      // exact ordinary case previously showed an alarming red "no" here
+      // AND a duplicate "ERROR: git push failed..." activity line.
+      {
+        const pushLabel = evt.status === "PUSHED"
+          ? '<span style="color:var(--green)">PUSHED — origin/master</span>'
+          : evt.status === "NOT_CONFIGURED"
+            ? '<span style="color:var(--amber)">NOT_CONFIGURED — no push credential provisioned (deploy continues from the isolated workspace regardless)</span>'
+            : '<span style="color:var(--red)">FAILED (deploy continues from the isolated workspace regardless)</span>';
+        deployBody.innerHTML += `<div class="kv"><span class="k">GitHub Push</span><span class="v">${pushLabel}</span></div>`;
+      }
       break;
     case "deployment": {
       deployPanel.hidden = false;
@@ -419,14 +464,21 @@ function applyEvent(evt) {
       const verifiedBadge = evt.verified
         ? '<span style="color:var(--green)">VERIFIED — requested content confirmed live (HTTP 200)</span>'
         : '<span style="color:var(--red)">NOT VERIFIED' + (evt.http_status === 200 && !evt.content_verified ? " — requested content not found in production" : "") + '</span>';
+      deployBody.innerHTML += `<div class="kv"><span class="k">Deployed commit</span><span class="v"><code>${esc(evt.production_commit)}</code></span></div>`;
       deployBody.innerHTML += `<div class="kv"><span class="k">Public app</span><span class="v"><a href="${esc(evt.public_url)}" target="_blank" rel="noopener">${esc(evt.public_url)}</a></span></div>`;
       deployBody.innerHTML += `<div class="kv"><span class="k">HTTP status</span><span class="v">${esc(evt.http_status)}</span></div>`;
       if (evt.new_deployment_id) {
-        deployBody.innerHTML += `<div class="kv"><span class="k">New deployment ID</span><span class="v"><code>${esc(evt.new_deployment_id)}</code> (${esc(evt.deployment_status)})</span></div>`;
-        deployBody.innerHTML += `<div class="kv"><span class="k">Deployment identity confirmed</span><span class="v">${evt.deployment_identity_confirmed ? "yes — real Railway deployment record" : "no"}</span></div>`;
+        deployBody.innerHTML += `<div class="kv"><span class="k">Railway Deployment</span><span class="v"><code>${esc(evt.new_deployment_id)}</code> (${esc(evt.deployment_status)})</span></div>`;
+        deployBody.innerHTML += `<div class="kv"><span class="k">Deployment identity confirmed</span><span class="v">${evt.deployment_identity_confirmed ? "yes — real Railway deployment record, created after this run triggered it" : "no"}</span></div>`;
       }
       deployBody.innerHTML += `<div class="kv"><span class="k">Requested content live</span><span class="v">${evt.content_verified ? "yes" : `no${evt.live_value !== undefined ? ` (found "${esc(evt.live_value)}")` : ""}`}</span></div>`;
-      deployBody.innerHTML += `<div class="kv"><span class="k">Verification</span><span class="v">${verifiedBadge}</span></div>`;
+      deployBody.innerHTML += `<div class="kv"><span class="k">Production Serving</span><span class="v">${verifiedBadge}</span></div>`;
+      // Real, derived evidence (never fabricated): a targeted DOM/text
+      // assertion of the exact requested field against the live
+      // production response — distinct from Java/Maven testing, which
+      // this static-resource change genuinely has no surface for (see
+      // the TESTING checklist entry).
+      addVerificationLine("Production DOM/Text Assertion (targeted field extraction)", { success: !!evt.content_verified, duration_ms: (evt.waited_seconds || 0) * 1000 });
       break;
     }
     case "workspace":
@@ -637,8 +689,12 @@ function overallStateLabel() {
   if (TERMINAL_STAGES.has(run.status)) return run.status;
   const quietS = run.lastEventAtMs ? (Date.now() - run.lastEventAtMs) / 1000 : 0;
   const maxQuiet = STAGE_MAX_QUIET_SECONDS[run.currentStage] || DEFAULT_MAX_QUIET_SECONDS;
-  if (run.currentStage === "DEPLOYING" && quietS > 5) return "WAITING FOR EXTERNAL SYSTEM (Railway)";
+  // STALLED takes priority over a "waiting" label once the real threshold
+  // for this stage is exceeded — a known-slow wait is not exempt from
+  // ever being flagged, only from being flagged too early.
   if (quietS > maxQuiet) return "STALLED / NO RECENT PROGRESS";
+  const waitingLabel = STAGE_WAITING_LABEL[run.currentStage];
+  if (waitingLabel && quietS > WAITING_LABEL_QUIET_THRESHOLD_S) return waitingLabel;
   return "RUNNING";
 }
 
@@ -764,7 +820,7 @@ async function pollResetStatus() {
   const resp = await fetch("/api/trainer/reset");
   const data = await resp.json();
   if (data.status === "running") {
-    resetDemoStatus.textContent = data.message || "Resetting…";
+    resetDemoStatus.textContent = data.message || "Restoring production baseline…";
     setTimeout(pollResetStatus, 3000);
   } else {
     resetDemoBtn.disabled = false;
@@ -774,7 +830,7 @@ async function pollResetStatus() {
 
 resetDemoBtn.addEventListener("click", async () => {
   resetDemoBtn.disabled = true;
-  resetDemoStatus.textContent = "Starting reset…";
+  resetDemoStatus.textContent = "Starting production baseline restore…";
   const resp = await fetch("/api/trainer/reset", { method: "POST" });
   const data = await resp.json();
   if (data.busy) {

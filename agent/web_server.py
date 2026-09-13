@@ -891,11 +891,23 @@ def _run_trainer_thread(run: "Run", requirement: str, normalized: "demo_catalogu
         run.emit("commit", {"sha": production_commit, "path": normalized.target_file, "branch": branch})
 
         # PUSH — never fatal to the deploy itself (see ACT-007/demo_execution.py).
+        # NOT_CONFIGURED is an honest, expected precondition (no
+        # DEMO_GIT_PUSH_TOKEN provisioned — an explicit, still-open Owner
+        # decision, see ACT-007) and must never be reported as an "error"
+        # event: only a genuine attempted-and-failed push (FAILED) is.
+        # Real incident this fixes: the Owner's "Built with DOSS care" run
+        # (trainer-25c4e8bb, 2026-09-13) genuinely COMPLETED — real commit,
+        # real deploy, real production verification — but the UI showed an
+        # alarming "ERROR: git push failed..." line for this exact ordinary
+        # not-configured case, indistinguishable from a real failure.
         run.status = "PUSHING"
         run.emit("stage", {"stage": "PUSHING"})
-        push_ok, push_out = demo_execution.push_change(workspace, branch)
-        run.emit("push", {"ok": push_ok, "output": None if push_ok else push_out[-400:]})
-        if not push_ok:
+        push_status, push_out = demo_execution.push_change(workspace, branch)
+        run.emit("push", {
+            "status": push_status,
+            "output": None if push_status == demo_execution.PUSH_STATUS_PUSHED else push_out[-400:],
+        })
+        if push_status == demo_execution.PUSH_STATUS_FAILED:
             run.emit("error", {"message": f"git push failed (deploy continues from the isolated workspace regardless): {push_out[-400:]}"})
 
         # DEPLOY — from the ISOLATED workspace's own app/ directory, never
@@ -1236,9 +1248,11 @@ def _run_reset_thread():
             _reset_state = {"status": "failed", "message": f"git commit failed: {commit_out[-300:]}"}
             return
 
-        push_ok, push_out = demo_execution.push_change(workspace, branch)
-        if not push_ok:
-            _reset_state = {"status": "running", "message": f"Committed; git push failed (deploy continues from the isolated workspace): {push_out[-200:]}"}
+        push_status, push_out = demo_execution.push_change(workspace, branch)
+        if push_status == demo_execution.PUSH_STATUS_NOT_CONFIGURED:
+            _reset_state = {"status": "running", "message": "Committed; GitHub Push NOT_CONFIGURED (DEMO_GIT_PUSH_TOKEN not set — deploy continues from the isolated workspace regardless)."}
+        elif push_status == demo_execution.PUSH_STATUS_FAILED:
+            _reset_state = {"status": "running", "message": f"Committed; git push FAILED (deploy continues from the isolated workspace): {push_out[-200:]}"}
 
         deploy_triggered_after = demo_execution.utc_now_iso()
         deploy_ok, deploy_out = demo_execution.trigger_deploy(

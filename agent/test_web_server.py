@@ -20,6 +20,7 @@ from pathlib import Path
 from unittest import mock
 
 import demo_catalogue
+import demo_execution
 import web_server as ws
 
 # This file's Run(...) instantiations now also trigger a real write-through
@@ -534,7 +535,7 @@ class DemoResetTestCase(unittest.IsolatedAsyncioTestCase):
 
         with tmp, clone_patch, baseline_patch, \
              mock.patch.object(ws.demo_execution, "commit_change", return_value=("demo/reset-x", True, "")), \
-             mock.patch.object(ws.demo_execution, "push_change", return_value=(True, None)), \
+             mock.patch.object(ws.demo_execution, "push_change", return_value=("PUSHED", None)), \
              mock.patch.object(ws.demo_execution, "trigger_deploy", return_value=(True, "")), \
              mock.patch.object(ws.demo_execution, "wait_for_new_deployment", return_value=("new-dep-id", "SUCCESS", 30)), \
              mock.patch.object(ws.demo_execution, "cleanup_workspace", side_effect=_capture_and_cleanup), \
@@ -559,7 +560,7 @@ class DemoResetTestCase(unittest.IsolatedAsyncioTestCase):
         baseline_path.write_text(baseline_html, encoding="utf-8")
         with tmp, clone_patch, baseline_patch, \
              mock.patch.object(ws.demo_execution, "commit_change", return_value=("demo/reset-x", False, "nothing to commit, working tree clean")), \
-             mock.patch.object(ws.demo_execution, "push_change", return_value=(True, None)), \
+             mock.patch.object(ws.demo_execution, "push_change", return_value=("PUSHED", None)), \
              mock.patch.object(ws.demo_execution, "trigger_deploy", return_value=(True, "")) as mock_deploy, \
              mock.patch.object(ws.demo_execution, "wait_for_new_deployment", return_value=("new-dep-id", "SUCCESS", 30)), \
              mock.patch.object(ws, "_fetch_public_app",
@@ -583,7 +584,7 @@ class DemoResetTestCase(unittest.IsolatedAsyncioTestCase):
         baseline_path.write_text(baseline_html, encoding="utf-8")
         with tmp, clone_patch, baseline_patch, \
              mock.patch.object(ws.demo_execution, "commit_change", return_value=("demo/reset-x", True, "")), \
-             mock.patch.object(ws.demo_execution, "push_change", return_value=(True, None)), \
+             mock.patch.object(ws.demo_execution, "push_change", return_value=("PUSHED", None)), \
              mock.patch.object(ws.demo_execution, "trigger_deploy", return_value=(True, "")), \
              mock.patch.object(ws.demo_execution, "wait_for_new_deployment", return_value=("new-dep-id", "SUCCESS", 30)), \
              mock.patch.object(ws, "_fetch_public_app",
@@ -783,6 +784,72 @@ class RepositoryWorkspaceReadyTestCase(unittest.TestCase):
         self.assertEqual(run.status, "FAILED")
         error_event = next(e for e in run.events if e["type"] == "error")
         self.assertIn("isolated workspace", error_event["message"])
+
+
+class PushStatusTruthfulnessTestCase(unittest.TestCase):
+    """WORKBENCH TRUTHFULNESS FIX (2026-09-13): real Owner-submitted run
+    trainer-25c4e8bb ("Change the footer text to \"Built with DOSS
+    care\"") genuinely reached COMPLETED — real commit, real Railway
+    deployment, real independently-curl-confirmed production content —
+    but the UI showed an alarming "ERROR: git push failed..." activity
+    line for the ordinary, fully-expected DEMO_GIT_PUSH_TOKEN-not-
+    configured precondition, root-caused directly from the live event
+    ledger (agent/event_ledger.py) rather than guessed at. These tests
+    lock in that a NOT_CONFIGURED push status is reported honestly and
+    calmly, never as an "error" event indistinguishable from a real
+    attempted-and-failed push."""
+
+    def _run_to_completion(self, push_return):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp) / "workspace"
+            target_rel = "app/src/main/resources/static/index.html"
+            target_path = workspace / target_rel
+            target_path.parent.mkdir(parents=True)
+            target_path.write_text(
+                '<footer class="app-footer">Powered by Agentic Delivery</footer>', encoding="utf-8")
+            run = ws.Run("test-run", "test requirement")
+            run.trainer_usage_start_index = 0
+            normalized = demo_catalogue.normalize_requirement('Change the footer text to "Built with DOSS care"')
+            with mock.patch.object(ws.demo_execution, "create_isolated_workspace", return_value=(workspace, True, "")), \
+                 mock.patch.object(ws.demo_execution, "commit_change", return_value=("demo/test-run", True, "")), \
+                 mock.patch.object(ws.demo_execution, "get_changed_files", return_value=[target_rel]), \
+                 mock.patch.object(ws.demo_execution, "get_commit_sha", return_value="fd92664"), \
+                 mock.patch.object(ws.demo_execution, "push_change", return_value=push_return), \
+                 mock.patch.object(ws.demo_execution, "trigger_deploy", return_value=(True, "")), \
+                 mock.patch.object(ws.demo_execution, "wait_for_new_deployment", return_value=("new-dep-id", "SUCCESS", 5)), \
+                 mock.patch.object(ws, "_verify_content_with_retry", return_value=(200, "<html></html>", "Built with DOSS care", True)), \
+                 mock.patch.object(ws.demo_execution, "cleanup_workspace"):
+                ws._run_trainer_thread(run, "some requirement", normalized)
+        return run
+
+    def test_not_configured_push_reaches_completed_with_no_error_event(self):
+        run = self._run_to_completion((demo_execution.PUSH_STATUS_NOT_CONFIGURED, "DEMO_GIT_PUSH_TOKEN not configured — push skipped (deploy continues from the isolated workspace regardless)"))
+        self.assertEqual(run.status, "COMPLETED")
+        error_events = [e for e in run.events if e["type"] == "error"]
+        self.assertEqual(error_events, [], "NOT_CONFIGURED push must never emit an 'error' event")
+        push_event = next(e for e in run.events if e["type"] == "push")
+        self.assertEqual(push_event["status"], "NOT_CONFIGURED")
+
+    def test_failed_push_still_reaches_completed_but_does_emit_an_error_event(self):
+        """A genuine attempted-and-failed push IS worth surfacing as an
+        error (distinct from NOT_CONFIGURED) — it just must not block the
+        deploy, which still runs from the isolated workspace regardless."""
+        run = self._run_to_completion((demo_execution.PUSH_STATUS_FAILED, "remote: Permission denied"))
+        self.assertEqual(run.status, "COMPLETED")
+        error_events = [e for e in run.events if e["type"] == "error"]
+        self.assertEqual(len(error_events), 1)
+        self.assertIn("git push failed", error_events[0]["message"])
+        push_event = next(e for e in run.events if e["type"] == "push")
+        self.assertEqual(push_event["status"], "FAILED")
+
+    def test_pushed_status_reaches_completed_with_no_error_event(self):
+        run = self._run_to_completion((demo_execution.PUSH_STATUS_PUSHED, None))
+        self.assertEqual(run.status, "COMPLETED")
+        error_events = [e for e in run.events if e["type"] == "error"]
+        self.assertEqual(error_events, [])
+        push_event = next(e for e in run.events if e["type"] == "push")
+        self.assertEqual(push_event["status"], "PUSHED")
+        self.assertIsNone(push_event["output"])
 
 
 class TestApplicabilityGateTestCase(unittest.TestCase):

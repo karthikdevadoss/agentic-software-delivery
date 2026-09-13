@@ -82,13 +82,18 @@ test.describe("Workbench — deterministic catalogue (safe, non-mutating)", () =
     expect(body.estimated_cost_usd).toBe(0.0);
   });
 
-  test("RESET DEMO control and explanatory copy are present", async ({ page }) => {
+  test("RESTORE PRODUCTION BASELINE control and explanatory copy are present", async ({ page }) => {
+    // WORKBENCH TRUTHFULNESS FIX (2026-09-13): "RESET DEMO TO BASELINE"
+    // read as a trivial local reset; a restore is a real software
+    // operation (source restored, redeployed, independently
+    // re-verified live) and the label/copy must say so.
     await page.goto("/workbench");
     // The reset control lives inside the (hidden until a run exists)
     // result panel per the current layout — assert it exists in the DOM
     // with the right explanatory copy, without requiring a real run.
-    await expect(page.locator("#reset-demo-btn")).toHaveText("RESET DEMO TO BASELINE");
+    await expect(page.locator("#reset-demo-btn")).toHaveText("RESTORE PRODUCTION BASELINE");
     const resetBoxText = await page.locator("#reset-demo-box").innerText();
     expect(resetBoxText).toContain("shared public demo");
+    expect(resetBoxText).toContain("real software operation");
   });
 });

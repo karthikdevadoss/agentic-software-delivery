@@ -167,13 +167,35 @@ def push_to_remote(workspace: Path, remote_url: str, branch: str, secret_to_reda
     return ok, out
 
 
+# WORKBENCH TRUTHFULNESS FIX (2026-09-13): a real Owner-submitted run
+# ("Change the footer text to \"Built with DOSS care\"", trainer-25c4e8bb,
+# root-caused via the live event ledger) proved genuinely COMPLETED end to
+# end, but the UI rendered an alarming "ERROR: git push failed..." line
+# for the ordinary, fully-expected DEMO_GIT_PUSH_TOKEN-not-configured
+# precondition — indistinguishable from a real attempted-and-failed push.
+# push_change() previously returned a plain (ok: bool, message) pair that
+# could not express this distinction; the caller had no honest way to
+# tell "never attempted, by design" apart from "attempted, genuinely
+# failed" other than string-matching the message. These three explicit
+# states replace that: only PUSH_STATUS_FAILED is a genuine attempted
+# failure worth an "error" event.
+PUSH_STATUS_PUSHED = "PUSHED"
+PUSH_STATUS_NOT_CONFIGURED = "NOT_CONFIGURED"
+PUSH_STATUS_FAILED = "FAILED"
+
+
 def push_change(workspace: Path, branch: str):
     """Never fatal to the caller — a real deploy runs from the isolated
-    workspace's own files regardless of push outcome."""
+    workspace's own files regardless of push outcome. Returns
+    (status, message) where status is one of PUSH_STATUS_PUSHED/
+    PUSH_STATUS_NOT_CONFIGURED/PUSH_STATUS_FAILED — callers must render
+    NOT_CONFIGURED as an honest, non-alarming precondition, never as an
+    error alongside a genuine FAILED push attempt."""
     if not DEMO_GIT_PUSH_TOKEN:
-        return False, "DEMO_GIT_PUSH_TOKEN not configured — push skipped (deploy continues from the isolated workspace regardless)"
+        return PUSH_STATUS_NOT_CONFIGURED, "DEMO_GIT_PUSH_TOKEN not configured — push skipped (deploy continues from the isolated workspace regardless)"
     auth_url = f"https://x-access-token:{DEMO_GIT_PUSH_TOKEN}@github.com/karthikdevadoss/agentic-software-delivery.git"
-    return push_to_remote(workspace, auth_url, branch, secret_to_redact=DEMO_GIT_PUSH_TOKEN)
+    ok, out = push_to_remote(workspace, auth_url, branch, secret_to_redact=DEMO_GIT_PUSH_TOKEN)
+    return (PUSH_STATUS_PUSHED if ok else PUSH_STATUS_FAILED), out
 
 
 # --- Deployment identity (real Railway metadata, not HTTP 200/CLI text) --

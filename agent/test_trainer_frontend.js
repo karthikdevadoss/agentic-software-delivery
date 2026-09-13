@@ -422,6 +422,50 @@ async function testL_terminalTimingFreezesAndNeverGrows() {
   sandbox.stopEverything();
 }
 
+async function testM_verifyingProductionDoesNotFalselyStallDuringLongPoll() {
+  // Real regression, root-caused directly from the live event ledger
+  // (WORKBENCH RELIABILITY, 2026-09-13, run trainer-25c4e8bb "Built with
+  // DOSS care"): the backend's "VERIFYING PRODUCTION" stage legitimately
+  // polls silently for well over 30s (up to a 90s content-verification
+  // retry window, plus Railway's own deployment wait) with no
+  // intermediate event. This key was previously MISSING from
+  // STAGE_MAX_QUIET_SECONDS, so it fell through to the 30s DEFAULT and
+  // could falsely show "STALLED / NO RECENT PROGRESS" while genuinely,
+  // correctly still working — exactly what the Owner observed.
+  const t0 = Date.now() / 1000;
+  const events = [
+    ev("risk_assessment", { complexity: "TINY", risk: "LOW", decision: "auto", reason: "ok", matched_keywords: [], suggested_alternatives: [] }, t0),
+    ev("stage", { stage: "VERIFYING PRODUCTION" }, t0 + 0.1),
+  ];
+  const fetchStub = makeFetchStub({
+    "POST /api/trainer/assess": () => ({ complexity: "TINY", risk: "LOW", decision: "auto", reason: "ok", matched_keywords: [], suggested_alternatives: [] }),
+    "POST /api/trainer/runs": () => ({ blocked: false, run_id: "trainer-testM", assessment: { decision: "auto" } }),
+    "GET /api/runs/trainer-testM": () => ({ id: "trainer-testM", status: "STARTING", events: [], result: null }),
+  });
+  const doc = makeDocumentStub();
+  FakeEventSource.instances = [];
+  const sandbox = loadTrainerContext(doc, fetchStub);
+  await runSubmit(sandbox, "test requirement M");
+  const es = FakeEventSource.instances[FakeEventSource.instances.length - 1];
+  events.forEach(e => es.fire(e.type, e));
+  await sleep(50);
+
+  const realNow = Date.now;
+  try {
+    // Fast-forward virtual time 60s past the last event — comfortably
+    // past the old 30s DEFAULT (which would have wrongly shown STALLED)
+    // but well inside the new stage-specific 20-minute allowance.
+    const future = realNow() + 60000;
+    Date.now = () => future;
+    sandbox.tick();
+    assertEqual(doc.getElementById("rs-overall").textContent, "VERIFYING LIVE PRODUCTION (waiting for traffic cutover)",
+      "M: a long, healthy VERIFYING PRODUCTION wait shows a calm waiting label, never STALLED");
+  } finally {
+    Date.now = realNow;
+  }
+  sandbox.stopEverything();
+}
+
 (async () => {
   await testA_sseWorksNormally();
   await testBC_pollingFallbackWhenSSESilent();
@@ -431,6 +475,7 @@ async function testL_terminalTimingFreezesAndNeverGrows() {
   await testJ_targetAppNeverStaysLoadingForeverOnFailure();
   await testK_testingStateIsExplicitNeverAmbiguouslyPending();
   await testL_terminalTimingFreezesAndNeverGrows();
+  await testM_verifyingProductionDoesNotFalselyStallDuringLongPoll();
 
   console.log(`\n${passed} passed, ${failures} failed`);
   process.exit(failures > 0 ? 1 : 0);
