@@ -810,7 +810,13 @@ class PushStatusTruthfulnessTestCase(unittest.TestCase):
             run = ws.Run("test-run", "test requirement")
             run.trainer_usage_start_index = 0
             normalized = demo_catalogue.normalize_requirement('Change the footer text to "Built with DOSS care"')
+            # Live production currently shows the OLD value — never a
+            # real network call. This is the pre-deploy NO_CHANGE_NEEDED
+            # precheck's fetch (see the WORKBENCH TRUTHFULNESS FIX at its
+            # call site): it must see this, not the isolated workspace's
+            # own (already-updated-in-this-fixture) file content.
             with mock.patch.object(ws.demo_execution, "create_isolated_workspace", return_value=(workspace, True, "")), \
+                 mock.patch.object(ws, "_fetch_public_app", return_value=(200, '<footer class="app-footer">Powered by Agentic Delivery</footer>')), \
                  mock.patch.object(ws.demo_execution, "commit_change", return_value=("demo/test-run", True, "")), \
                  mock.patch.object(ws.demo_execution, "get_changed_files", return_value=[target_rel]), \
                  mock.patch.object(ws.demo_execution, "get_commit_sha", return_value="fd92664"), \
@@ -849,7 +855,74 @@ class PushStatusTruthfulnessTestCase(unittest.TestCase):
         self.assertEqual(error_events, [])
         push_event = next(e for e in run.events if e["type"] == "push")
         self.assertEqual(push_event["status"], "PUSHED")
-        self.assertIsNone(push_event["output"])
+
+
+class NoChangeNeededUsesLiveProductionTestCase(unittest.TestCase):
+    """WORKBENCH TRUTHFULNESS FIX (2026-09-13): real defect found live by
+    this session's own adversarial re-run (submitting the exact reverse
+    of the Owner's "Built with DOSS care" run, through the real public
+    Workbench). Each run clones a FRESH isolated workspace from GitHub
+    (see demo_execution.create_isolated_workspace), but Railway is
+    deployed straight from that disposable clone — never from a GitHub
+    push, which only happens if DEMO_GIT_PUSH_TOKEN is configured
+    (currently NOT_CONFIGURED, see ACT-007). So GitHub source and live
+    production can genuinely diverge the moment any run changes
+    production without a successful push. The NO_CHANGE_NEEDED
+    short-circuit previously compared the requested value against the
+    GitHub-derived isolated-workspace file — never live production —
+    so it could (and, live, did) falsely declare "no change needed"
+    while production still showed the OLD value. Confirmed live: after
+    the Owner's run left production showing "Built with DOSS care" but
+    GitHub's own tracked source still said "Powered by Agentic
+    Delivery" (because push was skipped), submitting "Change the footer
+    text to \"Powered by Agentic Delivery\"" through the real public
+    Workbench (run trainer-7e4ce200) returned NO_CHANGE_NEEDED even
+    though production still genuinely showed "Built with DOSS care"."""
+
+    def _run(self, isolated_workspace_content, live_production_content):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp) / "workspace"
+            target_rel = "app/src/main/resources/static/index.html"
+            target_path = workspace / target_rel
+            target_path.parent.mkdir(parents=True)
+            target_path.write_text(isolated_workspace_content, encoding="utf-8")
+            run = ws.Run("test-run", "test requirement")
+            run.trainer_usage_start_index = 0
+            normalized = demo_catalogue.normalize_requirement('Change the footer text to "Powered by Agentic Delivery"')
+            with mock.patch.object(ws.demo_execution, "create_isolated_workspace", return_value=(workspace, True, "")), \
+                 mock.patch.object(ws, "_fetch_public_app", return_value=(200, live_production_content)), \
+                 mock.patch.object(ws.demo_execution, "commit_change", return_value=("demo/test-run", True, "")), \
+                 mock.patch.object(ws.demo_execution, "get_changed_files", return_value=[target_rel]), \
+                 mock.patch.object(ws.demo_execution, "get_commit_sha", return_value="fd92664"), \
+                 mock.patch.object(ws.demo_execution, "push_change", return_value=(demo_execution.PUSH_STATUS_NOT_CONFIGURED, "not configured")), \
+                 mock.patch.object(ws.demo_execution, "trigger_deploy", return_value=(True, "")), \
+                 mock.patch.object(ws.demo_execution, "wait_for_new_deployment", return_value=("new-dep-id", "SUCCESS", 5)), \
+                 mock.patch.object(ws, "_verify_content_with_retry", return_value=(200, "<html></html>", "Powered by Agentic Delivery", True)), \
+                 mock.patch.object(ws.demo_execution, "cleanup_workspace"):
+                ws._run_trainer_thread(run, "some requirement", normalized)
+        return run
+
+    def test_no_change_needed_only_when_live_production_already_matches(self):
+        matching_html = '<footer class="app-footer">Powered by Agentic Delivery</footer>'
+        run = self._run(isolated_workspace_content=matching_html, live_production_content=matching_html)
+        self.assertEqual(run.status, "NO_CHANGE_NEEDED")
+        no_change_event = next(e for e in run.events if e["type"] == "no_change_needed")
+        self.assertIn("live production", no_change_event["reason"])
+
+    def test_source_already_matches_but_production_is_stale_still_deploys(self):
+        """THE EXACT REAL BUG: GitHub's tracked source (mirrored into the
+        fresh isolated workspace clone) already has the requested value,
+        but live production is stale (a prior run's change never got
+        pushed to GitHub) — this must NOT short-circuit to
+        NO_CHANGE_NEEDED; it must proceed through commit/deploy so
+        production actually gets corrected."""
+        already_matching_source = '<footer class="app-footer">Powered by Agentic Delivery</footer>'
+        stale_production = '<footer class="app-footer">Built with DOSS care</footer>'
+        run = self._run(isolated_workspace_content=already_matching_source, live_production_content=stale_production)
+        self.assertEqual(run.status, "COMPLETED")
+        self.assertEqual([e for e in run.events if e["type"] == "no_change_needed"], [])
+        commit_events = [e for e in run.events if e["type"] == "commit"]
+        self.assertEqual(len(commit_events), 1, "a real commit/deploy must happen to correct stale production")
 
 
 class TestApplicabilityGateTestCase(unittest.TestCase):

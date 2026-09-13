@@ -840,33 +840,75 @@ def _run_trainer_thread(run: "Run", requirement: str, normalized: "demo_catalogu
             run.emit("stage", {"stage": "FAILED"})
             return
 
-        current_value = demo_catalogue.extract_current_value(old_content, normalized.operation_id)
-        if current_value == normalized.new_value:
+        # WORKBENCH TRUTHFULNESS FIX (2026-09-13, found live via this
+        # session's own adversarial re-run of the DOSS-care requirement
+        # in reverse): this decision must be made from LIVE PRODUCTION,
+        # never from the isolated workspace's freshly-cloned-from-GitHub
+        # source. Real defect this closes: each run clones a FRESH
+        # workspace from GitHub (see demo_execution.create_isolated_
+        # workspace), but Railway is deployed straight from that
+        # disposable clone's own files, never from a GitHub push (which
+        # only happens if DEMO_GIT_PUSH_TOKEN is configured — currently
+        # NOT_CONFIGURED, ACT-007). So GitHub source and live production
+        # can genuinely diverge the moment any run changes production
+        # without a successful push — a later run comparing against the
+        # GitHub-derived clone (as this code previously did) can falsely
+        # declare NO_CHANGE_NEEDED while production still shows the OLD
+        # value, since it never actually checked production at all. The
+        # isolated workspace's `old_content` remains correct and
+        # necessary for constructing the diff below — the anchor pattern
+        # matches structurally regardless of which value it currently
+        # holds — only the no-op SHORT-CIRCUIT must be decided from what
+        # is actually live.
+        prod_status_precheck, prod_html_precheck = _fetch_public_app()
+        live_current_value = (
+            demo_catalogue.extract_current_value(prod_html_precheck, normalized.operation_id)
+            if prod_html_precheck else None
+        )
+        if live_current_value == normalized.new_value:
             run.status = "NO_CHANGE_NEEDED"
             run.emit("no_change_needed", {
-                "reason": f"{normalized.human_name} already has the requested value — no source was modified, nothing was deployed.",
+                "reason": f"{normalized.human_name} already has the requested value in live production — no source was modified, nothing was deployed.",
             })
             run.emit("stage", {"stage": "NO_CHANGE_NEEDED"})
-            run.emit("final_result", {"text": f"No change needed: {normalized.human_name} is already \"{normalized.new_value}\"."})
+            run.emit("final_result", {"text": f"No change needed: {normalized.human_name} is already \"{normalized.new_value}\" in production."})
             return
 
-        try:
-            new_content = demo_catalogue.apply_operation(old_content, normalized.operation_id, normalized.new_value)
-            line_idx, old_line, new_line = demo_catalogue.compute_single_line_diff(old_content, new_content)
-        except RuntimeError as exc:
-            run.emit("error", {"message": f"Deterministic mutation refused (fail-closed, not applied): {exc}"})
-            run.status = "FAILED"
-            run.emit("stage", {"stage": "FAILED"})
-            return
-        target_path.write_text(new_content, encoding="utf-8")
-        run.emit("diff", {"file": normalized.target_file, "line_changed": line_idx, "old_line": old_line, "new_line": new_line})
+        # A second real gap this same precheck exposes: GitHub's own
+        # tracked source (mirrored into this fresh isolated-workspace
+        # clone) can ALREADY equal the requested value even while live
+        # production is stale — exactly the case above, just from the
+        # other side. demo_catalogue.apply_operation() correctly refuses
+        # to fabricate a no-op diff (old line == new line) when asked to,
+        # so that path must never be attempted here; instead, redeploy
+        # this already-correct isolated workspace as-is (mirrors the
+        # Reset flow's existing "nothing to commit is expected, deploy
+        # must still run" tolerance — see docs/LESSONS.md).
+        source_already_correct = demo_catalogue.extract_current_value(old_content, normalized.operation_id) == normalized.new_value
+        if source_already_correct:
+            run.emit("stage", {
+                "stage": "TESTING — NOT APPLICABLE",
+                "reason": f"{normalized.target_file} already has the requested value in this run's own source; nothing to commit — redeploying as-is to correct stale production.",
+            })
+        else:
+            try:
+                new_content = demo_catalogue.apply_operation(old_content, normalized.operation_id, normalized.new_value)
+                line_idx, old_line, new_line = demo_catalogue.compute_single_line_diff(old_content, new_content)
+            except RuntimeError as exc:
+                run.emit("error", {"message": f"Deterministic mutation refused (fail-closed, not applied): {exc}"})
+                run.status = "FAILED"
+                run.emit("stage", {"stage": "FAILED"})
+                return
+            target_path.write_text(new_content, encoding="utf-8")
+            run.emit("diff", {"file": normalized.target_file, "line_changed": line_idx, "old_line": old_line, "new_line": new_line})
 
-        # TESTING — deterministic, never guessed: a single-field static
-        # HTML text substitution genuinely has no Java test surface.
-        run.emit("stage", {
-            "stage": "TESTING — NOT APPLICABLE",
-            "reason": f"{normalized.target_file} is a static resource changed by a deterministic single-line substitution; Maven's test phase has no mechanism to exercise it (see the targeted production assertion below instead)",
-        })
+            # TESTING — deterministic, never guessed: a single-field
+            # static HTML text substitution genuinely has no Java test
+            # surface.
+            run.emit("stage", {
+                "stage": "TESTING — NOT APPLICABLE",
+                "reason": f"{normalized.target_file} is a static resource changed by a deterministic single-line substitution; Maven's test phase has no mechanism to exercise it (see the targeted production assertion below instead)",
+            })
 
         # COMMIT — isolated workspace, dedicated demo/<run_id> branch,
         # never master directly.
@@ -874,19 +916,24 @@ def _run_trainer_thread(run: "Run", requirement: str, normalized: "demo_catalogu
         run.emit("stage", {"stage": "COMMITTING"})
         commit_msg = f"Demo: {normalized.human_name} -> {normalized.new_value!r}"[:100]
         branch, commit_ok, commit_out = demo_execution.commit_change(workspace, run.id, normalized.target_file, commit_msg)
-        if not commit_ok:
+        # "nothing to commit" is expected and NOT fatal when the source
+        # was already correct (see source_already_correct above) — same
+        # tolerance the Reset flow already relies on (docs/LESSONS.md).
+        if not commit_ok and not (source_already_correct and "nothing to commit" in commit_out.lower()):
             run.emit("error", {"message": f"Git commit failed, deployment aborted: {commit_out[-400:]}"})
             run.status = "FAILED"
             run.emit("stage", {"stage": "FAILED"})
             return
         # Layer 3 evidence, enforced not just tested: confirm the commit
-        # touched ONLY the one expected file before ever deploying it.
-        changed_files = demo_execution.get_changed_files(workspace)
-        if changed_files != [normalized.target_file]:
-            run.emit("error", {"message": f"Commit touched unexpected files {changed_files} (expected only {[normalized.target_file]}) — blocking, not deployed."})
-            run.status = "FAILED"
-            run.emit("stage", {"stage": "FAILED"})
-            return
+        # touched ONLY the one expected file before ever deploying it —
+        # meaningless (and skipped) when nothing was actually committed.
+        if commit_ok:
+            changed_files = demo_execution.get_changed_files(workspace)
+            if changed_files != [normalized.target_file]:
+                run.emit("error", {"message": f"Commit touched unexpected files {changed_files} (expected only {[normalized.target_file]}) — blocking, not deployed."})
+                run.status = "FAILED"
+                run.emit("stage", {"stage": "FAILED"})
+                return
         production_commit = demo_execution.get_commit_sha(workspace)
         run.emit("commit", {"sha": production_commit, "path": normalized.target_file, "branch": branch})
 
