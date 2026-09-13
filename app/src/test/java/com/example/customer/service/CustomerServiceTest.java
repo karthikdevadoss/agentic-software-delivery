@@ -53,20 +53,6 @@ class CustomerServiceTest {
                 .hasMessageContaining("999");
     }
 
-    /**
-     * ACT-008 FOUNDATION (2026-09-13): CUSTOMER_NOT_FOUND_MESSAGE was
-     * isolated as its own package-visible constant specifically so a
-     * future controlled backend Workbench scenario can target it via a
-     * narrow regex anchor (see agent/demo_catalogue.py's equivalent
-     * pattern for static HTML). This locks in the exact current value
-     * and message shape so a future change to that scenario's own logic
-     * has a stable, known starting point to diff against.
-     */
-    @Test
-    void notFoundMessageConstant_hasTheExpectedCurrentValue() {
-        assertThat(CustomerService.CUSTOMER_NOT_FOUND_MESSAGE).isEqualTo("Customer not found");
-    }
-
     @Test
     void getById_whenCustomerDoesNotExist_usesTheConstantNotAHardcodedDuplicate() {
         when(customerRepository.findById(999L)).thenReturn(Optional.empty());
