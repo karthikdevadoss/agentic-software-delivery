@@ -65,8 +65,14 @@ test.describe("Workbench — verified run access without submitting", () => {
 
     // 3. Clearly identifies itself as a verified production run.
     await expect(page.getByRole("heading", { name: "VERIFIED PRODUCTION RUN" })).toBeVisible();
-    // 4. Run ID matches the backend's own selection, shown on the page.
-    await expect(page.getByText(apiData.run_id)).toBeVisible();
+    // 4. Run ID matches the backend's own selection, shown on the page —
+    // and, per the "run ID consistency" requirement, consistently in
+    // MORE than one place (the evidence panel's Run ID row, the commit
+    // branch name, and the page's own top summary/full-id sections),
+    // never a different id shown in different spots.
+    await expect(page.getByText(apiData.run_id).first()).toBeVisible();
+    const allRunIdMentions = await page.getByText(apiData.run_id).count();
+    expect(allRunIdMentions).toBeGreaterThan(1);
     // 5. Requirement is shown.
     const evidencePanel = page.locator(".verified-run-panel");
     await expect(evidencePanel.getByText(/Requirement:/)).toBeVisible();
