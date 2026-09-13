@@ -26,6 +26,7 @@ Then open http://127.0.0.1:8420
 """
 
 import asyncio
+import dataclasses
 import json
 import os
 import queue
@@ -51,6 +52,8 @@ from main import get_api_key
 from agent_loop import run_agent_loop
 from execution_agent import EXECUTION_SYSTEM_PROMPT_SUFFIX
 import dashboard_data
+import demo_catalogue
+import demo_execution
 import estimation
 import event_ledger
 import execution_tools
@@ -641,51 +644,23 @@ def _run_mock_thread(run: Run) -> None:
         _persist_run_history(run)
 
 
-# --- Trainer demo: risk-gated autonomous execution -----------------------
+# --- Trainer demo: deterministic catalogue execution ----------------------
 #
-# Separate, additive code path — never replaces or weakens the default
-# human-approval flow used by /api/runs. A requirement only ever reaches
-# _run_trainer_thread if risk_policy.classify() (deterministic, text-level,
-# server-side) returned decision="auto". Even then, every proposed file
-# still passes through write_tools._validate_write_scope() exactly as any
-# other edit would — the trainer path does not bypass that check, it just
-# replaces the *human* approval click with an automatic one for edits that
-# already made it past both gates.
+# RELIABILITY/CORRECTION PHASE (2026-09-13): this path no longer runs a
+# free-form LLM tool-calling agent at all. A public requirement is
+# normalized by demo_catalogue.normalize_requirement() — a pure,
+# zero-API-cost, deterministic function — into one of exactly 5 supported
+# operations before any expensive work happens; anything that doesn't
+# normalize is authorization-gated immediately (see assess_trainer_
+# requirement/start_trainer_run below), never reaching this thread. Every
+# mutation, commit, push, and deploy below runs against a FRESH, isolated
+# git clone (agent/demo_execution.py) — the long-lived platform-backend
+# server process's own checkout is never touched by public input. This
+# is a separate, additive code path — it never replaces or weakens the
+# default human-approval flow used by /api/runs.
 
-TRAINER_SYSTEM_PROMPT_SUFFIX = """
-
-This session is a PUBLIC LIVE DEMO with automatic approval — there is no
-human watching to approve your proposal, so make the SMALLEST possible
-change that satisfies the requirement. Strongly prefer touching exactly
-ONE file. For visual/UI requirements, prefer editing
-app/src/main/resources/static/index.html directly. Do not make
-speculative or unrelated changes. After applying, you MUST run the
-controlled compile (and tests if relevant) and report the real result.
-Your final summary must be exactly one crisp sentence describing exactly
-what changed.
-"""
-
-
-def _trainer_approval_prompt_factory(run: "Run"):
-    """Auto-approves — by the time propose_source_change reaches this
-    prompt, write_tools.propose_edit() has ALREADY enforced path/scope/
-    extension rules and raised on any violation, so anything reaching here
-    is already inside the approved demo scope. Decision is recorded as
-    'policy', never mislabeled as a human decision."""
-    def prompt(edit) -> bool:
-        run.trainer_changed_path = edit.path
-        # The exact byte-for-byte content that will actually be written to
-        # disk (write_tools.apply_edit writes edit.new_content verbatim) —
-        # captured here so production verification can later check the
-        # REQUESTED observable effect is genuinely live, not just that
-        # *some* HTTP 200 response came back. See _decide_deployment_outcome.
-        run.trainer_expected_content = edit.new_content
-        run.emit("approval_decision", {
-            "edit_id": edit.id, "decision": "approve",
-            "decided_by": "risk_policy (auto — no human in the loop for this demo tier)",
-        })
-        return True
-    return prompt
+CUSTOMER_APP_PROJECT_ID = "e19ceaff-846f-4d4a-b840-ce1248dd3325"
+RAILWAY_ENVIRONMENT = "production"
 
 
 def _run_controlled(argv, cwd, timeout_s):
@@ -813,186 +788,153 @@ def _determine_testing_state(changed_path, test_events: list) -> dict:
     }
 
 
-def _run_trainer_thread(run: "Run", requirement: str, assessment: dict) -> None:
+def _run_trainer_thread(run: "Run", requirement: str, normalized: "demo_catalogue.NormalizedRequest") -> None:
     # NOTE: the run slot is reserved synchronously by start_trainer_run()
     # BEFORE this thread is even started (see _reserve_run_slot) — this
-    # thread only ever runs once that reservation already succeeded, and
-    # is responsible for releasing it in `finally` below.
-    run.trainer_changed_path = None
-    execution_tools.set_approval_prompt(_trainer_approval_prompt_factory(run))
-    baseline_status, baseline_html = _fetch_public_app()
-
+    # thread only ever runs once that reservation, AND demo_catalogue
+    # normalization, already succeeded. Zero API/agent calls happen in
+    # this function — the entire mutation is deterministic.
+    run.trainer_changed_path = normalized.target_file
+    workspace = None
     try:
-        workspace = _check_repository_workspace_ready()
-        run.emit("repository_workspace_check", workspace)
-        if not workspace["ready"]:
-            run.emit("error", {"message": f"REPOSITORY_WORKSPACE_READY failed before any source was touched — not modifying source. Checks: {workspace['checks']}"})
+        run.status = "APPLYING CHANGE"
+        run.emit("stage", {"stage": "APPLYING CHANGE"})
+        workspace, clone_ok, clone_out = demo_execution.create_isolated_workspace(run.id)
+        run.emit("workspace", {"isolated": True, "ok": clone_ok})
+        if not clone_ok:
+            run.emit("error", {"message": f"Could not create an isolated workspace (git clone failed) — not modifying anything: {clone_out[-400:]}"})
             run.status = "FAILED"
             run.emit("stage", {"stage": "FAILED"})
             return
 
-        run.status = "PLANNING"
-        run.emit("stage", {"stage": "PLANNING"})
-        result = run_agent_loop(
-            requirement, API_KEY,
-            tool_schemas=execution_tools.EXECUTION_TOOL_SCHEMAS,
-            dispatch_fn=_make_dispatch_fn(run),
-            system_prompt_suffix=EXECUTION_SYSTEM_PROMPT_SUFFIX + TRAINER_SYSTEM_PROMPT_SUFFIX,
-        )
-        run.result_text = result
-
-        # An edit was PROPOSED (regardless of whether it was later applied) —
-        # this is the deterministic signal for "the agent attempted a code
-        # change" vs. "the agent investigated and made a deliberate decision
-        # not to change anything." Only the latter can ever be a legitimate
-        # no-op; it is never inferred from apply/compile/test outcomes alone.
-        apply_attempted = any(e for e in run.events if e["type"] == "tool_call" and e.get("tool") == "propose_source_change")
-
-        if not apply_attempted:
-            # No write authority was ever exercised either way — nothing was
-            # proposed, so nothing could have been applied/compiled/deployed.
-            # The only question is how to LABEL this to the trainer: a
-            # keyword check on the agent's own investigation summary decides
-            # ALREADY SATISFIED vs. a genuine inconclusive failure. This
-            # check only picks a UI label — it grants no additional
-            # capability in either branch.
-            if risk_policy.looks_already_satisfied(result):
-                run.status = "NO_CHANGE_NEEDED"
-                run.emit("no_change_needed", {
-                    "reason": "Repository investigation showed the requirement is already implemented. No code was modified, nothing was compiled, nothing was deployed.",
-                })
-                run.emit("stage", {"stage": "NO_CHANGE_NEEDED"})
-                run.emit("final_result", {"text": result})
-                return
-            run.emit("error", {"message": "Agent investigated the repository but did not propose a code change and did not indicate the requirement was already satisfied — inconclusive, not deploying."})
+        target_path = workspace / normalized.target_file
+        try:
+            old_content = target_path.read_text(encoding="utf-8")
+        except OSError as exc:
+            run.emit("error", {"message": f"Could not read {normalized.target_file} in the isolated workspace: {exc}"})
             run.status = "FAILED"
             run.emit("stage", {"stage": "FAILED"})
             return
 
-        if run.trainer_changed_path is None:
-            run.emit("error", {"message": "No file change was actually applied — nothing to deploy."})
-            run.status = "FAILED"
-            run.emit("stage", {"stage": "FAILED"})
-            return
-
-        apply_ok = any(e for e in run.events if e["type"] == "tool_result" and e.get("tool") == "apply_approved_source_change" and e.get("success"))
-        compile_ok = any(e for e in run.events if e["type"] == "tool_result" and e.get("tool") == "run_controlled_compile" and e.get("success"))
-        test_events = [e for e in run.events if e["type"] == "tool_result" and e.get("tool") == "run_controlled_tests"]
-        testing = _determine_testing_state(run.trainer_changed_path, test_events)
-        # Only emit a distinct stage event for the states that don't already
-        # have one live from STAGE_LABELS ("TESTING" fires when
-        # run_controlled_tests is actually dispatched — PASSED/FAILED are
-        # distinguished from that same event by the frontend via
-        # verificationState.testResult, not by a second stage here).
-        if testing["state"] not in ("PASSED", "FAILED"):
-            run.emit("stage", {
-                "stage": f"TESTING — {testing['state'].replace('_', ' ')}",
-                "reason": testing["reason"],
+        current_value = demo_catalogue.extract_current_value(old_content, normalized.operation_id)
+        if current_value == normalized.new_value:
+            run.status = "NO_CHANGE_NEEDED"
+            run.emit("no_change_needed", {
+                "reason": f"{normalized.human_name} already has the requested value — no source was modified, nothing was deployed.",
             })
-        test_ok = testing["state"] in _TESTING_STATES_ALLOWING_COMMIT
+            run.emit("stage", {"stage": "NO_CHANGE_NEEDED"})
+            run.emit("final_result", {"text": f"No change needed: {normalized.human_name} is already \"{normalized.new_value}\"."})
+            return
 
-        if not (apply_ok and compile_ok and test_ok):
-            run.emit("error", {"message": f"Implementation did not pass verification (apply/compile/test) — not deployed. Production is unchanged. Testing state: {testing['state']} ({testing['reason']})."})
+        try:
+            new_content = demo_catalogue.apply_operation(old_content, normalized.operation_id, normalized.new_value)
+            line_idx, old_line, new_line = demo_catalogue.compute_single_line_diff(old_content, new_content)
+        except RuntimeError as exc:
+            run.emit("error", {"message": f"Deterministic mutation refused (fail-closed, not applied): {exc}"})
             run.status = "FAILED"
             run.emit("stage", {"stage": "FAILED"})
             return
+        target_path.write_text(new_content, encoding="utf-8")
+        run.emit("diff", {"file": normalized.target_file, "line_changed": line_idx, "old_line": old_line, "new_line": new_line})
 
-        # COMMIT — only the exact file the agent changed, never a blanket `git add -A`.
+        # TESTING — deterministic, never guessed: a single-field static
+        # HTML text substitution genuinely has no Java test surface.
+        run.emit("stage", {
+            "stage": "TESTING — NOT APPLICABLE",
+            "reason": f"{normalized.target_file} is a static resource changed by a deterministic single-line substitution; Maven's test phase has no mechanism to exercise it (see the targeted production assertion below instead)",
+        })
+
+        # COMMIT — isolated workspace, dedicated demo/<run_id> branch,
+        # never master directly.
         run.status = "COMMITTING"
         run.emit("stage", {"stage": "COMMITTING"})
-        ok, out = _run_controlled(["git", "add", "--", run.trainer_changed_path], REPO_ROOT, 30)
-        if ok:
-            commit_msg = f"Trainer demo: {requirement.strip()[:100]}"
-            ok, out = _run_controlled(["git", "commit", "-m", commit_msg], REPO_ROOT, 30)
-        if not ok:
-            run.emit("error", {"message": f"Git commit failed, deployment aborted: {out[-400:]}"})
+        commit_msg = f"Demo: {normalized.human_name} -> {normalized.new_value!r}"[:100]
+        branch, commit_ok, commit_out = demo_execution.commit_change(workspace, run.id, normalized.target_file, commit_msg)
+        if not commit_ok:
+            run.emit("error", {"message": f"Git commit failed, deployment aborted: {commit_out[-400:]}"})
             run.status = "FAILED"
             run.emit("stage", {"stage": "FAILED"})
             return
-        _, sha_out = _run_controlled(["git", "rev-parse", "--short", "HEAD"], REPO_ROOT, 15)
-        production_commit = sha_out.strip()
-        run.emit("commit", {"sha": production_commit, "path": run.trainer_changed_path})
+        # Layer 3 evidence, enforced not just tested: confirm the commit
+        # touched ONLY the one expected file before ever deploying it.
+        changed_files = demo_execution.get_changed_files(workspace)
+        if changed_files != [normalized.target_file]:
+            run.emit("error", {"message": f"Commit touched unexpected files {changed_files} (expected only {[normalized.target_file]}) — blocking, not deployed."})
+            run.status = "FAILED"
+            run.emit("stage", {"stage": "FAILED"})
+            return
+        production_commit = demo_execution.get_commit_sha(workspace)
+        run.emit("commit", {"sha": production_commit, "path": normalized.target_file, "branch": branch})
 
-        # PUSH — a local commit is not durably saved (see docs/CLAUDE.md's
-        # durable-state rules); a real recruiter demo must not leave its
-        # own commit unpushed, dependent on some later, unrelated session
-        # to notice and push it. Deliberately non-fatal to the deploy
-        # itself: Railway's `up` below deploys from the local working
-        # tree, not from GitHub, so a transient push failure (network,
-        # auth) should not silently discard an otherwise-good, already
-        # deployed and verified demo change — but it is always reported
-        # honestly, never silently swallowed or claimed to have happened.
+        # PUSH — never fatal to the deploy itself (see ACT-007/demo_execution.py).
         run.status = "PUSHING"
         run.emit("stage", {"stage": "PUSHING"})
-        push_ok, push_out = _run_controlled(["git", "push", "origin", "master"], REPO_ROOT, 60)
-        run.emit("push", {"ok": push_ok, "output": push_out[-400:] if not push_ok else None})
+        push_ok, push_out = demo_execution.push_change(workspace, branch)
+        run.emit("push", {"ok": push_ok, "output": None if push_ok else push_out[-400:]})
         if not push_ok:
-            run.emit("error", {"message": f"git push to origin failed (deploy continues regardless — Railway deploys from the local working tree, not GitHub): {push_out[-400:]}"})
+            run.emit("error", {"message": f"git push failed (deploy continues from the isolated workspace regardless): {push_out[-400:]}"})
 
-        # DEPLOY
+        # DEPLOY — from the ISOLATED workspace's own app/ directory, never
+        # the long-lived server's own APP_DIR. Capture the deployment
+        # identity BEFORE triggering, per Layer 7.
         run.status = "DEPLOYING"
         run.emit("stage", {"stage": "DEPLOYING"})
-        deploy_ok, deploy_out = _run_controlled(
-            ["railway", "up", "--detach", "--service", RAILWAY_SERVICE_NAME], APP_DIR, 60)
+        previous_deployment_id = demo_execution.get_latest_deployment_id(
+            CUSTOMER_APP_PROJECT_ID, RAILWAY_SERVICE_NAME, RAILWAY_ENVIRONMENT, workspace)
+        deploy_ok, deploy_out = demo_execution.trigger_deploy(
+            workspace / "app", CUSTOMER_APP_PROJECT_ID, RAILWAY_SERVICE_NAME, RAILWAY_ENVIRONMENT)
         if not deploy_ok:
-            run.emit("error", {"message": f"Railway deploy upload failed: {deploy_out[-400:]}"})
+            run.emit("error", {"message": f"Railway deploy trigger failed: {deploy_out[-400:]}"})
             run.status = "FAILED"
             run.emit("stage", {"stage": "FAILED"})
             return
 
-        # VERIFY — poll production directly for the REQUESTED observable
-        # effect, not a Railway CLI text signal. Real incident (run
-        # trainer-7769757e): `railway status` reports "Online" for the
-        # OLD deployment still serving traffic while a NEW one builds in
-        # the background — exiting this loop on that text alone let a
-        # single HTTP 200 check fire ~13s after commit, long before a
-        # real Nixpacks/Maven build (observed up to ~11.5 minutes cold)
-        # could possibly have finished, so it verified the OLD content.
-        # Waiting here for the actual requested content (or a real CLI
-        # failure, or genuine timeout) is what the permanent rule in
-        # CLAUDE.md/DECISIONS.md requires: DEPLOY -> BECOMES ACTIVE ->
-        # VERIFY REQUESTED OBSERVABLE EFFECT -> ONLY THEN COMPLETED.
+        # VERIFY — BOTH real deployment identity (Railway's own records,
+        # never HTTP 200/CLI text/elapsed time) AND a targeted production
+        # assertion (the exact field's live value, never a whole-file
+        # substring containment check).
         run.status = "VERIFYING PRODUCTION"
         run.emit("stage", {"stage": "VERIFYING PRODUCTION"})
-        deploy_explicit_failure = False
-        after_status, after_html, content_verified = None, None, False
-        max_wait_s, poll_interval_s, waited_s = 15 * 60, 10, 0
-        while waited_s < max_wait_s:
-            time.sleep(poll_interval_s)
-            waited_s += poll_interval_s
-            after_status, after_html = _fetch_public_app()
-            content_verified = bool(after_html) and bool(run.trainer_expected_content) and run.trainer_expected_content in after_html
-            if after_status == 200 and content_verified:
-                break
-            _, status_out = _run_controlled(["railway", "status"], APP_DIR, 20)
-            if "Failed" in status_out or "Crashed" in status_out:
-                deploy_explicit_failure = True
-                break
+        new_deployment_id, deploy_status, waited_s = demo_execution.wait_for_new_deployment(
+            CUSTOMER_APP_PROJECT_ID, RAILWAY_SERVICE_NAME, RAILWAY_ENVIRONMENT, previous_deployment_id, workspace)
+        deployment_identity_confirmed = new_deployment_id is not None and deploy_status.upper() == "SUCCESS"
 
-        production_reachable = after_status == 200
-        content_changed = bool(after_html) and after_html != baseline_html
+        after_status, after_html = _fetch_public_app()
+        live_value = demo_catalogue.extract_current_value(after_html, normalized.operation_id) if after_html else None
+        content_verified = live_value == normalized.new_value
+
         run.emit("deployment", {
             "production_commit": production_commit,
             "public_url": PUBLIC_CUSTOMER_APP_URL,
             "http_status": after_status,
-            "content_changed_from_baseline": content_changed,
+            "previous_deployment_id": previous_deployment_id,
+            "new_deployment_id": new_deployment_id,
+            "deployment_status": deploy_status,
+            "deployment_identity_confirmed": deployment_identity_confirmed,
             "content_verified": content_verified,
-            "verified": production_reachable and content_verified,
-            "railway_cli_reported_failure": deploy_explicit_failure,
+            "live_value": live_value,
+            "verified": deployment_identity_confirmed and content_verified,
             "waited_seconds": waited_s,
         })
 
-        outcome = _decide_deployment_outcome(production_reachable, deploy_explicit_failure, content_verified)
-        if outcome == "COMPLETED":
+        deploy_failed_explicitly = any(marker in deploy_status.upper() for marker in ("FAIL", "CRASH"))
+        if deployment_identity_confirmed and content_verified:
             run.status = "COMPLETED"
             run.emit("stage", {"stage": "COMPLETED"})
-            run.emit("final_result", {"text": result})
-        elif outcome == "FAILED":
-            run.emit("error", {"message": "Railway reported a failed/crashed deployment, and production is not reachable."})
+            run.emit("final_result", {"text": f"{normalized.human_name} is now \"{normalized.new_value}\" in production (deployment {new_deployment_id}, commit {production_commit})."})
+        elif deploy_failed_explicitly:
+            run.emit("error", {"message": f"Railway reported a failed deployment (status={deploy_status})."})
             run.status = "FAILED"
             run.emit("stage", {"stage": "FAILED"})
-        else:  # DEPLOYMENT_STATUS_UNKNOWN — genuinely inconclusive, not a confirmed failure
-            run.emit("error", {"message": "Deployment status could not be confirmed: Railway CLI polling did not report Online within the wait window, and production verification did not return HTTP 200. This is NOT a confirmed failure — check manually."})
+        elif deployment_identity_confirmed and not content_verified:
+            # A CONFIRMED negative result, not an ambiguous one: the new
+            # deployment genuinely is serving, but the requested field's
+            # live value does not match what was requested.
+            run.emit("error", {"message": f"New deployment {new_deployment_id} is live, but {normalized.human_name} shows {live_value!r}, not the requested {normalized.new_value!r} — confirmed failure."})
+            run.status = "FAILED"
+            run.emit("stage", {"stage": "FAILED"})
+        else:
+            run.emit("error", {"message": f"Deployment identity could not be confirmed within the wait window (status={deploy_status}). This is NOT a confirmed failure — check manually."})
             run.status = "DEPLOYMENT_STATUS_UNKNOWN"
             run.emit("stage", {"stage": "DEPLOYMENT_STATUS_UNKNOWN"})
     except Exception as exc:  # noqa: BLE001
@@ -1000,27 +942,24 @@ def _run_trainer_thread(run: "Run", requirement: str, assessment: dict) -> None:
         run.status = "FAILED"
         run.emit("stage", {"stage": "FAILED"})
     finally:
-        execution_tools.set_approval_prompt(execution_tools._default_approval_prompt)
+        if workspace is not None:
+            demo_execution.cleanup_workspace(workspace)
         _release_run_slot()
         global _LAST_TRAINER_RUN_FINISHED_AT
         _LAST_TRAINER_RUN_FINISHED_AT = time.monotonic()
-        # ACTUAL usage — emitted for every terminal outcome (COMPLETED,
-        # FAILED, NO_CHANGE_NEEDED, DEPLOYMENT_STATUS_UNKNOWN) as long as at
-        # least one real API call happened in this run's window, never only
-        # for successful runs. See Section 3/5 of the Workbench cost-
-        # transparency task: never estimate post-run when actual usage
-        # exists, and never lose the record for a failed/no-change run.
+        # Honestly ACTUAL USAGE NOT CAPTURED — this path makes zero API
+        # calls by design (see the module header comment above), never
+        # estimated, never fabricated as if a model call happened.
         usage_summary = _build_usage_summary(run.trainer_usage_start_index)
-        usage_summary["estimate_error"] = _estimate_error(run, usage_summary)
         usage_summary["elapsed_seconds"] = round(run.events[-1]["ts"] - run.events[0]["ts"], 1) if run.events else None
-        usage_summary["tool_call_count"] = sum(1 for e in run.events if e["type"] == "tool_call")
+        usage_summary["tool_call_count"] = 0
         run.emit("usage_summary", usage_summary)
         commit_event = next((e for e in run.events if e["type"] == "commit"), None)
         deploy_event = next((e for e in run.events if e["type"] == "deployment"), None)
         _persist_run_history(run, usage_start_index=run.trainer_usage_start_index, extra={
             "session_type": "trainer_demo",
             "requirement": requirement,
-            "risk_assessment": assessment,
+            "normalized_request": dataclasses.asdict(normalized),
             "production_commit": commit_event["sha"] if commit_event else None,
             "deployment": deploy_event if deploy_event else None,
         })
@@ -1060,18 +999,81 @@ async def start_mock_run(request: Request):
     return JSONResponse({"run_id": run_id})
 
 
+_AUTHORIZATION_REQUIRED_MESSAGE = (
+    "Authorization required. This request is outside the autonomous "
+    "public-demo scope and would require owner approval because of its "
+    "size or impact. Without approval, you can try one of these verified "
+    "demo changes:"
+)
+
+
+def _assess_public_demo_requirement(requirement: str) -> dict:
+    """The single deterministic, zero-API-cost authority for the public
+    demo path — used identically by assess_trainer_requirement (a UI
+    preview call) and start_trainer_run (the actual gate), so the two can
+    never silently diverge. Rejects as early and cheaply as possible:
+    length cap -> demo_catalogue normalization -> risk_policy keyword
+    denylist on the raw text (defense in depth) — all pure Python, no
+    model call, before any decision to execute."""
+    if len(requirement) > TRAINER_REQUIREMENT_MAX_CHARS:
+        return {
+            "decision": "blocked",
+            "message": _AUTHORIZATION_REQUIRED_MESSAGE,
+            "reason": f"Requirement exceeds the demo's {TRAINER_REQUIREMENT_MAX_CHARS}-character limit.",
+            "suggested_examples": demo_catalogue.SUGGESTED_EXAMPLES,
+        }
+    try:
+        normalized = demo_catalogue.normalize_requirement(requirement)
+    except (demo_catalogue.UnsupportedRequirement, demo_catalogue.InvalidValue) as exc:
+        return {
+            "decision": "blocked",
+            "message": _AUTHORIZATION_REQUIRED_MESSAGE,
+            "reason": str(exc),
+            "suggested_examples": demo_catalogue.SUGGESTED_EXAMPLES,
+        }
+
+    # Defense in depth: even a successfully-normalized request's raw text
+    # is still checked against the existing keyword denylist (catches,
+    # e.g., a supported field's new value smuggling a dangerous phrase).
+    keyword_check = risk_policy.classify(requirement)
+    if keyword_check["decision"] != "auto":
+        return {
+            "decision": "blocked",
+            "message": _AUTHORIZATION_REQUIRED_MESSAGE,
+            "reason": keyword_check["reason"],
+            "suggested_examples": demo_catalogue.SUGGESTED_EXAMPLES,
+        }
+
+    return {
+        "decision": "auto",
+        "operation_id": normalized.operation_id,
+        "human_name": normalized.human_name,
+        "new_value": normalized.new_value,
+        "risk_class": normalized.risk_class,
+        "expected_changed_files": list(normalized.expected_changed_files),
+        "expected_verification_method": normalized.expected_verification_method,
+        "expected_production_assertion": normalized.expected_production_assertion,
+        "estimated_cost_usd": 0.0,
+        "estimated_cost_note": "This request maps to a deterministic, zero-API-call operation — no model call is made, so the real cost is exactly $0.00, not an estimate.",
+        "_normalized": normalized,  # internal use only — stripped before any HTTP response
+    }
+
+
 async def assess_trainer_requirement(request: Request):
-    """Cheap, synchronous, zero-API-cost — lets the trainer UI show the
-    risk/complexity decision AND an estimated token/cost range before
-    committing to a real agent run. Estimation only runs for the auto-
-    execute path — a blocked requirement never executes, so there is
-    nothing to estimate."""
+    """Cheap, synchronous, zero-API-cost — lets the trainer UI preview the
+    authorization decision before submitting. Never starts any work."""
     body = await request.json()
     requirement = (body.get("requirement") or "").strip()
-    assessment = risk_policy.classify(requirement)
-    if assessment["decision"] == "auto":
-        assessment["estimate"] = estimation.estimate_run(assessment)
+    assessment = _assess_public_demo_requirement(requirement)
+    assessment.pop("_normalized", None)
     return JSONResponse(assessment)
+
+
+async def get_demo_catalogue(request: Request):
+    """Exposes the exact 5 supported example requirements so the frontend
+    never hardcodes a second copy that could drift from the real
+    deterministic contract."""
+    return JSONResponse({"examples": demo_catalogue.SUGGESTED_EXAMPLES})
 
 
 async def start_trainer_run(request: Request):
@@ -1079,20 +1081,6 @@ async def start_trainer_run(request: Request):
     requirement = (body.get("requirement") or "").strip()
     if not requirement:
         return JSONResponse({"error": "requirement is required"}, status_code=400)
-
-    # Hard input-length cap, checked before any classification/model call —
-    # cheap defense in depth against a scripted or pasted large input
-    # spiking cost before risk_policy's own word-count heuristic would
-    # otherwise catch it.
-    if len(requirement) > TRAINER_REQUIREMENT_MAX_CHARS:
-        return JSONResponse({
-            "blocked": True,
-            "assessment": {
-                "complexity": "N/A", "risk": "HIGH", "decision": "blocked",
-                "reason": f"Requirement exceeds the demo's {TRAINER_REQUIREMENT_MAX_CHARS}-character limit.",
-                "matched_keywords": [], "suggested_alternatives": risk_policy.SUGGESTED_ALTERNATIVES,
-            },
-        })
 
     # Cooldown: a short mandatory gap after the previous trainer run
     # finished, before another may start — cheap abuse/cost protection
@@ -1106,18 +1094,19 @@ async def start_trainer_run(request: Request):
             "cooldown_seconds": int(cooldown_remaining) + 1,
         }, status_code=429)
 
-    # Re-classify server-side — never trust a client-displayed assessment
-    # as the actual authorization decision.
-    assessment = risk_policy.classify(requirement)
+    # Re-derive server-side — never trust a client-displayed assessment
+    # as the actual authorization decision. Rejects before any thread/
+    # workspace/deploy cost is spent.
+    assessment = _assess_public_demo_requirement(requirement)
     if assessment["decision"] != "auto":
         return JSONResponse({"blocked": True, "assessment": assessment})
-    assessment["estimate"] = estimation.estimate_run(assessment)
+    normalized = assessment.pop("_normalized")
 
     run_id = "trainer-" + uuid.uuid4().hex[:8]
     # Reserve the single global run slot SYNCHRONOUSLY, before the
     # background thread starts — a real production Git/Railway pipeline
     # runs behind this, so two overlapping public submissions could
-    # otherwise race on the same working tree and the same deployment.
+    # otherwise race on the same isolated workspace/deployment.
     if not _reserve_run_slot(run_id):
         return JSONResponse({
             "busy": True,
@@ -1128,7 +1117,7 @@ async def start_trainer_run(request: Request):
     RUNS[run_id] = run
     run.emit("risk_assessment", assessment)
 
-    thread = threading.Thread(target=_run_trainer_thread, args=(run, requirement, assessment), daemon=True)
+    thread = threading.Thread(target=_run_trainer_thread, args=(run, requirement, normalized), daemon=True)
     thread.start()
     return JSONResponse({"blocked": False, "run_id": run_id, "assessment": assessment})
 
@@ -1173,7 +1162,15 @@ def _read_demo_baseline():
 
 
 def _run_reset_thread():
+    """RELIABILITY/CORRECTION PHASE (2026-09-13): reset now uses the SAME
+    isolated-workspace + deployment-identity discipline as the main
+    trainer flow (agent/demo_execution.py) — it must be treated as a real
+    software-delivery operation requiring evidence, not merely a command
+    that was issued. 'Successful' means canonical state is independently
+    confirmed serving in production, via real Railway deployment records,
+    never just that a command exited 0."""
     global _reset_state
+    workspace = None
     try:
         _reset_state = {"status": "running", "message": "Resetting demo to canonical baseline…"}
         baseline_content = _read_demo_baseline()
@@ -1181,69 +1178,71 @@ def _run_reset_thread():
             _reset_state = {"status": "failed", "message": f"Could not read baseline snapshot file {DEMO_BASELINE_FILE}."}
             return
 
-        # Real production finding (2026-09-12, this exact task): the
-        # platform-backend container's own local working-tree file is NOT
-        # authoritative for "does a reset actually need to happen." A
-        # platform-backend redeploy rebuilds that container fresh from
-        # this repository's own checkout (COPY . .), silently resetting
-        # the CONTAINER's local file back to baseline even while the
-        # actually-deployed Customer App (a separate Railway service) can
-        # still be serving an older demo change — comparing the local
-        # file alone reported a false "already at baseline" once, caught
-        # only by an independent curl of the real live Customer App. Only
-        # the real deployed content can answer this question.
+        # The go/no-go check must ask the REAL deployed Customer App, not
+        # any local file — see docs/LESSONS.md's "a deployed container's
+        # own local state is not authoritative" entry, the real bug this
+        # exact check fixes.
         current_status, current_html = _fetch_public_app()
         if current_status == 200 and current_html == baseline_content:
             _reset_state = {"status": "completed", "message": "Already at canonical baseline — verified live, nothing to reset."}
             return
 
-        live_path = REPO_ROOT / DEMO_RESETTABLE_PATH
+        workspace, clone_ok, clone_out = demo_execution.create_isolated_workspace("reset")
+        if not clone_ok:
+            _reset_state = {"status": "failed", "message": f"Could not create isolated workspace: {clone_out[-300:]}"}
+            return
+
+        live_path = workspace / DEMO_RESETTABLE_PATH
         try:
             live_path.write_text(baseline_content, encoding="utf-8")
         except OSError as exc:
             _reset_state = {"status": "failed", "message": f"Could not write {DEMO_RESETTABLE_PATH}: {exc}"}
             return
 
-        ok, out = _run_controlled(["git", "add", "--", DEMO_RESETTABLE_PATH], REPO_ROOT, 15)
-        if ok:
-            ok, out = _run_controlled(["git", "commit", "-m", "Trainer demo: reset to canonical baseline"], REPO_ROOT, 30)
-        # "nothing to commit" is expected and NOT fatal here: it means this
-        # container's own local file/git already matched baseline (e.g. a
-        # fresh redeploy), which is exactly the case production can still
-        # disagree with — deployment must still proceed so the real
-        # Customer App actually gets the baseline content.
-        if not ok and "nothing to commit" not in out.lower():
-            _reset_state = {"status": "failed", "message": f"git commit failed: {out[-300:]}"}
+        run_id = f"reset-{uuid.uuid4().hex[:8]}"
+        branch, commit_ok, commit_out = demo_execution.commit_change(
+            workspace, run_id, DEMO_RESETTABLE_PATH, "Demo: reset to canonical baseline")
+        # "nothing to commit" is expected and NOT fatal here: the isolated
+        # clone's own file may already match baseline (a fresh clone of
+        # a repo already reset by an earlier attempt) even while the real
+        # Customer App is still stale — deployment must still proceed.
+        if not commit_ok and "nothing to commit" not in commit_out.lower():
+            _reset_state = {"status": "failed", "message": f"git commit failed: {commit_out[-300:]}"}
             return
 
-        push_ok, push_out = _run_controlled(["git", "push", "origin", "master"], REPO_ROOT, 60)
+        push_ok, push_out = demo_execution.push_change(workspace, branch)
         if not push_ok:
-            # Non-fatal, same as the main trainer flow — deploy below still
-            # deploys from the local working tree, not GitHub.
-            _reset_state = {"status": "running", "message": f"Committed locally; git push to origin failed (deploy continues): {push_out[-200:]}"}
+            _reset_state = {"status": "running", "message": f"Committed; git push failed (deploy continues from the isolated workspace): {push_out[-200:]}"}
 
-        deploy_ok, deploy_out = _run_controlled(
-            ["railway", "up", "--detach", "--service", RAILWAY_SERVICE_NAME], APP_DIR, 60)
+        previous_deployment_id = demo_execution.get_latest_deployment_id(
+            CUSTOMER_APP_PROJECT_ID, RAILWAY_SERVICE_NAME, RAILWAY_ENVIRONMENT, workspace)
+        deploy_ok, deploy_out = demo_execution.trigger_deploy(
+            workspace / "app", CUSTOMER_APP_PROJECT_ID, RAILWAY_SERVICE_NAME, RAILWAY_ENVIRONMENT)
         if not deploy_ok:
             _reset_state = {"status": "failed", "message": f"Railway deploy failed: {deploy_out[-300:]}"}
             return
 
-        max_wait_s, poll_interval_s, waited_s = 10 * 60, 10, 0
-        content_verified = False
-        while waited_s < max_wait_s:
-            time.sleep(poll_interval_s)
-            waited_s += poll_interval_s
-            after_status, after_html = _fetch_public_app()
-            if after_status == 200 and after_html == baseline_content:
-                content_verified = True
-                break
-        if content_verified:
-            _reset_state = {"status": "completed", "message": "Demo reset to canonical baseline — verified live in production."}
+        new_deployment_id, deploy_status, waited_s = demo_execution.wait_for_new_deployment(
+            CUSTOMER_APP_PROJECT_ID, RAILWAY_SERVICE_NAME, RAILWAY_ENVIRONMENT, previous_deployment_id, workspace,
+            max_wait_s=10 * 60)
+        deployment_identity_confirmed = new_deployment_id is not None and deploy_status.upper() == "SUCCESS"
+
+        after_status, after_html = _fetch_public_app()
+        content_verified = after_status == 200 and after_html == baseline_content
+
+        if deployment_identity_confirmed and content_verified:
+            _reset_state = {"status": "completed", "message": f"Demo reset to canonical baseline — verified live in production (deployment {new_deployment_id})."}
+        elif any(marker in deploy_status.upper() for marker in ("FAIL", "CRASH")):
+            _reset_state = {"status": "failed", "message": f"Railway reported a failed reset deployment (status={deploy_status})."}
+        elif deployment_identity_confirmed and not content_verified:
+            _reset_state = {"status": "failed", "message": f"New deployment {new_deployment_id} is live, but production content does not match the canonical baseline — confirmed failure."}
         else:
-            _reset_state = {"status": "unknown", "message": "Reset deployed, but production content could not be confirmed matching baseline within the wait window — check manually."}
+            _reset_state = {"status": "unknown", "message": f"Reset deployment identity could not be confirmed within the wait window (status={deploy_status}) — check manually."}
     except Exception as exc:  # noqa: BLE001
         _reset_state = {"status": "failed", "message": str(exc)}
     finally:
+        if workspace is not None:
+            demo_execution.cleanup_workspace(workspace)
         _release_run_slot()
 
 
@@ -1445,6 +1444,7 @@ routes = [
     Route("/api/trainer/reset", start_demo_reset, methods=["POST"]),
     Route("/api/trainer/reset", get_demo_reset_status, methods=["GET"]),
     Route("/api/trainer/assess", assess_trainer_requirement, methods=["POST"]),
+    Route("/api/trainer/catalogue", get_demo_catalogue, methods=["GET"]),
     Route("/api/trainer/runs", start_trainer_run, methods=["POST"]),
     Route("/api/runs/{run_id}", get_run, methods=["GET"]),
     Route("/api/runs/{run_id}/events", stream_events, methods=["GET"]),

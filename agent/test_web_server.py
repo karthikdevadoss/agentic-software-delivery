@@ -19,6 +19,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+import demo_catalogue
 import web_server as ws
 
 # This file's Run(...) instantiations now also trigger a real write-through
@@ -318,61 +319,51 @@ class TargetApplicationTestCase(unittest.IsolatedAsyncioTestCase):
 
 
 class PreRunEstimateTestCase(unittest.IsolatedAsyncioTestCase):
-    """Section 2: an ESTIMATED (never fabricated-precision) token/cost
-    range must be produced before execution for an auto-execute
-    requirement, and a thin/missing estimate must never block a safe
-    TINY/LOW auto-execute run."""
+    """RELIABILITY/CORRECTION PHASE (2026-09-13): the public demo path is
+    now a deterministic catalogue with zero API calls, so 'estimated
+    cost' is no longer a probabilistic guess — it is a real, exact fact
+    ($0.00, no model call happens). These tests replace the old
+    probabilistic-estimate contract, which no longer applies to this path."""
 
-    async def test_assess_route_attaches_an_estimate_for_auto_decisions(self):
+    async def test_assess_route_reports_exact_zero_cost_for_auto_decisions(self):
         request = mock.Mock()
-        request.json = mock.AsyncMock(return_value={"requirement": 'Add a small "Agent Demo" status badge'})
+        request.json = mock.AsyncMock(return_value={"requirement": 'Change the footer text to "Agent Demo"'})
         response = await ws.assess_trainer_requirement(request)
         body = json.loads(response.body)
         self.assertEqual(body["decision"], "auto")
-        self.assertIn("estimate", body)
-        self.assertTrue(body["estimate"]["available"])
-        self.assertIn(body["estimate"]["confidence"], ("LOW", "MEDIUM", "HIGH"))
+        self.assertEqual(body["estimated_cost_usd"], 0.0)
 
-    async def test_assess_route_never_estimates_a_blocked_requirement(self):
+    async def test_assess_route_never_reports_a_normalized_request_for_a_blocked_requirement(self):
         request = mock.Mock()
         request.json = mock.AsyncMock(return_value={"requirement": "Change the login password hashing scheme"})
         response = await ws.assess_trainer_requirement(request)
         body = json.loads(response.body)
         self.assertEqual(body["decision"], "blocked")
-        self.assertNotIn("estimate", body)  # nothing to estimate — it will never execute
+        self.assertNotIn("operation_id", body)
+        self.assertIn("suggested_examples", body)
 
-    async def test_missing_estimate_never_blocks_a_safe_auto_execute_run(self):
-        """Direct test of the exact requirement: 'Do not prevent a safe
-        TINY/LOW request from running only because an estimate is
-        unavailable.' Forces estimation to report ESTIMATE NOT AVAILABLE
-        and proves start_trainer_run still creates and starts a real run
-        for an auto-decision requirement."""
-        # start_trainer_run now reserves the global run slot synchronously
-        # (see _reserve_run_slot) before the (here, mocked-out) thread ever
-        # starts — since the real thread body that would normally release
-        # it in `finally` never runs under this mock, this test must
-        # release it itself so later tests in this process don't see a
-        # permanently "busy" slot.
+    async def test_a_real_supported_requirement_starts_a_real_run(self):
+        """Direct proof that a genuinely supported, auto-decision
+        requirement actually starts the deterministic trainer thread —
+        never blocked, never dependent on any estimate."""
         self.addCleanup(lambda: setattr(ws, "_CURRENT_RUN_ID", None))
-        with mock.patch.object(ws.estimation, "estimate_run",
-                                return_value={"available": False, "reason": "ESTIMATE NOT AVAILABLE — test", "method_version": "test"}), \
-             mock.patch.object(ws.threading, "Thread") as mock_thread:
+        with mock.patch.object(ws.threading, "Thread") as mock_thread:
             request = mock.Mock()
-            request.json = mock.AsyncMock(return_value={"requirement": 'Add a small "Agent Demo" status badge'})
+            request.json = mock.AsyncMock(return_value={"requirement": 'Change the footer text to "Agent Demo"'})
             response = await ws.start_trainer_run(request)
             body = json.loads(response.body)
             self.assertFalse(body["blocked"])
             self.assertIn("run_id", body)
-            self.assertFalse(body["assessment"]["estimate"]["available"])
-            # The run genuinely started despite the unavailable estimate.
-            # (threading.Thread is also used internally by subprocess.run's
-            # reader threads for the run's own `git rev-parse` call, so
-            # assert on the specific call rather than call count.)
             trainer_thread_calls = [
                 c for c in mock_thread.call_args_list
                 if c.kwargs.get("target") is ws._run_trainer_thread
             ]
             self.assertEqual(len(trainer_thread_calls), 1)
+            # The exact NormalizedRequest (not a dict re-derived some other
+            # way) is what gets passed to the thread.
+            passed_normalized = trainer_thread_calls[0].kwargs["args"][2]
+            self.assertEqual(passed_normalized.operation_id, "footer_text")
+            self.assertEqual(passed_normalized.new_value, "Agent Demo")
 
 
 class DemoResetTestCase(unittest.IsolatedAsyncioTestCase):
@@ -403,24 +394,21 @@ class DemoResetTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(reset_thread_calls), 1)
         ws._release_run_slot()
 
-    def _with_repo_root(self):
-        """Real recruiter-facing finding (2026-09-12, run trainer-7e098fb3):
-        the deployed platform-backend container's local git repo has no
-        history/tags at all (a deliberate prior decision — see the
-        Dockerfile's own documented ROOT CAUSE comment — made before real
-        push/reset were requirements), so a git-tag-based baseline design
-        failed live in production even though it passed every mocked test.
-        Reset now reads the baseline from a plain file and writes the live
-        path as a plain file too — these tests patch REPO_ROOT/
-        DEMO_BASELINE_FILE to real temp paths so the fix is exercised
-        against real file I/O, not just mocked git calls."""
+    def _with_isolated_workspace(self, live_content="<html>whatever the isolated clone happens to contain</html>"):
+        """RELIABILITY/CORRECTION PHASE (2026-09-13): reset now clones a
+        fresh isolated workspace (agent/demo_execution.py) exactly like
+        the main trainer flow, rather than mutating REPO_ROOT directly.
+        These tests patch demo_execution.create_isolated_workspace to
+        return a real temp directory (real file I/O still exercised) and
+        mock the git/Railway calls it would otherwise make for real."""
         tmp = tempfile.TemporaryDirectory()
-        repo_root = Path(tmp.name)
-        live_path = repo_root / ws.DEMO_RESETTABLE_PATH
+        workspace = Path(tmp.name) / "workspace"
+        live_path = workspace / ws.DEMO_RESETTABLE_PATH
         live_path.parent.mkdir(parents=True)
-        live_path.write_text("<html>whatever this container's own local file happens to say</html>", encoding="utf-8")
-        baseline_path = repo_root / "baseline.html"
-        return tmp, live_path, baseline_path, mock.patch.object(ws, "REPO_ROOT", repo_root), mock.patch.object(ws, "DEMO_BASELINE_FILE", baseline_path)
+        live_path.write_text(live_content, encoding="utf-8")
+        baseline_path = Path(tmp.name) / "baseline.html"
+        clone_patch = mock.patch.object(ws.demo_execution, "create_isolated_workspace", return_value=(workspace, True, ""))
+        return tmp, workspace, live_path, baseline_path, clone_patch, mock.patch.object(ws, "DEMO_BASELINE_FILE", baseline_path)
 
     def test_already_at_baseline_is_a_clean_no_op_not_an_empty_commit(self):
         # Real finding this exact task made live: the CONTAINER's own local
@@ -430,69 +418,73 @@ class DemoResetTestCase(unittest.IsolatedAsyncioTestCase):
         # decides whether a reset is actually needed.
         ws._reserve_run_slot("demo-reset")
         baseline_html = "<html>baseline</html>"
-        tmp, live_path, baseline_path, repo_patch, baseline_patch = self._with_repo_root()
+        tmp, workspace, live_path, baseline_path, clone_patch, baseline_patch = self._with_isolated_workspace()
         baseline_path.write_text(baseline_html, encoding="utf-8")
-        with tmp, repo_patch, baseline_patch, \
+        with tmp, clone_patch, baseline_patch, \
              mock.patch.object(ws, "_fetch_public_app", return_value=(200, baseline_html)), \
-             mock.patch.object(ws, "_run_controlled") as mock_run:
+             mock.patch.object(ws.demo_execution, "commit_change") as mock_commit:
             ws._run_reset_thread()
         self.assertEqual(ws._reset_state["status"], "completed")
         self.assertIn("Already at canonical baseline", ws._reset_state["message"])
-        # No git/railway call was ever attempted for a genuine no-op.
-        mock_run.assert_not_called()
+        # No git/railway call was ever attempted for a genuine no-op — the
+        # isolated workspace isn't even cloned.
+        mock_commit.assert_not_called()
 
     def test_successful_reset_writes_baseline_commits_pushes_deploys_and_verifies(self):
         ws._reserve_run_slot("demo-reset")
         baseline_html = "<html>canonical baseline</html>"
-        tmp, live_path, baseline_path, repo_patch, baseline_patch = self._with_repo_root()
+        tmp, workspace, live_path, baseline_path, clone_patch, baseline_patch = self._with_isolated_workspace()
         baseline_path.write_text(baseline_html, encoding="utf-8")
         # First _fetch_public_app call is the authoritative pre-check
-        # (production still shows an old demo change); later calls are the
-        # post-deploy verification poll (production now shows baseline).
-        with tmp, repo_patch, baseline_patch, \
-             mock.patch.object(ws, "_run_controlled") as mock_run, \
+        # (production still shows an old demo change); the final call is
+        # the post-deploy content verification (production now shows
+        # baseline).
+        written_content = {}
+
+        def _capture_and_cleanup(ws_path):
+            # _run_reset_thread cleans up the workspace unconditionally in
+            # its own `finally`, before this test ever gets to inspect it
+            # — capture the real written content at cleanup time instead
+            # of racing it.
+            written_content["value"] = (ws_path / ws.DEMO_RESETTABLE_PATH).read_text(encoding="utf-8")
+
+        with tmp, clone_patch, baseline_patch, \
+             mock.patch.object(ws.demo_execution, "commit_change", return_value=("demo/reset-x", True, "")), \
+             mock.patch.object(ws.demo_execution, "push_change", return_value=(True, None)), \
+             mock.patch.object(ws.demo_execution, "get_latest_deployment_id", return_value="old-dep-id"), \
+             mock.patch.object(ws.demo_execution, "trigger_deploy", return_value=(True, "")), \
+             mock.patch.object(ws.demo_execution, "wait_for_new_deployment", return_value=("new-dep-id", "SUCCESS", 30)), \
+             mock.patch.object(ws.demo_execution, "cleanup_workspace", side_effect=_capture_and_cleanup), \
              mock.patch.object(ws, "_fetch_public_app",
-                                side_effect=[(200, "<html>changed by a demo run</html>")] + [(200, baseline_html)] * 5), \
-             mock.patch.object(ws.time, "sleep"):
-            mock_run.side_effect = [
-                (True, ""),   # git add
-                (True, ""),   # git commit
-                (True, ""),   # git push
-                (True, ""),   # railway up
-            ]
+                                side_effect=[(200, "<html>changed by a demo run</html>"), (200, baseline_html)]):
             ws._run_reset_thread()
             self.assertEqual(ws._reset_state["status"], "completed")
             self.assertIn("verified live", ws._reset_state["message"])
-            # The live file itself was really overwritten with the baseline.
-            self.assertEqual(live_path.read_text(encoding="utf-8"), baseline_html)
+            # The isolated workspace's file itself was really overwritten.
+            self.assertEqual(written_content["value"], baseline_html)
 
-    def test_reset_still_deploys_when_container_local_git_has_nothing_to_commit(self):
-        """The exact real defect this task found live: a fresh container
-        redeploy can leave the container's OWN file/git already matching
-        baseline while the real deployed Customer App still shows an old
-        change. `git commit` then genuinely has "nothing to commit" — this
-        must NOT abort the reset; deploy must still run so the actually-
-        stale Customer App gets the (already-correct) content."""
+    def test_reset_still_deploys_when_isolated_clone_has_nothing_to_commit(self):
+        """The exact real defect this task found live: a fresh isolated
+        clone can already match baseline (e.g. an earlier reset already
+        pushed it to origin) while the real deployed Customer App still
+        shows an old change. `git commit` then genuinely has "nothing to
+        commit" — this must NOT abort the reset; deploy must still run so
+        the actually-stale Customer App gets the (already-correct) content."""
         ws._reserve_run_slot("demo-reset")
         baseline_html = "<html>canonical baseline</html>"
-        tmp, live_path, baseline_path, repo_patch, baseline_patch = self._with_repo_root()
+        tmp, workspace, live_path, baseline_path, clone_patch, baseline_patch = self._with_isolated_workspace(live_content=baseline_html)
         baseline_path.write_text(baseline_html, encoding="utf-8")
-        live_path.write_text(baseline_html, encoding="utf-8")  # container's own file already correct
-        with tmp, repo_patch, baseline_patch, \
-             mock.patch.object(ws, "_run_controlled") as mock_run, \
+        with tmp, clone_patch, baseline_patch, \
+             mock.patch.object(ws.demo_execution, "commit_change", return_value=("demo/reset-x", False, "nothing to commit, working tree clean")), \
+             mock.patch.object(ws.demo_execution, "push_change", return_value=(True, None)), \
+             mock.patch.object(ws.demo_execution, "get_latest_deployment_id", return_value="old-dep-id"), \
+             mock.patch.object(ws.demo_execution, "trigger_deploy", return_value=(True, "")) as mock_deploy, \
+             mock.patch.object(ws.demo_execution, "wait_for_new_deployment", return_value=("new-dep-id", "SUCCESS", 30)), \
              mock.patch.object(ws, "_fetch_public_app",
-                                side_effect=[(200, "<html>production is still stale</html>")] + [(200, baseline_html)] * 5), \
-             mock.patch.object(ws.time, "sleep"):
-            mock_run.side_effect = [
-                (True, ""),                                     # git add
-                (False, "nothing to commit, working tree clean"),  # git commit
-                (True, ""),                                     # git push
-                (True, ""),                                     # railway up
-            ]
+                                side_effect=[(200, "<html>production is still stale</html>"), (200, baseline_html)]):
             ws._run_reset_thread()
         self.assertEqual(ws._reset_state["status"], "completed")
-        deploy_calls = [c for c in mock_run.call_args_list if c.args[0][0] == "railway"]
-        self.assertEqual(len(deploy_calls), 1)
+        mock_deploy.assert_called_once()
 
     def test_reset_releases_the_run_slot_even_on_failure(self):
         ws._reserve_run_slot("demo-reset")
@@ -501,6 +493,22 @@ class DemoResetTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(ws._reset_state["status"], "failed")
         # The slot must be free again for a future run/reset.
         self.assertTrue(ws._reserve_run_slot("some-later-run"))
+
+    def test_reset_cleans_up_the_isolated_workspace_on_success(self):
+        ws._reserve_run_slot("demo-reset")
+        baseline_html = "<html>canonical baseline</html>"
+        tmp, workspace, live_path, baseline_path, clone_patch, baseline_patch = self._with_isolated_workspace()
+        baseline_path.write_text(baseline_html, encoding="utf-8")
+        with tmp, clone_patch, baseline_patch, \
+             mock.patch.object(ws.demo_execution, "commit_change", return_value=("demo/reset-x", True, "")), \
+             mock.patch.object(ws.demo_execution, "push_change", return_value=(True, None)), \
+             mock.patch.object(ws.demo_execution, "get_latest_deployment_id", return_value="old-dep-id"), \
+             mock.patch.object(ws.demo_execution, "trigger_deploy", return_value=(True, "")), \
+             mock.patch.object(ws.demo_execution, "wait_for_new_deployment", return_value=("new-dep-id", "SUCCESS", 30)), \
+             mock.patch.object(ws, "_fetch_public_app",
+                                side_effect=[(200, "<html>changed by a demo run</html>"), (200, baseline_html)]):
+            ws._run_reset_thread()
+        self.assertFalse(workspace.exists())
 
 
 class TrainerConcurrencyAndAbuseProtectionTestCase(unittest.IsolatedAsyncioTestCase):
@@ -528,7 +536,7 @@ class TrainerConcurrencyAndAbuseProtectionTestCase(unittest.IsolatedAsyncioTestC
         ws._CURRENT_RUN_ID = "trainer-already-running"
         with mock.patch.object(ws.threading, "Thread") as mock_thread:
             request = mock.Mock()
-            request.json = mock.AsyncMock(return_value={"requirement": 'Add a small "Agent Demo" status badge'})
+            request.json = mock.AsyncMock(return_value={"requirement": 'Change the footer text to "Agent Demo"'})
             response = await ws.start_trainer_run(request)
         self.assertEqual(response.status_code, 409)
         body = json.loads(response.body)
@@ -551,7 +559,7 @@ class TrainerConcurrencyAndAbuseProtectionTestCase(unittest.IsolatedAsyncioTestC
         ws._LAST_TRAINER_RUN_FINISHED_AT = ws.time.monotonic()
         with mock.patch.object(ws.threading, "Thread") as mock_thread:
             request = mock.Mock()
-            request.json = mock.AsyncMock(return_value={"requirement": 'Add a small "Agent Demo" status badge'})
+            request.json = mock.AsyncMock(return_value={"requirement": 'Change the footer text to "Agent Demo"'})
             response = await ws.start_trainer_run(request)
         self.assertEqual(response.status_code, 429)
         body = json.loads(response.body)
@@ -563,7 +571,7 @@ class TrainerConcurrencyAndAbuseProtectionTestCase(unittest.IsolatedAsyncioTestC
         ws._LAST_TRAINER_RUN_FINISHED_AT = ws.time.monotonic() - (ws.TRAINER_COOLDOWN_SECONDS + 5)
         with mock.patch.object(ws.threading, "Thread") as mock_thread:
             request = mock.Mock()
-            request.json = mock.AsyncMock(return_value={"requirement": 'Add a small "Agent Demo" status badge'})
+            request.json = mock.AsyncMock(return_value={"requirement": 'Change the footer text to "Agent Demo"'})
             response = await ws.start_trainer_run(request)
         body = json.loads(response.body)
         self.assertFalse(body.get("busy"))
@@ -676,22 +684,24 @@ class RepositoryWorkspaceReadyTestCase(unittest.TestCase):
                 self.assertFalse(result["ready"])
                 self.assertFalse(result["checks"]["git_repository_usable"])
 
-    def test_trainer_thread_fails_before_touching_source_when_workspace_not_ready(self):
-        """The exact required behavior: FAIL BEFORE MODIFYING SOURCE.
-        run_agent_loop must never even be called when the precondition
-        fails — proves zero source mutation was attempted, not just that
-        the final status happens to say FAILED."""
+    def test_trainer_thread_fails_before_touching_source_when_workspace_clone_fails(self):
+        """RELIABILITY/CORRECTION PHASE (2026-09-13): the trainer path no
+        longer checks the SERVER's own REPO_ROOT git health — it clones a
+        fresh isolated workspace per run (agent/demo_execution.py). The
+        exact required behavior is unchanged in spirit: FAIL BEFORE
+        MODIFYING ANYTHING. Proves no file write is even attempted when
+        the isolated clone itself fails."""
         run = ws.Run("test-run", "test requirement")
         run.trainer_usage_start_index = 0
-        with mock.patch.object(ws, "_check_repository_workspace_ready",
-                                return_value={"ready": False, "checks": {"git_repository_usable": False}}), \
-             mock.patch.object(ws, "_fetch_public_app", return_value=(200, "<html></html>")), \
-             mock.patch("web_server.run_agent_loop") as mock_agent_loop:
-            ws._run_trainer_thread(run, "some requirement", {"complexity": "TINY", "risk": "LOW"})
-        mock_agent_loop.assert_not_called()
+        normalized = demo_catalogue.normalize_requirement('Change the footer text to "X"')
+        with mock.patch.object(ws.demo_execution, "create_isolated_workspace",
+                                return_value=(Path("nonexistent"), False, "git clone failed: could not resolve host")), \
+             mock.patch.object(ws.demo_execution, "commit_change") as mock_commit:
+            ws._run_trainer_thread(run, "some requirement", normalized)
+        mock_commit.assert_not_called()
         self.assertEqual(run.status, "FAILED")
         error_event = next(e for e in run.events if e["type"] == "error")
-        self.assertIn("REPOSITORY_WORKSPACE_READY", error_event["message"])
+        self.assertIn("isolated workspace", error_event["message"])
 
 
 class TestApplicabilityGateTestCase(unittest.TestCase):
