@@ -580,6 +580,134 @@ def _compare_to_cohort(conn, kind, cohort_ids, this_session_tokens, this_session
     return result
 
 
+_UNAVAILABLE = "UNAVAILABLE"
+
+# Real production-blocking incident this fixes (2026-09-13): the public
+# Workbench's "SEE A VERIFIED RUN" link was a bare, hard-coded
+# <a href="/usage/session/trainer-4733d1c0"> in agent/web/workbench.html
+# -- no query, no selection logic at all. It silently went stale the
+# first time a newer real run (trainer-0c5d59ab) completed, sending
+# recruiters to a two-day-old example with zero explanation of why.
+#
+# The evidence contract for "verified": a real Workbench trainer run
+# (source='workbench_trainer' -- excludes mock runs and restore/reset
+# runs, whose run_ids never start with 'trainer-') that genuinely
+# reached the terminal 'COMPLETED' status AND has real commit and
+# deployment evidence recorded (excludes FAILED, NO_CHANGE_NEEDED --
+# which never touches source -- and DEPLOYMENT_STATUS_UNKNOWN).
+_VERIFIED_WORKBENCH_SOURCE = "workbench_trainer"
+
+
+def get_latest_verified_workbench_run_id() -> str:
+    """Returns the most recent run_id satisfying the verified-run
+    evidence contract, or None if no qualifying run exists yet (callers
+    must show an honest 'no verified run available' state, never a
+    broken link or a stale fallback)."""
+    conn = el._connect()
+    try:
+        el.ensure_schema()
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT run_id
+                FROM delivery_events
+                WHERE source = %s AND run_id IS NOT NULL
+                GROUP BY run_id
+                HAVING (ARRAY_AGG(status ORDER BY timestamp_utc DESC))[1] = 'COMPLETED'
+                   AND BOOL_OR(event_type = 'run_completed')
+                   AND BOOL_OR(event_type = 'commit_created')
+                   AND BOOL_OR(event_type = 'deployment_completed')
+                ORDER BY MIN(timestamp_utc) DESC
+                LIMIT 1
+                """,
+                (_VERIFIED_WORKBENCH_SOURCE,),
+            )
+            row = cur.fetchone()
+            return row[0] if row else None
+    finally:
+        conn.close()
+
+
+def _workbench_engineering_evidence(conn, run_id: str) -> dict:
+    """RECRUITER-FACING VERIFIED-RUN P0 (2026-09-13): the Owner clicked
+    'SEE A VERIFIED RUN' expecting to immediately understand the real
+    engineering outcome (requirement -> source change -> verification ->
+    deployment -> production effect), but the session-detail page only
+    ever showed generic Usage-flavored telemetry (tokens/cost/quality/
+    timeline event names) -- never the actual diff, commit, push,
+    deployment, or observed production value, even though every one of
+    those facts already exists in the ledger. This reads the exact
+    payloads of a workbench run's key lifecycle events and returns a
+    flat, presentation-ready evidence dict -- every field is either a
+    real captured fact or the literal string 'UNAVAILABLE', never
+    fabricated or guessed. Callers must render this ABOVE the generic
+    Usage sections, not instead of them (see agent/web/usage.js)."""
+    ev = {
+        "requirement": _UNAVAILABLE,
+        "operation_id": _UNAVAILABLE,
+        "human_name": _UNAVAILABLE,
+        "requested_value": _UNAVAILABLE,
+        "changed_file": _UNAVAILABLE,
+        "diff_old_line": _UNAVAILABLE,
+        "diff_new_line": _UNAVAILABLE,
+        "testing_state": _UNAVAILABLE,
+        "testing_reason": _UNAVAILABLE,
+        "local_commit_sha": _UNAVAILABLE,
+        "local_commit_branch": _UNAVAILABLE,
+        "github_push_status": _UNAVAILABLE,
+        "railway_deployment_id": _UNAVAILABLE,
+        "railway_deployment_status": _UNAVAILABLE,
+        "deployment_identity_confirmed": _UNAVAILABLE,
+        "production_url": _UNAVAILABLE,
+        "requested_effect_verified": _UNAVAILABLE,
+        "observed_production_value": _UNAVAILABLE,
+        "final_result_text": _UNAVAILABLE,
+    }
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT event_type, payload
+            FROM delivery_events
+            WHERE run_id = %s AND event_type IN
+                ('run_started', 'risk_assessment', 'diff', 'stage_started',
+                 'commit_created', 'push', 'deployment_completed', 'run_completed')
+            ORDER BY timestamp_utc ASC
+            """,
+            (run_id,),
+        )
+        rows = cur.fetchall()
+    for event_type, payload in rows:
+        payload = payload or {}
+        if event_type == "run_started" and payload.get("requirement"):
+            ev["requirement"] = repair_mojibake(payload["requirement"])
+        elif event_type == "risk_assessment":
+            ev["operation_id"] = payload.get("operation_id", ev["operation_id"])
+            ev["human_name"] = payload.get("human_name", ev["human_name"])
+            ev["requested_value"] = payload.get("new_value", ev["requested_value"])
+        elif event_type == "diff":
+            ev["changed_file"] = payload.get("file", ev["changed_file"])
+            ev["diff_old_line"] = payload.get("old_line", ev["diff_old_line"])
+            ev["diff_new_line"] = payload.get("new_line", ev["diff_new_line"])
+        elif event_type == "stage_started" and str(payload.get("stage", "")).startswith("TESTING"):
+            ev["testing_state"] = payload.get("stage")
+            ev["testing_reason"] = payload.get("reason", _UNAVAILABLE)
+        elif event_type == "commit_created":
+            ev["local_commit_sha"] = payload.get("sha", ev["local_commit_sha"])
+            ev["local_commit_branch"] = payload.get("branch", ev["local_commit_branch"])
+        elif event_type == "push":
+            ev["github_push_status"] = payload.get("status", ev["github_push_status"])
+        elif event_type == "deployment_completed":
+            ev["railway_deployment_id"] = payload.get("new_deployment_id") or _UNAVAILABLE
+            ev["railway_deployment_status"] = payload.get("deployment_status", ev["railway_deployment_status"])
+            ev["deployment_identity_confirmed"] = payload.get("deployment_identity_confirmed", ev["deployment_identity_confirmed"])
+            ev["production_url"] = payload.get("public_url", ev["production_url"])
+            ev["requested_effect_verified"] = payload.get("verified", ev["requested_effect_verified"])
+            ev["observed_production_value"] = payload.get("live_value") or _UNAVAILABLE
+        elif event_type == "run_completed" and payload.get("text"):
+            ev["final_result_text"] = repair_mojibake(payload["text"])
+    return ev
+
+
 def get_session_detail(session_id: str) -> dict:
     try:
         conn = el._connect()
@@ -712,6 +840,8 @@ def get_session_detail(session_id: str) -> dict:
         else:
             comparison = {"status": "INSUFFICIENT_COMPARABLE_HISTORY", "cohort_size": len(cohort_ids)}
 
+        engineering_evidence = _workbench_engineering_evidence(conn, session_id) if kind == KIND_WORKBENCH_RUN else None
+
         return {
             **summary,
             "timeline": timeline,
@@ -719,6 +849,7 @@ def get_session_detail(session_id: str) -> dict:
             "value": {"technical_value": technical_value, "learning_value": learning_value},
             "quality": quality,
             "comparison": comparison,
+            "engineering_evidence": engineering_evidence,
         }
     finally:
         conn.close()

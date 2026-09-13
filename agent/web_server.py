@@ -1212,6 +1212,23 @@ async def get_target_app(request: Request):
     return JSONResponse(TARGET_APPLICATION)
 
 
+async def get_verified_workbench_run(request: Request):
+    """RECRUITER-FACING VERIFIED-RUN P0 (2026-09-13): the single source
+    of truth for the Workbench's 'SEE A VERIFIED RUN' CTA. Previously
+    that link's destination was a literal hard-coded run_id baked into
+    workbench.html — this endpoint replaces it with a real, deterministic
+    query (session_history.get_latest_verified_workbench_run_id())
+    re-evaluated on every request, so a new qualifying run is picked up
+    automatically with no code change. Runs the (potentially slow) real
+    DB query in a thread so it can never block the event loop for other
+    requests (see the RELIABILITY P0 incident this exact class of bug
+    caused for other handlers)."""
+    run_id = await run_in_threadpool(session_history.get_latest_verified_workbench_run_id)
+    if run_id is None:
+        return JSONResponse({"available": False, "run_id": None})
+    return JSONResponse({"available": True, "run_id": run_id})
+
+
 # --- Demo lifecycle: explicit Reset Demo -----------------------------------
 #
 # JOB-SEARCH P0 (2026-09-12): the public trainer demo can mutate the real
@@ -1559,6 +1576,7 @@ routes = [
     Route("/api/dev-sessions/start", start_dev_session_route, methods=["POST"]),
     Route("/api/dev-sessions/stop", stop_dev_session_route, methods=["POST"]),
     Route("/api/target-app", get_target_app, methods=["GET"]),
+    Route("/api/workbench/verified-run", get_verified_workbench_run, methods=["GET"]),
     Route("/api/trainer/reset", start_demo_reset, methods=["POST"]),
     Route("/api/trainer/reset", get_demo_reset_status, methods=["GET"]),
     Route("/api/trainer/assess", assess_trainer_requirement, methods=["POST"]),

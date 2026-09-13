@@ -17,7 +17,6 @@
     <a href="/workbench"><strong>Workbench</strong></a>
     <a href="/dashboard">Dashboard</a>
     <a href="/usage">Usage</a>
-    <a href="/learn">Learn</a>
   </nav>
 </header>
 
@@ -31,7 +30,9 @@
   <section class="panel" id="verified-run-panel">
     <h2>Not ready to submit a change yet?</h2>
     <p class="hint">See a real, already-completed end-to-end run — requirement, live agent investigation, tests, Git commit, deployment, and production verification, all real.</p>
-    <a class="verified-run-link" href="/usage/session/trainer-4733d1c0">SEE A VERIFIED RUN &rarr;</a>
+    <a class="verified-run-link" id="verified-run-link" href="#" hidden>SEE A VERIFIED RUN &rarr;</a>
+    <p class="hint" id="verified-run-unavailable" hidden>No verified run available yet.</p>
+    <p class="hint" id="verified-run-loading">Looking up the most recent verified run…</p>
   </section>
 
   <section class="panel" id="requirement-panel">

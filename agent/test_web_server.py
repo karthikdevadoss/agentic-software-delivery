@@ -13,6 +13,7 @@ Run: python agent/test_web_server.py
 
 import asyncio
 import json
+import re
 import sys
 import tempfile
 import unittest
@@ -329,6 +330,55 @@ class ProfilePrivacyTestCase(unittest.TestCase):
                 "/profile", content,
                 f"{html_file.name} must not reference /profile",
             )
+
+
+class VerifiedRunLinkTestCase(unittest.TestCase):
+    """RECRUITER-FACING VERIFIED-RUN P0 (2026-09-13): real defect the
+    Owner found by manual testing — workbench.html's "SEE A VERIFIED
+    RUN" CTA was a bare hard-coded href to one specific run_id
+    (trainer-4733d1c0, a 2026-09-11 run), which silently went stale the
+    moment a newer real run completed, sending recruiters to a
+    two-day-old example with no explanation. This locks in that the
+    static HTML never re-embeds any literal trainer-* run_id, and that
+    a real API route exists to resolve the destination dynamically —
+    see VerifiedRunSelectionTestCase in test_session_history.py for the
+    actual selection-logic proof."""
+
+    _RUN_ID_PATTERN = re.compile(r"trainer-[0-9a-f]{8}")
+
+    def test_workbench_html_never_hard_codes_a_specific_run_id(self):
+        content = (ws.WEB_DIR / "workbench.html").read_text(encoding="utf-8")
+        matches = self._RUN_ID_PATTERN.findall(content)
+        self.assertEqual(matches, [], f"workbench.html must never embed a literal run_id, found: {matches}")
+
+    def test_verified_run_link_starts_hidden_with_a_loading_state(self):
+        content = (ws.WEB_DIR / "workbench.html").read_text(encoding="utf-8")
+        self.assertIn('id="verified-run-link"', content)
+        self.assertIn('id="verified-run-unavailable"', content)
+        # The link itself must not have a real href baked in — only the
+        # live JS lookup may set one.
+        self.assertIn('id="verified-run-link" href="#" hidden', content)
+
+    def test_verified_run_api_route_is_registered(self):
+        routes = {r.path: r for r in ws.routes if hasattr(r, "path")}
+        self.assertIn("/api/workbench/verified-run", routes)
+        self.assertIn("GET", routes["/api/workbench/verified-run"].methods)
+
+
+class VerifiedRunApiTestCase(unittest.IsolatedAsyncioTestCase):
+    async def test_returns_available_true_and_the_real_selected_run_id(self):
+        with mock.patch.object(ws.session_history, "get_latest_verified_workbench_run_id", return_value="trainer-deadbeef"):
+            response = await ws.get_verified_workbench_run(mock.Mock())
+        body = json.loads(response.body)
+        self.assertTrue(body["available"])
+        self.assertEqual(body["run_id"], "trainer-deadbeef")
+
+    async def test_returns_available_false_never_a_broken_id_when_none_qualifies(self):
+        with mock.patch.object(ws.session_history, "get_latest_verified_workbench_run_id", return_value=None):
+            response = await ws.get_verified_workbench_run(mock.Mock())
+        body = json.loads(response.body)
+        self.assertFalse(body["available"])
+        self.assertIsNone(body["run_id"])
 
 
 class TargetApplicationTestCase(unittest.IsolatedAsyncioTestCase):

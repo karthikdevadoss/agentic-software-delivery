@@ -372,6 +372,55 @@ function wallTimeLabel(d) {
   return label;
 }
 
+// RECRUITER-FACING VERIFIED-RUN P0 (2026-09-13): a recruiter arriving via
+// Workbench's "SEE A VERIFIED RUN" (or anyone opening a workbench_run
+// session directly) must see the real engineering OUTCOME first —
+// requirement -> source change -> verification -> Git -> deployment ->
+// production effect — never generic Usage/cost telemetry as the first
+// thing on the page. This section is additive: it never replaces the
+// existing Usage-flavored sections below it, which remain the full
+// resource/cost detail (see the "VIEW FULL USAGE DETAILS" anchor link
+// at the end of this section). Every value is either a real captured
+// fact (agent/session_history.py::_workbench_engineering_evidence,
+// itself derived only from the real event ledger) or the literal string
+// "UNAVAILABLE" — never fabricated.
+function evRow(label, value, ok) {
+  const cls = value === "UNAVAILABLE" ? "note-unknown" : (ok === false ? "note-unknown" : "note-exact");
+  return `<li><span>${esc(label)}</span><span class="value-note ${cls}">${esc(value)}</span></li>`;
+}
+
+function renderEngineeringEvidence(d) {
+  const ev = d.engineering_evidence;
+  if (!ev) return "";
+  const isCompleted = d.status === "COMPLETED";
+  return `<section class="panel verified-run-panel">
+    <h2>${isCompleted ? "VERIFIED PRODUCTION RUN" : "WORKBENCH RUN — " + esc(d.status || "UNKNOWN")}</h2>
+    <p class="hint">Requirement: <strong>${esc(ev.requirement)}</strong></p>
+    <ul class="score-breakdown">
+      ${evRow("Run ID", d.session_id)}
+      ${evRow("Normalized operation", ev.human_name)}
+      ${evRow("Requested value", ev.requested_value)}
+      ${evRow("Changed file", ev.changed_file)}
+    </ul>
+    ${ev.diff_old_line !== "UNAVAILABLE" ? `<pre class="verification-summary">- ${esc(ev.diff_old_line)}\n+ ${esc(ev.diff_new_line)}</pre>` : ""}
+    <ul class="score-breakdown">
+      ${evRow("Testing", ev.testing_state)}
+      ${ev.testing_reason !== "UNAVAILABLE" ? `<li class="score-breakdown-note">${esc(ev.testing_reason)}</li>` : ""}
+      ${evRow("Local commit (isolated workspace)", ev.local_commit_sha)}
+      ${evRow("Branch", ev.local_commit_branch)}
+      ${evRow("GitHub push", ev.github_push_status)}
+      ${evRow("Railway deployment ID", ev.railway_deployment_id)}
+      ${evRow("Railway deployment status", ev.railway_deployment_status)}
+      ${evRow("Deployment identity confirmed", ev.deployment_identity_confirmed === true ? "yes" : ev.deployment_identity_confirmed === false ? "no" : "UNAVAILABLE", ev.deployment_identity_confirmed === true)}
+      ${evRow("Requested effect verified in production", ev.requested_effect_verified === true ? "yes" : ev.requested_effect_verified === false ? "no" : "UNAVAILABLE", ev.requested_effect_verified === true)}
+      ${evRow("Observed production value", ev.observed_production_value)}
+    </ul>
+    ${ev.production_url !== "UNAVAILABLE" ? `<a class="secondary open-app-link" href="${esc(ev.production_url)}" target="_blank" rel="noopener">OPEN LIVE CUSTOMER APP ↗</a>` : ""}
+    ${ev.final_result_text !== "UNAVAILABLE" ? `<p class="hint" style="margin-top:0.75rem;">${esc(ev.final_result_text)}</p>` : ""}
+    <p class="hint" style="margin-top:1rem;"><a href="#usage-detail">VIEW FULL USAGE DETAILS ↓</a> — model/tool usage, tokens, cost, and quality/comparison metrics for this same run.</p>
+  </section>`;
+}
+
 function renderTopSummary(d) {
   const q = d.quality || {};
   const qualityDisplay = q.quality_score != null ? `${q.quality_score}` : (q.quality_score_label || "NOT SCORED");
@@ -469,6 +518,8 @@ async function renderSessionDetail(sessionId) {
 
   main.innerHTML = `
     <a data-link href="/usage" class="back-link">&larr; Back to Usage</a>
+    ${renderEngineeringEvidence(d)}
+    <div id="usage-detail"></div>
     ${renderTopSummary(d)}
     ${section("Timing (AI Activity / Human Activity)", `
       <ul class="score-breakdown">

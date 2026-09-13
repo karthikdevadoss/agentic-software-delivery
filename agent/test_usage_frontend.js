@@ -166,6 +166,53 @@ const FIXTURE_DETAIL = {
     "no section(...) call in usage.js may hand-type the HTML entity '&amp;' in its title (it will be double-encoded)"
   );
 
+  // ---- RECRUITER-FACING VERIFIED-RUN P0 (2026-09-13): the engineering-
+  // outcome evidence section rendered above the generic Usage sections
+  // on a workbench_run's detail page. Real defect this protects against:
+  // a recruiter landing on a session detail page with no clear signal
+  // that they're looking at a genuinely verified production run. -----
+  const EVIDENCE_FIXTURE = {
+    session_id: "trainer-0c5d59ab", status: "COMPLETED",
+    engineering_evidence: {
+      requirement: 'Change the footer text to "Built with DOSS KARTHIK care"',
+      operation_id: "footer_text", human_name: "the footer text",
+      requested_value: "Built with DOSS KARTHIK care",
+      changed_file: "app/src/main/resources/static/index.html",
+      diff_old_line: '<footer class="app-footer">Powered by Agentic Delivery</footer>',
+      diff_new_line: '<footer class="app-footer">Built with DOSS KARTHIK care</footer>',
+      testing_state: "TESTING — NOT APPLICABLE", testing_reason: "static resource, no Java test surface",
+      local_commit_sha: "b511564", local_commit_branch: "demo/trainer-0c5d59ab",
+      github_push_status: "NOT_CONFIGURED",
+      railway_deployment_id: "fe9a097a-fca3-4fb3-b406-0a8bdafb1e32", railway_deployment_status: "SUCCESS",
+      deployment_identity_confirmed: true,
+      production_url: "https://agentic-delivery-customer-app-production.up.railway.app/",
+      requested_effect_verified: true, observed_production_value: "Built with DOSS KARTHIK care",
+      final_result_text: 'the footer text is now "Built with DOSS KARTHIK care" in production.',
+    },
+  };
+  const evidenceHtml = sandbox.renderEngineeringEvidence(EVIDENCE_FIXTURE);
+  assertIncludes(evidenceHtml, "VERIFIED PRODUCTION RUN", "a genuinely COMPLETED workbench run shows the clear verified-run heading");
+  assertIncludes(evidenceHtml, "trainer-0c5d59ab", "the real Run ID is shown, not omitted");
+  assertIncludes(evidenceHtml, "Built with DOSS KARTHIK care", "the real requirement/observed value is shown");
+  assertIncludes(evidenceHtml, "fe9a097a-fca3-4fb3-b406-0a8bdafb1e32", "the real Railway deployment ID is shown");
+  assertIncludes(evidenceHtml, "NOT_CONFIGURED", "GitHub push NOT_CONFIGURED is shown honestly, not hidden or shown as a green success");
+  assertIncludes(evidenceHtml, "VIEW FULL USAGE DETAILS", "a clear link/anchor to the full Usage detail exists, distinguishing engineering result from resource usage");
+
+  const evidenceHtmlNonCompleted = sandbox.renderEngineeringEvidence({ ...EVIDENCE_FIXTURE, status: "FAILED" });
+  assert(!evidenceHtmlNonCompleted.includes("VERIFIED PRODUCTION RUN"), "a non-COMPLETED run must never claim the VERIFIED PRODUCTION RUN heading");
+  assertIncludes(evidenceHtmlNonCompleted, "FAILED", "a non-COMPLETED run's real status is shown instead");
+
+  assert(
+    sandbox.renderEngineeringEvidence({ session_id: "x", status: "COMPLETED", engineering_evidence: null }) === "",
+    "a session with no engineering_evidence (e.g. a Claude Code dev session) renders nothing here, never a fabricated evidence panel"
+  );
+
+  const unavailableHtml = sandbox.renderEngineeringEvidence({
+    session_id: "trainer-4733d1c0", status: "COMPLETED",
+    engineering_evidence: { ...EVIDENCE_FIXTURE.engineering_evidence, changed_file: "UNAVAILABLE", diff_old_line: "UNAVAILABLE", diff_new_line: "UNAVAILABLE" },
+  });
+  assertIncludes(unavailableHtml, "UNAVAILABLE", "a field with genuinely no captured evidence is shown honestly as UNAVAILABLE, never fabricated");
+
   console.log(`${passed} passed, ${failures} failed`);
   process.exit(failures ? 1 : 0);
 })();

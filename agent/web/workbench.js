@@ -188,6 +188,51 @@ const PUBLIC_CUSTOMER_APP_FALLBACK_URL = "https://agentic-delivery-customer-app-
 
 loadTargetApp();
 
+// RECRUITER-FACING VERIFIED-RUN P0 (2026-09-13): real incident — this
+// link used to be a bare hard-coded href to one specific run_id in
+// workbench.html, which silently went stale the moment a newer real run
+// completed (the Owner clicked it and landed on a two-day-old example
+// with no explanation). The destination is now looked up live from
+// agent/web_server.py's GET /api/workbench/verified-run, which runs a
+// real, deterministic "most recent genuinely COMPLETED trainer run"
+// query on every request — never a client-side guess, never cached
+// past this page load.
+const verifiedRunLink = document.getElementById("verified-run-link");
+const verifiedRunUnavailable = document.getElementById("verified-run-unavailable");
+const verifiedRunLoading = document.getElementById("verified-run-loading");
+const VERIFIED_RUN_TIMEOUT_MS = 8000;
+
+async function loadVerifiedRun() {
+  let timeoutId;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error("verified-run fetch timed out")), VERIFIED_RUN_TIMEOUT_MS);
+  });
+  try {
+    const resp = await Promise.race([fetch("/api/workbench/verified-run"), timeout]);
+    clearTimeout(timeoutId);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    verifiedRunLoading.hidden = true;
+    if (data.available && data.run_id) {
+      verifiedRunLink.href = `/usage/session/${encodeURIComponent(data.run_id)}`;
+      verifiedRunLink.hidden = false;
+      verifiedRunUnavailable.hidden = true;
+    } else {
+      // Honest empty state — never a broken link, never a stale fallback.
+      verifiedRunLink.hidden = true;
+      verifiedRunUnavailable.hidden = false;
+    }
+  } catch (_) {
+    clearTimeout(timeoutId);
+    verifiedRunLoading.hidden = true;
+    verifiedRunLink.hidden = true;
+    verifiedRunUnavailable.hidden = false;
+    verifiedRunUnavailable.textContent = "Could not check for a verified run right now.";
+  }
+}
+
+loadVerifiedRun();
+
 function currentAppUrl() {
   return (targetApp && targetApp.url) || (run && run.deploymentInfo && run.deploymentInfo.public_url) || "#";
 }
