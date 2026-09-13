@@ -503,3 +503,49 @@ surprising verified behavior would otherwise get rediscovered later.
   layer of plausible-but-wrong hypothesis should be checked against raw
   evidence before being treated as the fix, especially when a "fix"
   doesn't fully resolve the symptom.
+
+- **A synchronous, real-DB-querying function called directly inside an
+  `async def` Starlette/FastAPI route handler blocks the ENTIRE
+  single-threaded event loop for EVERY concurrent request, not just its
+  own — and a single orphaned "idle in transaction" connection can then
+  cascade into a full-service outage.** Real incident (WORKBENCH
+  RELIABILITY, 2026-09-13): shortly after a routine platform-backend
+  deploy, `/api/dashboard` hung indefinitely, and — far more seriously —
+  EVERY other route on the same service (including its custom domain)
+  became simultaneously unreachable, even though `railway logs` showed a
+  completely clean, error-free startup with no crash reported anywhere.
+  Root cause, confirmed via a direct `pg_stat_activity` query (never
+  guessed): one real Postgres connection had been sitting "idle in
+  transaction" for 963 seconds, holding a lock that blocked every
+  subsequent `ensure_schema()` DDL call (`CREATE INDEX IF NOT EXISTS` x5
+  + one `ALTER TABLE`) — and nearly every code path in this project's
+  event-ledger-backed modules calls `ensure_schema()` first. Every
+  connection-opening function in `agent/event_ledger.py` already used
+  `try/finally: conn.close()` correctly (audited during the incident, no
+  Python-level leak found) — the most consistent explanation is a
+  container killed mid-query during a deploy cutover, orphaning the
+  connection on the Postgres side faster than Postgres's own default
+  dead-peer detection notices it. Separately, `get_dashboard_data`/
+  `get_sessions_data`/`get_session_history`/`get_session_detail` all
+  called their real synchronous psycopg2-querying functions directly
+  inside `async def` handlers, running them ON the asyncio event loop —
+  meaning any one slow/stuck DB call (this exact incident, or just
+  elevated latency under load) froze every OTHER concurrent request on
+  the service too, plausibly also explaining the earlier, never-root-
+  caused `PRODUCTION-TRANSIENT-502-OBSERVATION` (docs/ACTION_QUEUE.json)
+  seen under concurrent Playwright load. Three-part fix, each
+  independently valuable: (1) wrap every such handler's real work in
+  Starlette's `run_in_threadpool` so a slow/stuck call can only ever
+  block its own request; (2) set a real, server-enforced
+  `statement_timeout` on the connection so a genuinely stuck query fails
+  fast and honestly instead of hanging forever (sized with real margin
+  over an empirically-observed ~12-17s worst case, not guessed); (3) set
+  `idle_in_transaction_session_timeout` so Postgres itself kills any
+  connection that becomes orphaned idle-in-transaction, regardless of
+  what caused it. Future rule: any synchronous, potentially-slow I/O
+  (a DB query, a subprocess call, a blocking HTTP request) inside an
+  `async def` Starlette/FastAPI handler must be wrapped in
+  `run_in_threadpool`/`asyncio.to_thread` — never called directly — and
+  any long-lived DB connection pool this project owns should carry both
+  a statement timeout and an idle-in-transaction timeout from the start,
+  not added reactively after the first real outage.
