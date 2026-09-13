@@ -800,6 +800,14 @@ class PushStatusTruthfulnessTestCase(unittest.TestCase):
     attempted-and-failed push."""
 
     def _run_to_completion(self, push_return):
+        # _run_trainer_thread's own finally block sets the real
+        # module-level cooldown timestamp (_LAST_TRAINER_RUN_FINISHED_AT)
+        # on every call — restore it afterward so this test can never
+        # leak a false "busy" cooldown into an unrelated later test in
+        # the same process (see test_web_server.py's other established
+        # convention for this exact global, e.g.
+        # TrainerConcurrencyAndAbuseProtectionTestCase).
+        self.addCleanup(lambda: setattr(ws, "_LAST_TRAINER_RUN_FINISHED_AT", 0.0))
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp) / "workspace"
             target_rel = "app/src/main/resources/static/index.html"
@@ -880,6 +888,10 @@ class NoChangeNeededUsesLiveProductionTestCase(unittest.TestCase):
     though production still genuinely showed "Built with DOSS care"."""
 
     def _run(self, isolated_workspace_content, live_production_content):
+        # See PushStatusTruthfulnessTestCase._run_to_completion's identical
+        # comment — _run_trainer_thread's finally block sets the real
+        # module-level cooldown timestamp on every call.
+        self.addCleanup(lambda: setattr(ws, "_LAST_TRAINER_RUN_FINISHED_AT", 0.0))
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp) / "workspace"
             target_rel = "app/src/main/resources/static/index.html"
