@@ -899,12 +899,15 @@ def _run_trainer_thread(run: "Run", requirement: str, normalized: "demo_catalogu
             run.emit("error", {"message": f"git push failed (deploy continues from the isolated workspace regardless): {push_out[-400:]}"})
 
         # DEPLOY — from the ISOLATED workspace's own app/ directory, never
-        # the long-lived server's own APP_DIR. Capture the deployment
-        # identity BEFORE triggering, per Layer 7.
+        # the long-lived server's own APP_DIR. Capture a real reference
+        # TIMESTAMP immediately before triggering, per Layer 7 — see
+        # demo_execution.wait_for_new_deployment's docstring for the real
+        # bug (three live acceptance runs) this replaced an ID-diff
+        # check with: a stale, unrelated OLD deployment could otherwise
+        # be mistaken for "the new one" simply because its id differed.
         run.status = "DEPLOYING"
         run.emit("stage", {"stage": "DEPLOYING"})
-        previous_deployment_id = demo_execution.get_latest_deployment_id(
-            CUSTOMER_APP_PROJECT_ID, RAILWAY_SERVICE_NAME, RAILWAY_ENVIRONMENT, workspace)
+        deploy_triggered_after = demo_execution.utc_now_iso()
         deploy_ok, deploy_out = demo_execution.trigger_deploy(
             workspace / "app", CUSTOMER_APP_PROJECT_ID, RAILWAY_SERVICE_NAME, RAILWAY_ENVIRONMENT)
         if not deploy_ok:
@@ -920,7 +923,7 @@ def _run_trainer_thread(run: "Run", requirement: str, normalized: "demo_catalogu
         run.status = "VERIFYING PRODUCTION"
         run.emit("stage", {"stage": "VERIFYING PRODUCTION"})
         new_deployment_id, deploy_status, waited_s = demo_execution.wait_for_new_deployment(
-            CUSTOMER_APP_PROJECT_ID, RAILWAY_SERVICE_NAME, RAILWAY_ENVIRONMENT, previous_deployment_id, workspace)
+            CUSTOMER_APP_PROJECT_ID, RAILWAY_SERVICE_NAME, RAILWAY_ENVIRONMENT, deploy_triggered_after, workspace)
         deployment_identity_confirmed = new_deployment_id is not None and deploy_status.upper() == "SUCCESS"
 
         after_status, after_html, live_value, content_verified = _verify_content_with_retry(
@@ -930,7 +933,7 @@ def _run_trainer_thread(run: "Run", requirement: str, normalized: "demo_catalogu
             "production_commit": production_commit,
             "public_url": PUBLIC_CUSTOMER_APP_URL,
             "http_status": after_status,
-            "previous_deployment_id": previous_deployment_id,
+            "deploy_triggered_after": deploy_triggered_after,
             "new_deployment_id": new_deployment_id,
             "deployment_status": deploy_status,
             "deployment_identity_confirmed": deployment_identity_confirmed,
@@ -1237,8 +1240,7 @@ def _run_reset_thread():
         if not push_ok:
             _reset_state = {"status": "running", "message": f"Committed; git push failed (deploy continues from the isolated workspace): {push_out[-200:]}"}
 
-        previous_deployment_id = demo_execution.get_latest_deployment_id(
-            CUSTOMER_APP_PROJECT_ID, RAILWAY_SERVICE_NAME, RAILWAY_ENVIRONMENT, workspace)
+        deploy_triggered_after = demo_execution.utc_now_iso()
         deploy_ok, deploy_out = demo_execution.trigger_deploy(
             workspace / "app", CUSTOMER_APP_PROJECT_ID, RAILWAY_SERVICE_NAME, RAILWAY_ENVIRONMENT)
         if not deploy_ok:
@@ -1246,7 +1248,7 @@ def _run_reset_thread():
             return
 
         new_deployment_id, deploy_status, waited_s = demo_execution.wait_for_new_deployment(
-            CUSTOMER_APP_PROJECT_ID, RAILWAY_SERVICE_NAME, RAILWAY_ENVIRONMENT, previous_deployment_id, workspace,
+            CUSTOMER_APP_PROJECT_ID, RAILWAY_SERVICE_NAME, RAILWAY_ENVIRONMENT, deploy_triggered_after, workspace,
             max_wait_s=10 * 60)
         deployment_identity_confirmed = new_deployment_id is not None and deploy_status.upper() == "SUCCESS"
 

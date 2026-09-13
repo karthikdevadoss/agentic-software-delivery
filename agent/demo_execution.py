@@ -48,6 +48,7 @@ import stat
 import subprocess
 import tempfile
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 PUBLIC_REPO_HTTPS_URL = "https://github.com/karthikdevadoss/agentic-software-delivery.git"
@@ -177,22 +178,11 @@ def push_change(workspace: Path, branch: str):
 
 # --- Deployment identity (real Railway metadata, not HTTP 200/CLI text) --
 
-def get_latest_deployment_id(project_id: str, service_name: str, environment: str, cwd: Path):
-    """Read-only. Returns the most recent deployment's id, or None on
-    any failure (never raises — a failed lookup means 'unknown', not an
-    assumed value)."""
-    ok, out = run_controlled(
-        ["railway", "deployment", "list", "--json", "--project", project_id,
-         "--service", service_name, "--environment", environment, "--limit", "1"],
-        cwd, 20,
-    )
-    if not ok:
-        return None
-    try:
-        data = json.loads(out)
-        return data[0]["id"] if data else None
-    except (ValueError, KeyError, IndexError, TypeError):
-        return None
+def utc_now_iso() -> str:
+    """Real reference-timestamp capture for deployment-identity checks —
+    call this IMMEDIATELY before trigger_deploy(), then pass the result
+    to wait_for_new_deployment() as `deploy_triggered_after_iso`."""
+    return datetime.now(timezone.utc).isoformat()
 
 
 def link_workspace_to_railway(app_dir: Path, project_id: str, service_name: str, environment: str):
@@ -244,13 +234,34 @@ def trigger_deploy(app_dir: Path, project_id: str, service_name: str, environmen
 
 
 def wait_for_new_deployment(project_id: str, service_name: str, environment: str,
-                             previous_deployment_id, cwd: Path,
+                             deploy_triggered_after_iso: str, cwd: Path,
                              max_wait_s: int = 15 * 60, poll_interval_s: int = 10):
     """Polls real Railway deployment records — never HTTP 200, never
     'Online' CLI text, never elapsed-time guessing — until a deployment
-    ID DIFFERENT from `previous_deployment_id` reaches a real terminal
-    status. Returns (new_deployment_id_or_None, status, waited_seconds).
-    status is one of: 'SUCCESS', a real Railway failure status string, or
+    genuinely CREATED AFTER `deploy_triggered_after_iso` reaches a real
+    terminal status.
+
+    Real bug found live (2026-09-13, this exact task, three real
+    production acceptance runs before this was caught): the previous
+    version identified "the new deployment" as any list entry whose id
+    differed from a `previous_deployment_id` captured before this run.
+    That is not sufficient — if the genuinely-new deployment has not yet
+    propagated into Railway's own recent-deployments list by the time of
+    the FIRST poll (confirmed to happen: it can take longer than one 10s
+    poll interval), the loop instead matched some OTHER pre-existing
+    deployment in the same page that merely wasn't the id it started
+    from — in the real incident this caught, a deployment that had
+    genuinely FAILED forty-six minutes earlier, for an unrelated reason,
+    causing this run to report a false "Railway reported a failed
+    deployment" verdict for a change that had, in real fact, just
+    deployed successfully. Filtering candidates by real `createdAt` (a
+    string compare is correct here since Railway's timestamps are
+    ISO 8601 UTC, which sort lexicographically in chronological order)
+    makes this genuinely impossible to reproduce, regardless of any
+    propagation delay or list-ordering assumption.
+
+    Returns (new_deployment_id_or_None, status, waited_seconds). status
+    is one of: 'SUCCESS', a real Railway failure status string, or
     'TIMEOUT' if no new terminal deployment appeared in the window."""
     waited = 0
     while waited < max_wait_s:
@@ -258,7 +269,7 @@ def wait_for_new_deployment(project_id: str, service_name: str, environment: str
         waited += poll_interval_s
         ok, out = run_controlled(
             ["railway", "deployment", "list", "--json", "--project", project_id,
-             "--service", service_name, "--environment", environment, "--limit", "5"],
+             "--service", service_name, "--environment", environment, "--limit", "10"],
             cwd, 20,
         )
         if not ok:
@@ -267,9 +278,8 @@ def wait_for_new_deployment(project_id: str, service_name: str, environment: str
             deployments = json.loads(out)
         except ValueError:
             continue
-        for d in deployments:
-            if d.get("id") == previous_deployment_id:
-                continue
+        candidates = [d for d in deployments if str(d.get("createdAt", "")) > deploy_triggered_after_iso]
+        for d in candidates:
             status = str(d.get("status", ""))
             if status.upper() == _SUCCESS_STATUS:
                 return d["id"], status, waited

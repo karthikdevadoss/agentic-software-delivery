@@ -496,7 +496,6 @@ class DemoResetTestCase(unittest.IsolatedAsyncioTestCase):
         with tmp, clone_patch, baseline_patch, \
              mock.patch.object(ws.demo_execution, "commit_change", return_value=("demo/reset-x", True, "")), \
              mock.patch.object(ws.demo_execution, "push_change", return_value=(True, None)), \
-             mock.patch.object(ws.demo_execution, "get_latest_deployment_id", return_value="old-dep-id"), \
              mock.patch.object(ws.demo_execution, "trigger_deploy", return_value=(True, "")), \
              mock.patch.object(ws.demo_execution, "wait_for_new_deployment", return_value=("new-dep-id", "SUCCESS", 30)), \
              mock.patch.object(ws.demo_execution, "cleanup_workspace", side_effect=_capture_and_cleanup), \
@@ -522,7 +521,6 @@ class DemoResetTestCase(unittest.IsolatedAsyncioTestCase):
         with tmp, clone_patch, baseline_patch, \
              mock.patch.object(ws.demo_execution, "commit_change", return_value=("demo/reset-x", False, "nothing to commit, working tree clean")), \
              mock.patch.object(ws.demo_execution, "push_change", return_value=(True, None)), \
-             mock.patch.object(ws.demo_execution, "get_latest_deployment_id", return_value="old-dep-id"), \
              mock.patch.object(ws.demo_execution, "trigger_deploy", return_value=(True, "")) as mock_deploy, \
              mock.patch.object(ws.demo_execution, "wait_for_new_deployment", return_value=("new-dep-id", "SUCCESS", 30)), \
              mock.patch.object(ws, "_fetch_public_app",
@@ -547,7 +545,6 @@ class DemoResetTestCase(unittest.IsolatedAsyncioTestCase):
         with tmp, clone_patch, baseline_patch, \
              mock.patch.object(ws.demo_execution, "commit_change", return_value=("demo/reset-x", True, "")), \
              mock.patch.object(ws.demo_execution, "push_change", return_value=(True, None)), \
-             mock.patch.object(ws.demo_execution, "get_latest_deployment_id", return_value="old-dep-id"), \
              mock.patch.object(ws.demo_execution, "trigger_deploy", return_value=(True, "")), \
              mock.patch.object(ws.demo_execution, "wait_for_new_deployment", return_value=("new-dep-id", "SUCCESS", 30)), \
              mock.patch.object(ws, "_fetch_public_app",

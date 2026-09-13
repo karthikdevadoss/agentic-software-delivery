@@ -222,59 +222,79 @@ class DeployTriggerTestCase(unittest.TestCase):
 class DeploymentIdentityTestCase(unittest.TestCase):
     """Railway itself is mocked here (no real account access from a unit
     test) — the real subprocess/JSON parsing contract is exercised
-    against realistic fixture JSON shapes captured from a real read-only
-    `railway deployment list --json` call made during this task."""
+    against realistic fixture JSON shapes captured from real read-only
+    `railway deployment list --json` calls made during this task.
 
-    def test_get_latest_deployment_id_parses_real_shape(self):
-        fixture = json.dumps([{"id": "74f91bde-d702-4679-a14b-ad8ed635e5b8", "status": "SUCCESS", "createdAt": "2026-09-12T09:41:23.557Z"}])
-        with mock.patch.object(de, "run_controlled", return_value=(True, fixture)):
-            result = de.get_latest_deployment_id("proj", "svc", "production", Path("."))
-        self.assertEqual(result, "74f91bde-d702-4679-a14b-ad8ed635e5b8")
-
-    def test_get_latest_deployment_id_returns_none_on_cli_failure(self):
-        with mock.patch.object(de, "run_controlled", return_value=(False, "error")):
-            result = de.get_latest_deployment_id("proj", "svc", "production", Path("."))
-        self.assertIsNone(result)
-
-    def test_get_latest_deployment_id_returns_none_on_malformed_json(self):
-        with mock.patch.object(de, "run_controlled", return_value=(True, "not json")):
-            result = de.get_latest_deployment_id("proj", "svc", "production", Path("."))
-        self.assertIsNone(result)
+    RELIABILITY/CORRECTION PHASE (2026-09-13): wait_for_new_deployment()
+    was rewritten after THREE real production acceptance runs (submitted
+    through the live public Workbench) exposed a real bug — the previous
+    version identified "the new deployment" as any list entry whose id
+    differed from a captured `previous_deployment_id`. In real production,
+    a deployment that had genuinely FAILED forty-six minutes earlier (for
+    an unrelated reason, still present in Railway's own recent-N list)
+    was mistaken for "the new one" this exact way, reporting a false
+    failure for a change that had, in real fact, just deployed
+    successfully. The fix filters candidates by real `createdAt` against
+    a reference timestamp captured immediately before the deploy was
+    triggered — test_wait_for_new_deployment_ignores_an_old_unrelated_entry_even_if_its_id_differs
+    is the direct regression test for the exact real incident."""
 
     def test_wait_for_new_deployment_detects_a_real_new_success(self):
-        fixture = json.dumps([{"id": "new-id", "status": "SUCCESS"}, {"id": "old-id", "status": "REMOVED"}])
+        fixture = json.dumps([
+            {"id": "new-id", "status": "SUCCESS", "createdAt": "2026-09-13T10:00:00.000Z"},
+            {"id": "old-id", "status": "REMOVED", "createdAt": "2026-09-13T09:00:00.000Z"},
+        ])
         with mock.patch.object(de, "run_controlled", return_value=(True, fixture)), \
              mock.patch.object(de.time, "sleep"):
-            new_id, status, waited = de.wait_for_new_deployment("proj", "svc", "production", "old-id", Path("."), max_wait_s=30, poll_interval_s=10)
+            new_id, status, waited = de.wait_for_new_deployment(
+                "proj", "svc", "production", "2026-09-13T09:59:00.000000+00:00", Path("."), max_wait_s=30, poll_interval_s=10)
         self.assertEqual(new_id, "new-id")
         self.assertEqual(status, "SUCCESS")
 
     def test_wait_for_new_deployment_detects_a_real_new_failure(self):
-        fixture = json.dumps([{"id": "new-id", "status": "FAILED"}, {"id": "old-id", "status": "SUCCESS"}])
+        fixture = json.dumps([
+            {"id": "new-id", "status": "FAILED", "createdAt": "2026-09-13T10:00:00.000Z"},
+            {"id": "old-id", "status": "SUCCESS", "createdAt": "2026-09-13T09:00:00.000Z"},
+        ])
         with mock.patch.object(de, "run_controlled", return_value=(True, fixture)), \
              mock.patch.object(de.time, "sleep"):
-            new_id, status, waited = de.wait_for_new_deployment("proj", "svc", "production", "old-id", Path("."), max_wait_s=30, poll_interval_s=10)
+            new_id, status, waited = de.wait_for_new_deployment(
+                "proj", "svc", "production", "2026-09-13T09:59:00.000000+00:00", Path("."), max_wait_s=30, poll_interval_s=10)
         self.assertEqual(new_id, "new-id")
         self.assertEqual(status, "FAILED")
 
-    def test_wait_for_new_deployment_ignores_the_previous_id_even_if_it_shows_success_again(self):
-        """The OLD deployment ID showing SUCCESS is not proof of a NEW
-        deployment — must keep waiting, never conflate old-still-healthy
-        with new-now-serving."""
-        fixture = json.dumps([{"id": "old-id", "status": "SUCCESS"}])
+    def test_wait_for_new_deployment_ignores_an_old_unrelated_entry_even_if_its_id_differs(self):
+        """THE EXACT REAL INCIDENT (2026-09-13): an old, unrelated
+        deployment that genuinely failed 46 minutes earlier must never be
+        mistaken for the deployment this run just triggered, merely
+        because its id happens to differ from whatever reference id an
+        older design might have used. Only a deployment CREATED AFTER the
+        real trigger timestamp may ever be considered a candidate."""
+        fixture = json.dumps([
+            {"id": "old-unrelated-failed-id", "status": "FAILED", "createdAt": "2026-09-13T09:08:00.043Z"},
+        ])
         with mock.patch.object(de, "run_controlled", return_value=(True, fixture)), \
              mock.patch.object(de.time, "sleep"):
-            new_id, status, waited = de.wait_for_new_deployment("proj", "svc", "production", "old-id", Path("."), max_wait_s=20, poll_interval_s=10)
+            new_id, status, waited = de.wait_for_new_deployment(
+                "proj", "svc", "production", "2026-09-13T09:54:32.213824+00:00", Path("."), max_wait_s=20, poll_interval_s=10)
         self.assertIsNone(new_id)
         self.assertEqual(status, "TIMEOUT")
 
     def test_wait_for_new_deployment_times_out_honestly_when_nothing_new_appears(self):
         with mock.patch.object(de, "run_controlled", return_value=(False, "cli error")), \
              mock.patch.object(de.time, "sleep"):
-            new_id, status, waited = de.wait_for_new_deployment("proj", "svc", "production", "old-id", Path("."), max_wait_s=20, poll_interval_s=10)
+            new_id, status, waited = de.wait_for_new_deployment(
+                "proj", "svc", "production", "2026-09-13T09:59:00.000000+00:00", Path("."), max_wait_s=20, poll_interval_s=10)
         self.assertIsNone(new_id)
         self.assertEqual(status, "TIMEOUT")
         self.assertEqual(waited, 20)
+
+    def test_utc_now_iso_produces_a_real_sortable_utc_timestamp(self):
+        before = de.utc_now_iso()
+        import time as _time
+        _time.sleep(0.01)
+        after = de.utc_now_iso()
+        self.assertLess(before, after)
 
 
 if __name__ == "__main__":
