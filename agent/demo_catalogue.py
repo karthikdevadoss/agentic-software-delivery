@@ -188,7 +188,7 @@ def normalize_requirement(requirement: str) -> NormalizedRequest:
         risk_class="TINY_TEXT_SUBSTITUTION",
         expected_changed_files=(DEMO_TARGET_FILE,),
         expected_verification_method=f"targeted DOM/text extraction of {op.human_name} from the live production HTML",
-        expected_production_assertion=f"the live {op.human_name} equals the requested value exactly",
+        expected_production_assertion=f"{op.human_name} is live in production with exactly the requested value",
     )
 
 
