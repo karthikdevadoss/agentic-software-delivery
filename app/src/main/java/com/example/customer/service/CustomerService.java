@@ -9,6 +9,16 @@ import java.util.NoSuchElementException;
 @Service
 public class CustomerService {
 
+    // Isolated as its own constant, on its own line, specifically so a
+    // future controlled backend Workbench scenario (see ACT-008,
+    // docs/ACTION_QUEUE.json) can target ONLY this one string literal
+    // via a narrow regex anchor -- exactly analogous to
+    // agent/demo_catalogue.py's HTML anchor-pattern operations, applied
+    // to Java source instead of static HTML. The id suffix stays
+    // separate (appended below) so this constant holds only the
+    // human-readable message text.
+    static final String CUSTOMER_NOT_FOUND_MESSAGE = "Customer not found";
+
     private final CustomerRepository customerRepository;
 
     public CustomerService(CustomerRepository customerRepository) {
@@ -17,7 +27,7 @@ public class CustomerService {
 
     public Customer getById(Long id) {
         return customerRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Customer not found: " + id));
+                .orElseThrow(() -> new NoSuchElementException(CUSTOMER_NOT_FOUND_MESSAGE + ": " + id));
     }
 
     public Customer create(Customer customer) {
