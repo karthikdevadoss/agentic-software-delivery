@@ -1,0 +1,75 @@
+# Reference showcase manifest — the template for all future role-specific
+# showcases (see docs/PORTFOLIO_CAPABILITIES.yaml's "Fast future JD
+# workflow" for how to derive a new one). Rendered at /showcase/senior-java-ai-transformation
+# by agent/showcase_data.py + agent/web/showcase.html.
+#
+# Deliberately does not carry personal identity/contact details — this
+# page is a technical capability showcase, not the personal Profile page
+# (which remains intentionally non-public per docs/COMPANY_VISION.md's
+# 2026-09-13 privacy decision). It points at the same public GitHub repo
+# and live surfaces that are already public regardless.
+
+slug: senior-java-ai-transformation
+title: "Senior Java Backend + AI-Assisted Delivery Transformation"
+target_role: "Senior Backend Engineer (Java / Spring Boot / Distributed Systems), with AI-assisted software delivery as a differentiator"
+target_company: null
+
+job_requirements_addressed:
+  - "Java 17/21, Spring Boot — production REST API design"
+  - "PostgreSQL, JPA/Hibernate, schema migrations (Flyway)"
+  - "Authentication/authorization (JWT, RBAC), multi-tenant data isolation"
+  - "Resilient integration with downstream services (timeouts, retries, circuit breakers)"
+  - "Event-driven architecture (Kafka, transactional outbox) — implemented, honestly labeled where not production-provisioned"
+  - "Testing discipline: unit, integration (Testcontainers), CI"
+  - "Practical, hands-on experience with LLM-based tooling / agentic AI software delivery — not just API calls, but a measurable, auditable delivery process"
+  - "Ability to root-cause real production incidents from evidence, not guesses"
+
+selected_capabilities:
+  - java-spring-rest-api
+  - postgres-jpa-flyway
+  - security-jwt-rbac
+  - downstream-resilience
+  - kafka-outbox
+  - redis-cache
+  - test-impact-analysis
+  - agentic-ai-delivery-pipeline
+  - rag-mcp-embeddings
+  - independent-qa-evaluator
+  - durable-event-ledger
+  - production-deployment-verification
+  - workbench-live-delivery-ui
+
+primary_demo:
+  name: "Watch a real requirement travel through the full agentic delivery pipeline"
+  url: "https://agentic-platform-backend-production.up.railway.app/workbench"
+  what_to_expect: "Submit a small, safe requirement; watch it move through deterministic eligibility, context retrieval, LLM analysis, real Maven compile/test, git commit, Railway deploy, and independent production verification, live, stage by stage."
+
+secondary_evidence:
+  - name: "Live Customer App (the real Spring Boot backend under all of this)"
+    url: "https://agentic-delivery-customer-app-production.up.railway.app"
+  - name: "Engineering Dashboard (capability status, quality metrics, AI engineering learning)"
+    url: "https://agentic-platform-backend-production.up.railway.app/dashboard"
+  - name: "Usage / AI economics (real token/cost/time accounting, honestly labeled ACTUAL vs ESTIMATED)"
+    url: "https://agentic-platform-backend-production.up.railway.app/usage"
+  - name: "Learn (AI/Agentic-AI interview knowledge base, built from this project's own real bugs)"
+    url: "https://agentic-platform-backend-production.up.railway.app/learn"
+  - name: "AI Engineering Quality Ledger (structured defect/root-cause/fix records)"
+    url: "docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml"
+  - name: "Public source repository"
+    url: "https://github.com/karthikdevadoss/agentic-software-delivery"
+
+recommended_talking_points:
+  - "The distinction between 'AI wrote code fast' and 'we built a measurable, auditable delivery process on top of a probabilistic system' — see docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml's AEQ-013: the first genuine end-to-end AI backend delivery run surfaced 3 real bugs, each invisible to every existing mocked test, each found only by actually running the pipeline for real and independently cross-checking the result."
+  - "A real production incident (AEQ-010): one idle-in-transaction Postgres connection froze an entire async service because synchronous DB calls ran directly on the event loop — root-caused via a direct pg_stat_activity query, not guessed, fixed with run_in_threadpool plus real statement/idle timeouts."
+  - "Why 'AI does not certify its own work' is enforced architecturally, not just as a policy: approve/reject are never exposed as model-callable tools (verified by exact set-membership, not substring matching — itself a real bug found and fixed, AEQ-003), and a structurally separate qa-evaluator subagent independently re-verifies changes."
+  - "A real Spring Boot 4 migration gotcha (AEQ-011): Flyway autoconfiguration silently split into its own module; three consecutive CI failures were root-caused only by decompiling the actual class bytecode to confirm it wasn't even on the classpath."
+  - "A real Postgres-only production bug that a green H2 test suite could not have caught (AEQ-012): JPQL LOWER/CONCAT around a nullable bind parameter defaulted to bytea on Postgres — found via real Railway logs within minutes of a bad deploy, fixed, and locked in with a real Testcontainers regression test."
+
+optional_role_specific_feature: null
+
+production_urls:
+  customer_app: "https://agentic-delivery-customer-app-production.up.railway.app"
+  platform_backend: "https://agentic-platform-backend-production.up.railway.app"
+  custom_domain: "https://agentic.karthikdevadoss.com"
+
+last_verified: "2026-09-14"

@@ -200,6 +200,20 @@
       "resolved_at_commit": null
     },
     {
+      "id": "RAILWAY-OOM-INVESTIGATION",
+      "source": "infra_incident",
+      "title": "Owner reported Railway 'Deployment crashed' / 'Deploy Ran Out Of Memory' emails -- investigated, not reproduced in available CLI evidence, current production confirmed healthy",
+      "priority": "medium",
+      "status": "open",
+      "scope": "Railway infrastructure only (agentic-delivery-customer-app, agentic-platform-backend/agentic-delivery-events project) -- no code change made",
+      "reason": "Unattended portfolio-completion session (2026-09-14) investigated a new incident report before doing any other work, per its own explicit instruction not to redeploy blindly. `railway deployment list --json` for BOTH services showed only SUCCESS/REMOVED across their last 20 deployments each (20/20 and 20/20) -- no CRASHED/FAILED entries in the visible window. `railway logs --build` for the most recent platform-backend deploy completed cleanly with no memory warnings. `railway logs --deployment` for the running instance showed a clean startup and normal request serving. Both services independently confirmed Online (platform-backend HTTP 200 on /workbench; customer-app HTTP 401 on an auth-only route -- correct post-JWT behavior, not a crash). Root cause NOT conclusively established: the CLI's deployment list does not expose Railway's own memory-usage graphs/alerts, so a build-time or runtime memory spike consistent with the Owner's emails cannot be ruled in or out from this evidence alone. Two plausible, unconfirmed explanations: (a) the prior PORTFOLIO COMPLETION PUSH session deployed each service ~20 times within roughly 16 hours, a cadence that could plausibly stress Railway's shared build resources for an event this investigation's limited history window doesn't reach; (b) this may be the same class of memory pressure already documented for the LOCAL dev machine (docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml's AEQ-016), conflated with Railway in the Owner's description. See AI_ENGINEERING_QUALITY_LEDGER.yaml's RWY-001 for the full structured record.",
+      "evidence": "railway deployment list --json (both services, 2026-09-14): 20/20 and 20/20 SUCCESS-or-REMOVED, zero CRASHED/FAILED. railway logs --build (platform-backend, latest deploy): clean 14-step Docker build, no OOM/memory-limit lines. railway logs --deployment (platform-backend, running instance): clean Uvicorn startup, normal request serving. curl checks: platform-backend /workbench HTTP 200, customer-app /customers/1 HTTP 401 (expected -- JWT security is live).",
+      "safe_to_auto_execute": false,
+      "verification_required": "Owner action: check the Railway dashboard's own Metrics/Observability tab for each service (not exposed via this session's CLI access) for the actual memory-usage graph around the time the alert emails arrived, to conclusively confirm or rule out a real build-time or runtime OOM event. If confirmed real and recurring, consider: reducing same-session deploy cadence during heavy iterative Workbench testing, or increasing the service's resource plan.",
+      "created_at_commit": "2164c7f",
+      "resolved_at_commit": null
+    },
+    {
       "id": "RAG-MCP-EVALS-P0",
       "source": "product",
       "title": "VERIFIED (internal): minimal, real RAG+embeddings+MCP+Evals vertical slice for backend requirement planning",

@@ -1,0 +1,224 @@
+# Portfolio Capability Registry
+#
+# Machine-readable inventory of real, evidence-backed engineering
+# capabilities in this project, used to build job-specific showcases fast
+# (see showcases/<slug>/showcase.yaml) without re-deriving the same facts
+# from scratch for every application. Every field here must trace to
+# docs/PROJECT_STATE.json's completed_capabilities/verification_state, or
+# to real, currently-runnable code — nothing here is aspirational.
+#
+# Workflow this registry supports (see the "Fast future JD workflow" note
+# at the bottom): JD -> extract requirements -> map each to a capability_id
+# below -> classify STRONGLY_DEMONSTRATED / PRESENT_BUT_SHOWCASE_WEAK /
+# IMPORTANT_MISSING / NOT_WORTH_ADDING -> build a showcase manifest.
+
+registry_version: 1
+last_updated: "2026-09-14"
+
+capabilities:
+
+  - id: java-spring-rest-api
+    display_name: "Java 21 / Spring Boot 4.1.1 REST API"
+    engineering_problem_solved: "Serve a real, versioned, documented HTTP API over a persistent domain model, with input validation and structured error responses"
+    technology: [Java 17/21, Spring Boot 4.1.1, springdoc-openapi 3.1.1, Bean Validation, Jackson]
+    business_scenario: "Any customer-facing backend that needs a stable, self-documenting contract for its own frontend and for external integrators"
+    implementation_state: IMPLEMENTED
+    test_state: TESTED
+    production_state: PRODUCTION_ACTIVE
+    evidence_links:
+      - "https://agentic-delivery-customer-app-production.up.railway.app"
+      - "app/src/main/java/com/example/customer/"
+    relevant_modules: [app/src/main/java/com/example/customer/CustomerController.java, app/src/main/java/com/example/customer/GlobalExceptionHandler.java]
+    interview_topics: [REST/API design, Bean Validation, centralized exception handling, OpenAPI/Swagger]
+    job_market_tags: [java, spring-boot, rest-api, backend]
+
+  - id: postgres-jpa-flyway
+    display_name: "PostgreSQL + JPA/Hibernate + Flyway (versioned schema migrations)"
+    engineering_problem_solved: "Persistent, transactional customer/plan/preference state with a real versioned migration history, portable between a local H2 dev profile and real Postgres in CI/production"
+    technology: [PostgreSQL, Spring Data JPA, Hibernate 6, Flyway, Testcontainers]
+    business_scenario: "Any system where schema evolution must be safe, auditable, and reproducible across environments"
+    implementation_state: IMPLEMENTED
+    test_state: INTEGRATION_TESTED
+    production_state: PRODUCTION_ACTIVE
+    evidence_links:
+      - "app/src/main/resources/db/migration/"
+      - ".github/workflows/ci.yml (real Testcontainers Postgres run in CI)"
+    relevant_modules: [app/src/main/java/com/example/customer/CustomerPreference.java, app/src/main/java/com/example/customer/ContractPlan.java]
+    interview_topics: ["Hibernate default flush ordering (real bug found and fixed, see AEQ-family lessons)", "Postgres partial unique indexes", "Spring Boot 4 module split (spring-boot-flyway)", "JPQL string-function pitfalls on Postgres vs H2"]
+    job_market_tags: [postgresql, jpa, hibernate, flyway, database]
+
+  - id: security-jwt-rbac
+    display_name: "BCrypt + JWT authentication with USER/ADMIN RBAC and workspace isolation"
+    engineering_problem_solved: "Secure multi-user access where each USER only ever sees their own data, and an ADMIN role gets a real, gated cross-customer view — never by client-side trust"
+    technology: [Spring Security, JWT, BCrypt, Spring Security method/route authorities]
+    business_scenario: "Any multi-tenant or multi-persona application where unauthorized cross-account access is a real, testable risk"
+    implementation_state: IMPLEMENTED
+    test_state: TESTED
+    production_state: PRODUCTION_ACTIVE
+    evidence_links:
+      - "app/src/main/java/com/example/customer/ (SecurityConfig, WorkspaceAccessGuard)"
+    relevant_modules: [SecurityConfig.java, WorkspaceAccessGuard.java, AdminCustomerController.java]
+    interview_topics: ["JWT vs session auth", "RBAC vs ABAC", "workspace/tenant isolation enforcement points", "USER cross-customer access returning a real 403, not a filtered 200"]
+    job_market_tags: [spring-security, jwt, rbac, authentication, multi-tenancy]
+
+  - id: downstream-resilience
+    display_name: "Downstream HTTP integration with Resilience4j (timeout + retry + circuit breaker)"
+    engineering_problem_solved: "A dependent service (Appointment Availability) can be slow, erroring, or down without cascading failure into this service"
+    technology: [Spring RestClient, Resilience4j CORE (circuitbreaker + retry, composed programmatically), WireMock for tests]
+    business_scenario: "Any system that calls another team's/vendor's API and must degrade gracefully rather than hang or crash"
+    implementation_state: IMPLEMENTED
+    test_state: TESTED
+    production_state: PRODUCTION_ACTIVE
+    evidence_links:
+      - "7 real WireMock tests: success, 5xx retried 3x, 4xx never retried, connect/read timeout, malformed body, sustained-failure circuit-open"
+    relevant_modules: [AppointmentAvailabilityClient.java (RestClient + Resilience4j composition)]
+    interview_topics: ["circuit breaker states (closed/open/half-open)", "retry vs circuit breaker responsibilities", "why NOT the resilience4j-spring-boot starter here (real documented Spring Boot 4 BOM gap)", "distinguishing SERVICE_UNAVAILABLE from AVAILABLE/UNAVAILABLE as a genuine third outcome"]
+    job_market_tags: [resilience4j, circuit-breaker, microservices, distributed-systems]
+
+  - id: kafka-outbox
+    display_name: "Transactional outbox pattern (Kafka wiring implemented, gated off in production)"
+    engineering_problem_solved: "Asynchronous consistency between a local transactional write and a downstream event, without a dual-write race"
+    technology: [Kafka, Spring Kafka, transactional outbox]
+    business_scenario: "Any system publishing domain events that must never be lost or duplicated relative to the transaction that produced them"
+    implementation_state: IMPLEMENTED
+    test_state: INTEGRATION_TESTED
+    production_state: NOT_PRODUCTION_PROVISIONED
+    evidence_links:
+      - "docs/LESSONS.md: real incident where an always-on @KafkaListener with no reachable broker flooded Railway logs (621 messages dropped) — fixed by gating the whole Kafka subsystem behind an explicit enable flag"
+    relevant_modules: ["Kafka-related beans, @ConditionalOnProperty-gated"]
+    interview_topics: ["outbox pattern vs dual-write", "idempotent consumers", "real incident: an unreachable broker's reconnect loop flooding a hosting platform's log rate limit, and why two plausible property fixes both failed"]
+    job_market_tags: [kafka, event-driven, outbox-pattern, async-messaging]
+
+  - id: redis-cache
+    display_name: "Redis cache-aside (implemented, gated off in production)"
+    engineering_problem_solved: "Reduce read latency/load for hot, infrequently-changing data without risking stale-read correctness bugs"
+    technology: [Redis, Spring Cache abstraction, cache-aside pattern]
+    business_scenario: "Any read-heavy endpoint where a cache miss is cheap but a cache-correctness bug is expensive"
+    implementation_state: IMPLEMENTED
+    test_state: INTEGRATION_TESTED
+    production_state: NOT_PRODUCTION_PROVISIONED
+    evidence_links: []
+    relevant_modules: []
+    interview_topics: ["cache-aside vs write-through", "cache invalidation on write", "why NOT provisioning a production Redis instance just for a portfolio badge"]
+    job_market_tags: [redis, caching, performance]
+
+  - id: agentic-ai-delivery-pipeline
+    display_name: "Agentic AI software delivery pipeline (requirement -> context -> LLM -> implementation -> test -> QA -> Git -> deploy -> production verification)"
+    engineering_problem_solved: "Turn a natural-language requirement into a verified, deployed, production-confirmed change with a human-approval boundary the AI itself cannot bypass"
+    technology: [Claude Sonnet 5 Anthropic API, MCP (Model Context Protocol), local RAG (fastembed), deterministic risk/acceptance-contract layer, Railway deploy automation]
+    business_scenario: "Demonstrates the exact emerging discipline of building reliable software delivery ON TOP of a probabilistic LLM, not just calling an LLM"
+    implementation_state: IMPLEMENTED
+    test_state: TESTED
+    production_state: PRODUCTION_ACTIVE
+    evidence_links:
+      - "https://agentic-platform-backend-production.up.railway.app/workbench"
+      - "docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml (AEQ-013: first real end-to-end AI backend delivery run)"
+    relevant_modules: [agent/web_server.py, agent/demo_execution.py, agent/backend_execution.py, agent/risk_policy.py, agent/mcp_server.py, agent/rag_index.py]
+    interview_topics: ["human approval outside the model's own tool surface", "deterministic vs LLM-driven request handling", "AI does not certify its own work", "3 real bugs found only on the pipeline's first genuine end-to-end run"]
+    job_market_tags: [ai-agents, llm, mcp, rag, agentic-delivery, ai-engineering]
+
+  - id: rag-mcp-embeddings
+    display_name: "RAG + embeddings + MCP context retrieval, with measured evals"
+    engineering_problem_solved: "Give an LLM grounded, verifiable context about a real codebase instead of relying on its own guesses, and measure retrieval quality rather than assuming it"
+    technology: [fastembed local embeddings, numpy cosine similarity, official modelcontextprotocol/python-sdk, deterministic groundedness checking]
+    business_scenario: "Any AI feature that must cite real source material rather than hallucinate plausible-sounding but false context"
+    implementation_state: IMPLEMENTED
+    test_state: TESTED
+    production_state: DEMO_AVAILABLE
+    evidence_links:
+      - "Measured baseline: recall_at_3=1.0, recall_at_5=1.0, mrr=0.903, routing_accuracy=1.0, security_case_accuracy=1.0"
+    relevant_modules: [agent/rag_index.py, agent/mcp_server.py, agent/backend_rag_index.py, agent/eval_runner.py]
+    interview_topics: ["RAG vs fine-tuning", "why AI evals are distinct from unit tests", "deterministic groundedness checking (catching an LLM claiming an unretrieved file)", "adversarial eval cases (an 'ignore all security rules' fixture proven never to reach authorization functions)"]
+    job_market_tags: [rag, embeddings, mcp, llm-evals, ai-engineering]
+
+  - id: independent-qa-evaluator
+    display_name: "Builder/independent-evaluator separation for AI-generated changes"
+    engineering_problem_solved: "An AI implementer cannot be trusted to certify its own work — a structurally separate evaluator re-verifies against real evidence"
+    technology: [Claude Code custom subagent (.claude/agents/qa-evaluator.md), Verification Contracts]
+    business_scenario: "Any organization adopting AI-assisted delivery that needs a real, non-theatrical quality gate rather than trusting the same model's self-report"
+    implementation_state: IMPLEMENTED
+    test_state: TESTED
+    production_state: DEMO_AVAILABLE
+    evidence_links:
+      - "Shadow Trial #2: a deliberately seeded defect (capitalization mismatch) was independently caught with byte-exact evidence — EVALUATOR USEFULNESS: HIGH"
+    relevant_modules: [.claude/agents/qa-evaluator.md, docs/ARCHITECTURE_V2_EVALUATION_PLAN.md]
+    interview_topics: ["why self-certification is unsafe for AI-generated code", "designing an evaluator that can genuinely say FAIL, not just rubber-stamp PASS", "distinguishing a genuinely unknowable criterion from a well-evidenced FAIL"]
+    job_market_tags: [ai-quality, evaluator-design, ai-engineering, testing]
+
+  - id: test-impact-analysis
+    display_name: "Deterministic risk classification + Test Impact Analysis + selective regression"
+    engineering_problem_solved: "Run the minimum correct set of tests for a given change (never the whole suite blindly, never too little), with a fail-closed default for anything unrecognized"
+    technology: [agent/change_risk.py, agent/test_impact_analysis.py, agent/verify_change.py]
+    business_scenario: "Any codebase large enough that running the full test suite on every change is too slow to be a real gate"
+    implementation_state: IMPLEMENTED
+    test_state: TESTED
+    production_state: DEMO_AVAILABLE
+    evidence_links:
+      - "docs/TESTING_ARCHITECTURE_V1.md (full write-up, honest about deferred items)"
+      - "Real dogfooding run against this project's own commit b908f62, correctly escalated to full Java suite on a HIGH/CROSS_MODULE change"
+    relevant_modules: [agent/change_risk.py, agent/test_impact_analysis.py, agent/verify_change.py, agent/acceptance_contract.py]
+    interview_topics: ["risk/blast-radius classification", "why an unrecognized file path must fail closed to full regression, never be silently diluted", "Verification Contracts as machine-checkable acceptance criteria"]
+    job_market_tags: [testing, ci-cd, test-impact-analysis, quality-engineering]
+
+  - id: durable-event-ledger
+    display_name: "Durable, write-through event ledger for the entire delivery pipeline"
+    engineering_problem_solved: "No engineering event (model call, tool call, proposal, approval, build, test, commit, deployment) is ever lost to an in-memory-only process crash"
+    technology: [Railway PostgreSQL, write-through inserts with local-spool outage recovery, idempotent ON CONFLICT DO NOTHING]
+    business_scenario: "Any system needing a genuine audit trail of automated actions, not just best-effort logging"
+    implementation_state: IMPLEMENTED
+    test_state: TESTED
+    production_state: PRODUCTION_ACTIVE
+    evidence_links:
+      - "14 focused tests against the live remote DB: insert/ordering/duplicate-retry/outage-spooling/spool-sync/pre-terminal-crash-durability/secret-redaction"
+    relevant_modules: [agent/event_ledger.py]
+    interview_topics: ["write-through vs batch-at-end event capture", "idempotent retry design", "outage-safe local spooling", "PITR left deliberately disabled pending an explicit cost decision, and why a backup without a tested restore is not proven recovery"]
+    job_market_tags: [observability, event-sourcing, postgresql, audit-trail]
+
+  - id: production-deployment-verification
+    display_name: "Deployment-identity-verified, production-content-asserted deploy pipeline"
+    engineering_problem_solved: "A CI/CD 'SUCCESS' status or HTTP 200 healthcheck alone does not prove the REQUESTED feature is actually live — this pipeline independently asserts the real requested content change against production"
+    technology: [Railway CLI, timestamp-based deployment-identity filtering, bounded-retry content assertion]
+    business_scenario: "Any deployment pipeline where 'it deployed' and 'the feature works in production' have been silently conflated before"
+    implementation_state: IMPLEMENTED
+    test_state: TESTED
+    production_state: PRODUCTION_ACTIVE
+    evidence_links:
+      - "docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml AEQ-009 (deployment-identity-by-ID-difference bug, fixed to timestamp filtering)"
+    relevant_modules: [agent/demo_execution.py, agent/backend_execution.py]
+    interview_topics: ["why HTTP 200 alone is not feature verification", "deployment-identity by recency vs by ID difference (a real production bug)", "cutover retry windows distinguishing build SUCCESS from traffic cutover"]
+    job_market_tags: [deployment, ci-cd, production-verification, devops]
+
+  - id: workbench-live-delivery-ui
+    display_name: "Live, real-time delivery lifecycle UI (Workbench)"
+    engineering_problem_solved: "Let a non-technical viewer watch a real requirement travel through the entire delivery pipeline stage by stage, not just see a final pass/fail"
+    technology: [Starlette + Server-Sent Events, HTTP-polling safety net, deterministic request-catalogue gate]
+    business_scenario: "Any product needing to make an otherwise-invisible backend process (AI reasoning, build, test, deploy) legible to a real human watching live"
+    implementation_state: IMPLEMENTED
+    test_state: TESTED
+    production_state: PRODUCTION_ACTIVE
+    evidence_links:
+      - "https://agentic-platform-backend-production.up.railway.app/workbench"
+    relevant_modules: [agent/web_server.py, agent/web/workbench.html, agent/web/workbench.js]
+    interview_topics: ["why SSE alone is not sufficient (a real Cloudflare tunnel silently dropped an entire stream) and polling as an always-on safety net, not a failure-triggered fallback", "authoritative backend state vs. assumed-healthy client stream"]
+    job_market_tags: [real-time-ui, sse, developer-tools, observability]
+
+# ---------------------------------------------------------------------------
+# Fast future JD workflow (documented per the Owner's Priority 6 instruction)
+# ---------------------------------------------------------------------------
+# 1. Paste the job description's requirements list.
+# 2. For each requirement, find the closest matching capability id above.
+# 3. Classify: STRONGLY_DEMONSTRATED (capability exists, production_state is
+#    PRODUCTION_ACTIVE or well-evidenced) / PRESENT_BUT_SHOWCASE_WEAK
+#    (capability exists but evidence_links/interview_topics are thin) /
+#    IMPORTANT_MISSING (no matching capability, and the role clearly needs
+#    it) / NOT_WORTH_ADDING (a nice-to-have with low relevance to this role).
+# 4. Create showcases/<slug>/showcase.yaml (see showcases/senior-java-ai-transformation/
+#    for the reference template) selecting only the STRONGLY_DEMONSTRATED and
+#    PRESENT_BUT_SHOWCASE_WEAK capabilities relevant to this role.
+# 5. Only if an IMPORTANT_MISSING item is both high-value and small, implement
+#    it through the normal Verification Contract -> Test Impact Analysis ->
+#    selective verification -> production evidence pipeline before adding it
+#    to the showcase. Never invent a capability in the showcase that isn't
+#    real yet.
+# 6. Share the role-specific showcase URL.
+# Target: hours, not days, per application.

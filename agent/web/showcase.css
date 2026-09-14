@@ -1,0 +1,75 @@
+/* Showcase-specific styling, additive to style.css's shared design tokens. */
+
+.sc-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+.sc-cta-row a.button {
+  display: inline-block;
+  background: var(--accent);
+  color: white;
+  text-decoration: none;
+  border-radius: 6px;
+  padding: 0.6rem 1.1rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+.sc-cta-row a.button:hover { filter: brightness(1.1); }
+.sc-cta-row a.button.secondary { background: #2a2e3a; color: var(--muted); }
+
+.sc-req-map {
+  display: grid;
+  gap: 0.85rem;
+}
+.sc-req-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  align-items: start;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.sc-req-row:last-child { border-bottom: none; }
+.sc-req-row .sc-req-text { color: var(--text); font-size: 0.92rem; }
+.sc-req-row .sc-req-arrow { color: var(--muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.2rem; }
+.sc-req-row .sc-cap-name { color: var(--accent); font-weight: 700; font-size: 0.92rem; }
+.sc-req-row .sc-cap-meta { color: var(--muted); font-size: 0.82rem; margin-top: 0.2rem; }
+
+@media (max-width: 640px) {
+  .sc-req-row { grid-template-columns: 1fr; }
+}
+
+.sc-status-pill {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  margin-left: 0.5rem;
+}
+.sc-status-production_active { background: #124a35; color: var(--green); }
+.sc-status-tested, .sc-status-integration_tested { background: #1e3a5f; color: #7db4ff; }
+.sc-status-demo_available { background: #4a3a12; color: var(--amber); }
+.sc-status-not_production_provisioned { background: #2a2e3a; color: var(--muted); }
+
+.sc-talking-points { padding-left: 1.1rem; margin: 0; }
+.sc-talking-points li { margin-bottom: 0.85rem; line-height: 1.6; font-size: 0.9rem; color: var(--text); }
+
+.sc-evidence-list { list-style: none; padding: 0; margin: 0; }
+.sc-evidence-list li { padding: 0.5rem 0; border-bottom: 1px solid var(--border); }
+.sc-evidence-list li:last-child { border-bottom: none; }
+.sc-evidence-list a { color: var(--accent); text-decoration: none; font-weight: 600; }
+.sc-evidence-list a:hover { text-decoration: underline; }
+
+.sc-caveat {
+  background: #1a1508;
+  border: 1px solid #4a3a12;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+  color: var(--amber);
+  margin-bottom: 1.5rem;
+}

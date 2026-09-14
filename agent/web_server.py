@@ -54,6 +54,7 @@ from agent_loop import run_agent_loop
 from execution_agent import EXECUTION_SYSTEM_PROMPT_SUFFIX
 import dashboard_data
 import demo_catalogue
+import showcase_data
 import demo_execution
 import estimation
 import event_ledger
@@ -1532,6 +1533,27 @@ async def usage_page(request: Request):
     return FileResponse(str(WEB_DIR / "usage.html"))
 
 
+async def showcase_page(request: Request):
+    """Job-specific showcase renderer (docs/PORTFOLIO_CAPABILITIES.yaml +
+    showcases/<slug>/showcase.yaml). Deliberately NOT linked from the
+    public top-nav (same treatment as /control-plane) — reachable by
+    direct URL only, pending an explicit Owner decision on public linking
+    given the 2026-09-13 Profile privacy precedent (see docs/COMPANY_VISION.md)."""
+    slug = request.path_params.get("slug", "")
+    if slug not in showcase_data.list_showcase_slugs():
+        return PlainTextResponse(f"404 — no showcase found for '{slug}'", status_code=404)
+    return FileResponse(str(WEB_DIR / "showcase.html"))
+
+
+async def get_showcase_data(request: Request):
+    slug = request.path_params.get("slug", "")
+    try:
+        showcase = await run_in_threadpool(showcase_data.load_showcase, slug)
+    except showcase_data.ShowcaseNotFoundError:
+        return JSONResponse({"error": f"no showcase found for '{slug}'"}, status_code=404)
+    return JSONResponse(showcase)
+
+
 async def get_session_history(request: Request):
     limit = int(request.query_params.get("limit", "20"))
     before = request.query_params.get("before")
@@ -1589,6 +1611,7 @@ routes = [
     Route("/api/learn/book.pdf", get_learn_book_pdf, methods=["GET"]),
     Route("/api/sessions/history", get_session_history, methods=["GET"]),
     Route("/api/sessions/history/{session_id}", get_session_detail, methods=["GET"]),
+    Route("/api/showcase/{slug}", get_showcase_data, methods=["GET"]),
     # Five public surfaces (see docs/COMPANY_VISION.md's public product
     # structure decision). "/" and "/workbench" both serve the same public
     # preview page — Workbench is the flagship/default landing surface.
@@ -1597,6 +1620,7 @@ routes = [
     Route("/dashboard", dashboard_page, methods=["GET"]),
     Route("/usage", usage_page, methods=["GET"]),
     Route("/usage/session/{session_id}", usage_page, methods=["GET"]),
+    Route("/showcase/{slug}", showcase_page, methods=["GET"]),
     Route("/learn", learn_page, methods=["GET"]),
     Route("/learn/{path:path}", learn_page, methods=["GET"]),
     # Retired public terminology — kept as redirects, not dead links.

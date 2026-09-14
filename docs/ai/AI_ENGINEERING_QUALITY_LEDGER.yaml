@@ -1,0 +1,557 @@
+# AI Engineering Quality Ledger
+#
+# Purpose: a durable, machine-readable record of real defects discovered
+# while building this platform with AI-assisted (Claude Code) delivery —
+# the raw material for docs/interview-scenarios/*, the Dashboard's "AI
+# Engineering Learning" view, and the Owner's own interview preparation.
+#
+# Source discipline: every entry below is reconstructed from
+# docs/LESSONS.md and docs/PROJECT_STATE.json's verification_state /
+# completed_capabilities — both already-committed, evidence-backed
+# records, not invented from memory. Where the exact original user/Owner
+# prompt was retained verbatim in those docs, it is quoted with
+# confidence: EXACT. Where only the resulting defect/fix is recorded and
+# the literal prompt text was not preserved, original_prompt is
+# NOT_RETAINED and confidence is INFERRED — the root-cause/fix narrative
+# itself is still real and evidenced (grep the cited file/line), only the
+# verbatim prompt wording is reconstructed from context, not quoted.
+#
+# recurrence_status values: NOT_RECURRED (fixed, no repeat observed),
+# RECURRED (same class of bug happened again elsewhere — see notes),
+# MONITORING (fix is new, not enough elapsed time/runs to know yet).
+
+ledger_version: 1
+generated_by: "Claude Sonnet 5, unattended portfolio-completion session, 2026-09-14"
+source_documents:
+  - docs/LESSONS.md
+  - docs/PROJECT_STATE.json (verification_state, completed_capabilities)
+
+defects:
+
+  - defect_id: AEQ-001
+    title: "Thinking-block-first response indexed positionally, not by type"
+    requirement_run_id: "V1 planner development"
+    original_prompt: "NOT_RETAINED"
+    analysis_confidence: INFERRED
+    model_provider_version: "Claude (V1 planner era)"
+    tools_context_used: "Anthropic Messages API, no tools yet"
+    model_interpreted_as: "content[0] is always the text block"
+    expected_behavior: "Extract the model's text answer from the response"
+    actual_behavior: "AttributeError — content[0] was a ThinkingBlock, not TextBlock"
+    stage_introduced: implementation
+    stage_detected: runtime_crash
+    detection_method: "real crash during a live V1 run"
+    root_cause: "Positional indexing into a heterogeneous content-block list instead of filtering by .type"
+    gaps:
+      prompt_gap: false
+      context_rag_gap: false
+      test_gap: true
+      test_oracle_gap: false
+      harness_gap: false
+      environment_gap: false
+      tool_deployment_gap: false
+    product_fix: "Filter response content blocks by .type explicitly everywhere they are consumed"
+    new_product_regression_test: "None dedicated; behavior re-exercised by every later agent_loop test"
+    new_harness_process_regression: "Documented as a standing rule in LESSONS.md's first entry"
+    future_prompt_clause_learned: "Never index content blocks positionally; a Claude response can start with a thinking block before text/tool_use."
+    deterministic_rule_or_tooling: "None automated — a lint/review rule, not enforced by a test"
+    commit: "pre-dates event ledger; recorded in docs/LESSONS.md"
+    production_evidence: "N/A (dev-time crash, never reached production)"
+    recurrence_status: NOT_RECURRED
+
+  - defect_id: AEQ-002
+    title: "Approval boolean not bound to what was actually approved"
+    requirement_run_id: "V4 write-boundary foundation"
+    original_prompt: "NOT_RETAINED"
+    analysis_confidence: INFERRED
+    model_provider_version: "N/A — deterministic Python boundary code, not a model output defect"
+    tools_context_used: "agent/write_tools.py propose/approve/apply flow"
+    model_interpreted_as: "N/A"
+    expected_behavior: "apply_edit() only ever applies the exact (path, content) a human approved"
+    actual_behavior: "A test proved that mutating edit.new_content/path after approval would be silently applied"
+    stage_introduced: implementation
+    stage_detected: pre_production_testing
+    detection_method: "deliberate adversarial unit test (test_write_tools.py)"
+    root_cause: "Approval recorded 'this ID was approved', not 'this exact snapshot was approved'"
+    gaps:
+      prompt_gap: false
+      context_rag_gap: false
+      test_gap: false
+      test_oracle_gap: true
+      harness_gap: false
+      environment_gap: false
+      tool_deployment_gap: false
+    product_fix: "approve_edit() stores sha256(path+content) as approved_binding; apply_edit() recomputes and refuses on mismatch"
+    new_product_regression_test: "agent/test_write_tools.py approval-binding integrity tests"
+    new_harness_process_regression: "General rule recorded: bind approval to a hash/snapshot, never a mutable reference"
+    future_prompt_clause_learned: "Any human-gate/approval step must hash-bind to the exact artifact shown, not a mutable ID."
+    deterministic_rule_or_tooling: "sha256 approval-binding check, enforced in code (not just a test)"
+    commit: "b724035 / 30da5ee"
+    production_evidence: "N/A (safety-boundary code, verified pre-production)"
+    recurrence_status: NOT_RECURRED
+
+  - defect_id: AEQ-003
+    title: "Substring check for forbidden tool name produced a false positive, masking whether the real security invariant held"
+    requirement_run_id: "V4.1 live execution wiring"
+    original_prompt: "NOT_RETAINED"
+    analysis_confidence: INFERRED
+    model_provider_version: "N/A — test-code defect, not a model defect"
+    tools_context_used: "agent/execution_tools.py tool schema set-membership check"
+    model_interpreted_as: "N/A"
+    expected_behavior: "Prove approve_edit/reject_edit are never reachable as model-callable tools"
+    actual_behavior: "any('approve' in n for n in tool_names) was True because apply_approved_source_change contains the substring 'approve' — not because approve_edit was exposed"
+    stage_introduced: test_authoring
+    stage_detected: code_review_during_same_task
+    detection_method: "manual inspection of the check's own logic before trusting it"
+    root_cause: "Substring search used where exact set membership was required for a security-boundary proof"
+    gaps:
+      prompt_gap: false
+      context_rag_gap: false
+      test_gap: false
+      test_oracle_gap: true
+      harness_gap: false
+      environment_gap: false
+      tool_deployment_gap: false
+    product_fix: "Replaced substring check with exact set-membership check ('approve_edit' in names)"
+    new_product_regression_test: "agent/test_execution_tools.py exact-membership assertions"
+    new_harness_process_regression: "Rule: when proving 'X is absent', use exact matching, never substring/regex"
+    future_prompt_clause_learned: "A security-boundary proof must use exact identity checks, not fuzzy string matching."
+    deterministic_rule_or_tooling: "Exact set-membership assertion pattern reused in later security tests"
+    commit: "e90eb0c"
+    production_evidence: "N/A"
+    recurrence_status: NOT_RECURRED
+
+  - defect_id: AEQ-004
+    title: "Claude Code development-telemetry hooks silently dropped by the harness's own permission-remember rewrite"
+    requirement_run_id: "Claude Code dev telemetry task"
+    original_prompt: "NOT_RETAINED"
+    analysis_confidence: EXACT
+    model_provider_version: "Claude Code v2.1.263 (binary strings verified directly)"
+    tools_context_used: ".claude/settings.local.json hooks configuration"
+    model_interpreted_as: "N/A — infra/config defect, not a model reasoning defect"
+    expected_behavior: "Every SessionStart/PreToolUse/etc. hook fires and records a dev-telemetry event"
+    actual_behavior: "Zero dev-telemetry events for at least two consecutive tasks — hooks silently absent from the live config"
+    stage_introduced: configuration
+    stage_detected: later_task_audit
+    detection_method: "direct SQL query against the live event ledger found zero rows for the expected session window"
+    root_cause: "Claude Code's permission-remember mechanism rewrites the ENTIRE .claude/settings.local.json on every auto-remembered permission grant, dropping any unmanaged top-level key including 'hooks' — reproduced twice by direct experiment"
+    gaps:
+      prompt_gap: false
+      context_rag_gap: false
+      test_gap: false
+      test_oracle_gap: false
+      harness_gap: true
+      environment_gap: false
+      tool_deployment_gap: true
+    product_fix: "Moved hooks config to the user-level ~/.claude/settings.json, which the rewrite path does not touch"
+    new_product_regression_test: "agent/verify_claude_hooks_config.py (checks this machine's real current configuration, not a mock)"
+    new_harness_process_regression: "docs/CONSTITUTION.md: a telemetry capability is verified only when the real producer emits an event AND the durable store contains it — passing script-level tests is necessary but not sufficient"
+    future_prompt_clause_learned: "Never place durable hook config in .claude/settings.local.json; verify telemetry end-to-end via the real store, not just config presence."
+    deterministic_rule_or_tooling: "agent/verify_claude_hooks_config.py, runnable any time"
+    commit: "see docs/RECOVERY.md 'Recovering Claude Code development-telemetry hooks'"
+    production_evidence: "Fresh session's real dev_session_started/tool_call rows independently confirmed in the live Postgres ledger (session_id 6bf306ac-a280-41df-b869-9f208ec2ca0d, 2026-09-10T18:32:37Z)"
+    recurrence_status: NOT_RECURRED
+
+  - defect_id: AEQ-005
+    title: "LOW-confidence token/cost estimate undershot real usage by 126% on a TINY requirement"
+    requirement_run_id: "trainer real public acceptance run, first fresh-container execution"
+    original_prompt: "Add a small \"Powered by Agentic Delivery\" footer line to the page"
+    analysis_confidence: EXACT
+    model_provider_version: "claude-sonnet-5"
+    tools_context_used: "agent/estimation.py heuristic fallback (fewer than 3 comparable historical runs)"
+    model_interpreted_as: "N/A — the model behaved correctly; the pre-run estimate was the defect"
+    expected_behavior: "Estimate range brackets the real token usage for a TINY/no-op requirement"
+    actual_behavior: "Heuristic predicted 3,000-9,000 total tokens; real run used 13,557 — 126% over the midpoint"
+    stage_introduced: implementation
+    stage_detected: production_run
+    detection_method: "real public acceptance run, actual usage compared to the pre-run estimate"
+    root_cause: "Investigation cost (reading a real file + a real mvn compile) dominates a small/no-op requirement's token spend; the heuristic sized only for expected code-generation cost"
+    gaps:
+      prompt_gap: false
+      context_rag_gap: false
+      test_gap: false
+      test_oracle_gap: false
+      harness_gap: false
+      environment_gap: false
+      tool_deployment_gap: false
+    product_fix: "None applied yet — deliberately left as an honestly LOW-confidence estimate; run's own usage_summary.estimate_error field records the miss for future recalibration"
+    new_product_regression_test: "N/A (deliberately deferred correction)"
+    new_harness_process_regression: "Future rule: widen estimation.py's heuristic ranges from measured estimate_error data, not intuition, once enough real history exists"
+    future_prompt_clause_learned: "Label size-of-change estimates as such; investigation cost for a TINY change is not proportional to the change's own size."
+    deterministic_rule_or_tooling: "estimate_error field persisted on every run for future recalibration"
+    commit: "see verification_state.workbench_target_app_and_cost_transparency"
+    production_evidence: "Real Anthropic API usage: 3 calls, 13,557 total tokens, $0.029602 (pricing_version verified against live Anthropic pricing 2026-09-10)"
+    recurrence_status: MONITORING
+
+  - defect_id: AEQ-006
+    title: "Dashboard economics display frozen at 'NOT CAPTURED YET' after the real capture layer already existed"
+    requirement_run_id: "Dashboard/Usage economics fix"
+    original_prompt: "NOT_RETAINED"
+    analysis_confidence: INFERRED
+    model_provider_version: "N/A — display/wiring defect"
+    tools_context_used: "agent/dashboard_data.py, agent/pricing_config.py, event ledger"
+    model_interpreted_as: "N/A"
+    expected_behavior: "Dashboard economics reflect real captured token/cost data"
+    actual_behavior: "Static hardcoded 'NOT CAPTURED YET'/'NOT CALCULATED YET' dict, even though real cost data (31,573 input / 2,797 output tokens / 5 API calls) already existed in the ledger"
+    stage_introduced: implementation
+    stage_detected: owner_observation
+    detection_method: "Owner directly observed a contradiction between two surfaces of the same product"
+    root_cause: "Two stacked bugs: (1) the display layer was written before the capture layer existed and never updated; (2) run_usage_summary events stored real data only in the JSONB payload column, invisible to column-based queries the display used"
+    gaps:
+      prompt_gap: false
+      context_rag_gap: false
+      test_gap: true
+      test_oracle_gap: false
+      harness_gap: false
+      environment_gap: false
+      tool_deployment_gap: false
+    product_fix: "_record_ledger_event extended to populate real columns for usage_summary events; event_ledger.get_usage_economics() added as genuine ledger-backed aggregation with COALESCE across old/new row shapes"
+    new_product_regression_test: "Economics aggregation tests exercising both payload-only and column-populated rows"
+    new_harness_process_regression: "Rule: when a new event type is added to a generic write-through bridge, explicitly decide whether its fields need real queryable columns, not just payload presence"
+    future_prompt_clause_learned: "'The data is captured somewhere' is not the same claim as 'any consumer can query it' — verify the actual consumer, not just the write path."
+    deterministic_rule_or_tooling: "get_usage_economics() as the single source every display now reads from"
+    commit: "see docs/LESSONS.md 'A display surface can silently drift...' entry"
+    production_evidence: "Dashboard/Usage now show real ledger-backed economics (last run/hour/today/lifetime)"
+    recurrence_status: NOT_RECURRED
+
+  - defect_id: AEQ-007
+    title: "'No test files exist' silently reused the same label as 'this change type cannot be tested'"
+    requirement_run_id: "Testing-state semantics fix"
+    original_prompt: "NOT_RETAINED"
+    analysis_confidence: INFERRED
+    model_provider_version: "N/A — policy/labeling defect"
+    tools_context_used: "agent/web_server.py::_determine_testing_state"
+    model_interpreted_as: "N/A"
+    expected_behavior: "A Java source change with real testable logic but zero existing test files is flagged as an actionable gap"
+    actual_behavior: "Labeled TESTING — NOT APPLICABLE, identical to a genuinely untestable static-HTML change"
+    stage_introduced: implementation
+    stage_detected: internal_review
+    detection_method: "manual review of the testing-state decision logic"
+    root_cause: "Two different real conditions (no test surface exists at all vs. testing should apply but nothing is configured) collapsed into one label"
+    gaps:
+      prompt_gap: false
+      context_rag_gap: false
+      test_gap: false
+      test_oracle_gap: true
+      harness_gap: false
+      environment_gap: false
+      tool_deployment_gap: false
+    product_fix: "Explicit PASSED/FAILED/NOT_APPLICABLE/NOT_CONFIGURED/SKIPPED states, decided from real checkable facts"
+    new_product_regression_test: "New testing-state decision tests covering each of the 5 states"
+    new_harness_process_regression: ".claude/skills/test-change/SKILL.md encodes this taxonomy going forward"
+    future_prompt_clause_learned: "Never let 'not applicable' cover both a benign case and an actionable gap under one label."
+    deterministic_rule_or_tooling: "_determine_testing_state's 5-state decision function"
+    commit: "see docs/LESSONS.md 'No test files exist...' entry"
+    production_evidence: "N/A (policy-layer fix, verified via unit tests)"
+    recurrence_status: NOT_RECURRED
+
+  - defect_id: AEQ-008
+    title: "Deployed container's own local git/filesystem state used as the go/no-go signal for a separate deployed service"
+    requirement_run_id: "Reset Demo lifecycle build"
+    original_prompt: "NOT_RETAINED"
+    analysis_confidence: INFERRED
+    model_provider_version: "N/A — architecture/design defect"
+    tools_context_used: "agent/demo_execution.py Reset Demo baseline check"
+    model_interpreted_as: "N/A"
+    expected_behavior: "Reset Demo correctly detects whether the live Customer App needs restoring to baseline"
+    actual_behavior: "Falsely reported 'already at baseline' while production still showed the prior demo's change, because the check read the orchestrating container's own local file, not the actually-deployed target service"
+    stage_introduced: implementation
+    stage_detected: adversarial_live_testing
+    detection_method: "independent curl of the real live Customer App, not trusting the pipeline's own report"
+    root_cause: "Orchestrator and deploy target are separate, independently-redeployable services; a redeploy of the orchestrator silently resets its own local file to baseline regardless of the real target's state"
+    gaps:
+      prompt_gap: false
+      context_rag_gap: false
+      test_gap: true
+      test_oracle_gap: true
+      harness_gap: false
+      environment_gap: false
+      tool_deployment_gap: true
+    product_fix: "Any go/no-go or already-done check for a deployed target must query that target's own live behavior directly, never the orchestrator's local state"
+    new_product_regression_test: "Reset-demo tests asserting live-target-first checks"
+    new_harness_process_regression: "General architecture rule recorded in docs/LESSONS.md, cited by ACT-007's redesign"
+    future_prompt_clause_learned: "When orchestrator and deploy target are different processes, every 'is this already correct' decision must ask the target directly."
+    deterministic_rule_or_tooling: "Live-target-first check pattern reused by later deployment-identity work (AEQ-009)"
+    commit: "see verification_state.job_search_live_demo_p0"
+    production_evidence: "Live curl confirmed genuine restore to canonical baseline after the fix, on the third real run"
+    recurrence_status: NOT_RECURRED
+
+  - defect_id: AEQ-009
+    title: "New-deployment identity decided by mere ID difference from a stale reference, not recency"
+    requirement_run_id: "WORKBENCH RELIABILITY P0"
+    original_prompt: "NOT_RETAINED"
+    analysis_confidence: EXACT
+    model_provider_version: "N/A — deployment-identity logic defect"
+    tools_context_used: "agent/demo_execution.py wait_for_new_deployment()"
+    model_interpreted_as: "N/A"
+    expected_behavior: "The pipeline correctly identifies the deployment it just triggered as SUCCESS"
+    actual_behavior: "Matched an unrelated deployment that had genuinely FAILED 46 minutes earlier, reporting the whole pipeline FAILED even though the real new deployment had succeeded and production was already correct"
+    stage_introduced: implementation
+    stage_detected: real_production_run_failure
+    detection_method: "raw GET /api/runs/<id> event payload cross-referenced by hand against railway deployment list --json"
+    root_cause: "Matching by id-inequality from a captured 'previous id' instead of filtering by real creation timestamp after the trigger moment"
+    gaps:
+      prompt_gap: false
+      context_rag_gap: false
+      test_gap: true
+      test_oracle_gap: true
+      harness_gap: false
+      environment_gap: false
+      tool_deployment_gap: true
+    product_fix: "Record deploy_triggered_after_iso before triggering; filter candidates by createdAt > deploy_triggered_after_iso"
+    new_product_regression_test: "DeploymentIdentityTestCase with a constructed counterexample fixture"
+    new_harness_process_regression: "Rule: never identify 'the new deployment' by difference from a prior ID; verify recency directly"
+    future_prompt_clause_learned: "'New' means 'created after I triggered it', never 'not equal to some earlier id I happened to note.'"
+    deterministic_rule_or_tooling: "Timestamp-filtered deployment matching, reused in backend_execution.py"
+    commit: "see docs/LESSONS.md 'Never identify the new deployment...' entry"
+    production_evidence: "5th real acceptance-run attempt passed in 2.2 minutes, independently curl-verified"
+    recurrence_status: NOT_RECURRED
+
+  - defect_id: AEQ-010
+    title: "Synchronous DB queries inside async route handlers froze the entire service under one stuck connection"
+    requirement_run_id: "WORKBENCH RELIABILITY P0, P0 reliability incident"
+    original_prompt: "NOT_RETAINED"
+    analysis_confidence: EXACT
+    model_provider_version: "N/A — real production incident, architecture defect"
+    tools_context_used: "agent/web_server.py async route handlers, agent/event_ledger.py Postgres connections"
+    model_interpreted_as: "N/A"
+    expected_behavior: "/api/dashboard and all other routes stay reachable regardless of one slow DB call"
+    actual_behavior: "EVERY route on the service became simultaneously unreachable after a routine deploy, despite clean startup logs"
+    stage_introduced: implementation
+    stage_detected: real_production_incident
+    detection_method: "direct pg_stat_activity query, not guessed"
+    root_cause: "One Postgres connection idle-in-transaction for 963s blocked ensure_schema()'s DDL, which nearly every request path calls first; compounded by 4 handlers running sync DB queries directly on the asyncio event loop, so one stuck query froze every concurrent request"
+    gaps:
+      prompt_gap: false
+      context_rag_gap: false
+      test_gap: true
+      test_oracle_gap: false
+      harness_gap: false
+      environment_gap: true
+      tool_deployment_gap: false
+    product_fix: "run_in_threadpool for all 4 handlers; 15s statement_timeout; 30s idle_in_transaction_session_timeout on every event-ledger connection"
+    new_product_regression_test: "N/A — infra-timeout fix, verified live (concurrent requests no longer block)"
+    new_harness_process_regression: "Rule: any sync, potentially-slow I/O inside an async def handler must be wrapped in run_in_threadpool; any long-lived DB pool must carry both timeouts from the start"
+    future_prompt_clause_learned: "A clean startup log is not proof of a healthy service under load — verify with a direct query against the actual stuck resource."
+    deterministic_rule_or_tooling: "statement_timeout + idle_in_transaction_session_timeout applied at connection-open time, not reactively"
+    commit: "4e15656"
+    production_evidence: "ensure_schema() back to ~1.2s from a 12-17s timeout; concurrent requests independently confirmed no longer blocking each other"
+    recurrence_status: NOT_RECURRED
+
+  - defect_id: AEQ-011
+    title: "Spring Boot 4 modularized FlywayAutoConfiguration — flyway-core alone silently does nothing"
+    requirement_run_id: "Flagship Postgres/Flyway CI integration"
+    original_prompt: "NOT_RETAINED"
+    analysis_confidence: EXACT
+    model_provider_version: "N/A — dependency/framework-version defect"
+    tools_context_used: "GitHub Actions CI, real Testcontainers Postgres"
+    model_interpreted_as: "spring.flyway.enabled property precedence was the problem (two earlier fix attempts, both wrong)"
+    expected_behavior: "Flyway migrations run against the real Postgres CI database"
+    actual_behavior: "Zero Flyway log lines; Hibernate reported 'Schema validation: missing table' — three consecutive real CI failures"
+    stage_introduced: implementation
+    stage_detected: ci_pipeline
+    detection_method: "decompiled the actual FlywayAutoConfiguration class bytecode (javap) to verify its real @ConditionalOnProperty condition existed at all — it did not, because the class was never on the classpath"
+    root_cause: "Spring Boot 4 split FlywayAutoConfiguration into its own module (spring-boot-flyway), separate from the flyway-core library dependency already present"
+    gaps:
+      prompt_gap: false
+      context_rag_gap: true
+      test_gap: false
+      test_oracle_gap: false
+      harness_gap: false
+      environment_gap: false
+      tool_deployment_gap: false
+    product_fix: "Added explicit spring-boot-flyway dependency; reverted a compounding single-file multi-document properties bug to genuinely separate profile files"
+    new_product_regression_test: "PostgresFlywayIntegrationTest, real Testcontainers-backed, runs in CI"
+    new_harness_process_regression: "Rule: verify every autoconfiguration-providing module is an explicit dependency after a major framework version bump; don't debug property precedence before confirming the consuming @Configuration class is even on the classpath"
+    future_prompt_clause_learned: "For a fast-moving framework's major version, treat 'library present' and 'its Spring Boot autoconfiguration glue present' as two separate facts to verify."
+    deterministic_rule_or_tooling: "mvn dependency:tree + javap decompilation as the standard diagnostic for 'is this autoconfiguration class even present'"
+    commit: "f33e1a4"
+    production_evidence: "43/43 Java tests passing in CI with zero skips, confirming Testcontainers Postgres tests genuinely executed"
+    recurrence_status: NOT_RECURRED
+
+  - defect_id: AEQ-012
+    title: "JPQL LOWER/CONCAT around a nullable bind parameter passed on H2 and produced a real production 500 on Postgres"
+    requirement_run_id: "ADMIN All Customers dashboard, search/pagination"
+    original_prompt: "NOT_RETAINED"
+    analysis_confidence: EXACT
+    model_provider_version: "claude-sonnet-5"
+    tools_context_used: "Spring Data JPQL, real Railway logs"
+    model_interpreted_as: "N/A — code compiled and passed the full local H2 suite"
+    expected_behavior: "GET /admin/customers?name=... returns a real filtered result set in production"
+    actual_behavior: "Real production 500: org.postgresql.util.PSQLException: function lower(bytea) does not exist"
+    stage_introduced: implementation
+    stage_detected: production_run
+    detection_method: "direct railway logs, not guessed"
+    root_cause: "PostgreSQL's JDBC driver could not infer a concrete type for a nullable String bound through Hibernate's JPQL CONCAT translation, defaulting to bytea — a gap the H2 test profile has no equivalent for"
+    gaps:
+      prompt_gap: false
+      context_rag_gap: false
+      test_gap: true
+      test_oracle_gap: true
+      harness_gap: false
+      environment_gap: true
+      tool_deployment_gap: false
+    product_fix: "Pre-build the full lowercased LIKE pattern in Java and bind it as a plain String, never wrapping the bind parameter itself in CONCAT/LOWER"
+    new_product_regression_test: "adminCustomerSearch_byNameAndEmail_worksAgainstRealPostgres_notJustH2 in PostgresFlywayIntegrationTest (real Testcontainers Postgres, runs in CI)"
+    new_harness_process_regression: "Rule: a green H2-only suite is not proof a JPQL query using LOWER/CONCAT/LIKE around a nullable parameter works on the real target database"
+    future_prompt_clause_learned: "Any nullable-parameter string-function query needs a real Postgres check before being trusted, regardless of H2 test results."
+    deterministic_rule_or_tooling: "Real-Postgres regression test added to the existing Testcontainers suite so CI proves this going forward"
+    commit: "9f35f27"
+    production_evidence: "Redeployed (b52652dc, SUCCESS); independently re-verified live that empty/name/email/customerId/no-result searches all return correct 200s"
+    recurrence_status: NOT_RECURRED
+
+  - defect_id: AEQ-013
+    title: "First genuine end-to-end AI backend delivery run surfaced 3 independent bugs in 3 different layers, each invisible to existing mocked tests"
+    requirement_run_id: "Priority 4 — one real end-to-end AI backend delivery run (ACT-008)"
+    original_prompt: "Change the customer-not-found message to \"Customer record not found\""
+    analysis_confidence: EXACT
+    model_provider_version: "claude-sonnet-5"
+    tools_context_used: "MCP search_project_context, backend RAG corpus, real mvnw compile/test, real Railway deploy"
+    model_interpreted_as: "Correctly interpreted the requirement and produced grounded impact analysis (verified by the deterministic groundedness checker)"
+    expected_behavior: "Full pipeline (context retrieval -> LLM analysis -> compile/test -> commit -> deploy -> production assertion -> restore) completes cleanly on its first genuine run"
+    actual_behavior: "Three real bugs surfaced: (1) missing bearer token in the internal fetch helper — caught cleanly by the fail-closed baseline check; (2) local dev machine's system clock ~6.5 minutes ahead of true UTC, making every genuinely-new deployment look older than its own trigger time, causing two false 900s TIMEOUTs; (3) no cutover retry window on the production content assertion, causing a false FAILED against a deploy that was already correct moments later"
+    stage_introduced: implementation
+    stage_detected: first_real_execution
+    detection_method: "actually running the previously unit-tested-only pipeline end to end for the first time, then independently cross-checking every step via curl / railway logs / railway deployment list"
+    root_cause: "Each of the three bugs lived exactly at a boundary every existing unit test mocked (auth header, system clock, cutover timing) — unit tests could not have caught any of them by construction"
+    gaps:
+      prompt_gap: false
+      context_rag_gap: false
+      test_gap: false
+      test_oracle_gap: true
+      harness_gap: false
+      environment_gap: true
+      tool_deployment_gap: true
+    product_fix: "(1) attach a real anonymous demo JWT to the internal fetch; (2) server_verified_now_iso() reads a real HTTP Date header from a live Railway URL instead of the local clock; (3) assert_production_field_with_retry(), the same bounded-retry pattern already proven for the static demo path, reused not reinvented"
+    new_product_regression_test: "N/A for the clock/timeout fixes (verified via real re-runs); existing backend_execution/backend_catalogue suites unaffected"
+    new_harness_process_regression: "General lesson: the first real run of a previously-mocked-only pipeline is exactly when accumulated untested assumptions surface — not optional verification theater"
+    future_prompt_clause_learned: "'AI does not certify its own work' applies to the pipeline's own PASS/FAIL banner too — independently cross-check via curl/logs, not the script's self-report."
+    deterministic_rule_or_tooling: "server_verified_now_iso() and assert_production_field_with_retry() now the standard pattern for any future deploy-verification code"
+    commit: "8c40687"
+    production_evidence: "Real probe message independently confirmed live via direct curl; full restore cycle independently confirmed via a second curl"
+    recurrence_status: NOT_RECURRED
+
+  - defect_id: AEQ-014
+    title: "self-test claiming to check 'the real baseline file' actually read a separately-committed, long-stale copy — which also backed a real production restore button"
+    requirement_run_id: "PORTFOLIO COMPLETION PUSH, wiring the USER/ADMIN login gate"
+    original_prompt: "NOT_RETAINED"
+    analysis_confidence: EXACT
+    model_provider_version: "N/A — discovered during unrelated feature work, not a model-output defect"
+    tools_context_used: "agent/demo_catalogue.py _self_test(), agent/demo_baseline/index.html"
+    model_interpreted_as: "N/A"
+    expected_behavior: "demo_catalogue's anchor patterns match the real, current Customer App HTML; RESTORE PRODUCTION BASELINE writes back the real current canonical state"
+    actual_behavior: "3 of 5 publicly-advertised demo operations were silently unusable; had the restore button been clicked, it would have overwritten the live Postgres-backed app with an ancient Find/Create-Customer page"
+    stage_introduced: implementation
+    stage_detected: incidental_discovery_during_unrelated_work
+    detection_method: "noticed while editing the real file that a separately-committed fixture copy had drifted"
+    root_cause: "A fixture file that was supposed to always mirror the real file was maintained by hand and drifted silently, with no test comparing it to the actual live file"
+    gaps:
+      prompt_gap: false
+      context_rag_gap: false
+      test_gap: true
+      test_oracle_gap: true
+      harness_gap: false
+      environment_gap: false
+      tool_deployment_gap: false
+    product_fix: "Refreshed the fixture to an exact copy of the current real file; retargeted anchors onto stable element ids; retired 2 anchors for UI that no longer exists"
+    new_product_regression_test: "N/A immediate; general rule recorded"
+    new_harness_process_regression: "Prefer a single source of truth over 'two things that should always match' — if a self-test's purpose is verifying against the real artifact, make sure it actually reads that artifact"
+    future_prompt_clause_learned: "A fixture claimed to mirror production must either BE the production file (no second copy) or have its own drift-detection test."
+    deterministic_rule_or_tooling: "None automated yet — an open recommendation, not yet enforced by a test"
+    commit: "see docs/LESSONS.md 'A self-test against the real baseline file...' entry"
+    production_evidence: "Caught before the restore button was ever clicked against production — no actual production data loss occurred"
+    recurrence_status: NOT_RECURRED
+
+  - defect_id: AEQ-015
+    title: "RAG whole-repo indexer silently truncated at 200 files by reusing an LLM-display-budget function"
+    requirement_run_id: "PORTFOLIO COMPLETION PUSH, clean-baseline verification"
+    original_prompt: "NOT_RETAINED"
+    analysis_confidence: EXACT
+    model_provider_version: "N/A — indexing pipeline defect"
+    tools_context_used: "agent/rag_index.py, agent/tools.py list_repository_files()"
+    model_interpreted_as: "N/A"
+    expected_behavior: "The whole-repo RAG index contains every indexable file"
+    actual_behavior: "Every indexable file sorted alphabetically past position 200 was silently never indexed once the repo grew past 200 files"
+    stage_introduced: implementation
+    stage_detected: test_failure_investigation
+    detection_method: "a test fixture file happened to sort past position 200, causing 4 test failures that were investigated rather than dismissed as flaky"
+    root_cause: "rag_index.py reused tools.list_repository_files(), whose contract is intentionally truncated for LLM token-budget display, for exhaustive enumeration instead"
+    gaps:
+      prompt_gap: false
+      context_rag_gap: true
+      test_gap: false
+      test_oracle_gap: false
+      harness_gap: false
+      environment_gap: false
+      tool_deployment_gap: false
+    product_fix: "New tools.list_all_repository_files() (exhaustive, non-LLM-facing) via a shared _walk_repository_files() helper; rag_index.py switched to the exhaustive one"
+    new_product_regression_test: "RAG index fixture-isolation regression tests"
+    new_harness_process_regression: "Rule: a function whose contract includes 'truncate for display/budget reasons' must never be reused by a caller needing complete, correct enumeration"
+    future_prompt_clause_learned: "When adding a second consumer of an existing utility function, re-check whether that function's original contract (e.g. 'truncated for display') still fits the new use case."
+    deterministic_rule_or_tooling: "_walk_repository_files() as the single untruncated source of truth, with two typed wrappers (truncated-for-display vs. exhaustive)"
+    commit: "b3d6856"
+    production_evidence: "531 Python tests, 0 failures, 1 pre-existing skip after the fix"
+    recurrence_status: NOT_RECURRED
+
+  - defect_id: AEQ-016
+    title: "Local dev-machine RAM exhaustion killed the backend acceptance script mid-test-phase (harness-level kill, not a Java OOM)"
+    requirement_run_id: "Priority 4 real AI backend delivery run, repeated attempts"
+    original_prompt: "NOT_RETAINED"
+    analysis_confidence: EXACT
+    model_provider_version: "N/A — local environment resource constraint"
+    tools_context_used: "mvnw test (full embedded Spring Boot context: Tomcat, Hibernate, Flyway, Actuator) alongside a long browser-automation-heavy session"
+    model_interpreted_as: "N/A"
+    expected_behavior: "backend_acceptance.py completes its full pipeline in one script invocation"
+    actual_behavior: "OS/harness killed the process outright (not a Java-level OutOfMemoryError) at the mvnw-test phase in 2 of 4 total attempts, with free RAM observed as low as 1.7GB of 15.8GB total"
+    stage_introduced: environment
+    stage_detected: repeated_real_runs
+    detection_method: "direct OS memory inspection (Get-CimInstance Win32_OperatingSystem) correlated with kill timing"
+    root_cause: "A long, browser-automation-heavy Claude Code session and a real JVM test-boot process competing for memory on one dev machine with a 15.8GB ceiling"
+    gaps:
+      prompt_gap: false
+      context_rag_gap: false
+      test_gap: false
+      test_oracle_gap: false
+      harness_gap: false
+      environment_gap: true
+      tool_deployment_gap: false
+    product_fix: "MAVEN_OPTS=-Xmx512m applied proactively before any mvnw test invocation; free-memory check recommended before spawning a real JVM test process"
+    new_product_regression_test: "N/A — environmental mitigation, not a code fix"
+    new_harness_process_regression: "Rule: a mid-test-phase kill in this pipeline's design happens before any commit/deploy step, so verify real external state (production content) rather than assuming inconsistency"
+    future_prompt_clause_learned: "Before running anything that spawns a real JVM test process on this machine, check free memory first and set a conservative MAVEN_OPTS proactively."
+    deterministic_rule_or_tooling: "MAVEN_OPTS=-Xmx512m as a standing recommendation for this environment"
+    commit: "see verification_state.priority4_real_ai_backend_delivery_run_2026_09_14"
+    production_evidence: "One full run completed successfully end-to-end once memory allowed it; production independently confirmed never left inconsistent after any kill (kills always occurred before any commit/deploy step)"
+    recurrence_status: MONITORING
+    notes: "NOTE for the 2026-09-14 Railway-OOM-email incident investigated this same session: this entry is about LOCAL machine RAM, not a Railway-hosted container. See RWY-001 below for the Railway-specific investigation — the two are related in kind (memory pressure under a long automation-heavy session) but were never confirmed to be the same event."
+
+  - defect_id: RWY-001
+    title: "Railway 'Deployment crashed' / 'Deploy Ran Out Of Memory' email alerts — investigated, not reproduced in available evidence"
+    requirement_run_id: "Unattended portfolio-completion session, Railway OOM incident investigation"
+    original_prompt: "Owner reported receiving multiple Railway emails: 'Deployment crashed' and 'Deploy Ran Out Of Memory'."
+    analysis_confidence: INFERRED
+    model_provider_version: "N/A — infrastructure investigation"
+    tools_context_used: "railway CLI (deployment list --json, logs --build, logs --deployment) against both live services"
+    model_interpreted_as: "N/A"
+    expected_behavior: "Determine which service crashed, build-time vs runtime OOM, and current production health"
+    actual_behavior: "Both agentic-delivery-customer-app and agentic-platform-backend (agentic-delivery-events project) show ONLY SUCCESS/REMOVED in their last 20 deployments each (20/20 and 20/20) as of this investigation; both report Online with clean startup logs; the most recent build log for each shows no memory warnings and completes cleanly"
+    stage_introduced: unknown
+    stage_detected: owner_report
+    detection_method: "railway deployment list --json (deployment-level status), railway logs --build and --deployment (log-level inspection) for both services, direct curl health checks"
+    root_cause: "NOT CONCLUSIVELY ESTABLISHED. No CRASHED/failed deployment-level status was found in the visible recent history for either service, and current logs are clean. Two plausible, non-exclusive explanations neither confirmed nor ruled out: (a) the very high same-day deploy cadence (20 deploys per service within ~16 hours during the prior PORTFOLIO COMPLETION PUSH session) may have transiently stressed Railway's build resources for a run this investigation's limited history window cannot see; (b) this may be a report of the SAME class of memory pressure already documented in AEQ-016, but on the local dev machine rather than Railway's infrastructure, and conflated in the Owner's description."
+    gaps:
+      prompt_gap: false
+      context_rag_gap: false
+      test_gap: false
+      test_oracle_gap: false
+      harness_gap: false
+      environment_gap: true
+      tool_deployment_gap: true
+    product_fix: "None applied — per this task's own 'no blind retry' instruction, no destabilizing change was made to a currently-healthy production service on unconfirmed root cause"
+    new_product_regression_test: "N/A"
+    new_harness_process_regression: "Recorded as an open action item (docs/ACTION_QUEUE.json: RAILWAY-OOM-INVESTIGATION) rather than silently closed or blindly 'fixed'"
+    future_prompt_clause_learned: "When an infra alert cannot be reproduced from available deployment/log evidence and current production is healthy, do not destabilize it experimenting — record the honest investigation result and continue other work."
+    deterministic_rule_or_tooling: "None yet — future recommendation: reduce same-session deploy cadence during heavy iterative Workbench testing, and check Railway's usage/metrics dashboard directly (not available via this session's CLI access) for historical memory graphs the CLI does not expose"
+    commit: "N/A — investigation only, no code change"
+    production_evidence: "Both services independently confirmed Online/healthy at investigation time (2026-09-14): platform-backend HTTP 200 on /workbench, customer-app HTTP 401 on an authenticated-only route (correct post-JWT-rollout behavior, not a crash)"
+    recurrence_status: MONITORING
