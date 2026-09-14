@@ -623,3 +623,26 @@ surprising verified behavior would otherwise get rediscovered later.
   plus, if still unsure, decompiling the actual class's conditions is
   cheap and conclusive — cheaper than three more guess-and-check CI
   cycles).
+
+- **The customer-app Railway service does not auto-deploy on `git push` —
+  only `railway up`/`railway redeploy` actually ships new code.** Context:
+  the Postgres production cutover (setting `SPRING_PROFILES_ACTIVE=postgres`
+  via `railway variable set`) triggered a Railway "redeploy", which
+  restarted the *existing built image* rather than rebuilding from the
+  latest commit. Evidence: the restarted container logged the "postgres"
+  profile as active yet still connected to `jdbc:h2:mem:customerdb` and
+  found only 1 of the 3 real JPA repositories — proving the running image
+  predated same-session commits (`f33e1a4`, `bc632aa`) by hours, even
+  though `origin/master` was already up to date. Root cause: unlike the
+  platform-backend (deployed via its own explicit `railway up` calls in
+  `demo_execution.py`/`backend_execution.py`), the customer-app Railway
+  service has no GitHub-push-triggered build configured — every prior
+  customer-app deploy in this project's history was itself triggered by an
+  explicit `railway up` call (a Workbench/backend-acceptance run or a
+  manual one), never by pushing to GitHub alone. **Lesson:** before trusting
+  that a production Railway service reflects the latest commit, check the
+  deployment's own `createdAt` against the commit timestamp you expect it
+  to contain — do not assume "the code is on `origin/master`" implies "the
+  running container has it." A config-only change (env var, profile flip)
+  can silently redeploy stale code if the last real build predates the
+  feature depending on that config.
