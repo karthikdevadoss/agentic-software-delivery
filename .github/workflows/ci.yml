@@ -46,15 +46,15 @@ jobs:
             summary=$(grep -E "Tests run: [0-9]+, Failures: [0-9]+, Errors: [0-9]+" "$f" | tail -1)
             if [ -n "$summary" ] && ! echo "$summary" | grep -qE "Failures: 0, Errors: 0"; then
               name=$(basename "$f" .txt)
-              # HEAD, not tail: when a class's context fails once, every
-              # subsequent test method in that class repeats the same
-              # generic "ApplicationContext failure threshold exceeded"
-              # cascade message -- the real, first, underlying exception
-              # sits at the START of the file, before those repeats push
-              # it out of a tail-based excerpt (a real gap hit this exact
-              # session: two prior "fixes" only ever showed the cascade).
-              excerpt=$(head -c 6000 "$f" | tr '\n' ' ' | tr '\r' ' ')
-              echo "::error title=${name}::${excerpt}"
+              # The real exception sits behind a wall of Spring/JUnit
+              # framework boilerplate frames before the first "Caused by:"
+              # -- a plain head/tail excerpt is dominated by that
+              # boilerplate and never reaches it. Print the summary line
+              # plus every "Caused by:" line (with a little trailing
+              # context each) instead, which is where the actual defect is.
+              summary_line=$(grep -m1 "Tests run:" "$f")
+              caused_by=$(grep -A3 "Caused by:" "$f" | tr '\n' ' ' | tr '\r' ' ' | head -c 5000)
+              echo "::error title=${name}::${summary_line} ||| ${caused_by}"
             fi
           done
 
