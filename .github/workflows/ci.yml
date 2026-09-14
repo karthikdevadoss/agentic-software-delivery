@@ -15,7 +15,7 @@ jobs:
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
           cache: maven
       # GitHub-hosted ubuntu-latest runners have a Docker daemon available
       # by default, so PostgresFlywayIntegrationTest's real Testcontainers
