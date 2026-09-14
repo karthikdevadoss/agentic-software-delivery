@@ -46,9 +46,24 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
+        <!-- THE ACTUAL ROOT CAUSE of a real CI failure (@KafkaListener never
+             fired at all, silently): the same class of bug this project
+             already hit with Flyway (see docs/LESSONS.md): Spring Boot 4
+             split KafkaAutoConfiguration out into its own module,
+             spring-boot-kafka, exactly like spring-boot-flyway/
+             spring-boot-jackson. org.springframework.kafka:spring-kafka
+             alone is the Kafka LIBRARY (confirmed via `mvn dependency:tree`:
+             no spring-boot-kafka anywhere on the classpath), not Spring
+             Boot's autoconfiguration/@EnableKafka-equivalent glue that
+             actually registers @KafkaListener methods as real listeners:
+             without it, KafkaTemplate still worked (this project defines
+             its own explicit ProducerFactory/KafkaTemplate beans, needing
+             no autoconfiguration), but every @KafkaListener method was
+             silently never registered at all. spring-boot-starter-kafka is
+             the correct, Boot-blessed way to depend on Kafka support. -->
         <dependency>
-            <groupId>org.springframework.kafka</groupId>
-            <artifactId>spring-kafka</artifactId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-kafka</artifactId>
         </dependency>
         <dependency>
             <groupId>io.micrometer</groupId>
@@ -172,8 +187,8 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.springframework.kafka</groupId>
-            <artifactId>spring-kafka-test</artifactId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-kafka-test</artifactId>
             <scope>test</scope>
         </dependency>
         <!-- The modern (2.x) module is testcontainers-kafka, matching the

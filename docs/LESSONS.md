@@ -631,8 +631,12 @@ surprising verified behavior would otherwise get rediscovered later.
   error pointing at the *closing* `-->`, which is misleading — the real
   offending token is the earlier mid-comment `--` used as an em-dash
   substitute. Fix: never use `--` for punctuation inside an XML/HTML
-  comment; use `:` or a real em-dash character instead. Worth a quick
-  `grep -nE '\-\-[^>]' pom.xml` after editing any comment if in doubt.
+  comment; use `:` or a real em-dash character instead. A single-line
+  `grep -nE '\-\-[^>]'` is NOT reliable — it misses a `--` sitting at
+  the very end of a line (the next character is on the following
+  line, outside that grep match, which is exactly how this bit twice
+  more in the same session after the check was first written). Check
+  the whole comment body instead: `perl -0777 -ne 'for (/<!--(.*?)-->/gs) { print "VIOLATION\n" if /--/ }' pom.xml`.
 
 - **The customer-app Railway service does not auto-deploy on `git push` —
   only `railway up`/`railway redeploy` actually ships new code.** Context:
