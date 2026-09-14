@@ -61,9 +61,26 @@ TEST_VALUE = "Customer record not found (ACT-008 verification probe)"
 EXPECTED_BASELINE = "Customer not found"
 
 
+def _fetch_demo_token():
+    """A real anonymous demo JWT (POST /auth/demo-token, zero setup) --
+    fetched fresh on every _fetch() call below (cheap, avoids any expiry
+    bookkeeping across this script's two multi-minute deploy cycles).
+    Every /customers/** endpoint now requires authentication (the real
+    Spring Security JWT resource-server rollout, plus this session's own
+    persona-login work) -- this script predates both and originally
+    called _fetch() with no Authorization header at all, which is
+    exactly the real bug this fixes (see docs/LESSONS.md)."""
+    req = urllib.request.Request(f"{PUBLIC_CUSTOMER_APP_URL}/auth/demo-token", method="POST")
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        import json
+        return json.loads(resp.read().decode("utf-8"))["access_token"]
+
+
 def _fetch(url):
     try:
-        with urllib.request.urlopen(url, timeout=15) as resp:
+        token = _fetch_demo_token()
+        req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
+        with urllib.request.urlopen(req, timeout=15) as resp:
             return resp.status, resp.read().decode("utf-8", errors="replace")
     except urllib.error.HTTPError as exc:
         return exc.code, exc.read().decode("utf-8", errors="replace")
@@ -129,7 +146,7 @@ def run_one_cycle(new_value: str, label: str):
         push_status, push_out = de.push_change(workspace, branch)
         print(f"  GitHub push: {push_status}" + (f" ({push_out[-200:]})" if push_status != de.PUSH_STATUS_PUSHED else ""))
 
-        deploy_triggered_after = de.utc_now_iso()
+        deploy_triggered_after = de.server_verified_now_iso(PUBLIC_CUSTOMER_APP_URL)
         print("  triggering real Railway deploy...")
         deploy_ok, deploy_out = de.trigger_deploy(workspace / "app", CUSTOMER_APP_PROJECT_ID, RAILWAY_SERVICE_NAME, RAILWAY_ENVIRONMENT)
         if not deploy_ok:
@@ -144,12 +161,12 @@ def run_one_cycle(new_value: str, label: str):
         if not identity_confirmed:
             return False
 
-        print("  verifying the real live production API...")
+        print("  verifying the real live production API (retrying through the deploy-cutover window if needed)...")
         probe_url = f"{PUBLIC_CUSTOMER_APP_URL}/customers/{PROBE_NOT_FOUND_ID}"
-        status, body, live_value, matched = be.assert_production_field(
+        status, body, live_value, matched = be.assert_production_field_with_retry(
             _fetch, probe_url,
             lambda b: bc.extract_value_from_not_found_api_response(b, "customer_not_found_message"),
-            new_value,
+            new_value, identity_confirmed,
         )
         print(f"  GET {probe_url} -> HTTP {status}, body={body!r}")
         print(f"  live_value={live_value!r}, expected={new_value!r}, matched={matched}")

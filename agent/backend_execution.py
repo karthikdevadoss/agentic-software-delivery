@@ -25,6 +25,7 @@ end-to-end proof this foundation was verified with.
 """
 
 import platform
+import time
 from pathlib import Path
 
 import demo_execution
@@ -78,3 +79,34 @@ def assert_production_field(fetch_fn, url: str, extract_fn, expected_value: str)
     status, body = fetch_fn(url)
     live_value = extract_fn(body) if body else None
     return status, body, live_value, live_value is not None and live_value == expected_value
+
+
+def assert_production_field_with_retry(fetch_fn, url: str, extract_fn, expected_value: str,
+                                        deployment_identity_confirmed: bool,
+                                        max_wait_s: int = 90, poll_interval_s: int = 10):
+    """Real gap found live (2026-09-14, this exact ACT-008 pipeline's
+    first genuine end-to-end run, TWICE in the same run): Railway's own
+    deployment record can report SUCCESS while the actual traffic-
+    serving container has not yet fully replaced the old one (or is
+    still mid-startup -- this project's real embedded H2/Postgres +
+    Flyway + Hibernate + Actuator startup genuinely takes ~25-30s). A
+    single immediate content check right after deployment-identity
+    confirmation observed real, transient HTTP 502s ("Application
+    failed to respond") both times, even though the real deploy had
+    already reached SUCCESS and (independently re-verified moments
+    later via a fresh curl) was serving the exact correct content —
+    mirrors the identical real gap web_server.py's
+    _verify_content_with_retry already fixed for the static demo path;
+    this internal ACT-008 script predates that fix and never got it.
+    Retries the SAME targeted, never-whole-response-substring assertion
+    for a bounded window, but ONLY when deployment identity is already
+    confirmed (a single fetch is enough when there's no real deployment
+    to wait a cutover on)."""
+    max_wait_s = max_wait_s if deployment_identity_confirmed else 0
+    waited = 0
+    while True:
+        status, body, live_value, matched = assert_production_field(fetch_fn, url, extract_fn, expected_value)
+        if matched or waited >= max_wait_s:
+            return status, body, live_value, matched
+        time.sleep(poll_interval_s)
+        waited += poll_interval_s

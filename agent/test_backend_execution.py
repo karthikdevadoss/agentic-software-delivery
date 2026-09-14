@@ -21,6 +21,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import backend_catalogue as bc
 import backend_execution as be
@@ -187,6 +188,70 @@ class ProductionFieldAssertionTestCase(unittest.TestCase):
         self.assertIsNone(bc.extract_value_from_not_found_api_response("{}", "customer_not_found_message"))
         self.assertIsNone(bc.extract_value_from_not_found_api_response("not json", "customer_not_found_message"))
         self.assertIsNone(bc.extract_value_from_not_found_api_response('{"error": "no colon here"}', "customer_not_found_message"))
+
+
+class ProductionFieldRetryTestCase(unittest.TestCase):
+    """assert_production_field_with_retry -- REAL bug regression
+    (2026-09-14, this exact ACT-008 pipeline's first genuine end-to-end
+    run, TWICE in the same run): a single immediate content check right
+    after deployment-identity confirmation observed real, transient
+    HTTP 502s during Railway's ~25-30s traffic-cutover window, even
+    though the real deploy had already reached SUCCESS and was serving
+    the correct content moments later -- mirrors the identical real gap
+    web_server.py's _verify_content_with_retry already fixed for the
+    static demo path."""
+
+    def test_retries_through_transient_failures_then_matches(self):
+        calls = {"n": 0}
+
+        def fetch(url):
+            calls["n"] += 1
+            if calls["n"] < 3:
+                return 502, '{"status":"error","message":"Application failed to respond"}'
+            return 404, '{"error": "Customer record not found: 999999"}'
+
+        with mock.patch("backend_execution.time.sleep"):
+            status, body, live_value, matched = be.assert_production_field_with_retry(
+                fetch, "http://x/customers/999999",
+                lambda b: bc.extract_value_from_not_found_api_response(b, "customer_not_found_message"),
+                "Customer record not found", deployment_identity_confirmed=True,
+                max_wait_s=90, poll_interval_s=10,
+            )
+        self.assertTrue(matched)
+        self.assertEqual(status, 404)
+        self.assertEqual(calls["n"], 3)
+
+    def test_gives_up_after_max_wait_s_when_never_matching(self):
+        def fetch(url):
+            return 502, '{"status":"error","message":"Application failed to respond"}'
+
+        with mock.patch("backend_execution.time.sleep"):
+            status, body, live_value, matched = be.assert_production_field_with_retry(
+                fetch, "http://x/customers/999999",
+                lambda b: bc.extract_value_from_not_found_api_response(b, "customer_not_found_message"),
+                "Customer record not found", deployment_identity_confirmed=True,
+                max_wait_s=30, poll_interval_s=10,
+            )
+        self.assertFalse(matched)
+        self.assertEqual(status, 502)
+
+    def test_never_retries_when_deployment_identity_was_not_confirmed(self):
+        """No real deployment to wait a cutover on -- a single fetch is
+        the correct, honest behavior, not a bounded retry loop."""
+        calls = {"n": 0}
+
+        def fetch(url):
+            calls["n"] += 1
+            return 502, '{"status":"error","message":"Application failed to respond"}'
+
+        with mock.patch("backend_execution.time.sleep") as sleep_mock:
+            be.assert_production_field_with_retry(
+                fetch, "http://x/customers/999999",
+                lambda b: bc.extract_value_from_not_found_api_response(b, "customer_not_found_message"),
+                "Customer record not found", deployment_identity_confirmed=False,
+            )
+        self.assertEqual(calls["n"], 1)
+        sleep_mock.assert_not_called()
 
 
 if __name__ == "__main__":

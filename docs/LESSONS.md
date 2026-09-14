@@ -870,3 +870,110 @@ surprising verified behavior would otherwise get rediscovered later.
   verification within minutes of the bad deploy (curl -> railway logs ->
   root cause -> fix -> redeploy -> re-verify), not left for a recruiter
   to discover.
+
+- **The first genuine end-to-end run of a real, previously-untested AI
+  pipeline is exactly when its accumulated untested assumptions surface
+  -- three real, independent bugs, in three different layers, all
+  found in the SAME first live run of `agent/backend_acceptance.py`
+  (2026-09-14, Priority 4's "ONE REAL END-TO-END AI BACKEND DELIVERY
+  RUN").** This ACT-008 internal pipeline (real MCP/RAG context
+  retrieval, a real Claude LLM planning call, real `mvnw compile`/
+  `test`, real git commit, real Railway deploy, real production
+  assertion, real restore) had been *built* and unit-tested across
+  several prior sessions, but never actually *run* for real end to end
+  -- each of these three bugs was invisible to every existing test
+  because each test mocks exactly the boundary the bug lived in.
+  1. **Auth boundary drift.** `backend_acceptance.py`'s own `_fetch()`
+     never attached an Authorization header -- correct when it was
+     written (this scenario predates JWT security entirely), silently
+     wrong once a *later* session added Spring Security JWT to every
+     `/customers/**` endpoint. First real run: instant, clean 401 at
+     Step 1's baseline check -- caught before anything was cloned,
+     committed, or deployed, exactly the fail-closed behavior the
+     baseline check exists for. Fix: fetch a real anonymous demo JWT
+     (`POST /auth/demo-token`) and attach it.
+  2. **Local clock trust.** `demo_execution.utc_now_iso()` trusts this
+     dev machine's own system clock for `deploy_triggered_after_iso`,
+     which `wait_for_new_deployment()` compares against Railway's own
+     (accurate) `createdAt` timestamps. This exact machine's clock was
+     independently confirmed running ~6.5 minutes AHEAD of true UTC
+     (cross-checked against two unrelated external HTTP Date headers).
+     Because the comparison is `created_dt > trigger_dt`, an
+     artificially-advanced local trigger time makes every genuinely-new
+     deployment look like it was created "before" the trigger --
+     permanently, for the entire 900s wait, no matter how long you
+     wait, since the skew never closes. Two consecutive real runs both
+     reported TIMEOUT after the full 15 minutes even though the real
+     deploys had genuinely succeeded on Railway's side in under 3
+     minutes each (independently confirmed via `railway deployment
+     list` by id, and via direct production content checks -- the probe
+     value was genuinely live in production for a period neither this
+     script nor its own operator would otherwise have known about
+     without manually checking). Fix:
+     `demo_execution.server_verified_now_iso(reference_url)` reads the
+     real HTTP `Date` response header from a live Railway-hosted URL
+     instead of the local clock, falling back to the old behavior (with
+     a printed warning) only if that network call itself fails. Applied
+     to all three real call sites (`backend_acceptance.py` and both of
+     `web_server.py`'s real trainer/reset deploy paths), not just the
+     one that happened to expose it -- the deployed container's own
+     clock is presumably accurate (a real cloud VM with NTP), but
+     "presumably" is exactly the kind of assumption this whole incident
+     argues against trusting silently.
+  3. **No cutover retry window.** Immediately after
+     `wait_for_new_deployment()` correctly confirmed a real SUCCESS
+     (fix #2 made this fast -- ~60s instead of a false 900s timeout),
+     the very next content assertion hit a real, transient HTTP 502
+     ("Application failed to respond") from Railway's own edge --
+     Railway's traffic cutover to the new container, plus this app's
+     own real ~25-30s Spring Boot startup (Flyway validate + Hibernate +
+     Actuator), hadn't finished yet. This is the EXACT SAME real gap
+     `web_server.py`'s `_verify_content_with_retry` already solved for
+     the static demo path (see its own docstring, 2026-09-13) -- this
+     internal ACT-008 script simply predates that fix and never
+     inherited it. A single-shot check reported a false FAILED for a
+     deploy that, independently re-verified moments later via a fresh
+     curl, was already serving the exact correct content. Fix:
+     `backend_execution.assert_production_field_with_retry()`, the same
+     bounded-retry-only-when-identity-was-confirmed pattern, reused
+     rather than re-invented.
+
+  **The generalized lesson:** unit tests that mock the network/clock/
+  filesystem boundary a real bug lives in will never catch that bug,
+  no matter how many of them exist or how long they've been passing --
+  the actual first live run of a real pipeline is not optional
+  verification theater, it is the only test that exercises the
+  assumptions every mock quietly encoded. None of these three bugs
+  were hypothetical or found by inspection; all three were found
+  because the pipeline was actually run for real, against real
+  production, and its real behavior was independently cross-checked
+  (curl, `railway logs`, `railway deployment list`) rather than trusted
+  from the script's own self-report -- which is exactly why the
+  script's own final verdict said FAIL twice in a row while the
+  underlying delivery (LLM analysis, compile, test, commit, deploy,
+  content change, restore) had already genuinely succeeded both times.
+  "AI does not certify its own work" applies here too: the tool's own
+  PASS/FAIL banner was the least trustworthy signal in the room.
+
+- **This specific dev machine genuinely runs low on free RAM (observed
+  as low as 1.7GB free of 15.8GB total) during a long session with many
+  browser/Chrome-automation tool calls plus a real `mvnw test` (a full
+  embedded Spring Boot context: Tomcat, Hibernate, Flyway, Actuator) --
+  the OS/harness killed the `backend_acceptance.py` process outright
+  (not a Java-level OutOfMemoryError) at that exact phase in 2 of 3
+  attempts in the same session (2026-09-14).** Not a bug in the
+  pipeline itself (a full run DID complete successfully once memory
+  allowed it, with `MAVEN_OPTS=-Xmx512m` set to reduce the JVM's own
+  footprint) -- a real, reproducible resource ceiling on this
+  particular environment when a long, browser-heavy session and a real
+  Maven+JVM test run compete for memory at the same time. **Lesson:**
+  before running anything that spawns a real JVM test process
+  (`mvnw test`, not `mvnw compile` alone -- compile succeeded every
+  single time, only the full Spring context boot under test ever hit
+  this), check free memory first (`Get-CimInstance Win32_OperatingSystem`
+  on Windows) and set a conservative `MAVEN_OPTS=-Xmx512m` (or similar)
+  proactively rather than reactively after a kill -- and if a kill
+  happens anyway, the right response is to verify the real external
+  state (here: production content, via direct curl) before assuming
+  anything was left inconsistent, since a mid-test-phase kill in this
+  pipeline's design happens before any commit/deploy step ever runs.

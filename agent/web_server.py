@@ -967,7 +967,7 @@ def _run_trainer_thread(run: "Run", requirement: str, normalized: "demo_catalogu
         # be mistaken for "the new one" simply because its id differed.
         run.status = "DEPLOYING"
         run.emit("stage", {"stage": "DEPLOYING"})
-        deploy_triggered_after = demo_execution.utc_now_iso()
+        deploy_triggered_after = demo_execution.server_verified_now_iso(PUBLIC_CUSTOMER_APP_URL)
         deploy_ok, deploy_out = demo_execution.trigger_deploy(
             workspace / "app", CUSTOMER_APP_PROJECT_ID, RAILWAY_SERVICE_NAME, RAILWAY_ENVIRONMENT)
         if not deploy_ok:
@@ -1319,7 +1319,7 @@ def _run_reset_thread():
         elif push_status == demo_execution.PUSH_STATUS_FAILED:
             _reset_state = {"status": "running", "message": f"Committed; git push FAILED (deploy continues from the isolated workspace): {push_out[-200:]}"}
 
-        deploy_triggered_after = demo_execution.utc_now_iso()
+        deploy_triggered_after = demo_execution.server_verified_now_iso(PUBLIC_CUSTOMER_APP_URL)
         deploy_ok, deploy_out = demo_execution.trigger_deploy(
             workspace / "app", CUSTOMER_APP_PROJECT_ID, RAILWAY_SERVICE_NAME, RAILWAY_ENVIRONMENT)
         if not deploy_ok:

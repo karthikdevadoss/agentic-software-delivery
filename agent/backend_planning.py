@@ -44,6 +44,19 @@ import json
 import os
 import time
 
+from dotenv import load_dotenv
+load_dotenv()  # same pattern as agent/main.py/event_ledger.py -- loads
+# agent/.env's ANTHROPIC_API_KEY into the process environment. REAL BUG
+# this fixes (2026-09-14): this module never loaded it, so
+# analyze_with_llm()'s real LLM call silently fell through to
+# "ANTHROPIC_API_KEY not set" even though the key genuinely exists in
+# agent/.env -- caught only by actually running agent/backend_acceptance.py
+# for real, not by any existing test (which always injects create_fn,
+# never exercising this environment-loading path at all). See
+# docs/LESSONS.md. Loaded here (not only in the one caller script that
+# happened to hit this) so every entry point using this module's LLM
+# call gets it, not just backend_acceptance.py specifically.
+
 import demo_catalogue
 import risk_policy
 import metrics
@@ -206,6 +219,28 @@ Respond with ONLY a JSON object with exactly these keys, no other text:
 "verification_plan": string, "explanation": string, "missing_context": string or null}"""
 
 
+def _strip_markdown_json_fence(text: str) -> str:
+    """REAL bug found live (2026-09-14, the first actual LLM call this
+    module ever made): despite the system prompt's explicit "ONLY a JSON
+    object, no other text", the real model response wrapped its JSON in
+    a ```json ... ``` markdown code fence, which json.loads() correctly
+    rejects as invalid -- silently downgrading a genuinely successful,
+    on-topic model response into the "model did not return valid JSON"
+    fallback. No existing test caught this because every test injects
+    create_fn with a hand-built response, never exercising a real
+    model's actual formatting habits. Strips a leading/trailing fence
+    (with or without a language tag) if present; a response with no
+    fence at all passes through unchanged."""
+    stripped = text.strip()
+    if stripped.startswith("```"):
+        first_newline = stripped.find("\n")
+        if first_newline != -1:
+            stripped = stripped[first_newline + 1:]
+        if stripped.endswith("```"):
+            stripped = stripped[:-3]
+    return stripped.strip()
+
+
 def analyze_with_llm(requirement: str, rag_context: RagContext, api_key: str | None = None,
                       create_fn=None) -> dict:
     """create_fn(model=..., max_tokens=..., system=..., messages=...) -> a
@@ -250,7 +285,7 @@ def analyze_with_llm(requirement: str, rag_context: RagContext, api_key: str | N
 
     text = "".join(b.text for b in response.content if getattr(b, "type", None) == "text")
     try:
-        parsed = json.loads(text)
+        parsed = json.loads(_strip_markdown_json_fence(text))
     except json.JSONDecodeError:
         parsed = {
             "affected_components": [], "expected_files": [], "verification_plan": None,

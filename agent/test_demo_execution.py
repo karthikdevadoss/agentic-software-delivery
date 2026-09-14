@@ -407,6 +407,50 @@ class DeploymentIdentityTestCase(unittest.TestCase):
         self.assertIsNone(de._parse_iso_utc("not a timestamp"))
         self.assertIsNone(de._parse_iso_utc(None))
 
+    def test_server_verified_now_iso_uses_the_real_http_date_header_not_local_clock(self):
+        """REAL bug regression (2026-09-14): a real run on this exact dev
+        machine had its local clock running ~6.5 minutes ahead of true
+        UTC, which made utc_now_iso()-based deploy_triggered_after
+        permanently reject every genuinely-new Railway deployment as
+        'before' the trigger, timing out after the full 900s window on
+        every run. This proves server_verified_now_iso() derives its
+        answer from a real HTTP Date header, not datetime.now()."""
+        class FakeResponse:
+            headers = {"Date": "Mon, 14 Sep 2026 17:30:19 GMT"}
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+
+        # A local clock far in the future -- if this function used it,
+        # the result would NOT match the mocked Date header's real value.
+        with mock.patch.object(de.urllib.request, "urlopen", return_value=FakeResponse()), \
+             mock.patch.object(de, "utc_now_iso", return_value="2099-01-01T00:00:00+00:00"):
+            result = de.server_verified_now_iso("https://example.invalid/")
+        parsed = de._parse_iso_utc(result)
+        self.assertEqual(parsed.year, 2026)
+        self.assertEqual(parsed.hour, 17)
+        self.assertEqual(parsed.minute, 30)
+
+    def test_server_verified_now_iso_falls_back_to_local_clock_on_network_failure(self):
+        """A transient network failure must degrade to the old
+        (local-clock) behavior, never crash the whole run."""
+        with mock.patch.object(de.urllib.request, "urlopen", side_effect=OSError("no network")), \
+             mock.patch.object(de, "utc_now_iso", return_value="2026-09-14T12:00:00+00:00") as fallback:
+            result = de.server_verified_now_iso("https://example.invalid/")
+        fallback.assert_called_once()
+        self.assertEqual(result, "2026-09-14T12:00:00+00:00")
+
+    def test_server_verified_now_iso_falls_back_when_response_has_no_date_header(self):
+        class FakeResponseNoDate:
+            headers = {}
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+
+        with mock.patch.object(de.urllib.request, "urlopen", return_value=FakeResponseNoDate()), \
+             mock.patch.object(de, "utc_now_iso", return_value="2026-09-14T12:00:00+00:00") as fallback:
+            result = de.server_verified_now_iso("https://example.invalid/")
+        fallback.assert_called_once()
+        self.assertEqual(result, "2026-09-14T12:00:00+00:00")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

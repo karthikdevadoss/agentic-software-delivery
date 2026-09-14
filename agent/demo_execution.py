@@ -41,6 +41,7 @@ testable in isolation, including against real temporary local git
 repositories (see test_demo_execution.py).
 """
 
+import email.utils
 import json
 import os
 import shutil
@@ -48,6 +49,8 @@ import stat
 import subprocess
 import tempfile
 import time
+import urllib.error
+import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -203,8 +206,51 @@ def push_change(workspace: Path, branch: str):
 def utc_now_iso() -> str:
     """Real reference-timestamp capture for deployment-identity checks —
     call this IMMEDIATELY before trigger_deploy(), then pass the result
-    to wait_for_new_deployment() as `deploy_triggered_after_iso`."""
+    to wait_for_new_deployment() as `deploy_triggered_after_iso`.
+
+    Trusts THIS machine's own system clock. Prefer
+    server_verified_now_iso() below when a reachable Railway-hosted URL
+    is available — see its docstring for the real incident that makes
+    local-clock trust here a genuine risk, not a hypothetical one."""
     return datetime.now(timezone.utc).isoformat()
+
+
+def server_verified_now_iso(reference_url: str, timeout_s: int = 10) -> str:
+    """Real bug found live (2026-09-14, ACT-008's first genuine
+    end-to-end run): utc_now_iso() trusts this machine's own system
+    clock, which can silently drift from true UTC — this exact dev
+    machine was observed running ~6.5 minutes AHEAD of real UTC (cross-
+    checked against two independent external Date headers: Google's and
+    Railway's own edge). Because deploy_triggered_after_iso is compared
+    against Railway's OWN accurate server-side createdAt timestamps
+    (`created_dt > trigger_dt`), an artificially-advanced local trigger
+    time makes every genuinely-new deployment permanently look like it
+    was created "before" the trigger — wait_for_new_deployment() then
+    reports TIMEOUT after the full 900s window on EVERY run, no matter
+    how long you wait, even though the real deploy (independently
+    confirmed via `railway deployment list` by id, and via a direct
+    production content check) succeeded in under 3 minutes both times.
+
+    Fetches the real HTTP Date response header from a live
+    Railway-hosted URL instead of trusting the local clock — the
+    natural choice is the same production URL the caller is about to
+    verify content against. Falls back to utc_now_iso() (with a
+    printed warning, never silently) only if the network call itself
+    fails, so a transient network hiccup degrades to the old behavior
+    rather than crashing the whole run."""
+    try:
+        req = urllib.request.Request(reference_url, method="HEAD")
+        with urllib.request.urlopen(req, timeout=timeout_s) as resp:
+            date_header = resp.headers.get("Date")
+        if date_header:
+            dt = email.utils.parsedate_to_datetime(date_header)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt.astimezone(timezone.utc).isoformat()
+        print(f"  [server_verified_now_iso] {reference_url} returned no Date header -- falling back to local clock")
+    except (urllib.error.URLError, OSError, ValueError) as exc:
+        print(f"  [server_verified_now_iso] could not fetch server time from {reference_url}: {exc} -- falling back to local clock (may be inaccurate)")
+    return utc_now_iso()
 
 
 def _parse_iso_utc(value: str):
@@ -334,16 +380,34 @@ def wait_for_new_deployment(project_id: str, service_name: str, environment: str
             cwd, 20,
         )
         if not ok:
+            # Diagnostic added 2026-09-14 after a real run silently
+            # TIMED OUT for 900s with the CLI call apparently failing on
+            # every single poll -- previously invisible (this branch just
+            # `continue`d with no trace of *why*), leaving no evidence to
+            # distinguish "genuinely still building" from "every poll is
+            # silently erroring." Never raises/changes behavior, purely
+            # additive visibility into demo_execution's own real-time
+            # stderr (captured by whichever real caller invoked this --
+            # web_server.py's live run, or a manually-run script like
+            # agent/backend_acceptance.py).
+            print(f"  [wait_for_new_deployment] poll at {waited}s: CLI call failed: {out[:300]!r}", flush=True)
             continue
         try:
             deployments = json.loads(out)
         except ValueError:
+            print(f"  [wait_for_new_deployment] poll at {waited}s: could not parse JSON output: {out[:300]!r}", flush=True)
             continue
         candidates = []
         for d in deployments:
             created_dt = _parse_iso_utc(str(d.get("createdAt", "")))
             if created_dt is not None and trigger_dt is not None and created_dt > trigger_dt:
                 candidates.append(d)
+        if waited % 60 < poll_interval_s:  # ~once a minute, not every 10s -- signal, not noise
+            newest = deployments[0] if deployments else None
+            print(f"  [wait_for_new_deployment] poll at {waited}s: trigger_dt={trigger_dt}, "
+                  f"{len(candidates)} candidate(s) after trigger, newest overall: "
+                  f"id={newest.get('id') if newest else None} status={newest.get('status') if newest else None} "
+                  f"createdAt={newest.get('createdAt') if newest else None}", flush=True)
         for d in candidates:
             status = str(d.get("status", ""))
             if status.upper() == _SUCCESS_STATUS:
