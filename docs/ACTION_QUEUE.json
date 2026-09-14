@@ -212,6 +212,20 @@
       "verification_required": "DONE for the internal scope: real end-to-end MCP tool call verified (agent/test_mcp_server.py + a live manual invocation), real eval baseline recorded above. NOT YET DONE, deliberately deferred: exposing this on the public Workbench route (needs its own reliability/cost review first, per this task's explicit instruction), a get_run_evidence MCP tool (optional per the task, skipped as not yet needed), an LLM-judge groundedness pass (deterministic check judged sufficient for this slice's scope), and pgvector (Postgres already exists for the event ledger, but the curated corpus is ~80 chunks -- local JSON+numpy remains the right-sized choice, revisit only if the corpus grows substantially).",
       "created_at_commit": "1315dbd",
       "resolved_at_commit": "2acef8d"
+    },
+    {
+      "id": "FLAGSHIP-POSTGRES-CUTOVER",
+      "source": "product",
+      "title": "BLOCKED -- OWNER ACTION REQUIRED: production PostgreSQL cutover for the Customer App (code/migrations/tests ready)",
+      "priority": "high",
+      "status": "open",
+      "scope": "app/pom.xml, app/src/main/resources/application.properties + application-postgres.properties, app/src/main/resources/db/migration/*.sql -- no production config/infra change made",
+      "reason": "Overnight 'MASTER OVERNIGHT ENGINEERING PHASE' task (2026-09-13/14): the Customer App only had ephemeral H2 persistence, a P0 gap for a Senior Java Backend portfolio. Built the full Postgres/JPA/Flyway/Testcontainers foundation (CustomerPreference + ContractPlan domain, a real DB-level partial-unique-index business rule, OpenAPI docs, a real downstream-integration+resilience slice) entirely additively -- the H2 profile remains the untouched, active default, so none of this changed current production behavior. Did NOT provision a new production Postgres resource or flip the active profile, per this task's own 'do not create billable infrastructure without Owner approval' instruction.",
+      "evidence": "Real GitHub Actions CI run (commit f33e1a4, https://github.com/karthikdevadoss/agentic-software-delivery/actions -- workflow 'CI', 'Customer App' job): 43/43 Java tests passing with ZERO skips, including PostgresFlywayIntegrationTest's 5 tests against a genuine Testcontainers PostgreSQL 16 container (Flyway migrations V1-V3 applied for real, the real partial unique index enforced via a raw bypass insert, a real Hibernate flush-ordering bug found and fixed via saveAndFlush -- see docs/LESSONS.md) and AppointmentAvailabilityIntegrationTest's 7 real WireMock tests. Local dev has no Docker (docker --version fails), so this evidence comes only from real CI, not a local guess.",
+      "safe_to_auto_execute": false,
+      "verification_required": "Owner decision: (1) approve provisioning a real Postgres resource for the Customer App specifically (a NEW resource -- do not share the existing event-ledger Postgres, per this task's own 'do not couple unrelated systems' instruction) or explicitly decline: 3 real, previously-unknown bugs were found and fixed getting Flyway to work at all in this Spring Boot 4.1.1 setup (see docs/LESSONS.md: the missing spring-boot-flyway autoconfiguration module was the actual root cause behind 3 consecutive CI failures; a separate real bug in the single-file multi-document properties form; a real Hibernate flush-ordering bug only Postgres's own constraint caught) -- all fixed, but a real production cutover should still independently re-verify Flyway actually runs under real SPRING_PROFILES_ACTIVE=postgres env-var activation (a different activation path than this test's @ActiveProfiles) before trusting it, not assume this CI evidence alone proves the production path.",
+      "created_at_commit": "04ff71c",
+      "resolved_at_commit": null
     }
   ]
 }

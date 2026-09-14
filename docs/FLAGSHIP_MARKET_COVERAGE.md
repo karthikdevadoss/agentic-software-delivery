@@ -54,7 +54,7 @@ Status values: `NOT_STARTED`, `PARTIAL`, `IMPLEMENTED`, `PRODUCTION_VERIFIED`,
 
 | Capability | Priority | State | Business scenario | Notes |
 |---|---|---|---|---|
-| Downstream HTTP client + timeout/retry/circuit breaker (Resilience4j) + WireMock tests | P0 | NOT_STARTED | A believable "Appointment Availability" or "Plan Pricing" downstream call | Notably does NOT require Docker/Postgres/any paid infra — fully locally testable with WireMock; a strong next-session candidate precisely because it has zero external blockers |
+| Downstream HTTP client + timeout/retry/circuit breaker (Resilience4j) + WireMock tests | P0 | IMPLEMENTED (2026-09-14) | A real "Appointment Availability" downstream call (`GET /customers/{id}/appointment-availability?date=...`) | `AppointmentAvailabilityClient` (Spring `RestClient`) + `AppointmentAvailabilityConfig`/`Service` (Resilience4j core circuitbreaker+retry, composed programmatically -- the `resilience4j-spring-boot3/4` annotation starter has a real, documented Spring Boot 4 BOM gap as of this session, verified via WebSearch/WebFetch). SERVICE_UNAVAILABLE is a distinct, never-fabricated outcome. 7 real WireMock tests (`AppointmentAvailabilityIntegrationTest`): success, 5xx retried 3x, 4xx never retried (exactly 1 call), real connect/read timeout, malformed JSON body, sustained-failure circuit-breaker behavior -- all against the real RestClient/CircuitBreaker/Retry stack over real loopback HTTP, zero mocked client. No real production downstream service exists (by design -- this demonstrates the pattern, not a real third-party integration) |
 
 ## Testing (cross-cutting)
 
@@ -63,7 +63,7 @@ Status values: `NOT_STARTED`, `PARTIAL`, `IMPLEMENTED`, `PRODUCTION_VERIFIED`,
 | JUnit 5 + Mockito unit tests | P0 | IMPLEMENTED | CustomerServiceTest + new CustomerPreferenceServiceTest/ContractPlanServiceTest |
 | Real-server integration tests (RestTemplate, not MockMvc) | P0 | IMPLEMENTED | MockMvc confirmed NOT on this Spring Boot 4.1.1 project's classpath (module split moved Jackson to `tools.jackson`) — RestTemplate + `@SpringBootTest(RANDOM_PORT)` is this project's real, working pattern |
 | Testcontainers DB integration | P0 | IMPLEMENTED, CI-verified | See Data section above |
-| WireMock downstream-contract tests | P0 | NOT_STARTED | Tied to the downstream-integration slice |
+| WireMock downstream-contract tests | P0 | IMPLEMENTED (2026-09-14) | `AppointmentAvailabilityIntegrationTest`, 7 tests |
 | Security tests (missing/malformed/expired token, wrong scope) | P0 | NOT_STARTED | Tied to the Security slice |
 | Performance/load tests (k6/Gatling/JMeter) | P1 | NOT_STARTED | No baseline established yet |
 | CI pipeline running the above | P0 | PARTIAL (2026-09-14) | `.github/workflows/ci.yml` runs Java tests (incl. real Testcontainers Postgres), a scoped offline subset of the Python AI-platform tests + evals, and Node frontend tests. Does NOT yet run the full Python suite (several existing tests need live production credentials this CI job intentionally does not have) — a real, disclosed gap |
@@ -96,8 +96,9 @@ Status values: `NOT_STARTED`, `PARTIAL`, `IMPLEMENTED`, `PRODUCTION_VERIFIED`,
 
 ## Recommended next-session order (not a commitment, a priority queue)
 
-1. Downstream integration + Resilience4j + WireMock (Slice 4) — zero external infra blockers, fully testable tonight-style in any environment.
-2. Spring Security + JWT resource-server (Slice 3).
-3. Observability (Actuator/Micrometer/correlation IDs) — cheap, high interview value, unblocks meaningful performance work later.
-4. The real end-to-end AI backend run (genuine LLM call), attempted in ISOLATION from any concurrent persistence-layer change.
-5. Redis, then Kafka — both explicitly sequenced last per the original task's own slice order, and both have real external-infrastructure decisions attached.
+1. Spring Security + JWT resource-server (Slice 3).
+2. Observability (Actuator/Micrometer/correlation IDs) — cheap, high interview value, unblocks meaningful performance work later.
+3. The real end-to-end AI backend run (genuine LLM call), attempted in ISOLATION from any concurrent persistence-layer change.
+4. Redis, then Kafka — both explicitly sequenced last per the original task's own slice order, and both have real external-infrastructure decisions attached.
+
+(Slice 4 — downstream integration + Resilience4j + WireMock — completed 2026-09-14, see Integrations/Resilience above.)
