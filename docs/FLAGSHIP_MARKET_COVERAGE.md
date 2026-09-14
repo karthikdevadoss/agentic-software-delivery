@@ -72,7 +72,7 @@ Status values: `NOT_STARTED`, `PARTIAL`, `IMPLEMENTED`, `PRODUCTION_VERIFIED`,
 
 | Capability | Priority | State | Notes |
 |---|---|---|---|
-| Actuator, Micrometer, structured logs, correlation IDs, OpenTelemetry | P0/P1 | NOT_STARTED | Not attempted this session |
+| Actuator, Micrometer, structured logs, correlation IDs | P0/P1 | PRODUCTION_VERIFIED (2026-09-14) | `/actuator/health` public (liveness+readiness probes), `/actuator/metrics`+`/actuator/prometheus` require a valid JWT. Console logs are structured JSON (ECS format via `logging.structured.format.console=ecs`). In-process Brave tracing (`micrometer-tracing-bridge-brave`, no external collector) gives every log line a real traceId/spanId. Resilience4j circuit breaker/retry refactored to registry-backed instances so `TaggedCircuitBreakerMetrics`/`TaggedRetryMetrics` expose real state. A real `security.rejections` counter (401 vs 403, tagged by reason) was added alongside the existing JSON error handlers. `ObservabilityIntegrationTest` (4 tests) proves real meter data appears after real traffic, not just endpoint existence — live-verified against production: health public/UP, prometheus 401 without token, prometheus 200 with token showing http_server_requests/hikaricp_connections/resilience4j_circuitbreaker_state/resilience4j_retry_calls_total/security_rejections_total all present with real counts. |
 
 ## Delivery / Platform
 
@@ -96,9 +96,9 @@ Status values: `NOT_STARTED`, `PARTIAL`, `IMPLEMENTED`, `PRODUCTION_VERIFIED`,
 
 ## Recommended next-session order (not a commitment, a priority queue)
 
-1. Observability (Actuator/Micrometer/correlation IDs) — cheap, high interview value, unblocks meaningful performance work later.
-2. The real end-to-end AI backend run (genuine LLM call), attempted in ISOLATION from any concurrent persistence-layer change.
-3. Redis, then Kafka — both explicitly sequenced last per the original task's own slice order, and both have real external-infrastructure decisions attached.
-4. Java 21 assessment (P2) — not yet attempted; verify Railway/Railpack Java 21 support first.
+1. The real end-to-end AI backend run (genuine LLM call), attempted in ISOLATION from any concurrent persistence-layer change.
+2. Redis, then Kafka — both explicitly sequenced last per the original task's own slice order, and both have real external-infrastructure decisions attached.
+3. Java 21 assessment (P2) — not yet attempted; verify Railway/Railpack Java 21 support first.
+4. Performance baseline (k6/Gatling) once a real bottleneck-worthy scenario exists.
 
-(Slice 4 — downstream integration + Resilience4j + WireMock — completed 2026-09-14, see Integrations/Resilience above. Postgres/Flyway production cutover — completed and PRODUCTION_VERIFIED 2026-09-14, see Data section above. Spring Security + JWT resource-server — completed and PRODUCTION_VERIFIED 2026-09-14, see Security section above.)
+(Slice 4 — downstream integration + Resilience4j + WireMock — completed 2026-09-14, see Integrations/Resilience above. Postgres/Flyway production cutover, Spring Security + JWT resource-server, and Observability (Actuator/Micrometer/structured logs/correlation IDs) — all completed and PRODUCTION_VERIFIED 2026-09-14, see their respective sections above.)
