@@ -1,5 +1,6 @@
 package com.example.customer.controller;
 
+import com.example.customer.cache.ContractPlanCacheService;
 import com.example.customer.dto.ContractPlanEnrollRequest;
 import com.example.customer.dto.ContractPlanResponse;
 import com.example.customer.service.ContractPlanService;
@@ -22,20 +23,23 @@ import org.springframework.web.bind.annotation.RestController;
 public class ContractPlanController {
 
     private final ContractPlanService contractPlanService;
+    private final ContractPlanCacheService contractPlanCacheService;
 
-    public ContractPlanController(ContractPlanService contractPlanService) {
+    public ContractPlanController(ContractPlanService contractPlanService, ContractPlanCacheService contractPlanCacheService) {
         this.contractPlanService = contractPlanService;
+        this.contractPlanCacheService = contractPlanCacheService;
     }
 
     @GetMapping
     public ContractPlanResponse getActivePlan(@PathVariable Long customerId) {
-        return ContractPlanResponse.from(contractPlanService.getActivePlan(customerId));
+        return contractPlanCacheService.getActivePlan(customerId);
     }
 
     @PostMapping
     public ResponseEntity<ContractPlanResponse> enroll(
             @PathVariable Long customerId, @Valid @RequestBody ContractPlanEnrollRequest request) {
         ContractPlanResponse response = ContractPlanResponse.from(contractPlanService.enroll(customerId, request));
+        contractPlanCacheService.evict(customerId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 }
