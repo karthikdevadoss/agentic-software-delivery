@@ -3,6 +3,7 @@ package com.example.customer.controller;
 import com.example.customer.dto.CustomerPreferenceResponse;
 import com.example.customer.dto.CustomerPreferenceUpdateRequest;
 import com.example.customer.service.CustomerPreferenceService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/customers/{customerId}/preferences")
 @Tag(name = "Customer Preferences", description = "Paperless billing and notification-channel preferences")
+@SecurityRequirement(name = "bearerAuth")
 public class CustomerPreferenceController {
 
     private final CustomerPreferenceService preferenceService;

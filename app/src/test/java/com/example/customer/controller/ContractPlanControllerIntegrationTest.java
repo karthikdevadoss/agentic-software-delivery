@@ -2,7 +2,11 @@ package com.example.customer.controller;
 
 import com.example.customer.dto.ContractPlanEnrollRequest;
 import com.example.customer.model.Customer;
+import com.example.customer.security.DemoJwtIssuer;
+import com.example.customer.testsupport.AuthTestSupport;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
@@ -23,7 +27,15 @@ class ContractPlanControllerIntegrationTest {
     @LocalServerPort
     private int port;
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    @Autowired
+    private DemoJwtIssuer demoJwtIssuer;
+
+    private RestTemplate restTemplate;
+
+    @BeforeEach
+    void setUpAuthenticatedClient() {
+        restTemplate = AuthTestSupport.authenticatedRestTemplate(demoJwtIssuer);
+    }
 
     private String url(String path) {
         return "http://localhost:" + port + path;

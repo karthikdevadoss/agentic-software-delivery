@@ -3,6 +3,7 @@ package com.example.customer.controller;
 import com.example.customer.dto.ContractPlanEnrollRequest;
 import com.example.customer.dto.ContractPlanResponse;
 import com.example.customer.service.ContractPlanService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/customers/{customerId}/plan")
 @Tag(name = "Contract Plan", description = "A customer's current energy contract/plan")
+@SecurityRequirement(name = "bearerAuth")
 public class ContractPlanController {
 
     private final ContractPlanService contractPlanService;
