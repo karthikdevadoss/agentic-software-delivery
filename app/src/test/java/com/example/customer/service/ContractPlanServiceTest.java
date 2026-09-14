@@ -81,19 +81,49 @@ class ContractPlanServiceTest {
         ContractPlanService service = service(existingCustomer());
         ContractPlan oldPlan = new ContractPlan(1L, "Old", new BigDecimal("0.20"), LocalDate.of(2025, 1, 1));
         when(contractPlanRepository.findByCustomerIdAndStatus(1L, ContractPlanStatus.ACTIVE)).thenReturn(Optional.of(oldPlan));
+        when(contractPlanRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
         when(contractPlanRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         LocalDate newStart = LocalDate.of(2026, 6, 1);
         ContractPlanEnrollRequest request = new ContractPlanEnrollRequest("New", new BigDecimal("0.12"), newStart);
 
         ContractPlan result = service.enroll(1L, request);
 
-        ArgumentCaptor<ContractPlan> savedCaptor = ArgumentCaptor.forClass(ContractPlan.class);
-        verify(contractPlanRepository, times(2)).save(savedCaptor.capture());
-        ContractPlan firstSaved = savedCaptor.getAllValues().get(0);
-        assertThat(firstSaved).isSameAs(oldPlan);
-        assertThat(firstSaved.getStatus()).isEqualTo(ContractPlanStatus.CANCELLED);
-        assertThat(firstSaved.getEffectiveEndDate()).isEqualTo(newStart);
+        ArgumentCaptor<ContractPlan> flushedCaptor = ArgumentCaptor.forClass(ContractPlan.class);
+        verify(contractPlanRepository, times(1)).saveAndFlush(flushedCaptor.capture());
+        ContractPlan cancelledPlan = flushedCaptor.getValue();
+        assertThat(cancelledPlan).isSameAs(oldPlan);
+        assertThat(cancelledPlan.getStatus()).isEqualTo(ContractPlanStatus.CANCELLED);
+        assertThat(cancelledPlan.getEffectiveEndDate()).isEqualTo(newStart);
         assertThat(result.getStatus()).isEqualTo(ContractPlanStatus.ACTIVE);
         assertThat(result.getPlanName()).isEqualTo("New");
+    }
+
+    /**
+     * Regression test for a real bug caught ONLY by a genuine Postgres
+     * Testcontainers run (see PostgresFlywayIntegrationTest and
+     * docs/LESSONS.md): Hibernate's default flush order runs all pending
+     * INSERTs before any pending UPDATEs within one transaction,
+     * regardless of Java call order -- plain save() on the cancelled
+     * plan let the new plan's INSERT reach the database first, briefly
+     * creating two ACTIVE rows and tripping the real Postgres partial
+     * unique index. This test locks in the fix: the cancellation MUST use
+     * saveAndFlush(), never plain save(), specifically so the UPDATE is
+     * forced to the database before the new INSERT is even issued.
+     */
+    @Test
+    void enroll_whenActivePlanAlreadyExists_flushesTheCancellationBeforeInsertingTheNewPlan() {
+        ContractPlanService service = service(existingCustomer());
+        ContractPlan oldPlan = new ContractPlan(1L, "Old", new BigDecimal("0.20"), LocalDate.of(2025, 1, 1));
+        when(contractPlanRepository.findByCustomerIdAndStatus(1L, ContractPlanStatus.ACTIVE)).thenReturn(Optional.of(oldPlan));
+        when(contractPlanRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(contractPlanRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        ContractPlanEnrollRequest request = new ContractPlanEnrollRequest("New", new BigDecimal("0.12"), LocalDate.of(2026, 6, 1));
+
+        service.enroll(1L, request);
+
+        org.mockito.InOrder order = org.mockito.Mockito.inOrder(contractPlanRepository);
+        order.verify(contractPlanRepository).saveAndFlush(oldPlan);
+        order.verify(contractPlanRepository).save(org.mockito.ArgumentMatchers.argThat(
+                p -> p.getStatus() == ContractPlanStatus.ACTIVE && p.getPlanName().equals("New")));
     }
 }
