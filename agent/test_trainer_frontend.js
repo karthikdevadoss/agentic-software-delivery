@@ -49,6 +49,7 @@ function makeElement(tag) {
     scrollTop: 0,
     scrollHeight: 0,
     children: [],
+    dataset: {},
     _innerHTML: "",
     get innerHTML() { return this._textContentSet ? escapeHtml(_textContent) : this._innerHTML; },
     set innerHTML(v) { this._innerHTML = v; this._textContentSet = false; this.children = []; },
@@ -56,6 +57,13 @@ function makeElement(tag) {
     set textContent(v) { _textContent = v; this._textContentSet = true; },
     appendChild(child) { this.children.push(child); return child; },
     addEventListener() {},
+    // This stub does not parse innerHTML into real child nodes (no DOM
+    // parser here — see the module docstring's stated non-browser scope),
+    // so querySelectorAll always returns empty: workbench.js's own
+    // click-to-expand wiring is exercised by a real browser only, not
+    // this layer. Assertions below inspect rendered innerHTML/title text
+    // instead of simulating clicks.
+    querySelectorAll() { return []; },
   };
   return el;
 }
@@ -66,7 +74,7 @@ function makeDocumentStub() {
     "requirement-input", "submit-btn", "status-badge", "examples-list",
     "assessment-panel", "assessment-body", "run-status-panel",
     "rs-overall", "rs-runid", "rs-transport", "rs-stage", "rs-stage-elapsed",
-    "rs-total-elapsed", "rs-last-activity", "stage-checklist",
+    "rs-total-elapsed", "rs-last-activity", "milestone-bar", "milestone-detail",
     "activity-panel", "activity-list", "verification-panel", "verification-list",
     "deploy-panel", "deploy-body", "result-panel", "result-banner", "result-text",
   ];
@@ -371,10 +379,10 @@ async function testK_testingStateIsExplicitNeverAmbiguouslyPending() {
   events.forEach(e => es.fire(e.type, e));
   await sleep(350);
 
-  const checklistHtml = String(doc.getElementById("stage-checklist")._innerHTML);
-  assert(!checklistHtml.includes('class="pending"><span class="mark">○</span><span>Testing'),
-    "K: Testing never renders as an ambiguous hollow pending mark on a terminal run");
-  assert(checklistHtml.includes("TESTING — NOT APPLICABLE") && checklistHtml.includes("no test files exist"),
+  const milestoneHtml = String(doc.getElementById("milestone-bar")._innerHTML);
+  assert(!/class="milestone-node pending"[^>]*>[\s\S]*?Testing/.test(milestoneHtml),
+    "K: Testing never renders as an ambiguous pending node on a terminal run");
+  assert(milestoneHtml.includes('milestone-node na') && milestoneHtml.includes("TESTING") && milestoneHtml.includes("no test files exist"),
     "K: Testing renders the explicit NOT APPLICABLE state with its real verified reason");
   sandbox.stopEverything();
 }

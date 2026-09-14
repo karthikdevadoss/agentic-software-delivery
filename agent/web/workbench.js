@@ -27,7 +27,8 @@ const rsStage = document.getElementById("rs-stage");
 const rsStageElapsed = document.getElementById("rs-stage-elapsed");
 const rsTotalElapsed = document.getElementById("rs-total-elapsed");
 const rsLastActivity = document.getElementById("rs-last-activity");
-const stageChecklist = document.getElementById("stage-checklist");
+const milestoneBar = document.getElementById("milestone-bar");
+const milestoneDetail = document.getElementById("milestone-detail");
 const activityPanel = document.getElementById("activity-panel");
 const activityList = document.getElementById("activity-list");
 const verificationPanel = document.getElementById("verification-panel");
@@ -53,23 +54,14 @@ let EXAMPLES = [
   'Change the footer text to "Built with care"',
 ];
 
-// The real workflow stages a trainer run can pass through, in order.
-// Must stay in sync with agent/web_server.py's TERMINAL_RUN_STATES and
-// the stage strings _run_trainer_thread actually emits — this is a
-// UI-side consumer of that state machine, see CLAUDE.md's state-drift
-// rule. The deterministic catalogue path never emits REPOSITORY
-// INVESTIGATION/PROPOSING CHANGE/BUILDING (no agent, no compile step).
-const WORKFLOW_STAGES = [
-  { key: "RECEIVED", label: "Requirement received" },
-  { key: "RISK_ASSESSMENT", label: "Risk assessment" },
-  { key: "APPLYING CHANGE", label: "Applying change" },
-  { key: "TESTING", label: "Testing" },
-  { key: "COMMITTING", label: "Committing" },
-  { key: "PUSHING", label: "Pushing to GitHub" },
-  { key: "DEPLOYING", label: "Deploying" },
-  { key: "VERIFYING PRODUCTION", label: "Verifying production" },
-];
 const TERMINAL_STAGES = new Set(["COMPLETED", "FAILED", "NO_CHANGE_NEEDED", "DEPLOYMENT_STATUS_UNKNOWN"]);
+
+// The real, linear order of stage-keys this pipeline's backend
+// (_run_trainer_thread in agent/web_server.py) actually emits for the
+// non-testing part of the flow — used only to derive "reached vs. not
+// yet reached" for the milestone bar below. TESTING is excluded here
+// because its real stage strings vary (see testingChecklistState()).
+const PIPELINE_STAGE_ORDER = ["APPLYING CHANGE", "COMMITTING", "PUSHING", "DEPLOYING", "VERIFYING PRODUCTION"];
 
 // Stages where long silence is EXPECTED (waiting on an external system),
 // not a sign anything is wrong — calibrated from real observed durations
@@ -258,7 +250,10 @@ function resetPanels() {
   resultPanel.hidden = true;
   activityList.innerHTML = "";
   verificationList.innerHTML = "";
-  stageChecklist.innerHTML = "";
+  milestoneBar.innerHTML = "";
+  milestoneDetail.hidden = true;
+  milestoneDetail.innerHTML = "";
+  delete milestoneDetail.dataset.openKey;
   deployBody.innerHTML = "";
   usageSummaryBox.innerHTML = "";
   verificationState = { applySucceeded: null, compileResult: null, testResult: null };
@@ -283,6 +278,7 @@ function setStatus(label) {
 
 function renderAssessment(a, blocked) {
   assessmentPanel.hidden = false;
+  if (!blocked && run) run.expectedValue = a.new_value;
   let html = "";
   if (blocked) {
     html += `<p class="owner-auth-notice">${esc(a.message || "Authorization required. This request is outside the autonomous public-demo scope.")}</p>`;
@@ -381,31 +377,156 @@ function testingChecklistState() {
   return { cls: "pending", mark: "○", label: "Testing", note: "" };
 }
 
-function renderStageChecklist() {
-  if (!run) return;
-  const terminal = TERMINAL_STAGES.has(run.status);
-  // Once terminal, any workflow stage never reached is genuinely never
-  // going to run (e.g. everything past BUILDING for a NO_CHANGE_NEEDED
-  // outcome) — show that truthfully as skipped, not as a perpetual "not
-  // yet". TESTING is handled separately above (testingChecklistState)
-  // since its real backend stage strings never match a single fixed key.
-  const lastSeenIndex = WORKFLOW_STAGES.reduce(
-    (acc, s, i) => (run.stagesSeen.has(s.key) ? i : acc), -1);
+// ---- Milestone bar (9-stage delivery lifecycle) ---------------------
+//
+// Maps this run's REAL event/state (stagesSeen, currentStage, status,
+// plus the commit/push/deployment/diff evidence already captured by
+// applyEvent below) onto the canonical
+// Requirement -> Context -> Planning -> Implementation -> Testing ->
+// AI QA -> Git -> Deployment -> Production Verify lifecycle. Every
+// state shown here is derived from a real backend event — nothing is
+// a fake timer or an assumed percentage. The public trainer pipeline
+// (_run_trainer_thread) is fully deterministic and zero-LLM, so
+// Context/Planning/AI QA are honestly NOT_APPLICABLE for every run of
+// this tier, never hidden and never guessed as "done".
+const STATE_META = {
+  PENDING: { cls: "pending", mark: "○" },
+  RUNNING: { cls: "running", mark: "●" },
+  PASSED: { cls: "passed", mark: "✓" },
+  FAILED: { cls: "failed", mark: "✗" },
+  BLOCKED: { cls: "blocked", mark: "!" },
+  SKIPPED: { cls: "skipped", mark: "—" },
+  NOT_APPLICABLE: { cls: "na", mark: "—" },
+};
 
-  stageChecklist.innerHTML = WORKFLOW_STAGES.map((s, i) => {
-    if (s.key === "TESTING") {
-      const t = testingChecklistState();
-      return `<li class="${t.cls}"><span class="mark">${t.mark}</span><span>${esc(t.label)}</span>${t.note}</li>`;
+function computeMilestoneStates(r) {
+  const terminal = TERMINAL_STAGES.has(r.status);
+  const seen = (k) => r.stagesSeen.has(k);
+  const current = (k) => r.currentStage === k && !terminal;
+  const failedTerminal = r.status === "FAILED";
+  const noChange = r.status === "NO_CHANGE_NEEDED";
+  const unknownTerminal = r.status === "DEPLOYMENT_STATUS_UNKNOWN";
+  const m = [];
+
+  m.push({ key: "REQUIREMENT", label: "Requirement", state: "PASSED",
+    detail: "Accepted by the deterministic public-demo request contract before this run started." });
+
+  m.push({ key: "CONTEXT", label: "Context", state: "NOT_APPLICABLE",
+    detail: "This preview tier matches the requirement against a fixed, deterministic catalogue — no RAG/context retrieval call is made." });
+
+  m.push({ key: "PLANNING", label: "Planning", state: "NOT_APPLICABLE",
+    detail: "No LLM planning call — the exact source edit is derived deterministically from the matched catalogue operation, never generated." });
+
+  let implState, implDetail;
+  if (noChange) {
+    implState = "SKIPPED"; implDetail = "Live production already had the requested value — nothing to implement.";
+  } else if (current("APPLYING CHANGE")) {
+    implState = "RUNNING"; implDetail = "Cloning an isolated workspace and applying the deterministic source edit…";
+  } else if (r.diffInfo) {
+    implState = "PASSED"; implDetail = `${r.diffInfo.file}, line ${r.diffInfo.line_changed}: "${r.diffInfo.old_line}" → "${r.diffInfo.new_line}"`;
+  } else if (seen("APPLYING CHANGE") && (seen("COMMITTING") || terminal)) {
+    implState = "SKIPPED"; implDetail = "Source already matched the requested value in this run's own isolated workspace; redeployed as-is.";
+  } else if (failedTerminal) {
+    implState = "FAILED"; implDetail = "Failed before a change could be applied — see the activity log below.";
+  } else {
+    implState = "PENDING"; implDetail = "";
+  }
+  m.push({ key: "IMPLEMENTATION", label: "Implementation", state: implState, detail: implDetail });
+
+  const t = testingChecklistState();
+  let testState;
+  if (t.label.indexOf("NOT APPLICABLE") !== -1 || t.label.indexOf("NOT CONFIGURED") !== -1) testState = "NOT_APPLICABLE";
+  else if (t.label.indexOf("SKIPPED") !== -1) testState = "SKIPPED";
+  else if (t.label === "TESTING — PASSED") testState = "PASSED";
+  else if (t.label === "TESTING — FAILED") testState = "FAILED";
+  else if (t.mark === "?") testState = "BLOCKED";
+  else testState = "PENDING";
+  const testDetail = t.label + (r.testingSkipReason ? ": " + r.testingSkipReason : "");
+  m.push({ key: "TESTING", label: "Testing", state: testState, detail: testDetail });
+
+  m.push({ key: "AI_QA", label: "AI QA", state: "NOT_APPLICABLE",
+    detail: "Independent QA evaluation (the qa-evaluator subagent) is used internally in this project's own development sessions — not wired into this public preview pipeline yet." });
+
+  let gitState, gitDetail;
+  if (noChange) {
+    gitState = "SKIPPED"; gitDetail = "Nothing to commit — no change was applied.";
+  } else if (current("COMMITTING") || current("PUSHING")) {
+    gitState = "RUNNING"; gitDetail = "Committing to a dedicated demo/<run id> branch in the isolated workspace…";
+  } else if (r.commitInfo) {
+    gitState = "PASSED";
+    gitDetail = `Commit ${r.commitInfo.sha} on ${r.commitInfo.branch}` + (r.pushInfo ? ` · Push: ${r.pushInfo.status}` : "");
+  } else if (failedTerminal) {
+    gitState = "FAILED"; gitDetail = "Failed before a commit was created — see the activity log below.";
+  } else {
+    gitState = "PENDING"; gitDetail = "";
+  }
+  m.push({ key: "GIT", label: "Git", state: gitState, detail: gitDetail });
+
+  let deployState, deployDetail;
+  if (noChange) {
+    deployState = "SKIPPED"; deployDetail = "Nothing to deploy — production already matched the requirement.";
+  } else if (current("DEPLOYING")) {
+    deployState = "RUNNING"; deployDetail = "Triggering a real Railway deployment from the isolated workspace…";
+  } else if (r.deploymentInfo) {
+    deployState = r.deploymentInfo.deployment_identity_confirmed ? "PASSED" : (unknownTerminal ? "BLOCKED" : "FAILED");
+    deployDetail = `Deployment ${r.deploymentInfo.new_deployment_id || "—"} (${r.deploymentInfo.deployment_status || "—"})`;
+  } else if (failedTerminal) {
+    deployState = "FAILED"; deployDetail = "Deploy trigger failed — see the activity log below.";
+  } else {
+    deployState = "PENDING"; deployDetail = "";
+  }
+  m.push({ key: "DEPLOYMENT", label: "Deployment", state: deployState, detail: deployDetail });
+
+  let verifyState, verifyDetail;
+  if (noChange) {
+    verifyState = "PASSED";
+    verifyDetail = "Live production was fetched and already showed the requested value before any change was attempted.";
+  } else if (current("VERIFYING PRODUCTION")) {
+    verifyState = "RUNNING"; verifyDetail = "Waiting for the new deployment's identity, then re-checking the live field…";
+  } else if (r.deploymentInfo) {
+    verifyState = r.deploymentInfo.content_verified ? "PASSED" : (unknownTerminal ? "BLOCKED" : "FAILED");
+    verifyDetail = `Expected: "${r.expectedValue || ""}" · Observed: ${r.deploymentInfo.live_value !== undefined ? '"' + r.deploymentInfo.live_value + '"' : "—"}`;
+  } else if (failedTerminal) {
+    verifyState = "FAILED"; verifyDetail = "Never reached — a prior stage failed.";
+  } else {
+    verifyState = "PENDING"; verifyDetail = "";
+  }
+  m.push({ key: "PRODUCTION_VERIFY", label: "Production Verify", state: verifyState, detail: verifyDetail });
+
+  return m;
+}
+
+function showMilestoneDetail(key) {
+  const s = (run.milestoneStates || []).find(x => x.key === key);
+  if (!s) return;
+  const meta = STATE_META[s.state] || STATE_META.PENDING;
+  milestoneDetail.hidden = false;
+  milestoneDetail.dataset.openKey = key;
+  milestoneDetail.innerHTML =
+    `<div class="milestone-detail-head"><strong>${esc(s.label)}</strong> <span class="milestone-state-tag ${meta.cls}">${esc(s.state.replace("_", " "))}</span></div>` +
+    `<div class="milestone-detail-body">${esc(s.detail || "No further detail yet.")}</div>`;
+}
+
+function renderMilestoneBar() {
+  if (!run) return;
+  const states = computeMilestoneStates(run);
+  run.milestoneStates = states;
+  let html = "";
+  states.forEach((s, i) => {
+    if (i > 0) {
+      const prevDecided = ["PASSED", "SKIPPED", "NOT_APPLICABLE"].indexOf(states[i - 1].state) !== -1;
+      html += `<div class="milestone-connector ${prevDecided ? "filled" : ""}"></div>`;
     }
-    const seen = run.stagesSeen.has(s.key);
-    const isCurrent = s.key === run.currentStage && !terminal;
-    let cls, mark, note = "";
-    if (seen && !isCurrent) { cls = "done"; mark = "✓"; }
-    else if (isCurrent) { cls = "active"; mark = "●"; }
-    else if (terminal && i > lastSeenIndex) { cls = "skipped"; mark = "○"; note = '<span class="skip-note">SKIPPED / NOT REQUIRED</span>'; }
-    else { cls = "pending"; mark = "○"; }
-    return `<li class="${cls}"><span class="mark">${mark}</span><span>${esc(s.label)}</span>${note}</li>`;
-  }).join("");
+    const meta = STATE_META[s.state] || STATE_META.PENDING;
+    const titleText = `${s.label} — ${s.state.replace("_", " ")}${s.detail ? ": " + s.detail : ""}`;
+    html += `<button type="button" class="milestone-node ${meta.cls}" data-key="${s.key}" title="${esc(titleText)}">` +
+      `<span class="milestone-circle">${meta.mark}</span><span class="milestone-label">${esc(s.label)}</span></button>`;
+  });
+  milestoneBar.innerHTML = html;
+  milestoneBar.querySelectorAll(".milestone-node").forEach(btn => {
+    btn.addEventListener("click", () => showMilestoneDetail(btn.dataset.key));
+  });
+  if (milestoneDetail.dataset.openKey) showMilestoneDetail(milestoneDetail.dataset.openKey);
 }
 
 // ---- Applying one backend event (shared by SSE and polling) --------------
@@ -531,6 +652,7 @@ function applyEvent(evt) {
       deployBody.innerHTML += `<div class="kv"><span class="k">Workspace</span><span class="v">${evt.ok ? "isolated clone created" : "isolated clone FAILED"}</span></div>`;
       break;
     case "diff":
+      run.diffInfo = evt;
       verificationPanel.hidden = false;
       addVerificationLine("Change", { success: true, summary: `${evt.file}:${evt.line_changed}\n- ${evt.old_line}\n+ ${evt.new_line}` });
       break;
@@ -556,7 +678,7 @@ function applyEvent(evt) {
   // Client clock only, for every event type uniformly — see the "stage"
   // case above for why this must never be the backend's own evt.ts.
   run.lastEventAtMs = Date.now();
-  renderStageChecklist();
+  renderMilestoneBar();
 }
 
 // One authoritative place that decides the four possible terminal
@@ -595,7 +717,12 @@ function renderTerminalOutcome() {
     ? ((run.deploymentInfo && run.deploymentInfo.public_url) || currentAppUrl())
     : currentAppUrl();
   let evidenceHtml = `<div class="production-verified-box ${outcome.cls}-box">`;
+  evidenceHtml += `<div class="terminal-cta-row">`;
   evidenceHtml += `<a class="open-production-btn" href="${esc(buttonUrl)}" target="_blank" rel="noopener">[ ${esc(outcome.buttonLabel)} ]</a>`;
+  evidenceHtml += `<a class="secondary-cta-btn" href="/usage/session/${esc(run.id)}" target="_blank" rel="noopener">[ VIEW EVIDENCE ]</a>`;
+  evidenceHtml += `<a class="secondary-cta-btn" href="/dashboard" target="_blank" rel="noopener">[ VIEW DASHBOARD ]</a>`;
+  evidenceHtml += `<a class="secondary-cta-btn" href="/usage" target="_blank" rel="noopener">[ VIEW USAGE ]</a>`;
+  evidenceHtml += `</div>`;
   evidenceHtml += `<div class="kv"><span class="k">Run ID</span><span class="v"><code>${esc(run.id)}</code></span></div>`;
   if (run.status === "COMPLETED") {
     if (run.commitInfo) {

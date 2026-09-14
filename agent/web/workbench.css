@@ -33,28 +33,125 @@
 .transport-badge.lost { background: rgba(239,90,90,0.12); color: var(--red); }
 .transport-badge.unknown { background: rgba(139,147,167,0.1); color: var(--muted); }
 
-#stage-checklist { list-style: none; margin: 0; padding: 0; font-size: 0.88rem; }
-#stage-checklist li {
-  display: flex;
-  align-items: baseline;
-  gap: 0.6rem;
-  padding: 0.4rem 0;
-  border-bottom: 1px solid var(--border);
-}
-#stage-checklist li:last-child { border-bottom: none; }
-#stage-checklist .mark { width: 1.2rem; flex-shrink: 0; text-align: center; font-weight: 700; }
-#stage-checklist li.done .mark { color: var(--green); }
-#stage-checklist li.active .mark { color: var(--accent); animation: pulse 1.4s ease-in-out infinite; }
-#stage-checklist li.pending .mark { color: var(--muted); }
-#stage-checklist li.skipped { opacity: 0.55; }
-#stage-checklist li.skipped .mark { color: var(--muted); }
-#stage-checklist li.failed .mark { color: var(--red); }
-#stage-checklist .skip-note { color: var(--muted); font-size: 0.78rem; margin-left: 0.4rem; }
+.milestone-hint { margin-bottom: 0.5rem; }
 
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.35; }
+/* ---- Milestone bar: the delivery-lifecycle executive summary -------- */
+.milestone-bar {
+  display: flex;
+  align-items: flex-start;
+  overflow-x: auto;
+  padding: 0.6rem 0.1rem 0.9rem;
+  -webkit-overflow-scrolling: touch;
 }
+.milestone-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  width: 4.4rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.2rem 0.1rem;
+  font-family: inherit;
+}
+.milestone-node:hover .milestone-label { color: var(--accent); }
+.milestone-node:focus-visible { outline: 2px solid var(--accent); border-radius: 8px; }
+.milestone-circle {
+  width: 1.9rem;
+  height: 1.9rem;
+  min-width: 1.9rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+  border: 2px solid var(--border);
+  color: var(--muted);
+  background: #0d0f14;
+  transition: all 0.15s ease;
+}
+.milestone-label {
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.15;
+  transition: color 0.15s ease;
+}
+.milestone-connector {
+  height: 2px;
+  flex: 1 1 0.7rem;
+  min-width: 0.4rem;
+  background: var(--border);
+  margin-top: 1.1rem;
+  transition: background 0.2s ease;
+}
+.milestone-connector.filled { background: var(--green); }
+
+/* PENDING — small, muted, not yet started */
+.milestone-node.pending .milestone-circle { border-color: var(--border); color: var(--muted); }
+
+/* RUNNING — visually larger, breathing/pulsing, subtle halo, emphasized label */
+.milestone-node.running .milestone-circle {
+  width: 2.5rem; height: 2.5rem; min-width: 2.5rem;
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 6px rgba(91,147,255,0.14);
+  animation: milestone-breathe 1.6s ease-in-out infinite;
+}
+.milestone-node.running .milestone-label { color: var(--accent); font-weight: 800; }
+@keyframes milestone-breathe {
+  0%, 100% { box-shadow: 0 0 0 6px rgba(91,147,255,0.14); transform: scale(1); }
+  50% { box-shadow: 0 0 0 10px rgba(91,147,255,0.05); transform: scale(1.06); }
+}
+
+/* PASSED — solid, checkmark */
+.milestone-node.passed .milestone-circle { border-color: var(--green); color: var(--green); background: rgba(62,207,142,0.08); }
+
+/* FAILED — red/error */
+.milestone-node.failed .milestone-circle { border-color: var(--red); color: var(--red); background: rgba(239,90,90,0.08); }
+.milestone-node.failed .milestone-label { color: var(--red); }
+
+/* BLOCKED — amber, genuine unresolved uncertainty */
+.milestone-node.blocked .milestone-circle { border-color: var(--amber); color: var(--amber); background: rgba(230,180,80,0.08); }
+.milestone-node.blocked .milestone-label { color: var(--amber); }
+
+/* SKIPPED / NOT_APPLICABLE — neutral, explicit, never blank */
+.milestone-node.skipped .milestone-circle,
+.milestone-node.na .milestone-circle { border-color: var(--border); color: var(--muted); opacity: 0.6; }
+.milestone-node.skipped .milestone-label,
+.milestone-node.na .milestone-label { opacity: 0.6; }
+
+.milestone-detail {
+  margin-top: 0.4rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.015);
+  font-size: 0.85rem;
+}
+.milestone-detail-head { margin-bottom: 0.3rem; }
+.milestone-state-tag {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  margin-left: 0.3rem;
+}
+.milestone-state-tag.pending { background: rgba(139,147,167,0.12); color: var(--muted); }
+.milestone-state-tag.running { background: rgba(91,147,255,0.14); color: var(--accent); }
+.milestone-state-tag.passed { background: rgba(62,207,142,0.12); color: var(--green); }
+.milestone-state-tag.failed { background: rgba(239,90,90,0.12); color: var(--red); }
+.milestone-state-tag.blocked { background: rgba(230,180,80,0.12); color: var(--amber); }
+.milestone-state-tag.skipped, .milestone-state-tag.na { background: rgba(139,147,167,0.1); color: var(--muted); }
+.milestone-detail-body { color: var(--muted); line-height: 1.4; }
 
 .owner-auth-notice {
   background: var(--accent-soft);
@@ -85,6 +182,20 @@
   margin-bottom: 0.85rem;
 }
 .open-production-btn:hover { filter: brightness(1.08); }
+.terminal-cta-row { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 0.85rem; }
+.terminal-cta-row .open-production-btn { margin-bottom: 0; }
+.secondary-cta-btn {
+  display: inline-block;
+  align-self: center;
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 0.6rem 1rem;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+}
+.secondary-cta-btn:hover { background: var(--accent-soft); }
 .production-verified-box.neutral-box { border-color: var(--muted); }
 .production-verified-box.failed-box { border-color: var(--red); }
 .production-verified-box.neutral-box .open-production-btn,

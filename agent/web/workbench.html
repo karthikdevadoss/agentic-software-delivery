@@ -52,7 +52,7 @@
   </section>
 
   <section class="panel" id="run-status-panel" hidden>
-    <h2>3. Run Status</h2>
+    <h2>3. Delivery Lifecycle</h2>
     <div class="run-status-grid">
       <div class="kv"><span class="k">Overall state</span><span class="v" id="rs-overall">—</span></div>
       <div class="kv"><span class="k">Run ID</span><span class="v"><code id="rs-runid">—</code></span></div>
@@ -62,12 +62,14 @@
       <div class="kv"><span class="k">Total elapsed</span><span class="v" id="rs-total-elapsed">—</span></div>
       <div class="kv"><span class="k">Last backend activity</span><span class="v" id="rs-last-activity">—</span></div>
     </div>
-    <ul id="stage-checklist"></ul>
+    <p class="hint milestone-hint">Click a stage for its evidence.</p>
+    <div id="milestone-bar" class="milestone-bar"></div>
+    <div id="milestone-detail" class="milestone-detail" hidden></div>
   </section>
 
   <section class="panel" id="activity-panel" hidden>
-    <h2>4. Live Agent Progress</h2>
-    <p class="hint">Real tool activity — repository investigation, planning, code change, build, test, deploy.</p>
+    <h2>4. Live Agent Process</h2>
+    <p class="hint">Detailed real-time evidence behind the milestones above — repository investigation, planning, code change, build, test, deploy.</p>
     <ul id="activity-list"></ul>
   </section>
 
