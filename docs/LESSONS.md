@@ -722,3 +722,27 @@ surprising verified behavior would otherwise get rediscovered later.
   governing "no node has ever been reachable" retries is not always the
   same one covered by the client's documented backoff properties, and
   guessing which one it is costs real debugging cycles for no guarantee.
+
+- **`railway up`'s build context/Dockerfile depends on the shell's
+  current working directory, and this repository has two independent
+  Dockerfile-vs-Railpack build setups that can silently swap.** Context
+  (2026-09-14, RESUME-AFTER-QUOTA session): running
+  `railway up --service agentic-delivery-customer-app` from the repo
+  root deployed successfully (no error at upload time) but the resulting
+  deployment CRASHED with `ANTHROPIC_API_KEY is not set` — the wrong
+  application entirely. Root cause, confirmed via
+  `railway deployment list --json`'s `meta.serviceManifest.build`: the
+  repo root has its own `Dockerfile` (built for the unrelated Python
+  `agentic-platform-backend` service), and Railway silently prefers a
+  Dockerfile it finds in the uploaded build context over that service's
+  own already-configured Railpack (Maven/Java auto-detect) builder — no
+  warning, no confirmation prompt, and the CLI's own "Uploading..."
+  output gives no indication anything is wrong. There is no `Dockerfile`
+  under `app/`, so running the identical command from inside `app/`
+  correctly uses Railpack and succeeds. **Lesson:** in a repo with more
+  than one deployable service and more than one build mechanism, always
+  `cd` into the exact directory that service's *correct* build context
+  requires before running `railway up`, and always check
+  `railway deployment list --json`'s real status (not just the CLI's
+  upload-time output) after every deploy — a build that starts without
+  error is not evidence it built the right thing.
