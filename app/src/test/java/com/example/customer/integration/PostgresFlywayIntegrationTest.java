@@ -40,22 +40,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * class, and docs/PROJECT_STATE.json for the real CI run result.
  */
 @Testcontainers(disabledWithoutDocker = true)
-// spring.flyway.enabled=true is asserted explicitly here (the one
-// unambiguous, documented-highest-precedence property source: @SpringBootTest's
-// own `properties`) rather than trusted to profile-file/document
-// precedence alone. TWO different profile-based mechanisms were tried
-// and BOTH failed identically in a real CI run against a genuine
-// Testcontainers Postgres instance (separate application-postgres.properties
-// file, then the modern single-file `#---`/spring.config.activate.on-profile`
-// form) -- zero Flyway log lines, then Hibernate's "Schema validation:
-// missing table [contract_plan]" both times. The exact reason
-// @ActiveProfiles("postgres") in a @SpringBootTest context did not apply
-// the postgres document's spring.flyway.enabled=true was not fully
-// isolated in the time available -- see docs/LESSONS.md. This explicit
-// override removes the ambiguity for THIS test; a real production
-// cutover (SPRING_PROFILES_ACTIVE=postgres via an env var, a different
-// activation code path) must independently re-verify Flyway actually
-// runs rather than assume this test proves it.
+// spring.flyway.enabled=true is asserted explicitly here as belt-and-
+// suspenders on top of application-postgres.properties's own
+// spring.flyway.enabled=true (redundant now, but harmless, and cheap
+// insurance against the exact class of bug this project just spent
+// three real CI failures diagnosing -- see docs/LESSONS.md: the actual
+// root cause was spring-boot-flyway, Spring Boot 4's separate
+// autoconfiguration module, missing from pom.xml entirely, NOT a
+// property-precedence problem as first suspected).
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = "spring.flyway.enabled=true")

@@ -576,32 +576,50 @@ surprising verified behavior would otherwise get rediscovered later.
   to tolerate "index missing" as if that were an equally valid outcome
   for a test whose entire point is verifying real retrieval.
 
-- **A profile-activated `spring.flyway.enabled=true` did not override the
-  base `application.properties`'s `spring.flyway.enabled=false` in a
-  `@SpringBootTest` + `@ActiveProfiles("postgres")` context, against a
-  real Testcontainers Postgres instance in real GitHub Actions CI —
-  confirmed via two independent real CI runs, not a local guess or a
-  one-off fluke.** First attempt: a separate `application-postgres.properties`
-  file (the legacy per-profile-file convention). Second attempt: the
-  modern single-file multi-document form (`#---` /
-  `spring.config.activate.on-profile=postgres`), documented as the
-  officially recommended mechanism since Spring Boot 2.4 — this ALSO
-  failed identically (zero Flyway log lines, then Hibernate's
-  `Schema validation: missing table [contract_plan]`). The exact root
-  cause was not fully isolated in the time available — plausible
-  candidates not yet ruled out: an interaction specific to
-  `@ActiveProfiles` in a test `ApplicationContext` (vs. real
-  `SPRING_PROFILES_ACTIVE` env-var activation), or something about how
-  `@ServiceConnection`'s dynamically-injected Testcontainers DataSource
-  properties layer against profile-activated documents in this Spring
-  Boot 4.1.1 / Flyway 12.4.0 combination. Documented honestly as
-  unresolved, not silently worked around. The fix that actually worked:
-  asserting `spring.flyway.enabled=true` directly via
-  `@SpringBootTest(properties = "spring.flyway.enabled=true")` — Spring's
-  one documented, unambiguous highest-precedence config source, which
-  cannot be shadowed by anything profile-related. **Consequence: this
-  test alone does NOT prove a real production cutover
-  (`SPRING_PROFILES_ACTIVE=postgres` via a real env var, a different
-  activation path) will actually run Flyway** — that must be
-  independently re-verified before any real Postgres cutover, not
-  assumed from this test passing.
+- **Spring Boot 4 split `FlywayAutoConfiguration` out of the
+  `spring-boot-autoconfigure` monolith into its own module,
+  `org.springframework.boot:spring-boot-flyway`** — exactly like
+  `spring-boot-hibernate`/`spring-boot-jdbc`/`spring-boot-jpa` (all
+  directly observed via `mvn dependency:tree` once this was suspected).
+  `flyway-core` + `flyway-database-postgresql` are the Flyway *library*
+  only; without `spring-boot-flyway` as an explicit dependency, the
+  `@Configuration` class that even reads `spring.flyway.enabled` is
+  never on the classpath, so **no property value can matter, no matter
+  which mechanism sets it.** This was the actual root cause behind THREE
+  consecutive real GitHub Actions CI failures against a genuine
+  Testcontainers Postgres instance (zero Flyway log lines, then
+  Hibernate's `Schema validation: missing table [contract_plan]`) —
+  confirmed conclusively only after decompiling the actual
+  `FlywayAutoConfiguration` class bytecode
+  (`javap -v ... | grep -A3 ConditionalOnProperty`) to verify the real
+  `@ConditionalOnProperty(name=["spring.flyway.enabled"],
+  matchIfMissing=true)` condition existed at all — it didn't, because the
+  class wasn't present. Two earlier "fixes" (a separate
+  `application-postgres.properties` file, then a single-file
+  `#---`/`spring.config.activate.on-profile=postgres` multi-document
+  form) both correctly diagnosed a symptom (`spring.flyway.enabled`
+  seemingly not taking effect) but the wrong cause (profile-file
+  precedence) — property precedence was never the problem; nothing was
+  reading the property at all.
+  **Compounding, separately real bug found while fixing this**: the
+  single-file `#---` multi-document form, once Flyway autoconfiguration
+  finally existed, caused `spring.flyway.enabled=true` from the
+  postgres-only document to leak into the DEFAULT (no active profile) H2
+  context too — plausibly `.properties` (unlike YAML) multi-document
+  key overrides not being scoped by the activation condition the way
+  expected, though not fully root-caused given the session's time
+  budget. Reverted to genuinely separate profile files
+  (`application.properties` + `application-postgres.properties`), which
+  cannot have this specific failure mode by construction (a key in one
+  file cannot leak into a different file's property source). **Lesson:**
+  when a fast-moving framework's major-version release notes mention
+  "modularized autoconfiguration" (Boot 4's actual, real change here),
+  verify EVERY autoconfiguration-providing module you depend on is
+  actually present as its own explicit dependency — do not assume a
+  library dependency (`flyway-core`) implies its Spring Boot
+  autoconfiguration glue comes along for free, and do not spend cycles
+  debugging property precedence before confirming the consuming
+  `@Configuration` class is even on the classpath (`mvn dependency:tree`
+  plus, if still unsure, decompiling the actual class's conditions is
+  cheap and conclusive — cheaper than three more guess-and-check CI
+  cycles).

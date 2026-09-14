@@ -56,6 +56,21 @@
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-database-postgresql</artifactId>
         </dependency>
+        <!-- THE ACTUAL ROOT CAUSE of three consecutive real CI failures
+             (see docs/LESSONS.md): Spring Boot 4 split FlywayAutoConfiguration
+             out of the spring-boot-autoconfigure monolith into its own
+             module, spring-boot-flyway, exactly like spring-boot-hibernate/
+             spring-boot-jdbc/spring-boot-jpa (confirmed present via `mvn
+             dependency:tree`) already are for their own concerns. flyway-core
+             + flyway-database-postgresql alone are the Flyway LIBRARY, not
+             Spring's autoconfiguration for it; without this module, no
+             property (spring.flyway.enabled or otherwise) could ever have
+             mattered, because the @Configuration class that even looks at
+             that property was never on the classpath in the first place. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-flyway</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>org.springdoc</groupId>
@@ -63,9 +78,34 @@
             <version>3.1.1</version>
         </dependency>
 
+        <!-- Resilience4j CORE modules only (circuitbreaker/retry), not the
+             resilience4j-spring-boot3/4 annotation-based starter: as of
+             this session, Spring Boot 4 support for that starter has real,
+             documented ecosystem immaturity (a resilience4j-spring-boot4
+             module missing from its own BOM, see docs/DECISIONS.md).
+             The core modules have zero Spring dependency at all, so they
+             carry none of that risk; composed programmatically instead of
+             via annotations (see ResilienceConfig/AppointmentAvailabilityService). -->
+        <dependency>
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-circuitbreaker</artifactId>
+            <version>2.4.0</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-retry</artifactId>
+            <version>2.4.0</version>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.wiremock</groupId>
+            <artifactId>wiremock-standalone</artifactId>
+            <version>3.10.0</version>
             <scope>test</scope>
         </dependency>
         <dependency>
