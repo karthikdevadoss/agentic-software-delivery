@@ -47,6 +47,13 @@ public class KafkaMessagingConfig {
         configProps.put(org.apache.kafka.clients.producer.ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         configProps.put(org.apache.kafka.clients.producer.ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, org.apache.kafka.common.serialization.StringSerializer.class);
         configProps.put(org.apache.kafka.clients.producer.ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, org.apache.kafka.common.serialization.StringSerializer.class);
+        // Same real production finding as application.properties's consumer/admin
+        // backoff settings (this bean bypasses those Boot-bound properties by
+        // design, so it needs its own copy): without a reachable broker, the
+        // default ~50ms backoff meant OutboxPublisher's producer was retrying
+        // far more often than useful, flooding production logs.
+        configProps.put(org.apache.kafka.clients.producer.ProducerConfig.RECONNECT_BACKOFF_MS_CONFIG, 10000);
+        configProps.put(org.apache.kafka.clients.producer.ProducerConfig.RECONNECT_BACKOFF_MAX_MS_CONFIG, 60000);
         return new DefaultKafkaProducerFactory<>(configProps);
     }
 
