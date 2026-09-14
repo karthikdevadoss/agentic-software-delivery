@@ -17,83 +17,67 @@ IMPLEMENTED / NOT VERIFIED) rather than invented.
 import json
 from pathlib import Path
 
+import yaml
+
 import event_ledger
 import metrics
+import showcase_data
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PROJECT_STATE_PATH = REPO_ROOT / "docs" / "PROJECT_STATE.json"
 RAG_INDEX_PATH = REPO_ROOT / "agent" / ".rag_index" / "index.json"
 RUN_HISTORY_PATH = REPO_ROOT / "agent" / "web_run_history.jsonl"
+LEDGER_PATH = REPO_ROOT / "docs" / "ai" / "AI_ENGINEERING_QUALITY_LEDGER.yaml"
 
-# Hand-verified by a live `python -m unittest ...` run this session, at the
-# commit noted below. Re-run and update this constant (do not guess) if
-# agent/*.py or agent/test_*.py change after that commit.
+# Hand-verified by a live `python -m unittest ...` / `mvnw test` run at the
+# commits noted below (this project's most recent full-suite runs — see
+# docs/PROJECT_STATE.json's verification_state for the exact evidence
+# entries). Re-run and update these constants (do not guess) the next time
+# a full regression pass is performed.
 TEST_EVIDENCE = {
-    "total": 115,
-    "passed": 114,
-    "skipped": 1,
-    "failed": 0,
-    "skip_reason": "Windows lacks the privilege to create symlinks in this test environment (platform limitation, not a bug)",
-    "command": "python -m unittest test_agent_loop test_rag_index test_mcp_server test_write_tools test_build_tools test_execution_tools test_risk_policy test_web_server test_event_ledger test_claude_code_hook",
-    "as_of_commit": "d4224e6",
+    "python": {"total": 531, "passed": 530, "skipped": 1, "failed": 0,
+               "skip_reason": "Windows lacks the privilege to create symlinks in this test environment (platform limitation, not a bug)",
+               "as_of_commit": "b3d6856"},
+    "java": {"total": 102, "passed": 91, "skipped": 11, "failed": 0,
+             "skip_reason": "Testcontainers-backed Postgres tests skip on this dev machine (no local Docker daemon) but run for real in GitHub Actions CI",
+             "as_of_commit": "4c31e17"},
+    "node_frontend": {"total": 92, "passed": 92, "skipped": 0, "failed": 0,
+                       "as_of_commit": "b908f62 era (Preferences/Appointment frontend suites)"},
+    "command": "python -m unittest discover  (agent/)   |   mvnw test  (app/)   |   node --test (e2e/*.spec.js frontend harnesses)",
+    "ci": "GitHub Actions (.github/workflows/ci.yml) runs the real Testcontainers-backed Postgres suite on every push — this dev machine has no local Docker daemon, so those tests can only be genuinely exercised in CI.",
 }
 
-# Manually curated, but every field must trace to a verification_state /
-# completed_capabilities / missing_capabilities entry in PROJECT_STATE.json
-# — this is a restructuring of already-recorded truth for display, not new
-# claims. Keep in sync when PROJECT_STATE.json's capability lists change.
-CAPABILITY_MATRIX = [
-    {"area": "LLM / API tool-calling loop", "status": "IMPLEMENTED",
-     "evidence": "agent_loop.py generic run_agent_loop(tool_schemas, dispatch_fn); thinking/tool_use round-trip unit-tested",
-     "gap": "no automatic model routing / FinOps layer"},
-    {"area": "Repository-aware planning", "status": "IMPLEMENTED",
-     "evidence": "V3 controlled read-only planning agent; safe list_repository_files/read_file/search_code tools",
-     "gap": "-"},
-    {"area": "RAG (semantic retrieval)", "status": "IMPLEMENTED",
-     "evidence": "local fastembed (BAAI/bge-small-en-v1.5) + numpy cosine similarity; hybrid-verified via read_file/search_code",
-     "gap": "no production embedding provider (Voyage AI coded but needs API key); no vector DB at scale"},
-    {"area": "Incremental RAG indexing", "status": "IMPLEMENTED",
-     "evidence": "content-hash based reuse; 7 unit tests + live add/modify/delete/no-op proof",
-     "gap": "-"},
-    {"area": "MCP (Model Context Protocol)", "status": "PARTIALLY IMPLEMENTED",
-     "evidence": "official modelcontextprotocol/python-sdk; stdio + in-process Client discovery/invocation/security unit-tested",
-     "gap": "Streamable HTTP transport is coded but NOT runtime-verified over real HTTP; only read-only tools exposed via MCP"},
-    {"area": "Safe writes (propose/approve/apply)", "status": "IMPLEMENTED",
-     "evidence": "write_tools.py: scope-restricted to app/src/{main,test}/java .java files; approval bound to sha256(path+content), not just a boolean",
-     "gap": "-"},
-    {"area": "Human approval boundary", "status": "IMPLEMENTED",
-     "evidence": "approve/reject never exposed as an LLM tool schema or reachable via dispatch (verified by exact set membership); fails closed on EOF; real browser APPROVE click verified end to end",
-     "gap": "single approval registry (one run at a time) — fine for this single-operator MVP"},
-    {"area": "Controlled build/test verification", "status": "IMPLEMENTED",
-     "evidence": "allowlist-only Maven compile/test, no shell, argv-list subprocess; real run: compile ~15.3s, tests ~19.0s, both PASS",
-     "gap": "-"},
-    {"area": "Browser Control UI", "status": "IMPLEMENTED",
-     "evidence": "Starlette+SSE; first genuine human-approved browser run reached VERIFIED SUCCESS; two real UI defects found live and fixed, creator-confirmed",
-     "gap": "no automated browser test suite (verified manually)"},
-    {"area": "Metrics hooks", "status": "IMPLEMENTED (minimal)",
-     "evidence": "agent/metrics.py: structured tool-call/RAG-index/retrieval events",
-     "gap": "in-memory only — resets on process restart; no persisted long-term analytics store"},
-    {"area": "Dashboard (evidence surface)", "status": "IN PROGRESS",
-     "evidence": "this MVP", "gap": "no auth/tenancy yet (not needed at this stage)"},
-    {"area": "Compile/test self-correction loop", "status": "NOT IMPLEMENTED",
-     "evidence": "-", "gap": "tools exist and are wired in; no automatic retry-on-failure loop yet"},
-    {"area": "Multi-agent architecture", "status": "NOT IMPLEMENTED",
-     "evidence": "-", "gap": "current baseline is deliberately 1 reasoning agent + deterministic tools, pending a measured need"},
-    {"area": "Deployment", "status": "NOT IMPLEMENTED", "evidence": "-", "gap": "no deployment pipeline exists"},
-    {"area": "YogaCRM / customer pilot", "status": "NOT STARTED", "evidence": "-", "gap": "future strategic pilot; not begun"},
-]
+
+def _capability_matrix() -> list:
+    """Single source of truth: docs/PORTFOLIO_CAPABILITIES.yaml, the same
+    registry the job-specific showcase factory reads. Never a second,
+    independently-maintained copy — that was the root cause of this
+    section going stale for a long time (it previously named "V4 tool-use
+    budget" concepts from the earliest sessions while the actual product
+    had since shipped Postgres/JWT/Kafka/Resilience4j/RAG/MCP/evals)."""
+    registry = showcase_data.load_capability_registry()
+    state_labels = {
+        "PRODUCTION_ACTIVE": "PRODUCTION ACTIVE",
+        "DEMO_AVAILABLE": "DEMO AVAILABLE",
+        "NOT_PRODUCTION_PROVISIONED": "IMPLEMENTED — NOT PRODUCTION PROVISIONED",
+    }
+    rows = []
+    for cap in registry.values():
+        status = state_labels.get(cap.get("production_state"), cap.get("production_state", "NOT CAPTURED YET"))
+        evidence = "; ".join(cap.get("evidence_links") or []) or cap.get("engineering_problem_solved", "-")
+        gap = "-" if cap.get("production_state") == "PRODUCTION_ACTIVE" else (cap.get("production_state") or "").replace("_", " ")
+        rows.append({"area": cap.get("display_name", cap.get("id")), "status": status, "evidence": evidence, "gap": gap or "-"})
+    return rows
 
 KNOWN_LIMITATIONS = [
-    "No compile/test self-correction loop — a failure is reported, not automatically retried.",
-    "No automated browser/UI test suite — the two Control UI fixes were verified by code inspection, HTTP-level mock replay, and the creator's own manual visual check, not CI.",
-    "No automated CI/CD deployment pipeline — today's public deploys (Vercel + Railway) were run manually from this machine, not triggered by a Git push.",
-    "No multi-agent architecture — one reasoning agent plus deterministic tools, by design, until a measured need justifies more.",
-    "No enterprise-scale RAG benchmark — local index is sized for this repo (21 files / 56 chunks); would need a real vector DB at scale.",
-    "No real customer pilot yet (YogaCRM is a future strategic target, not started).",
-    "Metrics are in-memory (reset on restart) plus a small local run-history log — no persisted long-term analytics store.",
+    "No compile/test self-correction loop for the read/plan-only V3 CLI agent — a failure is reported, not automatically retried (the live Workbench pipeline DOES retry production-content verification within a bounded window; see production-deployment-verification).",
+    "No multi-agent architecture — one reasoning agent plus deterministic tools/services, by design, until a measured need justifies more.",
+    "No enterprise-scale RAG benchmark — local index is sized for this repo; would need a real vector DB (pgvector/Qdrant) at meaningfully larger scale.",
+    "Kafka (transactional outbox) and Redis (cache-aside) are both implemented and integration-tested, but deliberately NOT production-provisioned — no persistent broker/cache instance is running, to avoid paying for infrastructure a portfolio project doesn't yet need under real load.",
     "MCP Streamable HTTP transport is implemented but not runtime-verified over real HTTP (only stdio / in-process Client tested).",
-    "Token usage and API cost ARE now captured and aggregated from the real event ledger (see the 'economics' section) — historical cost uses each run's own recorded pricing_version, never recomputed with a later price. Cost-per-verified-change is INSUFFICIENT DATA until enough real COMPLETED runs with known cost exist.",
-    "The Dashboard's own data layer (agent/dashboard_data.py) has no automated tests yet — it was verified this session via live curl checks against the real endpoints, not a unit test suite.",
+    "Cost-per-verified-change is INSUFFICIENT DATA until enough real COMPLETED runs with known cost exist in the event ledger window being queried.",
+    "The Dashboard's own data layer (agent/dashboard_data.py) and the showcase factory (agent/showcase_data.py) have no dedicated automated test files yet — verified via live curl checks against the real endpoints and the existing web_server.py route-registration suite, not a unit test suite of their own.",
+    "The custom domain (agentic.karthikdevadoss.com) has DNS configured but TLS certificate provisioning is still not confirmed live (independently re-checked 2026-09-14: a direct TLS handshake to the domain fails certificate validation) — the Railway *.up.railway.app URLs remain the correct links to share.",
 ]
 
 def _economics_snapshot() -> dict:
@@ -275,6 +259,80 @@ def _event_ledger_summary() -> dict:
         }
 
 
+# Curated, recruiter-first framing (Priority 5's "hiring manager" lens):
+# each row names the real engineering PROBLEM first, the technique second
+# — never a bare technology badge list. Every capability_id must exist in
+# docs/PORTFOLIO_CAPABILITIES.yaml; an id that no longer resolves is
+# reported honestly (see the "missing" list below) rather than silently
+# dropped, the same discipline showcase_data.py already applies.
+ENGINEERING_PROBLEMS_SOLVED_ORDER = [
+    "security-jwt-rbac",
+    "postgres-jpa-flyway",
+    "downstream-resilience",
+    "kafka-outbox",
+    "redis-cache",
+    "agentic-ai-delivery-pipeline",
+    "rag-mcp-embeddings",
+    "production-deployment-verification",
+]
+
+
+def _engineering_problems_solved() -> dict:
+    registry = showcase_data.load_capability_registry()
+    rows, missing = [], []
+    for cap_id in ENGINEERING_PROBLEMS_SOLVED_ORDER:
+        cap = registry.get(cap_id)
+        if cap is None:
+            missing.append(cap_id)
+            continue
+        rows.append({
+            "problem": cap["engineering_problem_solved"],
+            "technique": cap["display_name"],
+            "production_state": cap["production_state"],
+            "evidence_links": cap.get("evidence_links", []),
+        })
+    return {"rows": rows, "missing_capability_ids": missing}
+
+
+# Curated subset of the full AI Engineering Quality Ledger for a
+# recruiter-safe first view — the mega-prompt's own instruction is "do NOT
+# dump giant raw logs on the first page." The full ledger remains at
+# docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml for anyone who wants the raw
+# structured record (all fields, all entries).
+LEARNING_LEDGER_HIGHLIGHT_IDS = ["AEQ-013", "AEQ-010", "AEQ-011", "AEQ-012", "AEQ-004", "RWY-001"]
+
+
+def _ai_engineering_learning() -> dict:
+    if not LEDGER_PATH.exists():
+        return {"status": "NOT CAPTURED YET", "highlights": [], "total_defects": 0}
+    try:
+        ledger = yaml.safe_load(LEDGER_PATH.read_text(encoding="utf-8")) or {}
+    except yaml.YAMLError as exc:
+        return {"status": "UNREADABLE", "error": str(exc), "highlights": [], "total_defects": 0}
+
+    defects = {d["defect_id"]: d for d in ledger.get("defects", [])}
+    highlights = []
+    for defect_id in LEARNING_LEDGER_HIGHLIGHT_IDS:
+        d = defects.get(defect_id)
+        if d is None:
+            continue
+        highlights.append({
+            "defect_id": d["defect_id"],
+            "title": d["title"],
+            "root_cause": d["root_cause"],
+            "product_fix": d["product_fix"],
+            "harness_improvement": d["new_harness_process_regression"],
+            "confidence": d["analysis_confidence"],
+            "recurrence_status": d["recurrence_status"],
+        })
+    return {
+        "status": "CAPTURED",
+        "total_defects": len(defects),
+        "highlights": highlights,
+        "full_ledger_path": "docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml",
+    }
+
+
 def build_dashboard_snapshot() -> dict:
     state = _project_state()
 
@@ -288,6 +346,7 @@ def build_dashboard_snapshot() -> dict:
             "current_ticket_implemented": state.get("current_ticket_implemented", False),
             "next_phase": state.get("next_phase", "NOT CAPTURED YET"),
         },
+        "engineering_problems_solved": _engineering_problems_solved(),
         "last_documented_milestone": _milestone_from_state(state),
         "event_ledger": _event_ledger_summary(),
         "run_history": _read_run_history(),
@@ -298,6 +357,7 @@ def build_dashboard_snapshot() -> dict:
         "mcp": _mcp_summary(state),
         "security": _security_summary(state),
         "quality": TEST_EVIDENCE,
-        "capability_matrix": CAPABILITY_MATRIX,
+        "capability_matrix": _capability_matrix(),
+        "ai_engineering_learning": _ai_engineering_learning(),
         "known_limitations": KNOWN_LIMITATIONS,
     }

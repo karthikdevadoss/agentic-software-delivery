@@ -13,12 +13,16 @@ function esc(s) {
 function statusClass(status) {
   const s = (status || "").toString().toUpperCase();
   if (s.includes("NOT IMPLEMENTED") || s.includes("NOT CAPTURED") || s.includes("NOT STARTED") || s.includes("NOT VERIFIED")) return "st-gap";
-  if (s.includes("PARTIAL") || s.includes("IN PROGRESS")) return "st-partial";
+  if (s.includes("PARTIAL") || s.includes("IN PROGRESS") || s.includes("NOT_PRODUCTION") || s.includes("NOT PRODUCTION") || s.includes("DEMO_AVAILABLE") || s.includes("DEMO AVAILABLE") || s.includes("MONITORING")) return "st-partial";
   return "st-ok";
 }
 
+// Humanizes a raw ENUM_LIKE_VALUE (e.g. "PRODUCTION_ACTIVE") for display,
+// while statusClass() above still classifies from the raw value's own
+// substrings so both stay in sync from one input.
 function badge(status) {
-  return `<span class="badge ${statusClass(status)}">${esc(status)}</span>`;
+  const display = (status || "").toString().replace(/_/g, " ");
+  return `<span class="badge ${statusClass(status)}">${esc(display)}</span>`;
 }
 
 function section(title, innerHtml) {
@@ -155,11 +159,54 @@ function renderSecurity(d) {
 function renderQuality(d) {
   const q = d.quality;
   let html = "";
-  html += kvText("Automated tests", `${q.total} total, ${q.passed} passed, ${q.failed} failed, ${q.skipped} skipped`);
-  html += kvText("Skip reason", q.skip_reason);
-  html += kv("Command", `<code>${esc(q.command)}</code>`);
-  html += kvText("As of commit", q.as_of_commit);
+  for (const [label, suite] of [["Python", q.python], ["Java", q.java], ["Node / frontend", q.node_frontend]]) {
+    if (!suite) continue;
+    html += kv(label, `${suite.total} total, ${suite.passed} passed, ${suite.failed} failed, ${suite.skipped} skipped <span class="hint">(as of ${esc(suite.as_of_commit)})</span>`);
+    if (suite.skip_reason) html += `<p class="hint">${esc(suite.skip_reason)}</p>`;
+  }
+  html += kv("Commands", `<code>${esc(q.command)}</code>`);
+  html += `<p class="hint">${esc(q.ci)}</p>`;
   return section("F. Quality / Verification", html);
+}
+
+function renderEngineeringProblems(d) {
+  const e = d.engineering_problems_solved;
+  let html = '<ul class="problem-list">';
+  for (const row of e.rows) {
+    const links = (row.evidence_links || []).map(u =>
+      /^https?:\/\//.test(u) ? `<a href="${esc(u)}" target="_blank" rel="noopener">VIEW EVIDENCE</a>` : `<span class="hint">${esc(u)}</span>`
+    ).join(" ");
+    html += `<li>
+      <div class="problem-text">${esc(row.problem)}</div>
+      <div class="problem-arrow">&rarr; ${esc(row.technique)} ${badge(row.production_state)}</div>
+      ${links ? `<div class="problem-links">${links}</div>` : ""}
+    </li>`;
+  }
+  html += "</ul>";
+  if (e.missing_capability_ids && e.missing_capability_ids.length) {
+    html += `<p class="hint">Not shown — capability id(s) no longer in the registry: ${esc(e.missing_capability_ids.join(", "))}</p>`;
+  }
+  return section("Engineering Problems Solved", html);
+}
+
+function renderAiLearning(d) {
+  const l = d.ai_engineering_learning;
+  if (l.status !== "CAPTURED") {
+    return section("AI Engineering Learning", `<p>${badge(l.status)}</p>`);
+  }
+  let html = `<p class="hint">${l.total_defects} structured defect records in the full ledger — showing ${l.highlights.length} representative highlights. Full raw record: <code>${esc(l.full_ledger_path)}</code></p>`;
+  html += '<div class="ledger-list">';
+  for (const h of l.highlights) {
+    html += `<div class="ledger-item">
+      <div class="ledger-title"><strong>${esc(h.defect_id)}</strong> — ${esc(h.title)} ${badge(h.confidence)}</div>
+      <div class="ledger-row"><span class="ledger-k">Root cause</span><span>${esc(h.root_cause)}</span></div>
+      <div class="ledger-row"><span class="ledger-k">Product fix</span><span>${esc(h.product_fix)}</span></div>
+      <div class="ledger-row"><span class="ledger-k">Harness improvement</span><span>${esc(h.harness_improvement)}</span></div>
+      <div class="ledger-row"><span class="ledger-k">Recurrence</span><span>${badge(h.recurrence_status)}</span></div>
+    </div>`;
+  }
+  html += "</div>";
+  return section("AI Engineering Learning", html);
 }
 
 function renderCapabilityMatrix(d) {
@@ -261,6 +308,7 @@ async function load() {
 
   main.innerHTML = [
     renderSystemSnapshot(data),
+    renderEngineeringProblems(data),
     renderMilestone(data),
     renderRunHistory(data),
     renderSessionMetrics(data),
@@ -268,6 +316,7 @@ async function load() {
     renderMcp(data),
     renderSecurity(data),
     renderQuality(data),
+    renderAiLearning(data),
     renderVerifiedActivity(data),
     renderEconomics(data),
     renderCapabilityMatrix(data),
