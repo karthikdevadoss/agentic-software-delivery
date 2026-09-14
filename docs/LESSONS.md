@@ -695,3 +695,30 @@ surprising verified behavior would otherwise get rediscovered later.
   for a Postgres `TEXT` column backing a plain `String` field — `@Lob` is
   the wrong tool here regardless, since Postgres `TEXT` has no realistic
   size limit `@Lob`'s semantics would meaningfully add.
+
+- **An always-on `@KafkaListener`/`KafkaAdmin` with no reachable broker
+  does not "quietly retry in the background" — it can flood production
+  logs badly enough that the hosting platform starts dropping messages.**
+  Real incident, not a hypothetical: after deploying Kafka support with no
+  real broker configured, Railway logged "rate limit reached for
+  deployment... Messages dropped: 621". Two plausible-sounding property
+  fixes were tried and both failed to actually solve it — proven by
+  redeploying each and re-inspecting real logs, not assumed fixed from
+  reasoning alone: (1) `spring.kafka.consumer.properties.reconnect.backoff.ms`
+  governs reconnecting to an already-known broker node, not the
+  "Rebootstrapping" cycle that fires when bootstrap resolution has NEVER
+  succeeded; (2) `spring.kafka.admin.auto-create=false` stopped
+  `KafkaAdmin`'s share of the noise but not the `@KafkaListener`
+  consumer's own, independent reconnect loop (~1/sec, indefinitely). The
+  actual fix was architectural, not another property:
+  `@ConditionalOnProperty` on every Kafka-related bean (producer,
+  consumer, admin config), gated behind an explicit flag defaulting to
+  `false`, so nothing even attempts to connect until the operator
+  explicitly turns Kafka on alongside a real broker address. **Lesson:**
+  for an optional broker/queue dependency with no guaranteed availability
+  in every environment, gate the whole client subsystem behind an
+  explicit enable flag rather than trying to tune a specific client's
+  internal retry cadence from the outside — the exact internal mechanism
+  governing "no node has ever been reachable" retries is not always the
+  same one covered by the client's documented backoff properties, and
+  guessing which one it is costs real debugging cycles for no guarantee.
