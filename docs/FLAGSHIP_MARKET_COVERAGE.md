@@ -48,7 +48,7 @@ Status values: `NOT_STARTED`, `PARTIAL`, `IMPLEMENTED`, `PRODUCTION_VERIFIED`,
 
 | Capability | Priority | State | Business scenario | Notes |
 |---|---|---|---|---|
-| Spring Security + JWT resource-server | P0 | NOT_STARTED | Not attempted this session | High market priority for next session — sequenced after data foundation per the task's own slice order |
+| Spring Security + JWT resource-server | P0 | PRODUCTION_VERIFIED (2026-09-14) | Every business endpoint (customers, preferences, contract plans, appointment availability) now requires a real signed JWT with scope-based authorization | `security/SecurityConfig.java` (NimbusJwtDecoder, HS256, validates signature+expiry+issuer+audience), `security/DemoJwtIssuer.java` (portfolio demo token issuer, explicitly NOT an enterprise IdP, fixed scope set only), `POST /auth/demo-token` (public). 12 SecurityIntegrationTest cases (no/malformed/wrong-signature/expired/wrong-issuer/wrong-audience/wrong-scope all rejected; valid token allowed) + 2 AppointmentController tests. Production signing secret is a freshly generated random value set only as a Railway env var (JWT_DEMO_SIGNING_SECRET), never committed. Live-verified: 401 no/malformed token, 200 valid token, 404 through auth (proves authz passed), 201 create with write scope — all against real production, not just tests. |
 
 ## Integrations / Resilience
 
@@ -64,7 +64,7 @@ Status values: `NOT_STARTED`, `PARTIAL`, `IMPLEMENTED`, `PRODUCTION_VERIFIED`,
 | Real-server integration tests (RestTemplate, not MockMvc) | P0 | IMPLEMENTED | MockMvc confirmed NOT on this Spring Boot 4.1.1 project's classpath (module split moved Jackson to `tools.jackson`) — RestTemplate + `@SpringBootTest(RANDOM_PORT)` is this project's real, working pattern |
 | Testcontainers DB integration | P0 | IMPLEMENTED, CI-verified | See Data section above |
 | WireMock downstream-contract tests | P0 | IMPLEMENTED (2026-09-14) | `AppointmentAvailabilityIntegrationTest`, 7 tests |
-| Security tests (missing/malformed/expired token, wrong scope) | P0 | NOT_STARTED | Tied to the Security slice |
+| Security tests (missing/malformed/expired token, wrong scope) | P0 | IMPLEMENTED (2026-09-14), PRODUCTION_VERIFIED | `SecurityIntegrationTest` (12 tests) + live curl verification against real production |
 | Performance/load tests (k6/Gatling/JMeter) | P1 | NOT_STARTED | No baseline established yet |
 | CI pipeline running the above | P0 | PARTIAL (2026-09-14) | `.github/workflows/ci.yml` runs Java tests (incl. real Testcontainers Postgres), a scoped offline subset of the Python AI-platform tests + evals, and Node frontend tests. Does NOT yet run the full Python suite (several existing tests need live production credentials this CI job intentionally does not have) — a real, disclosed gap |
 
@@ -96,9 +96,9 @@ Status values: `NOT_STARTED`, `PARTIAL`, `IMPLEMENTED`, `PRODUCTION_VERIFIED`,
 
 ## Recommended next-session order (not a commitment, a priority queue)
 
-1. Spring Security + JWT resource-server (Slice 3) — IN PROGRESS this session.
-2. Observability (Actuator/Micrometer/correlation IDs) — cheap, high interview value, unblocks meaningful performance work later.
-3. The real end-to-end AI backend run (genuine LLM call), attempted in ISOLATION from any concurrent persistence-layer change.
-4. Redis, then Kafka — both explicitly sequenced last per the original task's own slice order, and both have real external-infrastructure decisions attached.
+1. Observability (Actuator/Micrometer/correlation IDs) — cheap, high interview value, unblocks meaningful performance work later.
+2. The real end-to-end AI backend run (genuine LLM call), attempted in ISOLATION from any concurrent persistence-layer change.
+3. Redis, then Kafka — both explicitly sequenced last per the original task's own slice order, and both have real external-infrastructure decisions attached.
+4. Java 21 assessment (P2) — not yet attempted; verify Railway/Railpack Java 21 support first.
 
-(Slice 4 — downstream integration + Resilience4j + WireMock — completed 2026-09-14, see Integrations/Resilience above. Postgres/Flyway production cutover — completed and PRODUCTION_VERIFIED 2026-09-14, see Data section above.)
+(Slice 4 — downstream integration + Resilience4j + WireMock — completed 2026-09-14, see Integrations/Resilience above. Postgres/Flyway production cutover — completed and PRODUCTION_VERIFIED 2026-09-14, see Data section above. Spring Security + JWT resource-server — completed and PRODUCTION_VERIFIED 2026-09-14, see Security section above.)

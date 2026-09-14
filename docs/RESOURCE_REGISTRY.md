@@ -60,12 +60,50 @@ old date as due for re-verification, not as current truth.
   this project).
 - **URL:** https://agentic-delivery-customer-app-production.up.railway.app
 - **STATUS:** CURRENT — confirmed `Online` and HTTP 200 this session.
-- **LAST VERIFIED:** 2026-09-10
-- **SECRET NAMES REQUIRED:** none known beyond Railway's own CLI
-  authentication (device-flow, not stored in this repo).
-- **NOTES:** Storage is H2 in-memory — customer data resets on every
-  redeploy. `server.port=${PORT:8080}` is required for Railway's dynamic
-  port assignment (see docs/DECISIONS.md).
+- **LAST VERIFIED:** 2026-09-14
+- **SECRET NAMES REQUIRED:** `JWT_DEMO_SIGNING_SECRET` (see
+  docs/SECRETS_REGISTRY.md) — a freshly openssl-generated random value set
+  directly as a Railway env var on this service, never committed.
+- **NOTES (UPDATED 2026-09-14):** Storage is now real, durable Postgres
+  (see the dedicated `agentic-delivery-customer-app` Postgres entry
+  below) — `SPRING_PROFILES_ACTIVE=postgres` is active in production;
+  customer data survives redeploys/restarts (independently verified).
+  The H2 in-memory profile remains available for local dev only.
+  Business endpoints now require a signed JWT (Spring Security resource
+  server) — obtain one via `POST /auth/demo-token` (public, portfolio
+  demo issuer, not a real IdP). `server.port=${PORT:8080}` is required
+  for Railway's dynamic port assignment (see docs/DECISIONS.md). The
+  customer-app Railway service does **not** auto-deploy on `git push` —
+  deploys require an explicit `railway up`/`railway redeploy` (see
+  docs/LESSONS.md).
+
+## Customer App PostgreSQL (Railway)
+
+- **NAME:** `Postgres` service inside the `agentic-delivery-customer-app`
+  Railway project (same project as the app above, a separate service).
+- **PURPOSE:** Real, durable relational persistence for the Customer App
+  (Customer/CustomerPreference/ContractPlan) — replaces the previous
+  ephemeral H2 in-memory storage. Deliberately its own dedicated resource,
+  never sharing the event-ledger's Postgres (different project, different
+  lifecycle, different data).
+- **PROVIDER:** Railway, same project ID as the Customer App
+  (`e19ceaff-846f-4d4a-b840-ce1248dd3325`), private-network hostname
+  `postgres.railway.internal` (reachable only from other services in the
+  same Railway project/environment — not from this laptop).
+- **VOLUME:** `postgres-volume`.
+- **STATUS:** CURRENT — provisioned and cut over to production 2026-09-14.
+  Flyway migrations V1-V3 applied from an empty schema; a real
+  create/read/enroll API cycle verified, and persistence independently
+  confirmed to survive a container restart.
+- **LAST VERIFIED:** 2026-09-14
+- **SECRET NAMES REQUIRED:** `DATABASE_URL`/`DATABASE_USERNAME`/
+  `DATABASE_PASSWORD` on the customer-app service, set as Railway
+  variable references to this Postgres service's own vars
+  (`${{Postgres.PGHOST}}` etc.) — never a literal copied value.
+- **BACKUP STATUS:** Not yet assessed this session (PITR/manual backup
+  decision deferred — same open-question pattern as the event-ledger
+  Postgres above; revisit before this holds anything beyond synthetic
+  demo data).
 
 ## Durable engineering event ledger (Railway PostgreSQL)
 

@@ -27,6 +27,45 @@ this is a tracked roadmap gap, not an oversight. See docs/ROADMAP.md.
 - **LAST VERIFIED/ROTATED:** Not tracked — no rotation process exists
   yet (roadmap gap).
 
+## JWT_DEMO_SIGNING_SECRET
+
+- **PURPOSE:** HMAC-SHA256 signing key for the Customer App's portfolio
+  demo JWT issuer (`security/DemoJwtIssuer.java`) — the same key both
+  signs demo tokens (`POST /auth/demo-token`) and validates them
+  (`security/SecurityConfig.java`'s `NimbusJwtDecoder`), since this is a
+  single-app resource server acting as its own token issuer, explicitly
+  NOT an enterprise IdP pattern.
+- **USED BY:** `app/src/main/java/com/example/customer/security/*`.
+- **STORED IN:** Set directly as a Railway env var on the
+  `agentic-delivery-customer-app` service — never committed. Local
+  dev/CI fall back to a clearly-labeled insecure default hardcoded in
+  `application.properties` (safe because it protects nothing real
+  locally/in CI).
+- **ENVIRONMENTS:** Production only needs the real value; local/CI use
+  the insecure default.
+- **NEVER LOG:** YES — never printed by any application code path. It
+  did appear transiently in an agent tool-call's own command construction
+  during generation (piped directly from `openssl rand` into `railway
+  variable set`, never echoed separately) — not written to any file this
+  repository tracks.
+- **LAST VERIFIED/ROTATED:** Generated 2026-09-14 (openssl rand, 48
+  bytes, base64). No rotation process exists yet (same roadmap gap as
+  every other secret in this file).
+
+## DATABASE_URL / DATABASE_USERNAME / DATABASE_PASSWORD (Customer App)
+
+- **PURPOSE:** Real Postgres connection for the Customer App's `postgres`
+  Spring profile (replaces ephemeral H2).
+- **USED BY:** `app/src/main/resources/application-postgres.properties`.
+- **STORED IN:** Railway variables on the `agentic-delivery-customer-app`
+  service, set as Railway variable *references* to the dedicated Postgres
+  service's own vars (e.g. `${{Postgres.PGHOST}}`) — never a literal
+  copied credential value written by this session.
+- **ENVIRONMENTS:** Production only; local dev has no Postgres configured
+  and uses the H2 default profile instead.
+- **NEVER LOG:** YES.
+- **LAST VERIFIED/ROTATED:** Provisioned 2026-09-14.
+
 ## EVENT_LEDGER_DATABASE_URL
 
 - **PURPOSE:** Connection string for the durable, append-only engineering
