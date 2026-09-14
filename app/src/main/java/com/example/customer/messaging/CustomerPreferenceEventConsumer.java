@@ -7,6 +7,7 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,8 +24,15 @@ import tools.jackson.databind.json.JsonMapper;
  * not swallowed silently: it propagates so KafkaMessagingConfig's
  * DefaultErrorHandler can retry it, then route it to the dead-letter
  * topic if it never succeeds -- never an infinite poison-message loop.
+ *
+ * Conditional on app.kafka.enabled -- see application.properties'
+ * EVENTING section: an always-on @KafkaListener with no reachable broker
+ * caused a real production log-flooding incident this session (Railway
+ * dropped messages). This component is not even instantiated, and no
+ * listener container starts, until Kafka is actually provisioned.
  */
 @Component
+@ConditionalOnProperty(name = "app.kafka.enabled", havingValue = "true")
 public class CustomerPreferenceEventConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(CustomerPreferenceEventConsumer.class);

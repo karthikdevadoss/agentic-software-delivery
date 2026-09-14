@@ -6,6 +6,7 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.Limit;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -22,8 +23,16 @@ import java.util.concurrent.TimeUnit;
  * -- a publish failure leaves the row unpublished for the next poll to
  * retry, so at-least-once delivery holds even across a broker outage.
  * Never deletes/marks-published speculatively.
+ *
+ * Conditional on app.kafka.enabled (see application.properties): when
+ * Kafka isn't provisioned, this poller simply doesn't run at all rather
+ * than repeatedly attempting -- and failing -- to publish. Outbox rows
+ * still accumulate correctly in the meantime (CustomerPreferenceService
+ * writes them unconditionally); they are published in order the first
+ * time this poller actually runs after Kafka is enabled.
  */
 @Component
+@ConditionalOnProperty(name = "app.kafka.enabled", havingValue = "true")
 public class OutboxPublisher {
 
     private static final Logger log = LoggerFactory.getLogger(OutboxPublisher.class);

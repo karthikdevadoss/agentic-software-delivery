@@ -57,6 +57,10 @@ class CustomerPreferenceEventFlowIntegrationTest {
 
     @DynamicPropertySource
     static void kafkaProperties(DynamicPropertyRegistry registry) {
+        // app.kafka.enabled defaults to false (see application.properties'
+        // real production-incident writeup) -- this test explicitly turns
+        // the whole Kafka subsystem on against the real Testcontainers broker.
+        registry.add("app.kafka.enabled", () -> "true");
         registry.add("spring.kafka.bootstrap-servers", kafka::getBootstrapServers);
     }
 

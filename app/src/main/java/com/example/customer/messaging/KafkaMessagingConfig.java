@@ -3,6 +3,7 @@ package com.example.customer.messaging;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.common.TopicPartition;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
@@ -22,8 +23,16 @@ import java.util.Map;
  * then routed to the ".DLT" dead-letter topic rather than blocking the
  * partition forever or being silently dropped -- "recovery strategy" is a
  * real, explicit decision here, not an omission.
+ *
+ * Entirely conditional on app.kafka.enabled -- see application.properties'
+ * EVENTING section for the real production incident that made this
+ * necessary: with no broker reachable, these beans' background reconnect
+ * activity flooded production logs badly enough that Railway started
+ * dropping messages. Nothing here even attempts to connect until Kafka
+ * is actually provisioned and this flag is explicitly turned on.
  */
 @Configuration
+@ConditionalOnProperty(name = "app.kafka.enabled", havingValue = "true")
 public class KafkaMessagingConfig {
 
     public static final String CUSTOMER_PREFERENCE_EVENTS_TOPIC = "customer-preference-events";
