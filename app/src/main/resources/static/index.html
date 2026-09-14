@@ -241,6 +241,12 @@
     <div id="appointments-body">
       <label for="appt-date">Date to check</label>
       <input type="date" id="appt-date">
+      <label for="appt-scenario">Demo scenario</label>
+      <select id="appt-scenario">
+        <option value="">Normal</option>
+        <option value="timeout">Simulate downstream timeout</option>
+        <option value="error">Simulate downstream failure</option>
+      </select>
       <div class="btn-row"><button id="appt-check-btn">CHECK AVAILABILITY</button></div>
       <div id="appt-result"></div>
     </div>
@@ -546,8 +552,11 @@
       '<select id="pref-channel">' + options + '</select>' +
       '<div class="btn-row"><button id="save-pref-btn">SAVE PREFERENCES</button></div>' +
       '<div id="pref-save-result"></div>';
-    document.getElementById('save-pref-btn').addEventListener('click', async function () {
+    var saveBtn = document.getElementById('save-pref-btn');
+    saveBtn.addEventListener('click', async function () {
       var resultEl = document.getElementById('pref-save-result');
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'SAVING…';
       setMsg(resultEl, 'Saving…', 'loading');
       try {
         var id = currentCustomerId();
@@ -560,11 +569,19 @@
         });
         if (!response.ok) throw new Error(await parseErrorBody(response));
         var updated = await response.json();
-        setMsg(resultEl, 'Preferences saved.', 'success');
+        setMsg(resultEl, '✓ Preferences saved successfully.', 'success');
         logActivity('Preferences updated (paperless=' + updated.paperlessBilling + ', channel=' + updated.notificationChannel + ')');
-        renderPreferences(updated);
+        // Re-render with the backend's own confirmed values (never a
+        // stale optimistic guess) -- but only after the success message
+        // has had time to actually be seen. Re-rendering immediately
+        // would replace this card's innerHTML (including the message we
+        // just set) before the browser ever paints it -- that was the
+        // real bug here (see docs/LESSONS.md).
+        setTimeout(function () { renderPreferences(updated); }, 1500);
       } catch (err) {
         setMsg(resultEl, 'Could not save preferences: ' + err.message, 'error');
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'SAVE PREFERENCES';
       }
     });
   }
@@ -585,33 +602,71 @@
 
   // ---------- Appointments ----------
 
-  function appointmentStatusLabel(status) {
-    if (status === 'AVAILABLE') return 'Available';
-    if (status === 'UNAVAILABLE') return 'Unavailable';
-    return 'Downstream service unavailable';
+  function todayIso() {
+    var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  function renderAppointmentResult(el, result) {
+    el.innerHTML = '';
+    if (result.status === 'AVAILABLE') {
+      var div = document.createElement('div');
+      div.className = 'msg success';
+      var slotsText = result.availableSlots && result.availableSlots.length
+        ? 'Available slots: ' + result.availableSlots.join(', ')
+        : 'Available.';
+      div.textContent = result.date + ' — ' + slotsText;
+      el.appendChild(div);
+    } else if (result.status === 'UNAVAILABLE') {
+      setMsg(el, result.date + ' — No appointment slots available.', 'error');
+    } else {
+      setMsg(el, 'Appointment service is temporarily unavailable. Please try again.', 'error');
+    }
   }
 
   function setupAppointments() {
     var dateInput = document.getElementById('appt-date');
+    var scenarioSelect = document.getElementById('appt-scenario');
+    var checkBtn = document.getElementById('appt-check-btn');
     var tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     dateInput.value = tomorrow.toISOString().slice(0, 10);
+    dateInput.min = todayIso();
 
-    document.getElementById('appt-check-btn').addEventListener('click', async function () {
+    checkBtn.addEventListener('click', async function () {
       var resultEl = document.getElementById('appt-result');
       var date = dateInput.value;
       if (!date) { setMsg(resultEl, 'Please choose a date.', 'error'); return; }
+      // Client-side mirror of the backend's own validation -- rejects a
+      // past date immediately, without ever calling the downstream
+      // service unnecessarily (the backend still enforces this for real;
+      // this is purely a faster/clearer UX path for the obvious case).
+      if (date < todayIso()) {
+        setMsg(resultEl, 'Appointment date must be today or later.', 'error');
+        return;
+      }
+      var scenario = scenarioSelect.value;
+      checkBtn.disabled = true;
+      checkBtn.textContent = 'CHECKING…';
       setMsg(resultEl, 'Checking…', 'loading');
       try {
         var id = currentCustomerId();
-        var response = await authFetch('/customers/' + id + '/appointment-availability?date=' + encodeURIComponent(date));
+        var url = '/customers/' + id + '/appointment-availability?date=' + encodeURIComponent(date);
+        if (scenario) url += '&scenario=' + encodeURIComponent(scenario);
+        var response = await authFetch(url);
+        if (response.status === 400) {
+          setMsg(resultEl, 'Appointment date must be today or later.', 'error');
+          return;
+        }
         if (!response.ok) throw new Error(await parseErrorBody(response));
         var result = await response.json();
-        var kind = result.status === 'AVAILABLE' ? 'success' : (result.status === 'UNAVAILABLE' ? 'error' : 'info');
-        setMsg(resultEl, result.date + ': ' + appointmentStatusLabel(result.status), kind);
-        logActivity('Checked appointment availability for ' + result.date + ' (' + result.status + ')');
+        renderAppointmentResult(resultEl, result);
+        logActivity('Checked appointment availability for ' + result.date + ' — ' + result.status);
       } catch (err) {
         setMsg(resultEl, 'Could not check availability: ' + err.message, 'error');
+      } finally {
+        checkBtn.disabled = false;
+        checkBtn.textContent = 'CHECK AVAILABILITY';
       }
     });
   }

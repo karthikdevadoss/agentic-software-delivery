@@ -3,6 +3,7 @@ package com.example.customer.integration.appointment;
 import org.springframework.web.client.RestClient;
 
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * BUSINESS REQUIREMENT: scheduling a technician appointment (e.g. a meter
@@ -23,6 +24,13 @@ import java.time.LocalDate;
  * This class does no retry/circuit-breaking itself — that is
  * AppointmentAvailabilityService's job (composition over one thin,
  * single-purpose HTTP client makes each concern independently testable).
+ *
+ * By default this points at this same application's own internal
+ * synthetic demo provider (see appointment/demo/DemoAppointmentProviderController)
+ * over a REAL HTTP loopback call -- not a direct method call -- so the
+ * full client/timeout/retry/circuit-breaker path stays genuine. Point
+ * appointment.service.base-url at a real downstream service instead once
+ * one exists.
  */
 public class AppointmentAvailabilityClient {
 
@@ -32,16 +40,32 @@ public class AppointmentAvailabilityClient {
         this.restClient = builder.baseUrl(baseUrl).build();
     }
 
-    public record DownstreamAvailabilityResponse(boolean available) {
+    public record DownstreamAvailabilityResponse(boolean available, List<String> slots) {
+        public List<String> slotsOrEmpty() {
+            return slots == null ? List.of() : slots;
+        }
+    }
+
+    public DownstreamAvailabilityResponse checkAvailability(LocalDate date) {
+        return checkAvailability(date, null);
     }
 
     /** Throws on any non-2xx response, timeout, or connection failure —
      * callers (AppointmentAvailabilityService) decide what to do with
      * that, this class never swallows a failure into a fake "unavailable"
-     * result. */
-    public DownstreamAvailabilityResponse checkAvailability(LocalDate date) {
+     * result. {@code scenario} is an optional demo-only control
+     * ("timeout"/"error") forwarded to the demo provider so a recruiter
+     * can deliberately exercise the real retry/circuit-breaker path --
+     * null/blank means "normal". */
+    public DownstreamAvailabilityResponse checkAvailability(LocalDate date, String scenario) {
         return restClient.get()
-                .uri("/availability?date={date}", date)
+                .uri(uriBuilder -> {
+                    uriBuilder.path("/availability").queryParam("date", date);
+                    if (scenario != null && !scenario.isBlank()) {
+                        uriBuilder.queryParam("scenario", scenario);
+                    }
+                    return uriBuilder.build();
+                })
                 .retrieve()
                 .body(DownstreamAvailabilityResponse.class);
     }

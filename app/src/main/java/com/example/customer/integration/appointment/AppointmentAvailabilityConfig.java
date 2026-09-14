@@ -12,6 +12,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
@@ -39,7 +40,32 @@ public class AppointmentAvailabilityConfig {
         return RestClient.builder().requestFactory(factory);
     }
 
+    /**
+     * REAL BUG FOUND AND FIXED (2026-09-14): eagerly resolving
+     * appointment.service.base-url here broke every
+     * @SpringBootTest(webEnvironment=RANDOM_PORT) test that exercises the
+     * real self-loopback default (http://localhost:${local.server.port}/...)
+     * -- local.server.port is only published (by Spring Boot's
+     * ServerPortInfoApplicationContextInitializer, reacting to
+     * WebServerInitializedEvent) once the embedded server actually starts
+     * listening, in ServletWebServerApplicationContext.finishRefresh() --
+     * which runs AFTER finishBeanFactoryInitialization(), where a normal
+     * eager singleton like this one would already have resolved its
+     * @Value against the not-yet-updated (still "0" for random-port tests)
+     * property. @Lazy here alone was NOT sufficient the first time this was
+     * tried -- AppointmentAvailabilityService (an eager singleton) requires
+     * this bean via constructor injection, which forces eager resolution of
+     * the whole dependency graph regardless of this bean's own laziness
+     * unless the INJECTION POINT is also marked @Lazy (see
+     * AppointmentAvailabilityService's constructor) so Spring injects a
+     * lazy-resolving proxy there instead. With both in place, construction
+     * (and therefore @Value resolution) is deferred to first real use --
+     * always well after startup has fully completed -- with no behavior
+     * change in production, where server.port is a fixed real value from
+     * the start.
+     */
     @Bean
+    @Lazy
     public AppointmentAvailabilityClient appointmentAvailabilityClient(
             RestClient.Builder appointmentRestClientBuilder,
             @Value("${appointment.service.base-url}") String baseUrl) {

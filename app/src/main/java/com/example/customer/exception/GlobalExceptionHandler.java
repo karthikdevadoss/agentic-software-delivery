@@ -41,4 +41,14 @@ public class GlobalExceptionHandler {
         body.put("fieldErrors", fieldErrors);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
+
+    /** General-purpose 400 for a plain request-level validation failure
+     * that isn't Bean-Validation-annotation-driven (e.g. AppointmentController's
+     * past-date rejection) -- reusable beyond just that one case. */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, String>> handleBadRequest(IllegalArgumentException ex) {
+        Map<String, String> body = new LinkedHashMap<>();
+        body.put("error", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
 }

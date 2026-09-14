@@ -1,6 +1,7 @@
 package com.example.customer.integration.appointment;
 
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -47,34 +48,55 @@ class AppointmentAvailabilityIntegrationTest {
     @Autowired
     private AppointmentAvailabilityService service;
 
+    @Autowired
+    private CircuitBreaker appointmentCircuitBreaker;
+
     private static final LocalDate DATE = LocalDate.of(2026, 10, 1);
 
+    /**
+     * REAL BUG FOUND AND FIXED (2026-09-14): the CircuitBreaker bean is a
+     * singleton shared by every @Test method in this class (same cached
+     * Spring context), so sustainedFailures_openTheCircuitBreaker... left
+     * the breaker OPEN for whichever test ran after it -- JUnit 5's default
+     * (unspecified, hash-based) method order made this order-dependent and
+     * only surfaced after a test rename shifted that order. Resetting it
+     * here, alongside wireMock, makes every test's downstream behavior
+     * depend only on that test's own WireMock stub, never on execution
+     * order. (Retry has no cross-call state to reset -- each invocation's
+     * attempt count is local to that call.)
+     */
     @BeforeEach
-    void resetWireMock() {
+    void resetWireMockAndCircuitBreaker() {
         wireMock.resetAll();
+        appointmentCircuitBreaker.reset();
     }
 
     @Test
-    void downstreamAvailable_returnsAvailable() {
+    void downstreamAvailable_returnsAvailable_withRealSlots() {
         wireMock.stubFor(get(urlPathEqualTo("/availability"))
-                .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("{\"available\":true}")));
+                .willReturn(aResponse().withHeader("Content-Type", "application/json")
+                        .withBody("{\"available\":true,\"slots\":[\"09:00\",\"11:30\"]}")));
 
-        assertThat(service.checkAvailability(DATE)).isEqualTo(AppointmentAvailabilityStatus.AVAILABLE);
+        AppointmentAvailabilityResult result = service.checkAvailability(DATE);
+        assertThat(result.status()).isEqualTo(AppointmentAvailabilityStatus.AVAILABLE);
+        assertThat(result.slots()).containsExactly("09:00", "11:30");
     }
 
     @Test
-    void downstreamUnavailable_returnsUnavailable() {
+    void downstreamUnavailable_returnsUnavailable_withNoSlots() {
         wireMock.stubFor(get(urlPathEqualTo("/availability"))
                 .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("{\"available\":false}")));
 
-        assertThat(service.checkAvailability(DATE)).isEqualTo(AppointmentAvailabilityStatus.UNAVAILABLE);
+        AppointmentAvailabilityResult result = service.checkAvailability(DATE);
+        assertThat(result.status()).isEqualTo(AppointmentAvailabilityStatus.UNAVAILABLE);
+        assertThat(result.slots()).isEmpty();
     }
 
     @Test
     void downstream500_retriesThenReturnsServiceUnavailable_neverFabricatesAnAnswer() {
         wireMock.stubFor(get(urlPathEqualTo("/availability")).willReturn(serverError()));
 
-        assertThat(service.checkAvailability(DATE)).isEqualTo(AppointmentAvailabilityStatus.SERVICE_UNAVAILABLE);
+        assertThat(service.checkAvailability(DATE).status()).isEqualTo(AppointmentAvailabilityStatus.SERVICE_UNAVAILABLE);
         // maxAttempts=3 in AppointmentAvailabilityConfig -- a 500 is retryable.
         wireMock.verify(3, com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor(urlPathEqualTo("/availability")));
     }
@@ -83,7 +105,7 @@ class AppointmentAvailabilityIntegrationTest {
     void downstream400_isNeverRetried_failsFastWithExactlyOneCall() {
         wireMock.stubFor(get(urlPathEqualTo("/availability")).willReturn(badRequest()));
 
-        assertThat(service.checkAvailability(DATE)).isEqualTo(AppointmentAvailabilityStatus.SERVICE_UNAVAILABLE);
+        assertThat(service.checkAvailability(DATE).status()).isEqualTo(AppointmentAvailabilityStatus.SERVICE_UNAVAILABLE);
         // A 4xx is a client error, not a transient condition -- retrying
         // it would waste calls and delay an answer that will never
         // change (see AppointmentAvailabilityConfig's retry policy).
@@ -98,7 +120,7 @@ class AppointmentAvailabilityIntegrationTest {
         // Client read timeout is 1000ms (AppointmentAvailabilityConfig) --
         // this must time out and be treated the same as any other
         // downstream failure, never hang the caller or fabricate AVAILABLE.
-        assertThat(service.checkAvailability(DATE)).isEqualTo(AppointmentAvailabilityStatus.SERVICE_UNAVAILABLE);
+        assertThat(service.checkAvailability(DATE).status()).isEqualTo(AppointmentAvailabilityStatus.SERVICE_UNAVAILABLE);
     }
 
     @Test
@@ -106,7 +128,7 @@ class AppointmentAvailabilityIntegrationTest {
         wireMock.stubFor(get(urlPathEqualTo("/availability"))
                 .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("not valid json")));
 
-        assertThat(service.checkAvailability(DATE)).isEqualTo(AppointmentAvailabilityStatus.SERVICE_UNAVAILABLE);
+        assertThat(service.checkAvailability(DATE).status()).isEqualTo(AppointmentAvailabilityStatus.SERVICE_UNAVAILABLE);
     }
 
     @Test
@@ -132,6 +154,6 @@ class AppointmentAvailabilityIntegrationTest {
         // brittle exact-open-state timing, assert the honest business
         // outcome stays SERVICE_UNAVAILABLE throughout, which is the
         // actual contract that matters to a caller.
-        assertThat(service.checkAvailability(DATE)).isEqualTo(AppointmentAvailabilityStatus.SERVICE_UNAVAILABLE);
+        assertThat(service.checkAvailability(DATE).status()).isEqualTo(AppointmentAvailabilityStatus.SERVICE_UNAVAILABLE);
     }
 }

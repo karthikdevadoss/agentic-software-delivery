@@ -11,6 +11,10 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDate;
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
@@ -20,6 +24,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * CustomerService the same way CustomerPreferenceService/ContractPlanService
  * already do; this test proves a nonexistent customer id genuinely 404s
  * instead of silently returning a 200 downstream-availability answer.
+ *
+ * As of the internal demo-appointment-provider addition (same day), the
+ * default downstream base-url is this app's own real synthetic demo
+ * provider (no WireMock needed here) -- these tests exercise the real,
+ * default happy-path behavior a recruiter actually sees.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class AppointmentControllerIntegrationTest {
@@ -32,6 +41,11 @@ class AppointmentControllerIntegrationTest {
 
     private RestTemplate restTemplate;
 
+    // A real, fixed weekday and weekend date -- the demo provider's
+    // synthetic rule is "weekdays available, weekends fully booked".
+    private static final LocalDate WEEKDAY = LocalDate.of(2026, 10, 1); // Thursday
+    private static final LocalDate WEEKEND = LocalDate.of(2026, 10, 3); // Saturday
+
     @BeforeEach
     void setUpAuthenticatedClient() {
         restTemplate = AuthTestSupport.authenticatedRestTemplate(demoJwtIssuer);
@@ -39,6 +53,12 @@ class AppointmentControllerIntegrationTest {
 
     private String url(String path) {
         return "http://localhost:" + port + path;
+    }
+
+    private Long createCustomer() {
+        Customer created = restTemplate.postForObject(
+                url("/customers"), new Customer("Appt Tester", "appt@example.com"), Customer.class);
+        return created.getId();
     }
 
     @Test
@@ -49,17 +69,51 @@ class AppointmentControllerIntegrationTest {
     }
 
     @Test
-    void checkAvailability_forRealCustomer_doesNotFailOnCustomerValidation() {
-        Customer created = restTemplate.postForObject(
-                url("/customers"), new Customer("Appt Tester", "appt@example.com"), Customer.class);
+    void checkAvailability_forRealFutureWeekday_returnsAvailableWithRealSyntheticSlots() {
+        Long id = createCustomer();
 
-        // No WireMock stub is configured for this test's default downstream
-        // base-url, so the honest outcome here is SERVICE_UNAVAILABLE, not
-        // AVAILABLE/UNAVAILABLE -- the point of this test is that customer
-        // validation passes and the request reaches that point at all
-        // (i.e. does NOT 404), not what the unstubbed downstream returns.
-        var response = restTemplate.getForEntity(
-                url("/customers/" + created.getId() + "/appointment-availability?date=2026-10-01"), String.class);
-        org.assertj.core.api.Assertions.assertThat(response.getStatusCode().value()).isEqualTo(200);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = restTemplate.getForObject(
+                url("/customers/" + id + "/appointment-availability?date=" + WEEKDAY), Map.class);
+
+        assertThat(body.get("status")).isEqualTo("AVAILABLE");
+        assertThat((java.util.List<String>) body.get("availableSlots")).isNotEmpty();
+    }
+
+    @Test
+    void checkAvailability_forFutureWeekend_returnsUnavailableWithNoSlots() {
+        Long id = createCustomer();
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = restTemplate.getForObject(
+                url("/customers/" + id + "/appointment-availability?date=" + WEEKEND), Map.class);
+
+        assertThat(body.get("status")).isEqualTo("UNAVAILABLE");
+        assertThat((java.util.List<String>) body.get("availableSlots")).isEmpty();
+    }
+
+    @Test
+    void checkAvailability_forPastDate_returns400_withoutCallingDownstream() {
+        Long id = createCustomer();
+        String pastDate = LocalDate.now().minusDays(1).toString();
+
+        assertThatThrownBy(() -> restTemplate.getForEntity(
+                url("/customers/" + id + "/appointment-availability?date=" + pastDate), Map.class))
+                .isInstanceOf(HttpClientErrorException.BadRequest.class)
+                .satisfies(ex -> {
+                    String responseBody = ((HttpClientErrorException) ex).getResponseBodyAsString();
+                    assertThat(responseBody).contains("Appointment date must be today or later.");
+                });
+    }
+
+    @Test
+    void checkAvailability_withTimeoutScenario_returnsServiceUnavailable_realResilience4jPath() {
+        Long id = createCustomer();
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = restTemplate.getForObject(
+                url("/customers/" + id + "/appointment-availability?date=" + WEEKDAY + "&scenario=timeout"), Map.class);
+
+        assertThat(body.get("status")).isEqualTo("SERVICE_UNAVAILABLE");
     }
 }
