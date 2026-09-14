@@ -2,8 +2,13 @@ package com.example.customer.integration.appointment;
 
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import io.github.resilience4j.micrometer.tagged.TaggedCircuitBreakerMetrics;
+import io.github.resilience4j.micrometer.tagged.TaggedRetryMetrics;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
+import io.github.resilience4j.retry.RetryRegistry;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -41,8 +46,31 @@ public class AppointmentAvailabilityConfig {
         return new AppointmentAvailabilityClient(appointmentRestClientBuilder, baseUrl);
     }
 
+    /**
+     * A registry (not a bare CircuitBreaker.of(...)) specifically so
+     * TaggedCircuitBreakerMetrics -- resilience4j-micrometer's only
+     * binding entry point in this version -- can bind its real state
+     * (calls/failure-rate/state-transitions) into /actuator/prometheus.
+     * Also binds it here, at construction, rather than a separate bean,
+     * so metrics exist from the very first call, not only after some
+     * later initialization order.
+     */
     @Bean
-    public CircuitBreaker appointmentCircuitBreaker() {
+    public CircuitBreakerRegistry circuitBreakerRegistry(MeterRegistry meterRegistry) {
+        CircuitBreakerRegistry registry = CircuitBreakerRegistry.ofDefaults();
+        TaggedCircuitBreakerMetrics.ofCircuitBreakerRegistry(registry).bindTo(meterRegistry);
+        return registry;
+    }
+
+    @Bean
+    public RetryRegistry retryRegistry(MeterRegistry meterRegistry) {
+        RetryRegistry registry = RetryRegistry.ofDefaults();
+        TaggedRetryMetrics.ofRetryRegistry(registry).bindTo(meterRegistry);
+        return registry;
+    }
+
+    @Bean
+    public CircuitBreaker appointmentCircuitBreaker(CircuitBreakerRegistry circuitBreakerRegistry) {
         CircuitBreakerConfig config = CircuitBreakerConfig.custom()
                 .slidingWindowSize(10)
                 .failureRateThreshold(50.0f)
@@ -57,11 +85,11 @@ public class AppointmentAvailabilityConfig {
                 // (5xx/timeout) from non-retryable (4xx) cases.
                 .recordExceptions(Exception.class)
                 .build();
-        return CircuitBreaker.of("appointmentService", config);
+        return circuitBreakerRegistry.circuitBreaker("appointmentService", config);
     }
 
     @Bean
-    public Retry appointmentRetry() {
+    public Retry appointmentRetry(RetryRegistry retryRegistry) {
         RetryConfig config = RetryConfig.custom()
                 .maxAttempts(3)
                 .waitDuration(Duration.ofMillis(50))
@@ -78,6 +106,6 @@ public class AppointmentAvailabilityConfig {
                 .retryOnException(ex -> ex instanceof ResourceAccessException
                         || ex instanceof HttpServerErrorException)
                 .build();
-        return Retry.of("appointmentService", config);
+        return retryRegistry.retry("appointmentService", config);
     }
 }

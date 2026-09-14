@@ -1,5 +1,7 @@
 package com.example.customer.security;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -45,7 +47,7 @@ import java.util.Collection;
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtDecoder jwtDecoder) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtDecoder jwtDecoder, MeterRegistry meterRegistry) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -53,6 +55,12 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/index.html", "/static/**", "/h2-console/**",
                                 "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
+                        // Everything else under /actuator (metrics, prometheus, env, etc.)
+                        // requires at least a valid token -- no admin scope exists in
+                        // this system to further restrict it to, but raw metrics/env
+                        // detail should not be fully anonymous either.
+                        .requestMatchers("/actuator/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/auth/demo-token").permitAll()
                         .requestMatchers(HttpMethod.GET, "/customers/*/preferences").hasAuthority("SCOPE_preference:read")
                         .requestMatchers(HttpMethod.PUT, "/customers/*/preferences").hasAuthority("SCOPE_preference:write")
@@ -64,8 +72,8 @@ public class SecurityConfig {
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(jwt -> jwt.decoder(jwtDecoder))
-                        .authenticationEntryPoint(jsonAuthenticationEntryPoint())
-                        .accessDeniedHandler(jsonAccessDeniedHandler()));
+                        .authenticationEntryPoint(jsonAuthenticationEntryPoint(meterRegistry))
+                        .accessDeniedHandler(jsonAccessDeniedHandler(meterRegistry)));
 
         return http.build();
     }
@@ -93,14 +101,28 @@ public class SecurityConfig {
         return decoder;
     }
 
-    /** 401 with the same {"error": "..."} JSON shape as GlobalExceptionHandler, instead of Spring Security's default empty body. */
-    private AuthenticationEntryPoint jsonAuthenticationEntryPoint() {
-        return (request, response, authException) -> writeJsonError(response, 401, "authentication required or token invalid/expired");
+    /** 401 with the same {"error": "..."} JSON shape as GlobalExceptionHandler, instead of Spring Security's default empty body. Also increments a real security-rejection counter (the observability requirement). */
+    private AuthenticationEntryPoint jsonAuthenticationEntryPoint(MeterRegistry meterRegistry) {
+        Counter counter = Counter.builder("security.rejections")
+                .tag("reason", "unauthenticated")
+                .description("Requests rejected because no valid, non-expired, correctly-signed/issued token was presented")
+                .register(meterRegistry);
+        return (request, response, authException) -> {
+            counter.increment();
+            writeJsonError(response, 401, "authentication required or token invalid/expired");
+        };
     }
 
-    /** 403 for an authenticated caller whose token lacks the scope a specific operation requires. */
-    private AccessDeniedHandler jsonAccessDeniedHandler() {
-        return (request, response, accessDeniedException) -> writeJsonError(response, 403, "token does not grant the required scope for this operation");
+    /** 403 for an authenticated caller whose token lacks the scope a specific operation requires. Also increments a real security-rejection counter. */
+    private AccessDeniedHandler jsonAccessDeniedHandler(MeterRegistry meterRegistry) {
+        Counter counter = Counter.builder("security.rejections")
+                .tag("reason", "insufficient_scope")
+                .description("Requests rejected because the authenticated token lacked the scope the operation required")
+                .register(meterRegistry);
+        return (request, response, accessDeniedException) -> {
+            counter.increment();
+            writeJsonError(response, 403, "token does not grant the required scope for this operation");
+        };
     }
 
     private static void writeJsonError(jakarta.servlet.http.HttpServletResponse response, int status, String message) throws IOException {

@@ -38,6 +38,23 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+        <!-- In-process tracing only (no external collector/backend
+             configured or required): gives every log line a real
+             traceId/spanId via MDC for correlation, satisfying "structured
+             logs, correlation IDs" without provisioning a paid
+             observability platform. -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-tracing-bridge-brave</artifactId>
+        </dependency>
         <!-- Resource-server JWT validation (NimbusJwtDecoder): also
              brings com.nimbusds:nimbus-jose-jwt transitively, which the
              portfolio demo token issuer (see security/DemoJwtIssuer.java)
@@ -107,6 +124,16 @@
         <dependency>
             <groupId>io.github.resilience4j</groupId>
             <artifactId>resilience4j-retry</artifactId>
+            <version>2.4.0</version>
+        </dependency>
+        <!-- Binds the programmatically-composed CircuitBreaker/Retry
+             instances above to Micrometer so their real state (calls,
+             failure rate, transitions, retry attempts) shows up in
+             /actuator/prometheus alongside HTTP/Hikari metrics: the
+             "downstream/retry/circuit metrics" observability requirement. -->
+        <dependency>
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-micrometer</artifactId>
             <version>2.4.0</version>
         </dependency>
 
