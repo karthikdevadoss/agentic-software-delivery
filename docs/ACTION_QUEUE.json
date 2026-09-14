@@ -253,7 +253,7 @@
       "safe_to_auto_execute": true,
       "verification_required": "DONE: re-ran agent/test_rag_index.py in isolation AND as part of the full Python suite, both clean.",
       "created_at_commit": "0767e06",
-      "resolved_at_commit": "PENDING_THIS_COMMIT"
+      "resolved_at_commit": "b3d6856"
     }
   ]
 }

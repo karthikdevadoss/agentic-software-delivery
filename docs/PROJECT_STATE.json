@@ -445,7 +445,7 @@
     },
     "clean_baseline_2026_09_14_portfolio_push": {
       "status": "runtime_verified",
-      "as_of_commit": "PENDING_THIS_COMMIT",
+      "as_of_commit": "b3d6856",
       "evidence": "PORTFOLIO COMPLETION PUSH session, Phase -1/Priority 1: root-caused (not just isolated) the 5 pre-existing RAG_INDEX_TEST_FIXTURE_ISOLATION failures to a real data-loss bug -- agent/rag_index.py's _indexable_files() was reusing tools.list_repository_files()'s LLM-token-budget display truncation (MAX_FILES_LISTED=200), silently missing every indexable file sorted past position 200 once the repo grew beyond that count. Fixed via a new tools.list_all_repository_files() (exhaustive, non-LLM-facing) shared with the existing truncated function via a common _walk_repository_files() helper; rag_index.py now uses the exhaustive one. A 5th failure was a separate test bug (bare '.git' substring false-matching .github/workflows/ci.yml) fixed in the test itself. See docs/ACTION_QUEUE.json's RAG-INDEX-TEST-FIXTURE-ISOLATION (now verified) and docs/LESSONS.md for both lessons. FULL REGRESSION, all independently re-run after the fix: Python 531 tests, 0 failures, 1 pre-existing skip (Ran 531 tests in 297.188s, OK (skipped=1)); Node 92/92 (23+36+33 across the three frontend suites); Java `mvnw test` BUILD SUCCESS (unaffected, no Java files touched). This is now a genuinely clean baseline, not previously-reported-clean-but-actually-5-failing."
     },
     "testing_architecture_v1_foundation": {
