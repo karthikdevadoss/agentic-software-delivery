@@ -36,7 +36,7 @@ Status values: `NOT_STARTED`, `PARTIAL`, `IMPLEMENTED`, `PRODUCTION_VERIFIED`,
 
 | Capability | Priority | State | Business scenario | Notes |
 |---|---|---|---|---|
-| Redis (cache-aside for Customer Profile/Contract read) | P1 | NOT_STARTED | Not attempted this session — sequenced after Postgres per the task's own slice order | Requires either Owner-approved Redis provisioning or Testcontainers-only local proof; record BLOCKED_OWNER_ACTION for any production instance |
+| Redis (cache-aside for active contract plan reads) | P1 | IMPLEMENTED (2026-09-14), CODE PRODUCTION_VERIFIED, INFRA NOT_PROVISIONED | Active plan is read on every customer-overview page load, changed only on enroll() | `cache/ContractPlanCacheService.java` (programmatic cache-aside, 60s TTL, real `cache.requests` Micrometer counter tagged hit/miss/redis-unavailable), `cache/RedisCacheConfig.java`. `ContractPlanCacheIntegrationTest` (3 tests, real Redis via Testcontainers, disabledWithoutDocker=true — skips locally, runs for real in CI) proves genuine miss-then-fill+TTL, a real hit, and eviction-after-enroll. Production Redis was deliberately NOT provisioned this session (only the one Postgres resource was Owner-approved) — this is proven, not assumed, to be safe: production is live-verified to start cleanly and serve real cache-fallback traffic correctly with no Redis reachable at all (`/actuator/prometheus` shows `cache_requests_total{result="redis-unavailable"}` incrementing on real traffic, `/actuator/health` stays UP with the Redis health indicator deliberately disabled so an intentionally-absent optional dependency can't misreport overall health). |
 
 ## Eventing
 
