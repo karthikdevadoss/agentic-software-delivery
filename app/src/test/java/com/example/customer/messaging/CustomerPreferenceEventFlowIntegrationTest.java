@@ -99,7 +99,15 @@ class CustomerPreferenceEventFlowIntegrationTest {
 
         // 2. OutboxPublisher's real @Scheduled poll actually publishes it, and
         //    CustomerPreferenceEventConsumer actually consumes + records it.
-        await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
+        // REAL CI EVIDENCE (root-caused via the failure-annotation CI step):
+        // 10s was too tight on a real, previously-unwarmed Kafka
+        // producer/consumer pipeline -- initial broker metadata fetch plus
+        // a genuine consumer-group join/rebalance routinely takes several
+        // seconds on its own, on top of the scheduled poll's own interval,
+        // especially on a CI runner slower than a dev laptop. 40s gives
+        // real headroom without masking an actual regression (this test
+        // still fails, just later, if something is genuinely broken).
+        await().atMost(Duration.ofSeconds(40)).untilAsserted(() -> {
             var event = outboxEventRepository.findAll().stream()
                     .filter(e -> e.getAggregateId().equals(created.getId())).findFirst().orElseThrow();
             assertThat(event.getPublishedAt()).isNotNull();
@@ -114,7 +122,10 @@ class CustomerPreferenceEventFlowIntegrationTest {
         restTemplate.put(url("/customers/" + created.getId() + "/preferences"),
                 new CustomerPreferenceUpdateRequest(true, NotificationChannel.SMS));
 
-        var event = await().atMost(Duration.ofSeconds(10)).until(() ->
+        // Same generous window as the end-to-end test: JUnit does not
+        // guarantee method execution order, so this test cannot assume the
+        // Kafka pipeline was already warmed up by another test in the class.
+        var event = await().atMost(Duration.ofSeconds(40)).until(() ->
                 outboxEventRepository.findAll().stream()
                         .filter(e -> e.getAggregateId().equals(created.getId()) && e.getPublishedAt() != null)
                         .findFirst().orElse(null),
@@ -149,7 +160,11 @@ class CustomerPreferenceEventFlowIntegrationTest {
                 org.apache.kafka.clients.consumer.ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer"))) {
             consumer.subscribe(java.util.List.of(KafkaMessagingConfig.CUSTOMER_PREFERENCE_EVENTS_DLT));
 
-            var records = await().atMost(Duration.ofSeconds(15)).until(
+            // Same real-CI-evidenced reasoning as the end-to-end test above:
+            // a brand-new consumer group here always pays a real, one-time
+            // group-join/rebalance cost, on top of the error handler's own
+            // 2x200ms retry before it routes to the DLT at all.
+            var records = await().atMost(Duration.ofSeconds(30)).until(
                     () -> consumer.poll(Duration.ofMillis(500)),
                     r -> r.count() > 0);
 
