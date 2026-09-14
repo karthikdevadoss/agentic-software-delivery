@@ -46,7 +46,14 @@ jobs:
             summary=$(grep -E "Tests run: [0-9]+, Failures: [0-9]+, Errors: [0-9]+" "$f" | tail -1)
             if [ -n "$summary" ] && ! echo "$summary" | grep -qE "Failures: 0, Errors: 0"; then
               name=$(basename "$f" .txt)
-              excerpt=$(tail -c 6000 "$f" | tr '\n' ' ' | tr '\r' ' ')
+              # HEAD, not tail: when a class's context fails once, every
+              # subsequent test method in that class repeats the same
+              # generic "ApplicationContext failure threshold exceeded"
+              # cascade message -- the real, first, underlying exception
+              # sits at the START of the file, before those repeats push
+              # it out of a tail-based excerpt (a real gap hit this exact
+              # session: two prior "fixes" only ever showed the cascade).
+              excerpt=$(head -c 6000 "$f" | tr '\n' ' ' | tr '\r' ' ')
               echo "::error title=${name}::${excerpt}"
             fi
           done
