@@ -32,7 +32,7 @@ from pathlib import Path
 
 import numpy as np
 
-from tools import REPO_ROOT, ALLOWED_READ_EXTENSIONS, list_repository_files, read_file
+from tools import REPO_ROOT, ALLOWED_READ_EXTENSIONS, list_all_repository_files, read_file
 from embeddings import embed_texts, embed_query, model_id
 import metrics
 
@@ -53,12 +53,8 @@ def _chunking_version() -> str:
 
 
 def _indexable_files() -> list[str]:
-    listing = list_repository_files(".")
     paths = []
-    for line in listing.splitlines():
-        line = line.strip()
-        if not line or line.startswith("...") or line.startswith("("):
-            continue
+    for line in list_all_repository_files("."):
         if line.startswith(RAG_IGNORED_PREFIXES):
             continue
         if Path(line).suffix.lower() in ALLOWED_READ_EXTENSIONS:

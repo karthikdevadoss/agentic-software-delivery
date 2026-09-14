@@ -746,3 +746,42 @@ surprising verified behavior would otherwise get rediscovered later.
   `railway deployment list --json`'s real status (not just the CLI's
   upload-time output) after every deploy — a build that starts without
   error is not evidence it built the right thing.
+
+- **An LLM-facing "list files" tool's display truncation cap silently
+  becomes a data-loss bug the moment something else reuses it for
+  exhaustive enumeration.** Context (2026-09-14, PORTFOLIO COMPLETION
+  PUSH session): `agent/rag_index.py`'s whole-repo indexer called
+  `tools.list_repository_files()` to enumerate what to index — the same
+  function the V3 CLI agent calls to show the model a directory listing,
+  which intentionally truncates to `MAX_FILES_LISTED = 200` entries
+  (alphabetically sorted) to protect the agent's token budget. Once this
+  repository genuinely grew past 200 indexable files, the RAG index
+  silently stopped indexing everything sorted after position 200 — a
+  real, live gap in the whole-repo index, not just a test artifact,
+  discovered only because `agent/test_rag_index.py`'s fixture file
+  (`docs/_test_fixture_rag.md`) happened to fall past that cutoff and 4
+  of its tests started failing (`files_added`/`files_changed`/
+  `files_deleted` stuck at 0, and `semantic_search` on a distinctive
+  fixture string returned `P0_PROMPT.txt` instead — a real repo-root file
+  that alphabetically sorts earlier). **Lesson:** a function whose
+  contract includes "truncate for display/budget reasons" must never be
+  reused by a caller that needs a complete, correct enumeration —
+  factor out the untruncated walk as its own function
+  (`tools.list_repository_files` now delegates to a shared
+  `_walk_repository_files` helper, and `tools.list_all_repository_files`
+  exposes the untruncated result for internal callers like RAG indexing)
+  rather than parsing the truncated, human-formatted string and hoping
+  the cap is never actually hit in practice.
+
+- **A test's own broad substring assertion can start failing for a
+  reason that has nothing to do with the code under test.** Same
+  session: `test_env_and_git_and_target_never_indexable` asserted
+  `".git" not in f` for every indexed file path — which correctly caught
+  real `.git/` internals when the repo was smaller, but started
+  false-failing once `.github/workflows/ci.yml` (a real, legitimately
+  indexable file added by an earlier CI task) matched the same bare
+  substring. The actual security boundary (`.git` directory exclusion in
+  `tools.BLOCKED_DIR_NAMES`) was never broken. **Lesson:** when a test
+  asserts "X is never present," match the real boundary being tested
+  (a path segment, a directory prefix) rather than a bare substring that
+  can coincidentally match an unrelated, legitimate future filename.

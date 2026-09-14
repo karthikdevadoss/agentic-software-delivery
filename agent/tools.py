@@ -107,14 +107,11 @@ def _resolve_safe_path(user_path: str) -> Path:
     return resolved
 
 
-def list_repository_files(directory: str = ".") -> str:
-    base = _resolve_safe_path(directory)
-
-    if not base.exists():
-        raise RepoToolError(f"directory not found: {directory!r}")
-    if not base.is_dir():
-        raise RepoToolError(f"not a directory: {directory!r}")
-
+def _walk_repository_files(base: Path) -> list[str]:
+    """Exhaustive, security-filtered file listing (no display truncation).
+    Shared by list_repository_files (which truncates for LLM context budget)
+    and any internal caller — like rag_index.py — that needs every real
+    file, not a token-budget-capped sample."""
     entries = []
     for root, dirs, files in os.walk(base, followlinks=False):
         root_path = Path(root)
@@ -131,6 +128,18 @@ def list_repository_files(directory: str = ".") -> str:
             entries.append(file_path.relative_to(REPO_ROOT).as_posix())
 
     entries.sort()
+    return entries
+
+
+def list_repository_files(directory: str = ".") -> str:
+    base = _resolve_safe_path(directory)
+
+    if not base.exists():
+        raise RepoToolError(f"directory not found: {directory!r}")
+    if not base.is_dir():
+        raise RepoToolError(f"not a directory: {directory!r}")
+
+    entries = _walk_repository_files(base)
     if not entries:
         return "(no files found)"
 
@@ -140,6 +149,20 @@ def list_repository_files(directory: str = ".") -> str:
     if total > MAX_FILES_LISTED:
         result += f"\n... ({total - MAX_FILES_LISTED} more omitted)"
     return result
+
+
+def list_all_repository_files(directory: str = ".") -> list[str]:
+    """Exhaustive equivalent of list_repository_files, for internal callers
+    (e.g. RAG indexing) that must never silently drop files past the
+    LLM-facing display cap. Not exposed as an agent/MCP tool."""
+    base = _resolve_safe_path(directory)
+
+    if not base.exists():
+        raise RepoToolError(f"directory not found: {directory!r}")
+    if not base.is_dir():
+        raise RepoToolError(f"not a directory: {directory!r}")
+
+    return _walk_repository_files(base)
 
 
 def read_file(path: str) -> str:

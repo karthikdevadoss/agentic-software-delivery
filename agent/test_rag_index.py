@@ -82,7 +82,11 @@ class RagIndexTestCase(unittest.TestCase):
     def test_env_and_git_and_target_never_indexable(self):
         files = rag_index._indexable_files()
         self.assertFalse(any(f.endswith(".env") for f in files))
-        self.assertFalse(any(".git" in f for f in files))
+        # Precise check for the .git internal directory as a real path
+        # segment — a bare ".git" substring also matches legitimate,
+        # correctly-indexable files like .github/workflows/ci.yml or
+        # .gitattributes.
+        self.assertFalse(any(f == ".git" or f.startswith(".git/") for f in files))
         self.assertFalse(any(f.startswith("target/") for f in files))
 
     def test_own_index_output_excluded_from_ingestion(self):

@@ -244,16 +244,16 @@
     {
       "id": "RAG-INDEX-TEST-FIXTURE-ISOLATION",
       "source": "testing",
-      "title": "test_rag_index.py's whole-repo RAG tests are not isolated from real repository growth -- 5 failures found during a full regression run, pre-existing and unrelated to the change being verified",
+      "title": "RESOLVED (2026-09-14): real root cause was a display-truncation cap silently limiting RAG indexing past 200 files, not just test isolation",
       "priority": "medium",
-      "status": "open",
-      "scope": "agent/test_rag_index.py only -- no production code involved",
-      "reason": "Running the full Python regression suite as part of finishing Testing Architecture V1 surfaced 5 real failures (test_changed_file_reembeds_only_that_file, test_deleted_file_removed_from_index, test_env_and_git_and_target_never_indexable, test_new_file_triggers_only_that_files_embedding, test_semantic_search_ranks_identical_text_highest), all in RagIndexTestCase. Confirmed pre-existing and unrelated to this session's changes by running agent/test_rag_index.py in isolation (fails identically, 5/13) and by inspecting the failure detail: test_semantic_search_ranks_identical_text_highest expected its own small controlled fixture to rank first but got P0_PROMPT.txt instead -- a large, real, long-committed repo-root file (commit 7996b8f, an old task's saved prompt text) that these tests' fixtures never accounted for. The whole-repo RAG index these tests build against is not hermetically isolated from the real, growing repository content.",
-      "evidence": "python agent/test_rag_index.py -v (standalone, no other test files loaded): 5/13 fail, identical failures to the full-suite run. Traceback for test_changed_file_reembeds_only_that_file: AssertionError: 0 != 1 (stats['files_changed']). Traceback for test_semantic_search_ranks_identical_text_highest: AssertionError: 'P0_PROMPT.txt' != 'docs/_test_fixture_rag.md'.",
-      "safe_to_auto_execute": false,
-      "verification_required": "Whoever picks this up should either (a) point these tests at a fully isolated temp-directory repo copy instead of the real whole-repo index, or (b) decide P0_PROMPT.txt (and any other large non-source text file at repo root) doesn't belong in the indexed/tracked repository at all and move/remove it -- a product/repo-hygiene decision, not one to make unilaterally while unrelated. Either fix must be verified by re-running agent/test_rag_index.py in isolation AND as part of the full suite.",
+      "status": "verified",
+      "scope": "agent/tools.py (list_repository_files refactored into a shared _walk_repository_files helper + new list_all_repository_files for exhaustive internal callers), agent/rag_index.py (_indexable_files now uses list_all_repository_files), agent/test_rag_index.py (one assertion corrected)",
+      "reason": "PORTFOLIO COMPLETION PUSH session, Phase -1/Priority 1: root-caused rather than worked around per this task's own 'find root cause' instruction. The real defect was NOT test isolation alone -- agent/rag_index.py's _indexable_files() reused tools.list_repository_files(), which intentionally truncates to MAX_FILES_LISTED=200 (alphabetically sorted) for the LLM agent's token budget. The repository genuinely grew past 200 indexable files, so the whole-repo RAG index was silently missing every file sorted after position 200 -- a real, live gap in the actual index (used by the offline V3 CLI agent), not merely a fixture-ordering coincidence. Fixed by factoring the untruncated directory walk into tools._walk_repository_files() and exposing it via a new tools.list_all_repository_files() (not an LLM-facing tool) for exhaustive internal callers; list_repository_files()'s existing truncated contract for the LLM agent is completely unchanged. A 5th failure (test_env_and_git_and_target_never_indexable) was a separate, unrelated test bug: a bare '.git' substring check false-matched the legitimately-indexable .github/workflows/ci.yml -- corrected to check for the real .git directory path segment. See docs/LESSONS.md for both generalized lessons.",
+      "evidence": "python agent/test_rag_index.py -v: 13/13 pass (previously 5/13 failed). Full python -m unittest discover -p 'test_*.py' from agent/: Ran 531 tests in 297.188s, OK (skipped=1) -- 0 failures, genuinely clean baseline. Node (23+36+33=92/92 passing) and Java (mvnw test, BUILD SUCCESS) independently re-confirmed unaffected by this Python-only change.",
+      "safe_to_auto_execute": true,
+      "verification_required": "DONE: re-ran agent/test_rag_index.py in isolation AND as part of the full Python suite, both clean.",
       "created_at_commit": "0767e06",
-      "resolved_at_commit": null
+      "resolved_at_commit": "PENDING_THIS_COMMIT"
     }
   ]
 }
