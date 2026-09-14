@@ -1,5 +1,6 @@
 package com.example.customer.controller;
 
+import com.example.customer.dto.CustomerEmailUpdateRequest;
 import com.example.customer.model.Customer;
 import com.example.customer.security.DemoJwtIssuer;
 import com.example.customer.testsupport.AuthTestSupport;
@@ -8,6 +9,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
@@ -140,5 +143,49 @@ class CustomerControllerIntegrationTest {
                     String body = ((HttpClientErrorException) ex).getResponseBodyAsString();
                     assertThat(body).contains("\"email\"");
                 });
+    }
+
+    /**
+     * REAL IMPLEMENTATION (2026-09-14): the project's original, long-
+     * deferred "Update Email" ticket. Full round trip: update, then a
+     * fresh GET confirms the new value was actually persisted, not just
+     * returned in the PUT response.
+     */
+    @Test
+    void updateEmail_persistsAndIsReturnedOnSubsequentGet() {
+        Customer created = restTemplate.postForObject(
+                url("/customers"), new Customer("Update Email Tester", "before@example.com"), Customer.class);
+
+        HttpEntity<CustomerEmailUpdateRequest> request = new HttpEntity<>(new CustomerEmailUpdateRequest("after@example.com"));
+        ResponseEntity<Customer> putResponse = restTemplate.exchange(
+                url("/customers/" + created.getId()), HttpMethod.PUT, request, Customer.class);
+        assertThat(putResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(putResponse.getBody().getEmail()).isEqualTo("after@example.com");
+        assertThat(putResponse.getBody().getName()).isEqualTo("Update Email Tester"); // unchanged
+
+        ResponseEntity<Customer> getResponse = restTemplate.getForEntity(url("/customers/" + created.getId()), Customer.class);
+        assertThat(getResponse.getBody().getEmail()).isEqualTo("after@example.com");
+    }
+
+    @Test
+    void updateEmail_withMalformedEmail_returns400WithFieldError() {
+        Customer created = restTemplate.postForObject(
+                url("/customers"), new Customer("Update Email Tester", "before@example.com"), Customer.class);
+        HttpEntity<CustomerEmailUpdateRequest> request = new HttpEntity<>(new CustomerEmailUpdateRequest("not-an-email"));
+
+        assertThatThrownBy(() -> restTemplate.exchange(url("/customers/" + created.getId()), HttpMethod.PUT, request, Map.class))
+                .isInstanceOf(HttpClientErrorException.BadRequest.class)
+                .satisfies(ex -> {
+                    String body = ((HttpClientErrorException) ex).getResponseBodyAsString();
+                    assertThat(body).contains("\"email\"");
+                });
+    }
+
+    @Test
+    void updateEmail_forNonExistentCustomer_returns404() {
+        HttpEntity<CustomerEmailUpdateRequest> request = new HttpEntity<>(new CustomerEmailUpdateRequest("someone@example.com"));
+
+        assertThatThrownBy(() -> restTemplate.exchange(url("/customers/999999999"), HttpMethod.PUT, request, Map.class))
+                .isInstanceOf(HttpClientErrorException.NotFound.class);
     }
 }

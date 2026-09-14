@@ -1,5 +1,6 @@
 package com.example.customer.controller;
 
+import com.example.customer.dto.CustomerEmailUpdateRequest;
 import com.example.customer.model.Customer;
 import com.example.customer.service.CustomerService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -28,5 +29,10 @@ public class CustomerController {
     public ResponseEntity<Customer> createCustomer(@Valid @RequestBody Customer customer) {
         Customer saved = customerService.create(customer);
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+    }
+
+    @PutMapping("/{id}")
+    public Customer updateEmail(@PathVariable Long id, @Valid @RequestBody CustomerEmailUpdateRequest request) {
+        return customerService.updateEmail(id, request.email());
     }
 }

@@ -68,6 +68,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/customers/*/plan").hasAuthority("SCOPE_contract:write")
                         .requestMatchers(HttpMethod.GET, "/customers/*/appointment-availability").hasAuthority("SCOPE_appointment:read")
                         .requestMatchers(HttpMethod.POST, "/customers").hasAuthority("SCOPE_customer:write")
+                        .requestMatchers(HttpMethod.PUT, "/customers/*").hasAuthority("SCOPE_customer:write")
                         .requestMatchers(HttpMethod.GET, "/customers/*").hasAuthority("SCOPE_customer:read")
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2

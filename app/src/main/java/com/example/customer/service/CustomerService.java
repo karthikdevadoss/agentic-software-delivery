@@ -33,4 +33,13 @@ public class CustomerService {
     public Customer create(Customer customer) {
         return customerRepository.save(customer);
     }
+
+    /** REAL IMPLEMENTATION (this was the project's original, long-deferred
+     * first ticket -- "Update Email"). Deliberately email-only: name is
+     * not part of this operation's scope. */
+    public Customer updateEmail(Long id, String newEmail) {
+        Customer customer = getById(id);
+        customer.setEmail(newEmail);
+        return customerRepository.save(customer);
+    }
 }
