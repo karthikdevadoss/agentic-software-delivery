@@ -42,7 +42,7 @@ Status values: `NOT_STARTED`, `PARTIAL`, `IMPLEMENTED`, `PRODUCTION_VERIFIED`,
 
 | Capability | Priority | State | Business scenario | Notes |
 |---|---|---|---|---|
-| Kafka (CustomerPreferenceUpdated / CustomerProfileUpdated) | P1 | NOT_STARTED | Not attempted this session | Real candidate now exists (PUT /customers/{id}/preferences) once this slice is picked up; must address the transactional-outbox problem explicitly, not a naive dual write |
+| Kafka (CustomerPreferenceUpdated, transactional outbox) | P1 | IMPLEMENTED (2026-09-14), CI-VERIFIED (real Testcontainers Kafka), INFRA NOT_PROVISIONED | PUT /customers/{id}/preferences publishes a CustomerPreferenceUpdated event | `outbox/` (OutboxEvent/OutboxEventRepository/OutboxPublisher, transactional outbox: the preference write and its event row commit atomically in one @Transactional method; a separate @Scheduled poller actually publishes to Kafka) + `messaging/` (KafkaMessagingConfig: topics + dead-letter topic + DefaultErrorHandler w/ 2-retry-then-DLT; CustomerPreferenceEventConsumer: durable processed_event idempotency ledger, not in-memory). `CustomerPreferenceEventFlowIntegrationTest` (3 tests, real Kafka via Testcontainers, disabledWithoutDocker=true) proves genuine publish-consume, a hand-crafted duplicate redelivery being a real no-op, and a poison message actually landing on the real DLT — all GREEN on GitHub Actions' real Docker runner. Two real, previously-unknown production-blocking bugs were found and fixed getting here (both via this session's own new CI failure-annotation diagnostics, since raw job logs need repo-admin auth this session didn't have): (1) `org.springframework.kafka:spring-kafka` alone is the Kafka *library*, not Spring Boot's autoconfiguration glue — Boot 4 split it into `spring-boot-kafka`, the same class of defect as the earlier Flyway incident; without it `@KafkaListener` silently never registered as a real listener at all, even though the producer worked fine. (2) `@Lob` on the outbox payload `String` field validates as CLOB/`oid` on Postgres, not `TEXT` (a Hibernate/Postgres dialect mismatch) — fixed via `@JdbcTypeCode(SqlTypes.LONGVARCHAR)`. Production Kafka was deliberately NOT provisioned this session (same "only the one Postgres resource is Owner-approved" scope decision as Redis) — the app starts and serves all other traffic normally with no broker reachable (consumer containers retry connecting in the background; OutboxPublisher's send() failures just leave events unpublished for the next poll); the Kafka health indicator is disabled for the same reason as Redis's. |
 
 ## Security
 
@@ -62,11 +62,11 @@ Status values: `NOT_STARTED`, `PARTIAL`, `IMPLEMENTED`, `PRODUCTION_VERIFIED`,
 |---|---|---|---|
 | JUnit 5 + Mockito unit tests | P0 | IMPLEMENTED | CustomerServiceTest + new CustomerPreferenceServiceTest/ContractPlanServiceTest |
 | Real-server integration tests (RestTemplate, not MockMvc) | P0 | IMPLEMENTED | MockMvc confirmed NOT on this Spring Boot 4.1.1 project's classpath (module split moved Jackson to `tools.jackson`) — RestTemplate + `@SpringBootTest(RANDOM_PORT)` is this project's real, working pattern |
-| Testcontainers DB integration | P0 | IMPLEMENTED, CI-verified | See Data section above |
+| Testcontainers DB/cache/broker integration | P0 | IMPLEMENTED, CI-verified | Postgres (see Data section), Redis (`ContractPlanCacheIntegrationTest`, 3 tests), Kafka (`CustomerPreferenceEventFlowIntegrationTest`, 3 tests) — all GREEN on GitHub Actions' real Docker runner, all skip cleanly on this Docker-less dev machine |
 | WireMock downstream-contract tests | P0 | IMPLEMENTED (2026-09-14) | `AppointmentAvailabilityIntegrationTest`, 7 tests |
 | Security tests (missing/malformed/expired token, wrong scope) | P0 | IMPLEMENTED (2026-09-14), PRODUCTION_VERIFIED | `SecurityIntegrationTest` (12 tests) + live curl verification against real production |
 | Performance/load tests (k6/Gatling/JMeter) | P1 | NOT_STARTED | No baseline established yet |
-| CI pipeline running the above | P0 | PARTIAL (2026-09-14) | `.github/workflows/ci.yml` runs Java tests (incl. real Testcontainers Postgres), a scoped offline subset of the Python AI-platform tests + evals, and Node frontend tests. Does NOT yet run the full Python suite (several existing tests need live production credentials this CI job intentionally does not have) — a real, disclosed gap |
+| CI pipeline running the above | P0 | PARTIAL (2026-09-14) | `.github/workflows/ci.yml` runs Java tests (incl. real Testcontainers Postgres/Redis/Kafka), a scoped offline subset of the Python AI-platform tests + evals, and Node frontend tests. A new failure-annotation step (added this session, see docs/LESSONS.md) surfaces real surefire failure detail via the public Checks API, since raw job logs need repo-admin auth this session didn't have — used to real-diagnose and fix 2 genuine Kafka/Postgres bugs live during this session. Does NOT yet run the full Python suite (several existing tests need live production credentials this CI job intentionally does not have) — a real, disclosed gap |
 
 ## Observability
 
@@ -96,9 +96,9 @@ Status values: `NOT_STARTED`, `PARTIAL`, `IMPLEMENTED`, `PRODUCTION_VERIFIED`,
 
 ## Recommended next-session order (not a commitment, a priority queue)
 
-1. The real end-to-end AI backend run (genuine LLM call), attempted in ISOLATION from any concurrent persistence-layer change.
-2. Redis, then Kafka — both explicitly sequenced last per the original task's own slice order, and both have real external-infrastructure decisions attached.
-3. Java 21 assessment (P2) — not yet attempted; verify Railway/Railpack Java 21 support first.
-4. Performance baseline (k6/Gatling) once a real bottleneck-worthy scenario exists.
+1. The real end-to-end AI backend run (genuine LLM call), attempted in ISOLATION from any further Customer-app code change — this session made 5 substantial changes to the Customer app (Postgres, Security, Observability, Redis, Kafka), each individually verified; avoid compounding an autonomous production-mutating AI run on top of all of them in the same session.
+2. Java 21 assessment (P2) — not yet attempted; verify Railway/Railpack Java 21 support first.
+3. Performance baseline (k6/Gatling) once a real bottleneck-worthy scenario exists.
+4. Kubernetes-ready artifacts (P2) — labeled as such, not as current production (Railway remains real production).
 
-(Slice 4 — downstream integration + Resilience4j + WireMock — completed 2026-09-14, see Integrations/Resilience above. Postgres/Flyway production cutover, Spring Security + JWT resource-server, and Observability (Actuator/Micrometer/structured logs/correlation IDs) — all completed and PRODUCTION_VERIFIED 2026-09-14, see their respective sections above.)
+(Slice 4 — downstream integration + Resilience4j + WireMock — completed 2026-09-14, see Integrations/Resilience above. Postgres/Flyway production cutover, Spring Security + JWT resource-server, Observability, Redis cache-aside, and Kafka transactional-outbox eventing — all completed and CI/production-verified 2026-09-14, see their respective sections above.)

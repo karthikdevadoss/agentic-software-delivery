@@ -660,3 +660,38 @@ surprising verified behavior would otherwise get rediscovered later.
   running container has it." A config-only change (env var, profile flip)
   can silently redeploy stale code if the last real build predates the
   feature depending on that config.
+
+- **Raw GitHub Actions job logs require repo-admin authentication even on
+  a public repository** — the REST API's log-download endpoint and the
+  web UI's rendered log viewer both need auth this session did not have,
+  which blocked diagnosing a real CI failure for a long chain of attempts.
+  What IS readable anonymously: `GET /repos/{owner}/{repo}/check-runs/{job_id}/annotations`
+  (the public Checks API) — but only what the workflow explicitly emits as
+  `::error::`/`::warning::` commands. Fix: add a `if: failure()` step that
+  greps `target/surefire-reports/*.txt` and emits their content as
+  annotations (see `.github/workflows/ci.yml`) — this makes any future
+  failure here self-diagnosable without needing log access at all.
+  Two follow-on traps building that step, both worth remembering: (1) a
+  literal-substring grep like `"FAILED|ERROR"` misses a pure assertion
+  failure reported as `FAILURE!` (no "FAILED" substring) — parse the
+  authoritative `Tests run: X, Failures: Y, Errors: Z` line instead; (2)
+  when one test method's Spring context fails, EVERY subsequent method in
+  that class repeats a generic "ApplicationContext failure threshold
+  exceeded" cascade — neither a head nor a tail excerpt of the report
+  reaches the real, first exception (tail only shows the repeated cascade
+  from later methods; head is dominated by ~20 lines of Spring/JUnit
+  framework frames before the first real `Caused by:`) — grep specifically
+  for `Caused by:` lines instead.
+
+- **Hibernate's `@Lob` on a `String` field validates as CLOB/`oid` on
+  Postgres, not `TEXT`.** A Flyway migration declaring a text column as
+  `TEXT` (the correct, idiomatic Postgres type for arbitrary-length text)
+  will fail `ddl-auto=validate` schema validation against an entity field
+  annotated `@Lob` — real error: "wrong column type encountered ... found
+  [text (Types#VARCHAR)], but expecting [oid (Types#CLOB)]". `oid` is
+  Postgres's legacy large-object reference mechanism, an entirely
+  different thing from `TEXT`. Fix: use
+  `@JdbcTypeCode(SqlTypes.LONGVARCHAR)` (Hibernate 6) instead of `@Lob`
+  for a Postgres `TEXT` column backing a plain `String` field — `@Lob` is
+  the wrong tool here regardless, since Postgres `TEXT` has no realistic
+  size limit `@Lob`'s semantics would meaningfully add.
