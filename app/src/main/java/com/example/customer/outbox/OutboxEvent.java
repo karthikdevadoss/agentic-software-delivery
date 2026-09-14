@@ -5,7 +5,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -38,7 +39,16 @@ public class OutboxEvent {
     @Column(nullable = false, length = 100)
     private String eventType;
 
-    @Lob
+    // REAL BUG FOUND VIA CI (root-caused via this project's own
+    // failure-annotation step, see .github/workflows/ci.yml): @Lob on a
+    // String field maps to CLOB, and Hibernate's Postgres dialect
+    // validates CLOB against the "oid" large-object column type -- but
+    // V4__create_outbox_event.sql declares this column as TEXT (the
+    // correct, idiomatic Postgres type for arbitrary-length text; Postgres
+    // has no real size-limited VARCHAR concern TEXT doesn't already
+    // handle). @JdbcTypeCode(SqlTypes.LONGVARCHAR) tells Hibernate to
+    // validate against text/longvarchar instead, matching the migration.
+    @JdbcTypeCode(SqlTypes.LONGVARCHAR)
     @Column(nullable = false)
     private String payload;
 
