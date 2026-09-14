@@ -785,3 +785,54 @@ surprising verified behavior would otherwise get rediscovered later.
   asserts "X is never present," match the real boundary being tested
   (a path segment, a directory prefix) rather than a bare substring that
   can coincidentally match an unrelated, legitimate future filename.
+
+- **A "self-test against the real baseline file" that actually reads a
+  separately-committed COPY of that file, not the file itself, can drift
+  silently for a very long time -- and if that same copy also backs a
+  real production "restore to baseline" feature, the blast radius is not
+  just broken tests.** Context (2026-09-14, PORTFOLIO COMPLETION PUSH
+  session, discovered while wiring the USER/ADMIN login gate into
+  `app/src/main/resources/static/index.html`): `agent/demo_catalogue.py`
+  defines 5 deterministic public-demo operations, each with a regex
+  anchor into that exact file, and runs a `_self_test()` at import time
+  whose own docstring says it checks anchors "against the REAL baseline
+  file" -- but it actually reads `agent/demo_baseline/index.html`, a
+  separately-committed fixture copy. That copy still held the project's
+  very first "Find Customer / Create Customer" page from early sessions
+  (`find_customer_ui`/`create_customer_ui`, commit `a979075`) -- the real
+  file has been completely redesigned multiple times since (Overview/
+  Profile/Plan/Preferences/Appointments cards, then a login gate), and
+  nothing ever kept the two in sync. Result: 3 of 5 publicly-advertised
+  demo operations (`find_button_label`, `create_button_label`, and
+  `heading_text`'s badge-span anchor) had been silently unusable for a
+  long time -- a recruiter clicking those exact suggested examples on the
+  live public Workbench would hit "anchor pattern did not match — refusing
+  to guess," an honest failure (the fail-closed design worked as intended)
+  but still a broken advertised feature nobody had caught. WORSE: the
+  same `agent/demo_baseline/index.html` file is also
+  `web_server.py`'s `DEMO_BASELINE_FILE` -- the literal content the real
+  "RESTORE PRODUCTION BASELINE" button on the public Workbench writes
+  back to production. Had that button been clicked before this was found,
+  it would have overwritten the live Customer App with the ancient
+  Find/Create-Customer page, silently destroying the real Postgres-backed
+  Overview/Profile/Plan/Preferences/Appointments/login functionality in
+  production. **Fix:** refreshed `agent/demo_baseline/index.html` to be
+  an exact copy of the real, current file (closing both gaps with the
+  same edit, since both consumers legitimately want "the current
+  canonical state" and a single shared file is the right design as long
+  as it's kept in sync); retargeted `heading_text`/`subtitle_text`'s
+  anchors onto stable `id="app-heading"`/`id="app-subtitle"` elements
+  (the redesigned page now has two `<h1>`/`class="subtitle"` elements --
+  login view and post-login app view -- so a bare-class/tag anchor is
+  ambiguous); retired `find_button_label`/`create_button_label` entirely
+  rather than inventing UI to match, since no find/create-customer flow
+  exists in the current single-workspace-per-persona architecture. **The
+  generalized lesson:** when a self-test's own purpose is "verify against
+  the real/live artifact," make sure it actually reads that artifact
+  (or the artifact IS the fixture, with no second copy to fall out of
+  sync) -- a fixture that is *supposed* to mirror something real but is
+  maintained by hand will eventually stop mirroring it, and nothing will
+  say so until a human notices by accident, which may be well after a
+  real, disclosed production feature has been quietly built on top of the
+  stale copy. Prefer a single source of truth over "two things that
+  should always match."

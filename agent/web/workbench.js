@@ -49,8 +49,6 @@ const targetAppBody = document.getElementById("target-app-body");
 let EXAMPLES = [
   'Change the heading text to "Customer Portal"',
   'Change the subtitle text to "A live demo application"',
-  'Change the Find button label to "Search"',
-  'Change the Create button label to "Add Customer"',
   'Change the footer text to "Built with care"',
 ];
 

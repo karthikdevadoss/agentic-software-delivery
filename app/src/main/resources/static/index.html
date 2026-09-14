@@ -56,6 +56,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
+    align-items: center;
   }
   nav.app-nav a {
     font-size: 0.8rem;
@@ -69,6 +70,17 @@
     white-space: nowrap;
   }
   nav.app-nav a:hover { background: var(--blue-border); }
+  .identity-badge {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--muted);
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.3rem 0.75rem;
+  }
+  .identity-badge .role-tag { color: var(--blue); text-transform: uppercase; letter-spacing: 0.02em; }
+  #logout-btn { font-size: 0.78rem; padding: 0.3rem 0.75rem; }
 
   .tech-strip {
     display: flex;
@@ -180,6 +192,20 @@
 
   footer.app-footer { margin-top: 2rem; text-align: center; font-size: 0.78rem; color: #999; }
 
+  /* ---- Login view ---- */
+  #login-view { max-width: 420px; margin: 3rem auto 0; }
+  #login-view .card { padding: 1.5rem 1.75rem; }
+  #login-view h1 { justify-content: center; margin-bottom: 0.25rem; }
+  #login-view .subtitle { text-align: center; }
+  .role-choice { display: flex; gap: 1.25rem; margin: 0.7rem 0 0.3rem; }
+  .role-choice label { display: flex; align-items: center; gap: 0.4rem; margin: 0; font-size: 0.92rem; color: var(--ink); font-weight: 600; }
+  .role-choice input[type="radio"] { width: auto; }
+  .demo-note { font-size: 0.76rem; color: var(--muted); margin-top: 0.4rem; }
+  #login-btn { width: 100%; margin-top: 1rem; padding: 0.6rem; font-size: 0.95rem; }
+
+  /* ---- Admin landing (placeholder for the full All-Customers dashboard) ---- */
+  #admin-view .card { max-width: 640px; margin: 2rem auto; }
+
   @media (max-width: 520px) {
     body { padding: 1rem 0.75rem 2.5rem; }
     h1 { font-size: 1.25rem; }
@@ -190,9 +216,48 @@
 </head>
 <body>
 
+<!-- ================= LOGIN VIEW ================= -->
+<div id="login-view">
+  <section class="card">
+    <h1 id="app-heading">&#9889; Energy Customer Platform</h1>
+    <p class="subtitle" id="app-subtitle">Portfolio demo sign-in &mdash; real authentication, public demo credentials.</p>
+
+    <label>User type</label>
+    <div class="role-choice">
+      <label><input type="radio" name="login-role" value="USER" checked> USER</label>
+      <label><input type="radio" name="login-role" value="ADMIN"> ADMIN</label>
+    </div>
+
+    <label for="login-username">Username</label>
+    <select id="login-username"></select>
+
+    <label for="login-password">Password</label>
+    <input type="password" id="login-password" value="Demo@123">
+    <p class="demo-note">This is a public portfolio demo password, prefilled on purpose &mdash; edit it to see a real authentication failure.</p>
+
+    <button id="login-btn">LOGIN</button>
+    <div id="login-result"></div>
+  </section>
+</div>
+
+<!-- ================= ADMIN LANDING (placeholder) ================= -->
+<div id="admin-view" style="display:none">
+  <section class="card">
+    <h2>&#128272; Admin Dashboard</h2>
+    <div class="field-row"><span class="field-label">Signed in as</span><span class="field-value" id="admin-username">&mdash;</span></div>
+    <div class="msg info">All Customers (search + pagination) is the next build increment for this ADMIN role &mdash; this login is real (BCrypt + JWT + the "admin:read" scope), the customer-management UI is not wired up yet.</div>
+    <div class="btn-row"><button class="subtle" id="admin-logout-btn">LOG OUT</button></div>
+  </section>
+</div>
+
+<!-- ================= USER APP VIEW ================= -->
+<div id="app-view" style="display:none">
+
 <header class="app-header">
   <h1>&#9889; Energy Customer Platform</h1>
   <nav class="app-nav">
+    <span class="identity-badge">Signed in as <strong id="user-username">&mdash;</strong> <span class="role-tag">USER</span></span>
+    <button class="subtle" id="logout-btn">LOG OUT</button>
     <a href="https://agentic-platform-backend-production.up.railway.app/workbench" target="_blank" rel="noopener">OPEN WORKBENCH</a>
     <a href="https://agentic-platform-backend-production.up.railway.app/dashboard" target="_blank" rel="noopener">VIEW DASHBOARD</a>
     <a href="https://agentic-platform-backend-production.up.railway.app/usage" target="_blank" rel="noopener">VIEW USAGE</a>
@@ -262,6 +327,8 @@
 
 <footer class="app-footer">Powered by Agentic Delivery</footer>
 
+</div>
+
 <script>
 (function () {
   'use strict';
@@ -269,6 +336,8 @@
   var STORAGE = {
     token: 'demo_access_token',
     tokenExpiresAt: 'demo_token_expires_at',
+    username: 'demo_username',
+    role: 'demo_role',
     customerId: 'demo_customer_id'
   };
 
@@ -276,6 +345,7 @@
 
   function logActivity(text) {
     var list = document.getElementById('activity-list');
+    if (!list) return;
     var li = document.createElement('li');
     var ts = document.createElement('span');
     ts.className = 'ts';
@@ -288,9 +358,6 @@
   function showBanner(text) {
     document.getElementById('session-banner-text').textContent = text;
     document.getElementById('session-banner').classList.add('show');
-  }
-  function hideBanner() {
-    document.getElementById('session-banner').classList.remove('show');
   }
 
   function setMsg(el, text, kind) {
@@ -315,75 +382,188 @@
     }
   }
 
-  async function fetchDemoToken() {
-    var response = await fetch('/auth/demo-token', { method: 'POST' });
-    if (!response.ok) throw new Error('Could not start a demo session (HTTP ' + response.status + ').');
-    var body = await response.json();
-    sessionStorage.setItem(STORAGE.token, body.access_token);
-    sessionStorage.setItem(STORAGE.tokenExpiresAt, String(nowSeconds() + body.expires_in));
-    return body.access_token;
+  /** Full escaping (incl. quotes), not just DOM textContent-trick escaping
+   * -- values from this function are also embedded inside HTML attribute
+   * strings (e.g. the email edit input's value="..."), where an
+   * unescaped double-quote could break out of the attribute. */
+  function esc(value) {
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
-  async function getValidToken(forceRefresh) {
-    var token = sessionStorage.getItem(STORAGE.token);
-    var expiresAt = parseInt(sessionStorage.getItem(STORAGE.tokenExpiresAt) || '0', 10);
-    // Refresh proactively 30s before real expiry, not just reactively on 401.
-    if (forceRefresh || !token || nowSeconds() > expiresAt - 30) {
-      token = await fetchDemoToken();
-    }
-    return token;
+  // ---------- Session storage (persists across browser restarts --
+  // the business DATA is durably persisted server-side in Postgres
+  // regardless; this is only so a recruiter returning later doesn't
+  // have to re-click LOGIN if their token hasn't expired yet). ----------
+
+  function saveSession(login) {
+    localStorage.setItem(STORAGE.token, login.accessToken);
+    localStorage.setItem(STORAGE.tokenExpiresAt, String(nowSeconds() + login.expiresInSeconds));
+    localStorage.setItem(STORAGE.username, login.username);
+    localStorage.setItem(STORAGE.role, login.role);
+    if (login.customerId != null) localStorage.setItem(STORAGE.customerId, String(login.customerId));
+    else localStorage.removeItem(STORAGE.customerId);
   }
 
-  /** Every authenticated call goes through here: attaches the demo JWT
-   * automatically and retries exactly once with a fresh token on 401 --
-   * the recruiter never sees or handles a token. */
+  function clearSession() {
+    Object.keys(STORAGE).forEach(function (k) { localStorage.removeItem(STORAGE[k]); });
+  }
+
+  function currentSession() {
+    var token = localStorage.getItem(STORAGE.token);
+    var expiresAt = parseInt(localStorage.getItem(STORAGE.tokenExpiresAt) || '0', 10);
+    if (!token || nowSeconds() > expiresAt) return null;
+    return {
+      token: token,
+      username: localStorage.getItem(STORAGE.username),
+      role: localStorage.getItem(STORAGE.role),
+      customerId: localStorage.getItem(STORAGE.customerId)
+    };
+  }
+
+  function currentCustomerId() {
+    return localStorage.getItem(STORAGE.customerId);
+  }
+
+  /** Every authenticated call goes through here. A 401 means this
+   * persona's token genuinely expired or was revoked -- there is no
+   * silent anonymous-token fallback (that would defeat per-persona
+   * workspace scoping), so the correct, honest response is to sign the
+   * viewer out and show the login screen again, not to keep retrying. */
   async function authFetch(path, options) {
     options = options || {};
-    var token = await getValidToken(false);
-    var response = await doFetch(path, options, token);
+    var session = currentSession();
+    if (!session) { showLogin(); throw new Error('Session expired. Please log in again.'); }
+    var headers = Object.assign({}, options.headers || {}, { 'Authorization': 'Bearer ' + session.token });
+    var response = await fetch(path, Object.assign({}, options, { headers: headers }));
     if (response.status === 401) {
-      token = await getValidToken(true);
-      response = await doFetch(path, options, token);
+      clearSession();
+      showLogin();
+      throw new Error('Session expired. Please log in again.');
     }
     return response;
   }
 
-  function doFetch(path, options, token) {
-    var headers = Object.assign({}, options.headers || {}, { 'Authorization': 'Bearer ' + token });
-    return fetch(path, Object.assign({}, options, { headers: headers }));
-  }
+  // ---------- Login view ----------
 
-  function currentCustomerId() {
-    return sessionStorage.getItem(STORAGE.customerId);
-  }
+  var loginUsernameSelect = document.getElementById('login-username');
+  var personas = { user: [], admin: [] };
 
-  // ---------- Overview + demo bootstrap ----------
-
-  async function ensureDemoCustomer() {
-    var existingId = currentCustomerId();
-    if (existingId) {
-      var check = await authFetch('/customers/' + existingId);
-      if (check.ok) return existingId;
-      // Stale/missing (e.g. restored DB, or a previous restart) -- fall through and create a fresh one.
+  async function loadPersonas() {
+    try {
+      var response = await fetch('/auth/personas');
+      var body = await response.json();
+      personas.user = body.user || [];
+      personas.admin = body.admin || [];
+    } catch (e) {
+      // Fall back to the documented default seed set so the dropdown is
+      // never empty even if this one GET fails transiently -- login
+      // itself still does a REAL server-side check regardless of what
+      // populated the dropdown.
+      personas.user = ['user1', 'user2', 'user3'];
+      personas.admin = ['admin1', 'admin2'];
     }
-    var suffix = Math.random().toString(36).slice(2, 8);
-    var createResponse = await authFetch('/customers', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: 'Demo Customer ' + suffix, email: 'demo+' + suffix + '@example.com' })
-    });
-    if (!createResponse.ok) throw new Error(await parseErrorBody(createResponse));
-    var created = await createResponse.json();
-    sessionStorage.setItem(STORAGE.customerId, String(created.id));
-    logActivity('Demo customer created (id ' + created.id + ')');
-    return String(created.id);
+    populateUsernameDropdown();
   }
+
+  function selectedRole() {
+    var checked = document.querySelector('input[name="login-role"]:checked');
+    return checked ? checked.value : 'USER';
+  }
+
+  function populateUsernameDropdown() {
+    var role = selectedRole();
+    var list = role === 'ADMIN' ? personas.admin : personas.user;
+    loginUsernameSelect.innerHTML = list.map(function (u) { return '<option value="' + esc(u) + '">' + esc(u) + '</option>'; }).join('');
+  }
+
+  document.querySelectorAll('input[name="login-role"]').forEach(function (radio) {
+    radio.addEventListener('change', populateUsernameDropdown);
+  });
+
+  document.getElementById('login-btn').addEventListener('click', async function () {
+    var resultEl = document.getElementById('login-result');
+    var btn = document.getElementById('login-btn');
+    var username = loginUsernameSelect.value;
+    var password = document.getElementById('login-password').value;
+    btn.disabled = true;
+    btn.textContent = 'SIGNING IN…';
+    setMsg(resultEl, 'Signing in…', 'loading');
+    try {
+      var response = await fetch('/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username, password: password })
+      });
+      if (!response.ok) throw new Error(response.status === 401 ? 'Invalid username or password.' : await parseErrorBody(response));
+      var login = await response.json();
+      saveSession(login);
+      resultEl.innerHTML = '';
+      route();
+    } catch (err) {
+      setMsg(resultEl, err.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'LOGIN';
+    }
+  });
+
+  function resetLoginForm() {
+    document.querySelectorAll('input[name="login-role"]').forEach(function (r) { r.checked = (r.value === 'USER'); });
+    populateUsernameDropdown();
+    document.getElementById('login-password').value = 'Demo@123';
+    document.getElementById('login-result').innerHTML = '';
+  }
+
+  function showLogin() {
+    document.getElementById('login-view').style.display = '';
+    document.getElementById('admin-view').style.display = 'none';
+    document.getElementById('app-view').style.display = 'none';
+    resetLoginForm();
+  }
+
+  function showAdmin(session) {
+    document.getElementById('login-view').style.display = 'none';
+    document.getElementById('app-view').style.display = 'none';
+    document.getElementById('admin-view').style.display = '';
+    document.getElementById('admin-username').textContent = session.username;
+  }
+
+  function showApp(session) {
+    document.getElementById('login-view').style.display = 'none';
+    document.getElementById('admin-view').style.display = 'none';
+    document.getElementById('app-view').style.display = '';
+    document.getElementById('user-username').textContent = session.username;
+    boot();
+  }
+
+  function doLogout() {
+    clearSession();
+    document.getElementById('activity-list').innerHTML = '';
+    showLogin();
+  }
+  document.getElementById('logout-btn').addEventListener('click', doLogout);
+  document.getElementById('admin-logout-btn').addEventListener('click', doLogout);
+  document.getElementById('restart-demo-btn').addEventListener('click', doLogout);
+
+  function route() {
+    var session = currentSession();
+    if (!session) { showLogin(); return; }
+    if (session.role === 'ADMIN') { showAdmin(session); return; }
+    showApp(session);
+  }
+
+  // ---------- Overview ----------
 
   async function loadOverview() {
     var el = document.getElementById('overview-body');
     setMsg(el, 'Loading demo customer…', 'loading');
     try {
-      var id = await ensureDemoCustomer();
+      var id = currentCustomerId();
       var response = await authFetch('/customers/' + id);
       if (!response.ok) throw new Error(await parseErrorBody(response));
       var customer = await response.json();
@@ -398,19 +578,6 @@
       showBanner('This demo session could not start correctly.');
       throw err;
     }
-  }
-
-  /** Full escaping (incl. quotes), not just DOM textContent-trick escaping
-   * -- values from this function are also embedded inside HTML attribute
-   * strings (e.g. the email edit input's value="..."), where an
-   * unescaped double-quote could break out of the attribute. */
-  function esc(value) {
-    return String(value)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
   }
 
   // ---------- Profile (real Update Email) ----------
@@ -671,19 +838,6 @@
     });
   }
 
-  // ---------- Restart demo ----------
-
-  function restartDemo() {
-    sessionStorage.removeItem(STORAGE.token);
-    sessionStorage.removeItem(STORAGE.tokenExpiresAt);
-    sessionStorage.removeItem(STORAGE.customerId);
-    hideBanner();
-    document.getElementById('activity-list').innerHTML = '';
-    boot();
-  }
-
-  document.getElementById('restart-demo-btn').addEventListener('click', restartDemo);
-
   // ---------- Boot ----------
 
   async function boot() {
@@ -696,7 +850,10 @@
     }
   }
 
-  boot();
+  // ---------- Init ----------
+
+  loadPersonas();
+  route();
 })();
 </script>
 

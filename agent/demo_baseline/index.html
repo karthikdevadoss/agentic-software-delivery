@@ -2,219 +2,859 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Customer App</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Energy Customer Platform</title>
 <style>
+  :root {
+    --blue: #0b5fff;
+    --blue-light: #e8f0ff;
+    --blue-border: #b6d0ff;
+    --green: #1e7a34;
+    --green-bg: #e6f4ea;
+    --green-border: #b7dfc0;
+    --red: #611a15;
+    --red-bg: #fdecea;
+    --red-border: #f5c6c2;
+    --amber: #8a6d3b;
+    --amber-bg: #fcf3e3;
+    --amber-border: #f0dca0;
+    --ink: #1a1a1a;
+    --muted: #666;
+    --border: #ddd;
+  }
+  * { box-sizing: border-box; }
   body {
-    font-family: system-ui, sans-serif;
-    max-width: 640px;
-    margin: 2rem auto;
-    padding: 0 1rem;
-    color: #1a1a1a;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 1.25rem 1rem 3rem;
+    color: var(--ink);
     background: #fafafa;
+    line-height: 1.4;
+  }
+  header.app-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
   }
   h1 {
-    margin-bottom: 0.25rem;
+    margin: 0;
+    font-size: 1.5rem;
     display: flex;
     align-items: center;
-    gap: 0.6rem;
-  }
-  .badge {
-    display: inline-block;
-    font-size: 0.7rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    text-transform: uppercase;
-    color: #0b5fff;
-    background: #e8f0ff;
-    border: 1px solid #b6d0ff;
-    border-radius: 999px;
-    padding: 0.15rem 0.6rem;
-    vertical-align: middle;
+    gap: 0.5rem;
   }
   .subtitle {
-    color: #666;
-    margin-top: 0;
-    margin-bottom: 2rem;
+    color: var(--muted);
+    margin: 0.15rem 0 1.25rem;
     font-size: 0.9rem;
   }
-  section {
-    background: #fff;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    padding: 1.25rem;
-    margin-bottom: 1.25rem;
+  nav.app-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
   }
-  section h2 {
-    margin-top: 0;
-    font-size: 1.1rem;
-  }
-  label {
-    display: block;
-    font-size: 0.85rem;
-    margin-bottom: 0.25rem;
-    margin-top: 0.75rem;
-  }
-  input {
-    width: 100%;
-    box-sizing: border-box;
-    padding: 0.4rem 0.5rem;
-    font-size: 0.95rem;
-  }
-  button {
-    margin-top: 1rem;
-    padding: 0.5rem 1rem;
-    font-size: 0.95rem;
-    cursor: pointer;
-  }
-  button:disabled {
-    cursor: not-allowed;
-    opacity: 0.6;
-  }
-  .result {
-    margin-top: 0.75rem;
-    padding: 0.6rem 0.75rem;
-    border-radius: 4px;
-    font-size: 0.9rem;
-    white-space: pre-wrap;
-  }
-  .result.success {
-    background: #e6f4ea;
-    color: #1e4620;
-    border: 1px solid #b7dfc0;
-  }
-  .result.error {
-    background: #fdecea;
-    color: #611a15;
-    border: 1px solid #f5c6c2;
-  }
-  .not-implemented {
-    color: #8a6d3b;
-    background: #fcf3e3;
-    border: 1px solid #f0dca0;
-    padding: 0.6rem 0.75rem;
-    border-radius: 4px;
-    font-size: 0.9rem;
-  }
-  ul.capabilities {
-    list-style: none;
-    padding-left: 0;
-    margin: 0;
-    font-size: 0.9rem;
-  }
-  ul.capabilities li {
-    padding: 0.2rem 0;
-  }
-  .status-ok { color: #1e7a34; }
-  .status-pending { color: #b06a00; }
-  footer.app-footer {
-    margin-top: 2rem;
-    text-align: center;
+  nav.app-nav a {
     font-size: 0.8rem;
-    color: #999;
+    font-weight: 600;
+    text-decoration: none;
+    color: var(--blue);
+    background: var(--blue-light);
+    border: 1px solid var(--blue-border);
+    border-radius: 999px;
+    padding: 0.35rem 0.85rem;
+    white-space: nowrap;
+  }
+  nav.app-nav a:hover { background: var(--blue-border); }
+  .identity-badge {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--muted);
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.3rem 0.75rem;
+  }
+  .identity-badge .role-tag { color: var(--blue); text-transform: uppercase; letter-spacing: 0.02em; }
+  #logout-btn { font-size: 0.78rem; padding: 0.3rem 0.75rem; }
+
+  .tech-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    align-items: center;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.6rem 0.9rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+  .tech-strip .live-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--green); display: inline-block;
+    box-shadow: 0 0 0 3px var(--green-bg);
+  }
+  .tech-badge {
+    background: #f2f2f2;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 0.15rem 0.5rem;
+    font-weight: 600;
+    color: #444;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+  }
+  section.card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.1rem 1.25rem;
+    margin-bottom: 1rem;
+  }
+  section.card h2 {
+    margin: 0 0 0.75rem;
+    font-size: 1.02rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+  section.card h2 .section-icon { font-size: 1.05em; }
+  .field-row { display: flex; justify-content: space-between; gap: 0.75rem; padding: 0.3rem 0; font-size: 0.92rem; border-bottom: 1px dashed #eee; }
+  .field-row:last-child { border-bottom: none; }
+  .field-label { color: var(--muted); }
+  .field-value { font-weight: 600; text-align: right; word-break: break-word; }
+
+  label { display: block; font-size: 0.82rem; margin: 0.6rem 0 0.25rem; color: #333; }
+  input, select {
+    width: 100%;
+    padding: 0.45rem 0.55rem;
+    font-size: 0.92rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-family: inherit;
+  }
+  .btn-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.85rem; }
+  button {
+    padding: 0.45rem 0.9rem;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 5px;
+    border: 1px solid var(--blue);
+    background: var(--blue);
+    color: #fff;
+  }
+  button.secondary { background: #fff; color: var(--blue); }
+  button.subtle { background: #fff; color: #555; border-color: #ccc; }
+  button:disabled { cursor: not-allowed; opacity: 0.55; }
+  button:hover:not(:disabled) { filter: brightness(0.95); }
+
+  .msg { margin-top: 0.65rem; padding: 0.55rem 0.7rem; border-radius: 4px; font-size: 0.85rem; white-space: pre-wrap; }
+  .msg.success { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+  .msg.error { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+  .msg.info { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
+  .msg.loading { background: #f0f0f0; color: #555; border: 1px solid #ddd; }
+
+  .status-pill { display: inline-block; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; border-radius: 999px; padding: 0.12rem 0.55rem; }
+  .status-pill.available, .status-pill.active { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+  .status-pill.unavailable, .status-pill.cancelled { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+  .status-pill.service_unavailable, .status-pill.pending { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
+
+  #activity-list { list-style: none; margin: 0; padding: 0; font-size: 0.82rem; max-height: 220px; overflow-y: auto; }
+  #activity-list li { padding: 0.3rem 0; border-bottom: 1px solid #f2f2f2; color: #444; }
+  #activity-list li .ts { color: #999; margin-right: 0.4rem; font-variant-numeric: tabular-nums; }
+  #activity-list li:last-child { border-bottom: none; }
+  .activity-note { font-size: 0.75rem; color: var(--muted); margin-top: 0.5rem; }
+
+  .banner {
+    background: #fff8e1;
+    border: 1px solid #ffe082;
+    color: #6d5000;
+    border-radius: 6px;
+    padding: 0.7rem 1rem;
+    margin-bottom: 1.25rem;
+    font-size: 0.88rem;
+    display: none;
+  }
+  .banner.show { display: block; }
+  .banner button { margin-left: 0.5rem; padding: 0.3rem 0.7rem; font-size: 0.8rem; }
+
+  footer.app-footer { margin-top: 2rem; text-align: center; font-size: 0.78rem; color: #999; }
+
+  /* ---- Login view ---- */
+  #login-view { max-width: 420px; margin: 3rem auto 0; }
+  #login-view .card { padding: 1.5rem 1.75rem; }
+  #login-view h1 { justify-content: center; margin-bottom: 0.25rem; }
+  #login-view .subtitle { text-align: center; }
+  .role-choice { display: flex; gap: 1.25rem; margin: 0.7rem 0 0.3rem; }
+  .role-choice label { display: flex; align-items: center; gap: 0.4rem; margin: 0; font-size: 0.92rem; color: var(--ink); font-weight: 600; }
+  .role-choice input[type="radio"] { width: auto; }
+  .demo-note { font-size: 0.76rem; color: var(--muted); margin-top: 0.4rem; }
+  #login-btn { width: 100%; margin-top: 1rem; padding: 0.6rem; font-size: 0.95rem; }
+
+  /* ---- Admin landing (placeholder for the full All-Customers dashboard) ---- */
+  #admin-view .card { max-width: 640px; margin: 2rem auto; }
+
+  @media (max-width: 520px) {
+    body { padding: 1rem 0.75rem 2.5rem; }
+    h1 { font-size: 1.25rem; }
+    .field-row { flex-direction: column; gap: 0.1rem; }
+    .field-value { text-align: left; }
   }
 </style>
 </head>
 <body>
 
-<h1>Customer App <span class="badge" id="agent-demo-badge">Agent Demo</span></h1>
-<p class="subtitle">Target application used by our Agentic Software Delivery System.</p>
+<!-- ================= LOGIN VIEW ================= -->
+<div id="login-view">
+  <section class="card">
+    <h1 id="app-heading">&#9889; Energy Customer Platform</h1>
+    <p class="subtitle" id="app-subtitle">Portfolio demo sign-in &mdash; real authentication, public demo credentials.</p>
 
-<section>
-  <h2>Find Customer</h2>
-  <label for="find-id">Customer ID</label>
-  <input type="text" id="find-id" placeholder="e.g. 1">
-  <button id="find-btn">Find</button>
-  <div id="find-result"></div>
-</section>
+    <label>User type</label>
+    <div class="role-choice">
+      <label><input type="radio" name="login-role" value="USER" checked> USER</label>
+      <label><input type="radio" name="login-role" value="ADMIN"> ADMIN</label>
+    </div>
 
-<section>
-  <h2>Create Customer</h2>
-  <label for="create-name">Name</label>
-  <input type="text" id="create-name" placeholder="e.g. Grace Hopper">
-  <label for="create-email">Email</label>
-  <input type="email" id="create-email" placeholder="e.g. grace@example.com">
-  <button id="create-btn">Create</button>
-  <div id="create-result"></div>
-</section>
+    <label for="login-username">Username</label>
+    <select id="login-username"></select>
 
-<section>
-  <h2>Update Email</h2>
-  <p class="not-implemented">Not implemented yet — current agent ticket.</p>
-</section>
+    <label for="login-password">Password</label>
+    <input type="password" id="login-password" value="Demo@123">
+    <p class="demo-note">This is a public portfolio demo password, prefilled on purpose &mdash; edit it to see a real authentication failure.</p>
 
-<section>
-  <h2>Current Capabilities</h2>
-  <ul class="capabilities">
-    <li>Find customer: <span class="status-ok">available</span></li>
-    <li>Create customer: <span class="status-ok">available</span></li>
-    <li>Update email: <span class="status-pending">not implemented</span></li>
-  </ul>
-</section>
+    <button id="login-btn">LOGIN</button>
+    <div id="login-result"></div>
+  </section>
+</div>
+
+<!-- ================= ADMIN LANDING (placeholder) ================= -->
+<div id="admin-view" style="display:none">
+  <section class="card">
+    <h2>&#128272; Admin Dashboard</h2>
+    <div class="field-row"><span class="field-label">Signed in as</span><span class="field-value" id="admin-username">&mdash;</span></div>
+    <div class="msg info">All Customers (search + pagination) is the next build increment for this ADMIN role &mdash; this login is real (BCrypt + JWT + the "admin:read" scope), the customer-management UI is not wired up yet.</div>
+    <div class="btn-row"><button class="subtle" id="admin-logout-btn">LOG OUT</button></div>
+  </section>
+</div>
+
+<!-- ================= USER APP VIEW ================= -->
+<div id="app-view" style="display:none">
+
+<header class="app-header">
+  <h1>&#9889; Energy Customer Platform</h1>
+  <nav class="app-nav">
+    <span class="identity-badge">Signed in as <strong id="user-username">&mdash;</strong> <span class="role-tag">USER</span></span>
+    <button class="subtle" id="logout-btn">LOG OUT</button>
+    <a href="https://agentic-platform-backend-production.up.railway.app/workbench" target="_blank" rel="noopener">OPEN WORKBENCH</a>
+    <a href="https://agentic-platform-backend-production.up.railway.app/dashboard" target="_blank" rel="noopener">VIEW DASHBOARD</a>
+    <a href="https://agentic-platform-backend-production.up.railway.app/usage" target="_blank" rel="noopener">VIEW USAGE</a>
+  </nav>
+</header>
+<p class="subtitle">Live demo sandbox for the real Java/Spring target application behind our Agentic Software Delivery System.</p>
+
+<div class="tech-strip">
+  <span class="live-dot"></span> <strong>Live demo environment</strong>
+  <span class="tech-badge">Java 21</span>
+  <span class="tech-badge">Spring Boot</span>
+  <span class="tech-badge">Secured API (JWT)</span>
+  <span class="tech-badge">PostgreSQL-backed</span>
+  <span class="tech-badge">Production deployed</span>
+</div>
+
+<div class="banner" id="session-banner">
+  <span id="session-banner-text"></span>
+  <button id="restart-demo-btn">RESTART DEMO</button>
+</div>
+
+<div class="grid">
+
+  <section class="card" id="overview-card">
+    <h2><span><span class="section-icon">&#128100;</span> Overview</span></h2>
+    <div id="overview-body"><div class="msg loading">Loading demo customer&hellip;</div></div>
+  </section>
+
+  <section class="card" id="profile-card">
+    <h2><span><span class="section-icon">&#9993;&#65039;</span> Profile</span></h2>
+    <div id="profile-body"><div class="msg loading">Loading&hellip;</div></div>
+  </section>
+
+  <section class="card" id="plan-card">
+    <h2><span><span class="section-icon">&#128196;</span> Current Plan</span></h2>
+    <div id="plan-body"><div class="msg loading">Loading&hellip;</div></div>
+  </section>
+
+  <section class="card" id="preferences-card">
+    <h2><span><span class="section-icon">&#9881;&#65039;</span> Preferences</span></h2>
+    <div id="preferences-body"><div class="msg loading">Loading&hellip;</div></div>
+  </section>
+
+  <section class="card" id="appointments-card">
+    <h2><span><span class="section-icon">&#128197;</span> Appointment Availability</span></h2>
+    <div id="appointments-body">
+      <label for="appt-date">Date to check</label>
+      <input type="date" id="appt-date">
+      <label for="appt-scenario">Demo scenario</label>
+      <select id="appt-scenario">
+        <option value="">Normal</option>
+        <option value="timeout">Simulate downstream timeout</option>
+        <option value="error">Simulate downstream failure</option>
+      </select>
+      <div class="btn-row"><button id="appt-check-btn">CHECK AVAILABILITY</button></div>
+      <div id="appt-result"></div>
+    </div>
+  </section>
+
+  <section class="card" id="activity-card">
+    <h2><span><span class="section-icon">&#128203;</span> Activity</span></h2>
+    <ul id="activity-list"></ul>
+    <p class="activity-note">This session's real actions, recorded in your browser only &mdash; not a durable server-side history.</p>
+  </section>
+
+</div>
 
 <footer class="app-footer">Powered by Agentic Delivery</footer>
 
+</div>
+
 <script>
-  function showResult(el, message, isError) {
-    el.textContent = message;
-    el.className = 'result ' + (isError ? 'error' : 'success');
+(function () {
+  'use strict';
+
+  var STORAGE = {
+    token: 'demo_access_token',
+    tokenExpiresAt: 'demo_token_expires_at',
+    username: 'demo_username',
+    role: 'demo_role',
+    customerId: 'demo_customer_id'
+  };
+
+  function nowSeconds() { return Math.floor(Date.now() / 1000); }
+
+  function logActivity(text) {
+    var list = document.getElementById('activity-list');
+    if (!list) return;
+    var li = document.createElement('li');
+    var ts = document.createElement('span');
+    ts.className = 'ts';
+    ts.textContent = new Date().toLocaleTimeString();
+    li.appendChild(ts);
+    li.appendChild(document.createTextNode(text));
+    list.insertBefore(li, list.firstChild);
   }
 
-  document.getElementById('find-btn').addEventListener('click', async () => {
-    const id = document.getElementById('find-id').value.trim();
-    const resultEl = document.getElementById('find-result');
+  function showBanner(text) {
+    document.getElementById('session-banner-text').textContent = text;
+    document.getElementById('session-banner').classList.add('show');
+  }
 
-    if (!id) {
-      showResult(resultEl, 'Please enter a customer ID.', true);
-      return;
-    }
+  function setMsg(el, text, kind) {
+    el.innerHTML = '';
+    var div = document.createElement('div');
+    div.className = 'msg ' + kind;
+    div.textContent = text;
+    el.appendChild(div);
+  }
 
+  async function parseErrorBody(response) {
     try {
-      const response = await fetch(`/customers/${encodeURIComponent(id)}`);
-      if (response.status === 404) {
-        showResult(resultEl, `No customer found with ID ${id}.`, true);
-        return;
+      var body = await response.json();
+      if (body.fieldErrors) {
+        var parts = Object.keys(body.fieldErrors).map(function (k) { return k + ': ' + body.fieldErrors[k]; });
+        return (body.error || 'validation failed') + ' (' + parts.join(', ') + ')';
       }
-      if (!response.ok) {
-        showResult(resultEl, `Request failed (HTTP ${response.status}).`, true);
-        return;
-      }
-      const customer = await response.json();
-      showResult(resultEl, `Found: ${customer.name} <${customer.email}>`, false);
-    } catch (err) {
-      showResult(resultEl, `Network error: ${err.message}`, true);
+      if (body.error) return body.error;
+      return 'HTTP ' + response.status;
+    } catch (e) {
+      return 'HTTP ' + response.status;
     }
+  }
+
+  /** Full escaping (incl. quotes), not just DOM textContent-trick escaping
+   * -- values from this function are also embedded inside HTML attribute
+   * strings (e.g. the email edit input's value="..."), where an
+   * unescaped double-quote could break out of the attribute. */
+  function esc(value) {
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  // ---------- Session storage (persists across browser restarts --
+  // the business DATA is durably persisted server-side in Postgres
+  // regardless; this is only so a recruiter returning later doesn't
+  // have to re-click LOGIN if their token hasn't expired yet). ----------
+
+  function saveSession(login) {
+    localStorage.setItem(STORAGE.token, login.accessToken);
+    localStorage.setItem(STORAGE.tokenExpiresAt, String(nowSeconds() + login.expiresInSeconds));
+    localStorage.setItem(STORAGE.username, login.username);
+    localStorage.setItem(STORAGE.role, login.role);
+    if (login.customerId != null) localStorage.setItem(STORAGE.customerId, String(login.customerId));
+    else localStorage.removeItem(STORAGE.customerId);
+  }
+
+  function clearSession() {
+    Object.keys(STORAGE).forEach(function (k) { localStorage.removeItem(STORAGE[k]); });
+  }
+
+  function currentSession() {
+    var token = localStorage.getItem(STORAGE.token);
+    var expiresAt = parseInt(localStorage.getItem(STORAGE.tokenExpiresAt) || '0', 10);
+    if (!token || nowSeconds() > expiresAt) return null;
+    return {
+      token: token,
+      username: localStorage.getItem(STORAGE.username),
+      role: localStorage.getItem(STORAGE.role),
+      customerId: localStorage.getItem(STORAGE.customerId)
+    };
+  }
+
+  function currentCustomerId() {
+    return localStorage.getItem(STORAGE.customerId);
+  }
+
+  /** Every authenticated call goes through here. A 401 means this
+   * persona's token genuinely expired or was revoked -- there is no
+   * silent anonymous-token fallback (that would defeat per-persona
+   * workspace scoping), so the correct, honest response is to sign the
+   * viewer out and show the login screen again, not to keep retrying. */
+  async function authFetch(path, options) {
+    options = options || {};
+    var session = currentSession();
+    if (!session) { showLogin(); throw new Error('Session expired. Please log in again.'); }
+    var headers = Object.assign({}, options.headers || {}, { 'Authorization': 'Bearer ' + session.token });
+    var response = await fetch(path, Object.assign({}, options, { headers: headers }));
+    if (response.status === 401) {
+      clearSession();
+      showLogin();
+      throw new Error('Session expired. Please log in again.');
+    }
+    return response;
+  }
+
+  // ---------- Login view ----------
+
+  var loginUsernameSelect = document.getElementById('login-username');
+  var personas = { user: [], admin: [] };
+
+  async function loadPersonas() {
+    try {
+      var response = await fetch('/auth/personas');
+      var body = await response.json();
+      personas.user = body.user || [];
+      personas.admin = body.admin || [];
+    } catch (e) {
+      // Fall back to the documented default seed set so the dropdown is
+      // never empty even if this one GET fails transiently -- login
+      // itself still does a REAL server-side check regardless of what
+      // populated the dropdown.
+      personas.user = ['user1', 'user2', 'user3'];
+      personas.admin = ['admin1', 'admin2'];
+    }
+    populateUsernameDropdown();
+  }
+
+  function selectedRole() {
+    var checked = document.querySelector('input[name="login-role"]:checked');
+    return checked ? checked.value : 'USER';
+  }
+
+  function populateUsernameDropdown() {
+    var role = selectedRole();
+    var list = role === 'ADMIN' ? personas.admin : personas.user;
+    loginUsernameSelect.innerHTML = list.map(function (u) { return '<option value="' + esc(u) + '">' + esc(u) + '</option>'; }).join('');
+  }
+
+  document.querySelectorAll('input[name="login-role"]').forEach(function (radio) {
+    radio.addEventListener('change', populateUsernameDropdown);
   });
 
-  document.getElementById('create-btn').addEventListener('click', async () => {
-    const name = document.getElementById('create-name').value.trim();
-    const email = document.getElementById('create-email').value.trim();
-    const resultEl = document.getElementById('create-result');
-
-    if (!name || !email) {
-      showResult(resultEl, 'Please enter both name and email.', true);
-      return;
-    }
-
+  document.getElementById('login-btn').addEventListener('click', async function () {
+    var resultEl = document.getElementById('login-result');
+    var btn = document.getElementById('login-btn');
+    var username = loginUsernameSelect.value;
+    var password = document.getElementById('login-password').value;
+    btn.disabled = true;
+    btn.textContent = 'SIGNING IN…';
+    setMsg(resultEl, 'Signing in…', 'loading');
     try {
-      const response = await fetch('/customers', {
+      var response = await fetch('/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email })
+        body: JSON.stringify({ username: username, password: password })
       });
-      if (!response.ok) {
-        showResult(resultEl, `Create failed (HTTP ${response.status}).`, true);
-        return;
-      }
-      const customer = await response.json();
-      showResult(
-        resultEl,
-        `Welcome aboard, ${customer.name}! Your customer profile <${customer.email}> has been created (id ${customer.id}).`,
-        false
-      );
+      if (!response.ok) throw new Error(response.status === 401 ? 'Invalid username or password.' : await parseErrorBody(response));
+      var login = await response.json();
+      saveSession(login);
+      resultEl.innerHTML = '';
+      route();
     } catch (err) {
-      showResult(resultEl, `Network error: ${err.message}`, true);
+      setMsg(resultEl, err.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'LOGIN';
     }
   });
+
+  function resetLoginForm() {
+    document.querySelectorAll('input[name="login-role"]').forEach(function (r) { r.checked = (r.value === 'USER'); });
+    populateUsernameDropdown();
+    document.getElementById('login-password').value = 'Demo@123';
+    document.getElementById('login-result').innerHTML = '';
+  }
+
+  function showLogin() {
+    document.getElementById('login-view').style.display = '';
+    document.getElementById('admin-view').style.display = 'none';
+    document.getElementById('app-view').style.display = 'none';
+    resetLoginForm();
+  }
+
+  function showAdmin(session) {
+    document.getElementById('login-view').style.display = 'none';
+    document.getElementById('app-view').style.display = 'none';
+    document.getElementById('admin-view').style.display = '';
+    document.getElementById('admin-username').textContent = session.username;
+  }
+
+  function showApp(session) {
+    document.getElementById('login-view').style.display = 'none';
+    document.getElementById('admin-view').style.display = 'none';
+    document.getElementById('app-view').style.display = '';
+    document.getElementById('user-username').textContent = session.username;
+    boot();
+  }
+
+  function doLogout() {
+    clearSession();
+    document.getElementById('activity-list').innerHTML = '';
+    showLogin();
+  }
+  document.getElementById('logout-btn').addEventListener('click', doLogout);
+  document.getElementById('admin-logout-btn').addEventListener('click', doLogout);
+  document.getElementById('restart-demo-btn').addEventListener('click', doLogout);
+
+  function route() {
+    var session = currentSession();
+    if (!session) { showLogin(); return; }
+    if (session.role === 'ADMIN') { showAdmin(session); return; }
+    showApp(session);
+  }
+
+  // ---------- Overview ----------
+
+  async function loadOverview() {
+    var el = document.getElementById('overview-body');
+    setMsg(el, 'Loading demo customer…', 'loading');
+    try {
+      var id = currentCustomerId();
+      var response = await authFetch('/customers/' + id);
+      if (!response.ok) throw new Error(await parseErrorBody(response));
+      var customer = await response.json();
+      el.innerHTML =
+        '<div class="field-row"><span class="field-label">Customer ID</span><span class="field-value">' + esc(customer.id) + '</span></div>' +
+        '<div class="field-row"><span class="field-label">Name</span><span class="field-value">' + esc(customer.name) + '</span></div>' +
+        '<div class="field-row"><span class="field-label">Email</span><span class="field-value">' + esc(customer.email) + '</span></div>';
+      logActivity('Customer overview loaded (id ' + customer.id + ')');
+      return customer;
+    } catch (err) {
+      setMsg(el, 'Could not load customer: ' + err.message, 'error');
+      showBanner('This demo session could not start correctly.');
+      throw err;
+    }
+  }
+
+  // ---------- Profile (real Update Email) ----------
+
+  function renderProfileView(email) {
+    var el = document.getElementById('profile-body');
+    el.innerHTML =
+      '<div class="field-row"><span class="field-label">Email</span><span class="field-value">' + esc(email) + '</span></div>' +
+      '<div class="btn-row"><button class="secondary" id="edit-email-btn">EDIT EMAIL</button></div>';
+    document.getElementById('edit-email-btn').addEventListener('click', function () { renderProfileEdit(email); });
+  }
+
+  function renderProfileEdit(currentEmail) {
+    var el = document.getElementById('profile-body');
+    el.innerHTML =
+      '<label for="new-email">New email</label>' +
+      '<input type="email" id="new-email" value="' + esc(currentEmail) + '">' +
+      '<div class="btn-row"><button id="save-email-btn">SAVE</button><button class="subtle" id="cancel-email-btn">CANCEL</button></div>' +
+      '<div id="email-save-result"></div>';
+    document.getElementById('cancel-email-btn').addEventListener('click', function () { renderProfileView(currentEmail); });
+    document.getElementById('save-email-btn').addEventListener('click', async function () {
+      var newEmail = document.getElementById('new-email').value.trim();
+      var resultEl = document.getElementById('email-save-result');
+      setMsg(resultEl, 'Saving…', 'loading');
+      try {
+        var id = currentCustomerId();
+        var response = await authFetch('/customers/' + id, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: newEmail })
+        });
+        if (!response.ok) throw new Error(await parseErrorBody(response));
+        var updated = await response.json();
+        setMsg(resultEl, 'Email updated.', 'success');
+        logActivity('Email changed to ' + updated.email);
+        setTimeout(function () { renderProfileView(updated.email); }, 500);
+        loadOverview();
+      } catch (err) {
+        setMsg(resultEl, 'Could not update email: ' + err.message, 'error');
+      }
+    });
+  }
+
+  async function loadProfile() {
+    var el = document.getElementById('profile-body');
+    try {
+      var id = currentCustomerId();
+      var response = await authFetch('/customers/' + id);
+      if (!response.ok) throw new Error(await parseErrorBody(response));
+      var customer = await response.json();
+      renderProfileView(customer.email);
+    } catch (err) {
+      setMsg(el, 'Could not load profile: ' + err.message, 'error');
+    }
+  }
+
+  // ---------- Current Plan ----------
+
+  function planStatusPill(status) {
+    return '<span class="status-pill ' + status.toLowerCase() + '">' + status + '</span>';
+  }
+
+  function renderEnrollForm() {
+    var el = document.getElementById('plan-body');
+    var today = new Date().toISOString().slice(0, 10);
+    el.innerHTML =
+      '<div class="msg info">No active plan yet.</div>' +
+      '<label for="plan-name">Plan name</label>' +
+      '<input type="text" id="plan-name" value="Green Energy 12mo">' +
+      '<label for="plan-rate">Rate per kWh ($)</label>' +
+      '<input type="number" id="plan-rate" value="0.14" step="0.01" min="0.01">' +
+      '<label for="plan-start">Effective start date</label>' +
+      '<input type="date" id="plan-start" value="' + today + '">' +
+      '<div class="btn-row"><button id="enroll-btn">ENROLL IN PLAN</button></div>' +
+      '<div id="enroll-result"></div>';
+    document.getElementById('enroll-btn').addEventListener('click', async function () {
+      var resultEl = document.getElementById('enroll-result');
+      setMsg(resultEl, 'Enrolling…', 'loading');
+      try {
+        var id = currentCustomerId();
+        var response = await authFetch('/customers/' + id + '/plan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            planName: document.getElementById('plan-name').value.trim(),
+            ratePerKwh: Number(document.getElementById('plan-rate').value),
+            effectiveStartDate: document.getElementById('plan-start').value
+          })
+        });
+        if (!response.ok) throw new Error(await parseErrorBody(response));
+        var plan = await response.json();
+        logActivity('Enrolled in plan "' + plan.planName + '"');
+        loadPlan();
+      } catch (err) {
+        setMsg(resultEl, 'Could not enroll: ' + err.message, 'error');
+      }
+    });
+  }
+
+  function renderActivePlan(plan) {
+    var el = document.getElementById('plan-body');
+    el.innerHTML =
+      '<div class="field-row"><span class="field-label">Plan</span><span class="field-value">' + esc(plan.planName) + '</span></div>' +
+      '<div class="field-row"><span class="field-label">Rate</span><span class="field-value">$' + esc(plan.ratePerKwh) + ' / kWh</span></div>' +
+      '<div class="field-row"><span class="field-label">Effective from</span><span class="field-value">' + esc(plan.effectiveStartDate) + '</span></div>' +
+      '<div class="field-row"><span class="field-label">Status</span><span class="field-value">' + planStatusPill(plan.status) + '</span></div>';
+  }
+
+  async function loadPlan() {
+    var el = document.getElementById('plan-body');
+    setMsg(el, 'Loading…', 'loading');
+    try {
+      var id = currentCustomerId();
+      var response = await authFetch('/customers/' + id + '/plan');
+      if (response.status === 404) {
+        renderEnrollForm();
+        return;
+      }
+      if (!response.ok) throw new Error(await parseErrorBody(response));
+      var plan = await response.json();
+      renderActivePlan(plan);
+    } catch (err) {
+      setMsg(el, 'Could not load plan: ' + err.message, 'error');
+    }
+  }
+
+  // ---------- Preferences ----------
+
+  function renderPreferences(pref) {
+    var el = document.getElementById('preferences-body');
+    var channels = ['EMAIL', 'SMS', 'NONE'];
+    var options = channels.map(function (c) {
+      return '<option value="' + c + '"' + (c === pref.notificationChannel ? ' selected' : '') + '>' + c + '</option>';
+    }).join('');
+    el.innerHTML =
+      '<label for="pref-paperless">Paperless billing</label>' +
+      '<select id="pref-paperless"><option value="true"' + (pref.paperlessBilling ? ' selected' : '') + '>On</option><option value="false"' + (!pref.paperlessBilling ? ' selected' : '') + '>Off</option></select>' +
+      '<label for="pref-channel">Notification channel</label>' +
+      '<select id="pref-channel">' + options + '</select>' +
+      '<div class="btn-row"><button id="save-pref-btn">SAVE PREFERENCES</button></div>' +
+      '<div id="pref-save-result"></div>';
+    var saveBtn = document.getElementById('save-pref-btn');
+    saveBtn.addEventListener('click', async function () {
+      var resultEl = document.getElementById('pref-save-result');
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'SAVING…';
+      setMsg(resultEl, 'Saving…', 'loading');
+      try {
+        var id = currentCustomerId();
+        var paperless = document.getElementById('pref-paperless').value === 'true';
+        var channel = document.getElementById('pref-channel').value;
+        var response = await authFetch('/customers/' + id + '/preferences', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ paperlessBilling: paperless, notificationChannel: channel })
+        });
+        if (!response.ok) throw new Error(await parseErrorBody(response));
+        var updated = await response.json();
+        setMsg(resultEl, '✓ Preferences saved successfully.', 'success');
+        logActivity('Preferences updated (paperless=' + updated.paperlessBilling + ', channel=' + updated.notificationChannel + ')');
+        // Re-render with the backend's own confirmed values (never a
+        // stale optimistic guess) -- but only after the success message
+        // has had time to actually be seen. Re-rendering immediately
+        // would replace this card's innerHTML (including the message we
+        // just set) before the browser ever paints it -- that was the
+        // real bug here (see docs/LESSONS.md).
+        setTimeout(function () { renderPreferences(updated); }, 1500);
+      } catch (err) {
+        setMsg(resultEl, 'Could not save preferences: ' + err.message, 'error');
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'SAVE PREFERENCES';
+      }
+    });
+  }
+
+  async function loadPreferences() {
+    var el = document.getElementById('preferences-body');
+    setMsg(el, 'Loading…', 'loading');
+    try {
+      var id = currentCustomerId();
+      var response = await authFetch('/customers/' + id + '/preferences');
+      if (!response.ok) throw new Error(await parseErrorBody(response));
+      var pref = await response.json();
+      renderPreferences(pref);
+    } catch (err) {
+      setMsg(el, 'Could not load preferences: ' + err.message, 'error');
+    }
+  }
+
+  // ---------- Appointments ----------
+
+  function todayIso() {
+    var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  function renderAppointmentResult(el, result) {
+    el.innerHTML = '';
+    if (result.status === 'AVAILABLE') {
+      var div = document.createElement('div');
+      div.className = 'msg success';
+      var slotsText = result.availableSlots && result.availableSlots.length
+        ? 'Available slots: ' + result.availableSlots.join(', ')
+        : 'Available.';
+      div.textContent = result.date + ' — ' + slotsText;
+      el.appendChild(div);
+    } else if (result.status === 'UNAVAILABLE') {
+      setMsg(el, result.date + ' — No appointment slots available.', 'error');
+    } else {
+      setMsg(el, 'Appointment service is temporarily unavailable. Please try again.', 'error');
+    }
+  }
+
+  function setupAppointments() {
+    var dateInput = document.getElementById('appt-date');
+    var scenarioSelect = document.getElementById('appt-scenario');
+    var checkBtn = document.getElementById('appt-check-btn');
+    var tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    dateInput.value = tomorrow.toISOString().slice(0, 10);
+    dateInput.min = todayIso();
+
+    checkBtn.addEventListener('click', async function () {
+      var resultEl = document.getElementById('appt-result');
+      var date = dateInput.value;
+      if (!date) { setMsg(resultEl, 'Please choose a date.', 'error'); return; }
+      // Client-side mirror of the backend's own validation -- rejects a
+      // past date immediately, without ever calling the downstream
+      // service unnecessarily (the backend still enforces this for real;
+      // this is purely a faster/clearer UX path for the obvious case).
+      if (date < todayIso()) {
+        setMsg(resultEl, 'Appointment date must be today or later.', 'error');
+        return;
+      }
+      var scenario = scenarioSelect.value;
+      checkBtn.disabled = true;
+      checkBtn.textContent = 'CHECKING…';
+      setMsg(resultEl, 'Checking…', 'loading');
+      try {
+        var id = currentCustomerId();
+        var url = '/customers/' + id + '/appointment-availability?date=' + encodeURIComponent(date);
+        if (scenario) url += '&scenario=' + encodeURIComponent(scenario);
+        var response = await authFetch(url);
+        if (response.status === 400) {
+          setMsg(resultEl, 'Appointment date must be today or later.', 'error');
+          return;
+        }
+        if (!response.ok) throw new Error(await parseErrorBody(response));
+        var result = await response.json();
+        renderAppointmentResult(resultEl, result);
+        logActivity('Checked appointment availability for ' + result.date + ' — ' + result.status);
+      } catch (err) {
+        setMsg(resultEl, 'Could not check availability: ' + err.message, 'error');
+      } finally {
+        checkBtn.disabled = false;
+        checkBtn.textContent = 'CHECK AVAILABILITY';
+      }
+    });
+  }
+
+  // ---------- Boot ----------
+
+  async function boot() {
+    try {
+      await loadOverview();
+      await Promise.all([loadProfile(), loadPlan(), loadPreferences()]);
+      setupAppointments();
+    } catch (err) {
+      // Overview's own catch already surfaced a banner + message; nothing further to do.
+    }
+  }
+
+  // ---------- Init ----------
+
+  loadPersonas();
+  route();
+})();
 </script>
 
 </body>

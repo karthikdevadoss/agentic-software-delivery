@@ -51,4 +51,24 @@ public class GlobalExceptionHandler {
         body.put("error", ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
+
+    /** 403 for an authenticated, correctly-scoped USER-persona token that
+     * requested a customer outside its own bound workspace -- distinct
+     * from Spring Security's own insufficient_scope 403. */
+    @ExceptionHandler(ForbiddenWorkspaceAccessException.class)
+    public ResponseEntity<Map<String, String>> handleForbiddenWorkspace(ForbiddenWorkspaceAccessException ex) {
+        Map<String, String> body = new LinkedHashMap<>();
+        body.put("error", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
+    }
+
+    /** 401 for /auth/login with an unknown username, wrong password, or a
+     * disabled identity -- always the same generic message, deliberately
+     * never revealing which part was wrong. */
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<Map<String, String>> handleInvalidCredentials(InvalidCredentialsException ex) {
+        Map<String, String> body = new LinkedHashMap<>();
+        body.put("error", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
+    }
 }

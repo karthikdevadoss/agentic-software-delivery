@@ -2,9 +2,12 @@
 Deterministic, machine-verifiable request contract for the PUBLIC
 Workbench demo (RELIABILITY/CORRECTION PHASE, 2026-09-13).
 
-Replaces free-form LLM interpretation for the public demo path. Exactly
-5 named operations are supported, each targeting one known, unique,
-already-existing field in the real Customer App's static homepage
+Replaces free-form LLM interpretation for the public demo path. 3 named
+operations are supported (originally 5 -- find_button_label/
+create_button_label were retired 2026-09-14 after discovering the buttons
+they targeted had not existed in the real page for a long time, see
+docs/LESSONS.md), each targeting one known, unique, already-existing
+field in the real Customer App's static homepage
 (app/src/main/resources/static/index.html). A cheap, zero-API-cost
 regex-based normalizer maps free text into a NormalizedRequest — the
 explicit request contract the Owner asked for: operation type, allowed
@@ -65,29 +68,28 @@ OPERATIONS = (
         id="heading_text",
         human_name="the main heading text",
         synonyms=("heading", "main title", "page heading", "page title"),
-        anchor_pattern=r'(<h1>)([^<]*?)(\s*<span class="badge")',
+        # PORTFOLIO COMPLETION PUSH (2026-09-14): retargeted to the login
+        # view's own id'd heading -- the real first thing any visitor
+        # (recruiter or not) actually sees, now that the app has a real
+        # persona login gate. The previous anchor
+        # (r'(<h1>)([^<]*?)(\s*<span class="badge")') never matched the
+        # real deployed markup at all (no <span class="badge"> has
+        # existed in this page for a long time -- a genuine, previously
+        # undiscovered drift, not introduced by this change) -- see
+        # docs/LESSONS.md.
+        anchor_pattern=r'(<h1 id="app-heading">)([^<]*?)(</h1>)',
         example='Change the heading text to "Customer Portal"',
     ),
     Operation(
         id="subtitle_text",
         human_name="the subtitle text",
         synonyms=("subtitle", "sub-title", "sub title", "tagline"),
-        anchor_pattern=r'(<p class="subtitle">)([^<]*)(</p>)',
+        # Same retargeting reason as heading_text above -- the page now
+        # has two <p class="subtitle"> elements (login view + the
+        # post-login app view), so the old bare-class anchor would match
+        # twice (ambiguous, refused) rather than once.
+        anchor_pattern=r'(<p class="subtitle" id="app-subtitle">)([^<]*)(</p>)',
         example='Change the subtitle text to "A live demo application"',
-    ),
-    Operation(
-        id="find_button_label",
-        human_name="the Find button label",
-        synonyms=("find button",),
-        anchor_pattern=r'(<button id="find-btn">)([^<]*)(</button>)',
-        example='Change the Find button label to "Search"',
-    ),
-    Operation(
-        id="create_button_label",
-        human_name="the Create button label",
-        synonyms=("create button",),
-        anchor_pattern=r'(<button id="create-btn">)([^<]*)(</button>)',
-        example='Change the Create button label to "Add Customer"',
     ),
     Operation(
         id="footer_text",
@@ -96,6 +98,18 @@ OPERATIONS = (
         anchor_pattern=r'(<footer class="app-footer">)([^<]*)(</footer>)',
         example='Change the footer text to "Built with care"',
     ),
+    # RETIRED 2026-09-14 (not just silently dropped -- recorded here so a
+    # future session understands why only 3 operations exist, not 5):
+    # find_button_label / create_button_label targeted
+    # <button id="find-btn">/<button id="create-btn">, which have not
+    # existed anywhere in the real deployed index.html for a long time --
+    # a genuine, previously undiscovered drift (found while wiring the
+    # USER/ADMIN login gate into this same file, unrelated to that work).
+    # The app's real UI has no customer search/create flow in the
+    # single-workspace-per-persona model this task built, so there is no
+    # honest anchor to retarget them to; removing them (rather than
+    # inventing UI to match) keeps every publicly advertised example
+    # genuinely working. See docs/LESSONS.md.
 )
 
 _BY_ID = {op.id: op for op in OPERATIONS}

@@ -1,5 +1,6 @@
 package com.example.customer.security;
 
+import com.example.customer.model.DemoIdentity;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.crypto.MACSigner;
@@ -47,6 +48,17 @@ public class DemoJwtIssuer {
             "contract:read", "contract:write",
             "appointment:read")));
 
+    /**
+     * The additional scope an ADMIN-role persona token carries, ON TOP OF
+     * {@link #DEMO_SCOPES} -- structurally kept out of DEMO_SCOPES itself
+     * so the anonymous {@link #issueDemoToken()} path (still used
+     * unchanged by existing tests/internal automation) can never grant it.
+     * Only {@link #issuePersonaToken} ever adds it, and only for a
+     * DemoIdentity whose role is genuinely "ADMIN" (verified server-side
+     * against demo_identity, never trusted from client input).
+     */
+    public static final Set<String> ADMIN_SCOPES = Set.of("admin:read");
+
     private final byte[] secretKeyBytes;
     private final String issuer;
     private final String audience;
@@ -83,15 +95,52 @@ public class DemoJwtIssuer {
             throw new IllegalArgumentException("Demo issuer cannot grant a scope outside DEMO_SCOPES: " + scopes);
         }
         Instant now = Instant.now();
+        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                .subject("anonymous-demo-user")
+                .issuer(issuer)
+                .audience(audience)
+                .issueTime(Date.from(now))
+                .expirationTime(Date.from(now.plus(ttl)))
+                .claim("scope", String.join(" ", scopes))
+                .build();
+        return sign(claims);
+    }
+
+    /**
+     * Issues a real, per-persona login token (see DemoLoginController) --
+     * genuinely distinct from the anonymous {@link #issueDemoToken()}: it
+     * carries the identity's own username as subject, an honest "role"
+     * claim (USER/ADMIN, verified server-side against demo_identity, never
+     * client-supplied), and -- for a USER identity only -- a "cid" claim
+     * binding the token to exactly one customer id, which
+     * WorkspaceAccessGuard enforces on every customer-scoped endpoint. An
+     * ADMIN identity has no "cid" (not scoped to a single customer) but
+     * gets {@link #ADMIN_SCOPES} added on top of the same business
+     * DEMO_SCOPES every persona shares.
+     */
+    public String issuePersonaToken(DemoIdentity identity) {
+        Set<String> scopes = new LinkedHashSet<>(DEMO_SCOPES);
+        if ("ADMIN".equals(identity.getRole())) {
+            scopes.addAll(ADMIN_SCOPES);
+        }
+        Instant now = Instant.now();
+        JWTClaimsSet.Builder builder = new JWTClaimsSet.Builder()
+                .subject(identity.getUsername())
+                .issuer(issuer)
+                .audience(audience)
+                .issueTime(Date.from(now))
+                .expirationTime(Date.from(now.plus(defaultTtl)))
+                .claim("scope", String.join(" ", scopes))
+                .claim("role", identity.getRole())
+                .claim("workspace_id", identity.getWorkspaceId());
+        if (identity.getCustomerId() != null) {
+            builder.claim("cid", identity.getCustomerId());
+        }
+        return sign(builder.build());
+    }
+
+    private String sign(JWTClaimsSet claims) {
         try {
-            JWTClaimsSet claims = new JWTClaimsSet.Builder()
-                    .subject("anonymous-demo-user")
-                    .issuer(issuer)
-                    .audience(audience)
-                    .issueTime(Date.from(now))
-                    .expirationTime(Date.from(now.plus(ttl)))
-                    .claim("scope", String.join(" ", scopes))
-                    .build();
             SignedJWT signedJwt = new SignedJWT(new JWSHeader(JWSAlgorithm.HS256), claims);
             signedJwt.sign(new MACSigner(secretKeyBytes));
             return signedJwt.serialize();

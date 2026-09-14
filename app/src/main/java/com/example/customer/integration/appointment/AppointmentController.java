@@ -1,9 +1,12 @@
 package com.example.customer.integration.appointment;
 
+import com.example.customer.security.WorkspaceAccessGuard;
 import com.example.customer.service.CustomerService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,10 +27,13 @@ public class AppointmentController {
 
     private final AppointmentAvailabilityService appointmentAvailabilityService;
     private final CustomerService customerService;
+    private final WorkspaceAccessGuard workspaceAccessGuard;
 
-    public AppointmentController(AppointmentAvailabilityService appointmentAvailabilityService, CustomerService customerService) {
+    public AppointmentController(AppointmentAvailabilityService appointmentAvailabilityService, CustomerService customerService,
+                                  WorkspaceAccessGuard workspaceAccessGuard) {
         this.appointmentAvailabilityService = appointmentAvailabilityService;
         this.customerService = customerService;
+        this.workspaceAccessGuard = workspaceAccessGuard;
     }
 
     /** Deliberately does NOT 404/500 on a DOWNSTREAM failure -- the HTTP
@@ -49,7 +55,9 @@ public class AppointmentController {
     public AppointmentAvailabilityResponse checkAvailability(
             @PathVariable Long customerId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @RequestParam(required = false) String scenario) {
+            @RequestParam(required = false) String scenario,
+            @AuthenticationPrincipal Jwt jwt) {
+        workspaceAccessGuard.assertAccessible(customerId, jwt);
         customerService.getById(customerId); // 404s if the customer itself does not exist
         if (date.isBefore(LocalDate.now())) {
             throw new IllegalArgumentException("Appointment date must be today or later.");

@@ -41,10 +41,6 @@ class Layer1PolicyTestCase(unittest.TestCase):
                 result = dc.normalize_requirement(text)
                 self.assertEqual(result.operation_id, "subtitle_text")
 
-    def test_find_and_create_button_are_disambiguated(self):
-        self.assertEqual(dc.normalize_requirement('Change the Find button label to "Search"').operation_id, "find_button_label")
-        self.assertEqual(dc.normalize_requirement('Change the Create button label to "Add"').operation_id, "create_button_label")
-
     def test_unsupported_operation_is_rejected(self):
         with self.assertRaises(dc.UnsupportedRequirement):
             dc.normalize_requirement("Change the Update Email section to say something else")
@@ -203,8 +199,8 @@ class Layer3ChangeDiffTestCase(unittest.TestCase):
         """Changing one field must never touch the <script> block, other
         buttons, or unrelated sections."""
         new_content = dc.apply_operation(BASELINE, "subtitle_text", "Totally Different Subtitle")
-        for unrelated_marker in ("function showResult", "Update Email", "Current Capabilities",
-                                  'id="create-btn">Create<', 'id="find-btn">Find<'):
+        for unrelated_marker in ("function authFetch", "OPEN WORKBENCH", "appt-check-btn",
+                                  '<footer class="app-footer">Powered by Agentic Delivery</footer>'):
             self.assertIn(unrelated_marker, new_content, f"{unrelated_marker!r} should be unchanged but is missing/altered")
 
     def test_no_op_value_raises_rather_than_silently_committing_nothing(self):

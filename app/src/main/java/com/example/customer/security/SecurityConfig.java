@@ -10,6 +10,8 @@ import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtClaimValidator;
@@ -72,6 +74,15 @@ public class SecurityConfig {
                         // detail should not be fully anonymous either.
                         .requestMatchers("/actuator/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/auth/demo-token").permitAll()
+                        // Real login: credentials are checked server-side
+                        // (BCrypt + enabled-state, see DemoLoginController)
+                        // -- permitAll here means "the endpoint accepts
+                        // unauthenticated requests," not "no verification
+                        // happens." The persona list is public by design
+                        // (a recruiter must see it before logging in).
+                        .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/auth/personas").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/admin/customers", "/admin/customers/*").hasAuthority("SCOPE_admin:read")
                         .requestMatchers(HttpMethod.GET, "/customers/*/preferences").hasAuthority("SCOPE_preference:read")
                         .requestMatchers(HttpMethod.PUT, "/customers/*/preferences").hasAuthority("SCOPE_preference:write")
                         .requestMatchers(HttpMethod.GET, "/customers/*/plan").hasAuthority("SCOPE_contract:read")
@@ -87,6 +98,14 @@ public class SecurityConfig {
                         .accessDeniedHandler(jsonAccessDeniedHandler(meterRegistry)));
 
         return http.build();
+    }
+
+    /** Real BCrypt hashing for demo_identity.password_hash -- see
+     * DemoIdentitySeeder (hashes at seed time) and DemoLoginController
+     * (verifies at login time). Never a plaintext comparison. */
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
     }
 
     /**

@@ -15,7 +15,10 @@ test.describe("Workbench — deterministic catalogue (safe, non-mutating)", () =
     const resp = await page.request.get("/api/trainer/catalogue");
     expect(resp.ok()).toBeTruthy();
     const body = await resp.json();
-    expect(body.examples.length).toBe(5);
+    // 3, not 5 -- find_button_label/create_button_label were retired
+    // 2026-09-14 (the buttons they targeted had not existed in the real
+    // page for a long time; see docs/LESSONS.md).
+    expect(body.examples.length).toBe(3);
     // The rendered example buttons must match the real backend list —
     // never a hardcoded frontend copy that could drift.
     await expect(page.locator("#examples-list button").first()).toBeVisible();
