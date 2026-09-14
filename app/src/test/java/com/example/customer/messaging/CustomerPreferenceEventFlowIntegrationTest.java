@@ -17,7 +17,7 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.kafka.KafkaContainer;
+import org.testcontainers.kafka.ConfluentKafkaContainer;
 import org.testcontainers.utility.DockerImageName;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -42,8 +42,18 @@ import static org.awaitility.Awaitility.await;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class CustomerPreferenceEventFlowIntegrationTest {
 
+    // REAL CI FAILURE, root-caused via the public Checks annotations API
+    // (raw job logs need repo-admin auth, even on this public repo -- see
+    // .github/workflows/ci.yml's failure-annotation step, added specifically
+    // because of this investigation): the newer apache/kafka:3.9.0 image
+    // (testcontainers-kafka's other officially documented option) exited
+    // with code 1 during its own entrypoint script on GitHub's runner --
+    // "Timed out waiting for log output" was a downstream symptom of the
+    // container process dying, not a wait-pattern mismatch. Switched to
+    // ConfluentKafkaContainer/confluentinc-cp-kafka, the far more widely
+    // battle-tested combination for Testcontainers Kafka tests industry-wide.
     @Container
-    static KafkaContainer kafka = new KafkaContainer(DockerImageName.parse("apache/kafka:3.9.0"));
+    static ConfluentKafkaContainer kafka = new ConfluentKafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.7.0"));
 
     @DynamicPropertySource
     static void kafkaProperties(DynamicPropertyRegistry registry) {
