@@ -624,6 +624,16 @@ surprising verified behavior would otherwise get rediscovered later.
   cheap and conclusive — cheaper than three more guess-and-check CI
   cycles).
 
+- **XML comments cannot contain a literal `--` anywhere in the body, not
+  just at the boundaries.** Hit 3 times in one session editing
+  `app/pom.xml`: a comment like `<!-- CORE modules only -- not the
+  starter -->` fails Maven's POM parser with a "Non-parseable POM"
+  error pointing at the *closing* `-->`, which is misleading — the real
+  offending token is the earlier mid-comment `--` used as an em-dash
+  substitute. Fix: never use `--` for punctuation inside an XML/HTML
+  comment; use `:` or a real em-dash character instead. Worth a quick
+  `grep -nE '\-\-[^>]' pom.xml` after editing any comment if in doubt.
+
 - **The customer-app Railway service does not auto-deploy on `git push` —
   only `railway up`/`railway redeploy` actually ships new code.** Context:
   the Postgres production cutover (setting `SPRING_PROFILES_ACTIVE=postgres`

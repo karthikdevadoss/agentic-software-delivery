@@ -2,12 +2,14 @@ package com.example.customer.service;
 
 import com.example.customer.model.CustomerPreference;
 import com.example.customer.model.NotificationChannel;
+import com.example.customer.outbox.OutboxEventRepository;
 import com.example.customer.repository.CustomerPreferenceRepository;
 import com.example.customer.repository.CustomerRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -27,11 +29,14 @@ class CustomerPreferenceServiceTest {
     private CustomerPreferenceRepository preferenceRepository;
     @Mock
     private CustomerRepository customerRepository;
+    @Mock
+    private OutboxEventRepository outboxEventRepository;
+    private final JsonMapper jsonMapper = JsonMapper.builder().build();
 
     private CustomerPreferenceService service(com.example.customer.model.Customer existingCustomer) {
         when(customerRepository.findById(1L)).thenReturn(Optional.ofNullable(existingCustomer));
         CustomerService customerService = new CustomerService(customerRepository);
-        return new CustomerPreferenceService(preferenceRepository, customerService);
+        return new CustomerPreferenceService(preferenceRepository, customerService, outboxEventRepository, jsonMapper);
     }
 
     @Test
@@ -85,5 +90,9 @@ class CustomerPreferenceServiceTest {
 
         assertThat(result.isPaperlessBilling()).isTrue();
         assertThat(result.getNotificationChannel()).isEqualTo(NotificationChannel.SMS);
+        // TRANSACTIONAL OUTBOX: the event row must be written in the same
+        // call, not published directly to Kafka from here (see
+        // OutboxPublisher for the actual publish step).
+        verify(outboxEventRepository, times(1)).save(any());
     }
 }

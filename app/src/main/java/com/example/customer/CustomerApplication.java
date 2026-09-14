@@ -9,6 +9,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * SecurityScheme documents the real contract now that Spring Security
@@ -26,6 +27,7 @@ import org.springframework.context.annotation.Bean;
         in = SecuritySchemeIn.HEADER,
         description = "Get a short-lived demo token from POST /auth/demo-token (public, no login required)")
 @SpringBootApplication
+@EnableScheduling
 public class CustomerApplication {
 
     public static void main(String[] args) {
