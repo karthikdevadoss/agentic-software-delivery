@@ -153,4 +153,43 @@ class PostgresFlywayIntegrationTest {
                 "SELECT COUNT(*) FROM contract_plan WHERE customer_id = ?", Integer.class, customerId);
         assertThat(totalCount).isEqualTo(2); // history preserved, not deleted
     }
+
+    /**
+     * REAL BUG this exact test would have caught before it ever reached
+     * production (2026-09-14): CustomerRepository.searchWorkspaceCustomers
+     * originally wrapped its :name/:email bind parameters in JPQL's
+     * LOWER(...LIKE LOWER(CONCAT('%', :param, '%'))) -- H2 (every other
+     * test in this suite) accepted this fine, but real PostgreSQL's JDBC
+     * driver could not infer a concrete type for the nullable String bound
+     * through CONCAT's `||` translation and defaulted it to bytea, failing
+     * with "function lower(bytea) does not exist" -- a genuine
+     * PRODUCTION 500 on the live ADMIN search endpoint, found only by
+     * curling real production after deploy. Fixed by pre-building the
+     * full "%value%" LIKE pattern in Java and binding it as a plain
+     * String parameter (no CONCAT/LOWER wrapping the parameter itself).
+     * This test uses the real ADMIN login flow (not a hand-built token)
+     * against the real Postgres-backed demo_identity seed.
+     */
+    @Test
+    void adminCustomerSearch_byNameAndEmail_worksAgainstRealPostgres_notJustH2() {
+        RestTemplate plainRestTemplate = new RestTemplate();
+        var loginResponse = plainRestTemplate.postForObject(
+                url("/auth/login"),
+                new com.example.customer.security.DemoLoginRequest("admin1", com.example.customer.security.DemoIdentitySeeder.DEMO_PASSWORD),
+                com.example.customer.security.DemoLoginResponse.class);
+        var headers = new org.springframework.http.HttpHeaders();
+        headers.setBearerAuth(loginResponse.accessToken());
+
+        ResponseEntity<java.util.Map> byName = plainRestTemplate.exchange(
+                url("/admin/customers?name=Alex"), org.springframework.http.HttpMethod.GET,
+                new org.springframework.http.HttpEntity<>(headers), java.util.Map.class);
+        assertThat(byName.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat((java.util.List) byName.getBody().get("content")).isNotEmpty();
+
+        ResponseEntity<java.util.Map> byEmail = plainRestTemplate.exchange(
+                url("/admin/customers?email=user1@energydemo.local"), org.springframework.http.HttpMethod.GET,
+                new org.springframework.http.HttpEntity<>(headers), java.util.Map.class);
+        assertThat(byEmail.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat((java.util.List) byEmail.getBody().get("content")).hasSize(1);
+    }
 }

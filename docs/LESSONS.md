@@ -836,3 +836,37 @@ surprising verified behavior would otherwise get rediscovered later.
   real, disclosed production feature has been quietly built on top of the
   stale copy. Prefer a single source of truth over "two things that
   should always match."
+
+- **JPQL `LOWER(x) LIKE LOWER(CONCAT('%', :param, '%'))` can work fine on
+  H2 and still fail on real PostgreSQL with "function lower(bytea) does
+  not exist" -- a genuine, real PRODUCTION 500, not a hypothetical.**
+  Context (2026-09-14, PORTFOLIO COMPLETION PUSH session, building the
+  ADMIN "All Customers" search/pagination endpoint): the full local test
+  suite (H2) passed cleanly, but the first real curl against live
+  production's `GET /admin/customers?name=...` returned a real 500 --
+  `org.postgresql.util.PSQLException: ERROR: function lower(bytea) does
+  not exist`. Root cause, confirmed via real Railway logs
+  (`railway logs`), not guessed: PostgreSQL's JDBC driver could not infer
+  a concrete type for a nullable String bound *through* Hibernate's
+  `CONCAT` translation (rendered as `'%'||?||'%'` in the real generated
+  SQL) and defaulted the parameter to `bytea` -- a real Postgres/pgjdbc
+  parameter-type-inference gap this project's H2 profile has no
+  equivalent for, so nothing local could have caught it. **Fix:** never
+  wrap a bind parameter itself in `CONCAT`/`LOWER` inside the query --
+  pre-build the full, already-lowercased `"%value%"` LIKE pattern in
+  Java and bind it as a plain String parameter instead
+  (`CustomerRepository.searchWorkspaceCustomers`'s `:namePattern`/
+  `:emailPattern`, built by `AdminCustomerController.likePattern()`).
+  **The generalized lesson, again reinforcing an existing one in this
+  file:** a green H2-only test suite is not proof a JPQL query works on
+  the real target database -- any query using string functions
+  (`LOWER`, `CONCAT`, `LIKE`) around a *nullable* bind parameter needs a
+  real Postgres check (this project already has the machinery for this:
+  `PostgresFlywayIntegrationTest`, a real Testcontainers-backed class --
+  a regression test was added there, `adminCustomerSearch_byNameAndEmail_
+  worksAgainstRealPostgres_notJustH2`, so CI's real Docker runner proves
+  it going forward even though this dev machine has no local Docker to
+  verify it before every push). Found and fixed via direct production
+  verification within minutes of the bad deploy (curl -> railway logs ->
+  root cause -> fix -> redeploy -> re-verify), not left for a recruiter
+  to discover.

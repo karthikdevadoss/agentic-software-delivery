@@ -20,14 +20,25 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
      * unrelated historical clutter, not "the demo workspace's real
      * customers." Each filter parameter is optional (null = no
      * constraint on that field).
+     *
+     * namePattern/emailPattern take an ALREADY-BUILT, already-lowercased
+     * "%value%" LIKE pattern (see AdminCustomerController), not the raw
+     * search term -- a REAL production bug (not caught by H2, only by
+     * real Postgres) found using JPQL's LOWER(...LIKE LOWER(CONCAT(...))):
+     * PostgreSQL's JDBC driver cannot infer a concrete type for a
+     * nullable String bound through CONCAT's `||` translation and
+     * defaulted it to bytea, failing with "function lower(bytea) does
+     * not exist". Binding a plain, pre-built String parameter directly
+     * to LIKE (no CONCAT/LOWER wrapping the parameter itself) avoids the
+     * ambiguous-type inference entirely.
      */
     @Query("SELECT c FROM Customer c WHERE c.id IN (SELECT d.customerId FROM DemoIdentity d WHERE d.customerId IS NOT NULL) "
             + "AND (:customerId IS NULL OR c.id = :customerId) "
-            + "AND (:name IS NULL OR LOWER(c.name) LIKE LOWER(CONCAT('%', :name, '%'))) "
-            + "AND (:email IS NULL OR LOWER(c.email) LIKE LOWER(CONCAT('%', :email, '%')))")
+            + "AND (:namePattern IS NULL OR LOWER(c.name) LIKE :namePattern) "
+            + "AND (:emailPattern IS NULL OR LOWER(c.email) LIKE :emailPattern)")
     Page<Customer> searchWorkspaceCustomers(
             @Param("customerId") Long customerId,
-            @Param("name") String name,
-            @Param("email") String email,
+            @Param("namePattern") String namePattern,
+            @Param("emailPattern") String emailPattern,
             Pageable pageable);
 }

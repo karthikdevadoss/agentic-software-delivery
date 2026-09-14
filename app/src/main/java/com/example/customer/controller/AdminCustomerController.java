@@ -63,10 +63,10 @@ public class AdminCustomerController {
             @RequestParam(required = false) String name,
             @RequestParam(required = false) String email) {
         Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), MAX_PAGE_SIZE), Sort.by("id"));
-        String normalizedName = blankToNull(name);
-        String normalizedEmail = blankToNull(email);
+        String namePattern = likePattern(name);
+        String emailPattern = likePattern(email);
 
-        Page<Customer> result = customerRepository.searchWorkspaceCustomers(customerId, normalizedName, normalizedEmail, pageable);
+        Page<Customer> result = customerRepository.searchWorkspaceCustomers(customerId, namePattern, emailPattern, pageable);
 
         List<AdminCustomerRow> rows = result.getContent().stream()
                 .map(c -> new AdminCustomerRow(c.getId(), c.getName(), c.getEmail(), activePlanStatus(c.getId())))
@@ -80,7 +80,12 @@ public class AdminCustomerController {
                 .orElse("NO ACTIVE PLAN");
     }
 
-    private static String blankToNull(String value) {
-        return (value == null || value.isBlank()) ? null : value.trim();
+    /** Pre-builds the full "%value%" LIKE pattern, already lowercased, so
+     * the repository query never wraps the bind parameter itself in
+     * CONCAT/LOWER (see CustomerRepository's Javadoc for the real
+     * Postgres bug this avoids). */
+    private static String likePattern(String value) {
+        if (value == null || value.isBlank()) return null;
+        return "%" + value.trim().toLowerCase() + "%";
     }
 }
