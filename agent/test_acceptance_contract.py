@@ -68,5 +68,78 @@ class AcceptanceContractTestCase(unittest.TestCase):
         self.assertIn("Create Customer", d["expected_observable_effect"])
 
 
+class TestingArchitectureV1CategoryFieldsTestCase(unittest.TestCase):
+    """Testing Architecture V1 §A: the categorized verification-contract
+    fields added on top of the existing V2 schema."""
+
+    def test_contract_with_no_category_fields_is_still_valid(self):
+        """Most small changes legitimately don't need every category —
+        omitting them must never itself be a validation error."""
+        contract = ac.example_create_customer_contract()
+        self.assertEqual(contract.validate(), [])
+
+    def test_unknown_verification_category_is_rejected(self):
+        contract = ac.AcceptanceContract(
+            requirement_id="x", requirement_text="do something",
+            target_application="y", expected_observable_effect="z",
+            verification_categories=["NOT_A_REAL_CATEGORY"],
+        )
+        problems = contract.validate()
+        self.assertTrue(any("unknown category" in p for p in problems))
+
+    def test_security_category_requires_security_expectations(self):
+        contract = ac.AcceptanceContract(
+            requirement_id="x", requirement_text="do something",
+            target_application="y", expected_observable_effect="z",
+            verification_categories=["SECURITY"],
+        )
+        problems = contract.validate()
+        self.assertTrue(any("security_expectations is empty" in p for p in problems))
+
+    def test_security_category_with_expectations_filled_in_is_valid(self):
+        contract = ac.AcceptanceContract(
+            requirement_id="x", requirement_text="do something",
+            target_application="y", expected_observable_effect="z",
+            verification_categories=["SECURITY"],
+            security_expectations="no token -> 401; wrong scope -> 403",
+        )
+        self.assertEqual(contract.validate(), [])
+
+    def test_database_category_requires_persistence_expectations(self):
+        contract = ac.AcceptanceContract(
+            requirement_id="x", requirement_text="do something",
+            target_application="y", expected_observable_effect="z",
+            verification_categories=["DATABASE"],
+        )
+        problems = contract.validate()
+        self.assertTrue(any("persistence_expectations is empty" in p for p in problems))
+
+    def test_bad_risk_level_is_rejected(self):
+        contract = ac.AcceptanceContract(
+            requirement_id="x", requirement_text="do something",
+            target_application="y", expected_observable_effect="z",
+            risk="SUPER_HIGH",
+        )
+        problems = contract.validate()
+        self.assertTrue(any("risk=" in p for p in problems))
+
+    def test_bad_blast_radius_is_rejected(self):
+        contract = ac.AcceptanceContract(
+            requirement_id="x", requirement_text="do something",
+            target_application="y", expected_observable_effect="z",
+            blast_radius="EVERYWHERE",
+        )
+        problems = contract.validate()
+        self.assertTrue(any("blast_radius=" in p for p in problems))
+
+    def test_valid_risk_and_blast_radius_pass(self):
+        contract = ac.AcceptanceContract(
+            requirement_id="x", requirement_text="do something",
+            target_application="y", expected_observable_effect="z",
+            risk="HIGH", blast_radius="CROSS_MODULE",
+        )
+        self.assertEqual(contract.validate(), [])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -31,6 +31,9 @@ agent/event_ledger_backups/
 # Event ledger background-sync lock (transient, released as soon as a sync finishes)
 agent/event_ledger_sync.lock
 
+# Selective regression engine evidence (derived/local per-run record — see agent/verify_change.py)
+agent/.verify_change_evidence/
+
 # Java / Maven
 target/
 *.class

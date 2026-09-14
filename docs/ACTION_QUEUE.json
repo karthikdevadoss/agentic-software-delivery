@@ -226,6 +226,34 @@
       "verification_required": "DONE: Flyway-from-empty-DB, startup/health, and a full create/read/enroll API cycle were all independently verified against real production, not simulated. NOT YET DONE, intentionally out of this action's scope: DB-level partial-unique-index business-rule verification against the NEW production Postgres specifically (already proven against a Testcontainers Postgres in CI, not re-proven here); H2 profile files were left in place (not deleted) as a documented local-dev fallback.",
       "created_at_commit": "04ff71c",
       "resolved_at_commit": "bc632aa"
+    },
+    {
+      "id": "TESTING-ARCH-V1-GAPS",
+      "source": "process",
+      "title": "Testing & Verification Architecture V1's own honest open items",
+      "priority": "medium",
+      "status": "open",
+      "scope": "agent/change_risk.py, agent/test_impact_analysis.py, agent/verify_change.py, e2e/, .github/workflows/ci.yml -- see docs/TESTING_ARCHITECTURE_V1.md's 'Open items' section for full context per gap",
+      "reason": "Built a real, dogfooded Testing Architecture V1 (risk/blast-radius classification, Test Impact Analysis, a selective regression engine with a real fail-closed fallback, an always-on smoke tier, an extended Verification Contract schema) this session, per explicit instruction to make testing non-ad-hoc for this AI-developed platform. Per that same instruction's own anti-overengineering constraint, several named sub-capabilities were deliberately left designed-only rather than built in the same sitting.",
+      "evidence": "docs/TESTING_ARCHITECTURE_V1.md is the full write-up. Five concrete open items: (1) no dedicated Playwright spec exists for the Customer App's own frontend (app/src/main/resources/static/index.html) -- verify_change.py already surfaces this honestly as a skip reason rather than silently passing, and this is the single most valuable next addition; (2) Test Impact Analysis is Java-only -- a Python agent/*.py change is flagged in the skip list, not auto-mapped to specific test modules; (3) verify_change.py is not wired into .github/workflows/ci.yml -- CI's full mvnw test/python/node suites remain the sole authoritative gate, deliberately not changed without separate explicit approval; (4) no mutation/property/fuzz/performance/chaos tooling exists (no PIT dependency in app/pom.xml) -- deliberately deferred, not mandatory per-change per the task's own instruction; (5) verify_change.py's per-run evidence JSON (agent/.verify_change_evidence/*.json) is real but not yet aggregated across runs into first-pass-yield/rework/cost metrics.",
+      "safe_to_auto_execute": false,
+      "verification_required": "Each item, if picked up: (1) needs a real Playwright spec against the deployed Customer App plus a verify_change.py mapping-table update, independently re-run; (2) needs a Python file/module-to-test mapping mirroring agent/test_impact_analysis.py's Java table, with its own dogfooding test; (3) needs an explicit decision on authoritative-gate wiring (additive annotation first, per docs/TESTING_ARCHITECTURE_V1.md §R, not a silent gate swap) before any CI file edit; (4)/(5) need their own scoped tasks, not opportunistic partial builds.",
+      "created_at_commit": "0767e06",
+      "resolved_at_commit": null
+    },
+    {
+      "id": "RAG-INDEX-TEST-FIXTURE-ISOLATION",
+      "source": "testing",
+      "title": "test_rag_index.py's whole-repo RAG tests are not isolated from real repository growth -- 5 failures found during a full regression run, pre-existing and unrelated to the change being verified",
+      "priority": "medium",
+      "status": "open",
+      "scope": "agent/test_rag_index.py only -- no production code involved",
+      "reason": "Running the full Python regression suite as part of finishing Testing Architecture V1 surfaced 5 real failures (test_changed_file_reembeds_only_that_file, test_deleted_file_removed_from_index, test_env_and_git_and_target_never_indexable, test_new_file_triggers_only_that_files_embedding, test_semantic_search_ranks_identical_text_highest), all in RagIndexTestCase. Confirmed pre-existing and unrelated to this session's changes by running agent/test_rag_index.py in isolation (fails identically, 5/13) and by inspecting the failure detail: test_semantic_search_ranks_identical_text_highest expected its own small controlled fixture to rank first but got P0_PROMPT.txt instead -- a large, real, long-committed repo-root file (commit 7996b8f, an old task's saved prompt text) that these tests' fixtures never accounted for. The whole-repo RAG index these tests build against is not hermetically isolated from the real, growing repository content.",
+      "evidence": "python agent/test_rag_index.py -v (standalone, no other test files loaded): 5/13 fail, identical failures to the full-suite run. Traceback for test_changed_file_reembeds_only_that_file: AssertionError: 0 != 1 (stats['files_changed']). Traceback for test_semantic_search_ranks_identical_text_highest: AssertionError: 'P0_PROMPT.txt' != 'docs/_test_fixture_rag.md'.",
+      "safe_to_auto_execute": false,
+      "verification_required": "Whoever picks this up should either (a) point these tests at a fully isolated temp-directory repo copy instead of the real whole-repo index, or (b) decide P0_PROMPT.txt (and any other large non-source text file at repo root) doesn't belong in the indexed/tracked repository at all and move/remove it -- a product/repo-hygiene decision, not one to make unilaterally while unrelated. Either fix must be verified by re-running agent/test_rag_index.py in isolation AND as part of the full suite.",
+      "created_at_commit": "0767e06",
+      "resolved_at_commit": null
     }
   ]
 }

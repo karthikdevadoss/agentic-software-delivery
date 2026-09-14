@@ -19,6 +19,7 @@ Usage (from the repository root, or agent/ -- both resolve correctly):
     python agent/dev_check.py backend-catalogue-tests [--real-maven]
     python agent/dev_check.py deployment-status
     python agent/dev_check.py production-verify
+    python agent/dev_check.py verify-change [--base <ref>] [--dry-run]  # Testing Architecture V1 -- see agent/verify_change.py
     python agent/dev_check.py all               # python + node + customer-app-tests
 
 Each subcommand exits 0 only on genuine success; any other outcome exits
@@ -125,6 +126,14 @@ def production_verify() -> int:
     return 0 if ok else 1
 
 
+def verify_change(args) -> int:
+    """Delegates to agent/verify_change.py -- the selective regression
+    engine (Testing Architecture V1). A thin passthrough, not a
+    reimplementation, so this dispatcher stays the single place a
+    developer starts from."""
+    return _run([sys.executable, str(AGENT_DIR / "verify_change.py"), *args], REPO_ROOT)
+
+
 COMMANDS = {
     "python-regression": lambda args: python_regression(),
     "node-regression": lambda args: node_regression(),
@@ -132,6 +141,7 @@ COMMANDS = {
     "backend-catalogue-tests": lambda args: backend_catalogue_tests(real_maven="--real-maven" in args),
     "deployment-status": lambda args: deployment_status(),
     "production-verify": lambda args: production_verify(),
+    "verify-change": verify_change,
 }
 
 
