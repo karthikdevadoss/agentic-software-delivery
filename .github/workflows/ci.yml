@@ -11,8 +11,8 @@ jobs:
     name: Customer App (Java/Spring, incl. real Postgres Testcontainers)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -25,12 +25,28 @@ jobs:
       - name: mvn test
         working-directory: app
         run: ./mvnw test -B
+      # Job logs require authenticated access even on a public repo, which
+      # blocked real diagnosis of a failure from outside an interactive
+      # session. Workflow-command annotations, by contrast, are readable
+      # from the public Checks API with no auth at all -- this makes any
+      # future test failure here self-diagnosable without needing log
+      # access, not just a one-off debugging aid.
+      - name: Surface surefire failure details as annotations (only runs if tests failed)
+        if: failure()
+        working-directory: app
+        shell: bash
+        run: |
+          for f in $(grep -lE "FAILED|ERROR" target/surefire-reports/*.txt 2>/dev/null); do
+            name=$(basename "$f" .txt)
+            excerpt=$(tail -c 3500 "$f" | tr '\n' ' ' | tr '\r' ' ')
+            echo "::error title=${name}::${excerpt}"
+          done
 
   agentic-platform-python:
     name: Agentic platform backend (Python)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -72,8 +88,8 @@ jobs:
     name: Agentic platform frontend (Node)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '20'
       - name: Node frontend test harnesses
