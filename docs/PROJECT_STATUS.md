@@ -844,3 +844,52 @@ skip), 25 local Playwright tests, and 8/8 Playwright tests independently
 re-run against real production. See
 `verification_state.job_search_live_demo_p0` in `docs/PROJECT_STATE.json`
 for the full evidence trail.
+
+# Current Reality (2026-09-15): overnight flagship hardening pass
+
+**A real, previously-unknown deployment-staleness bug was found and
+fixed.** The platform-backend Railway service was 20 commits behind
+`origin/master` (still serving a `dd3b762`-era build), so the live
+Dashboard was actively telling recruiters that USER/ADMIN login and the
+ADMIN dashboard "are genuinely not yet built" — despite both being real,
+live, production-verified features for at least a day. Redeployed
+(deployment `42ceec6a`, SUCCESS) and independently curl-reconfirmed.
+`docs/PROJECT_STATE.json`'s own `next_phase`/`next_action`/
+`last_verified_code_commit` fields had themselves gone stale since
+2026-09-14 across 6 subsequent commits — corrected and redeployed again,
+independently re-confirmed live via curl.
+
+**Real browser golden-journey verification** (Claude-in-Chrome, not
+API-only): USER overview/plan/preferences/appointment and ADMIN
+login+search+3-row customer table both independently confirmed rendering
+correctly against live production.
+
+**A genuine, previously-undetected plan-enrollment idempotency gap was
+found by code inspection and fixed** (commit `2155a8a`):
+`ContractPlanService.enroll()` had no duplicate-request protection — a
+repeat of an identical enrollment cancelled the plan the first call had
+just activated and created a duplicate one. Fixed with a no-op check;
+104 Java tests green; redeployed to the Customer App and independently
+re-verified live via a real duplicate-POST sequence against production
+(confirmed exactly one plan row after two identical submissions, not
+two).
+
+**New design/architecture deliverables:** `docs/UI_UX_DESIGN_SYSTEM.md`
+(bounded design-token/pattern decisions grounded in direct live-UI
+inspection plus established public design-system principles) and
+`docs/TRIAGE_LAB_DESIGN.md` + `triage/scenarios.yaml` (Incident Triage &
+Repair Lab architecture, 3 scenarios grounded in real defects — honestly
+marked DESIGNED, NOT YET LIVE-WIRED).
+
+**Two new interview anchors:** plan-enrollment idempotency
+(`docs/interview-scenarios/04-...md`) and Kafka transactional outbox
+(`docs/interview-scenarios/05-...md`, covering already-real, already-
+verified infrastructure that had no interview writeup yet).
+
+**Durable lesson recorded:** deployed-commit distance from HEAD and the
+content-currency of any human-readable summary doc a Dashboard surfaces
+are two independent staleness risks that must both be checked
+periodically, not just internal health/consistency (see docs/LESSONS.md).
+
+See `docs/PROJECT_STATE.json`'s `next_phase`/`next_action` for the
+current, corrected state summary and next priority.
