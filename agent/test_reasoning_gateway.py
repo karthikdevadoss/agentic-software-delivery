@@ -1,150 +1,163 @@
 """
-Focused tests for agent/reasoning_gateway.py (Base Architecture V3, Phase
-3): the one sanctioned boundary for a single-shot advisory model call.
-Proves the directive's non-negotiable rules are real, not just claimed --
-default-denied purpose gating, LLM_MODE=DISABLED honored with zero network
-calls, and every result always carries authority="ADVISORY".
+Focused regression tests for agent/reasoning_gateway.py (Base Architecture
+V3, Phase 3's central Reasoning Gateway) -- the one sanctioned boundary
+for a single-shot advisory model call. agent/test_triage_execution.py
+already exercises the gateway's real happy path indirectly (every
+diagnose()/generate_candidate_patch() test with an injected create_fn
+goes through reasoning_gateway.call()); this file tests the gateway
+itself directly, including the denial paths that codebase doesn't
+exercise (unknown purpose, LLM_MODE=DISABLED, missing API key).
 
 Run: python agent/test_reasoning_gateway.py
 """
 
 import os
-import sys
 import unittest
-from pathlib import Path
-from unittest import mock
-
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+from unittest.mock import MagicMock, patch
 
 import reasoning_gateway as rg
 
 
-class _FakeUsage:
-    def __init__(self, input_tokens=10, output_tokens=20):
-        self.input_tokens = input_tokens
-        self.output_tokens = output_tokens
-        self.cache_creation_input_tokens = None
-        self.cache_read_input_tokens = None
+def _fake_response(text: str, stop_reason: str = "end_turn"):
+    block = MagicMock()
+    block.type = "text"
+    block.text = text
+    response = MagicMock()
+    response.content = [block]
+    response.stop_reason = stop_reason
+    response.usage = MagicMock(
+        input_tokens=10, output_tokens=5,
+        cache_creation_input_tokens=None, cache_read_input_tokens=None,
+    )
+    return response
 
 
-class _FakeTextBlock:
-    type = "text"
-
-    def __init__(self, text):
-        self.text = text
-
-
-class _FakeResponse:
-    def __init__(self, text, stop_reason="end_turn"):
-        self.content = [_FakeTextBlock(text)] if text else []
-        self.usage = _FakeUsage()
-        self.stop_reason = stop_reason
-
-
-class PurposeGatingTestCase(unittest.TestCase):
-    def test_every_real_advisory_purpose_is_allowed_through_to_a_real_call(self):
-        for purpose in rg.ADVISORY_PURPOSES:
-            with self.subTest(purpose=purpose):
-                create_fn = mock.Mock(return_value=_FakeResponse("real answer"))
-                result = rg.call(purpose, "system", "user", 100, create_fn=create_fn)
-                self.assertEqual(result["text"], "real answer")
-                self.assertTrue(result["model_called"])
-                create_fn.assert_called_once()
-
-    def test_an_unrecognized_purpose_is_denied_before_any_network_call(self):
-        """The core Phase 3 guarantee: default-denied, not default-allowed."""
-        create_fn = mock.Mock(return_value=_FakeResponse("should never be reached"))
-        result = rg.call("MAKE_ME_A_SANDWICH", "system", "user", 100, create_fn=create_fn)
+class PurposeAllowlistTestCase(unittest.TestCase):
+    def test_unknown_purpose_is_denied_before_any_network_call(self):
+        create_fn = MagicMock()
+        result = rg.call(
+            purpose="DO_ANYTHING_I_WANT", system_prompt="s", user_message="u",
+            max_tokens=100, create_fn=create_fn,
+        )
         self.assertIsNone(result["text"])
         self.assertFalse(result["model_called"])
+        self.assertEqual(result["authority"], "ADVISORY")
         self.assertIn("not in ADVISORY_PURPOSES", result["denial_reason"])
         create_fn.assert_not_called()
 
-    def test_every_denial_and_success_result_carries_authority_advisory(self):
-        """A caller must never be able to mistake this for authoritative
-        output by its absence -- authority="ADVISORY" is on every path."""
-        denied = rg.call("NOT_A_REAL_PURPOSE", "s", "u", 100, create_fn=mock.Mock())
-        self.assertEqual(denied["authority"], "ADVISORY")
-
-        allowed = rg.call(
-            "HUMAN_EXPLANATION", "s", "u", 100,
-            create_fn=mock.Mock(return_value=_FakeResponse("ok")),
-        )
-        self.assertEqual(allowed["authority"], "ADVISORY")
+    def test_every_real_call_site_purpose_is_a_real_advisory_purpose(self):
+        # Guards against a future call site introducing a typo'd purpose
+        # string that would silently always be denied.
+        for purpose in ("NOVEL_ROOT_CAUSE_HYPOTHESES", "NOVEL_IMPLEMENTATION_PROPOSAL"):
+            self.assertIn(purpose, rg.ADVISORY_PURPOSES)
 
 
-class ZeroLlmModeTestCase(unittest.TestCase):
+class LlmModeDisabledTestCase(unittest.TestCase):
     def test_llm_mode_disabled_makes_zero_network_calls(self):
-        create_fn = mock.Mock(return_value=_FakeResponse("should never be reached"))
-        with mock.patch.dict(os.environ, {"LLM_MODE": "DISABLED"}):
-            result = rg.call("HUMAN_EXPLANATION", "s", "u", 100, create_fn=create_fn)
+        create_fn = MagicMock()
+        with patch.dict(os.environ, {"LLM_MODE": "DISABLED"}):
+            result = rg.call(
+                purpose="NOVEL_ROOT_CAUSE_HYPOTHESES", system_prompt="s", user_message="u",
+                max_tokens=100, create_fn=create_fn,
+            )
         self.assertIsNone(result["text"])
         self.assertFalse(result["model_called"])
         self.assertIn("LLM_MODE=DISABLED", result["denial_reason"])
         create_fn.assert_not_called()
 
-    def test_llm_mode_disabled_is_case_insensitive_and_trims_whitespace(self):
-        for value in ("disabled", " Disabled ", "DISABLED"):
-            with self.subTest(value=value):
-                with mock.patch.dict(os.environ, {"LLM_MODE": value}):
-                    self.assertTrue(rg.llm_mode_disabled())
-
-    def test_llm_mode_unset_or_other_values_do_not_disable(self):
-        for value in ("", "ENABLED", "disable"):  # "disable" != "disabled", deliberately not a fuzzy match
-            with self.subTest(value=value):
-                with mock.patch.dict(os.environ, {"LLM_MODE": value}):
-                    self.assertFalse(rg.llm_mode_disabled())
-        with mock.patch.dict(os.environ, {}, clear=False):
-            os.environ.pop("LLM_MODE", None)
+    def test_llm_mode_disabled_is_case_and_whitespace_insensitive(self):
+        self.assertTrue(rg.llm_mode_disabled.__call__)  # sanity: real function, not a constant
+        with patch.dict(os.environ, {"LLM_MODE": "  disabled  "}):
+            self.assertTrue(rg.llm_mode_disabled())
+        with patch.dict(os.environ, {"LLM_MODE": "enabled"}):
+            self.assertFalse(rg.llm_mode_disabled())
+        with patch.dict(os.environ, {}, clear=True):
             self.assertFalse(rg.llm_mode_disabled())
 
 
 class MissingApiKeyTestCase(unittest.TestCase):
-    def test_no_api_key_and_no_create_fn_is_an_honest_denial_not_a_crash(self):
-        with mock.patch.dict(os.environ, {}, clear=False):
-            os.environ.pop("ANTHROPIC_API_KEY", None)
-            result = rg.call("HUMAN_EXPLANATION", "s", "u", 100, api_key=None, create_fn=None)
+    def test_no_create_fn_and_no_api_key_is_an_honest_denial_not_a_crash(self):
+        with patch.dict(os.environ, {}, clear=True):
+            result = rg.call(
+                purpose="NOVEL_ROOT_CAUSE_HYPOTHESES", system_prompt="s", user_message="u",
+                max_tokens=100, create_fn=None, api_key=None,
+            )
         self.assertIsNone(result["text"])
         self.assertFalse(result["model_called"])
-        self.assertIn("ANTHROPIC_API_KEY not set", result["denial_reason"])
+        self.assertIn("ANTHROPIC_API_KEY", result["denial_reason"])
 
 
-class EmptyModelResponseTestCase(unittest.TestCase):
-    def test_extended_thinking_consuming_the_whole_budget_is_reported_honestly(self):
-        """The exact real failure mode this logic was carried over from
-        (agent/triage_execution.py, 2026-09-15): response.content can be
-        only a ThinkingBlock with zero text blocks and
-        stop_reason='max_tokens'. Must be a clear denial, never a silent
-        empty string treated as success."""
-        create_fn = mock.Mock(return_value=_FakeResponse(text=None, stop_reason="max_tokens"))
-        result = rg.call("NOVEL_IMPLEMENTATION_PROPOSAL", "s", "u", 100, create_fn=create_fn)
+class RealCallShapeTestCase(unittest.TestCase):
+    def test_successful_call_returns_stripped_text_and_records_usage(self):
+        create_fn = MagicMock(return_value=_fake_response("  hello world  "))
+        with patch("metrics.record_model_usage") as mock_record:
+            result = rg.call(
+                purpose="NOVEL_ROOT_CAUSE_HYPOTHESES", system_prompt="sys", user_message="usr",
+                max_tokens=100, create_fn=create_fn,
+            )
+        self.assertEqual(result["text"], "hello world")
+        self.assertTrue(result["model_called"])
+        self.assertEqual(result["authority"], "ADVISORY")
+        self.assertIsNone(result["denial_reason"])
+        mock_record.assert_called_once()
+        self.assertEqual(create_fn.call_args.kwargs["model"], "claude-sonnet-5")
+        self.assertEqual(create_fn.call_args.kwargs["system"], "sys")
+
+    def test_effort_kwarg_is_passed_through_as_output_config_when_given(self):
+        create_fn = MagicMock(return_value=_fake_response("ok"))
+        rg.call(
+            purpose="NOVEL_IMPLEMENTATION_PROPOSAL", system_prompt="s", user_message="u",
+            max_tokens=100, create_fn=create_fn, effort="low",
+        )
+        self.assertEqual(create_fn.call_args.kwargs["output_config"], {"effort": "low"})
+
+    def test_no_effort_kwarg_omits_output_config(self):
+        create_fn = MagicMock(return_value=_fake_response("ok"))
+        rg.call(
+            purpose="NOVEL_IMPLEMENTATION_PROPOSAL", system_prompt="s", user_message="u",
+            max_tokens=100, create_fn=create_fn,
+        )
+        self.assertNotIn("output_config", create_fn.call_args.kwargs)
+
+    def test_markdown_code_fence_is_stripped(self):
+        create_fn = MagicMock(return_value=_fake_response("```java\npublic class X {}\n```"))
+        result = rg.call(
+            purpose="NOVEL_IMPLEMENTATION_PROPOSAL", system_prompt="s", user_message="u",
+            max_tokens=100, create_fn=create_fn,
+        )
+        self.assertEqual(result["text"], "public class X {}")
+
+    def test_empty_text_content_is_an_honest_denial_not_a_blank_success(self):
+        # The real AEQ-class bug this project already hit once: extended
+        # thinking can consume the whole max_tokens budget before any text
+        # block appears -- content is real (a ThinkingBlock) but yields no
+        # usable text. Must be a distinct, honest denial, not a silent "".
+        response = MagicMock()
+        response.content = []  # no text blocks at all
+        response.stop_reason = "max_tokens"
+        response.usage = MagicMock(
+            input_tokens=1, output_tokens=1,
+            cache_creation_input_tokens=None, cache_read_input_tokens=None,
+        )
+        create_fn = MagicMock(return_value=response)
+        result = rg.call(
+            purpose="NOVEL_ROOT_CAUSE_HYPOTHESES", system_prompt="s", user_message="u",
+            max_tokens=100, create_fn=create_fn,
+        )
         self.assertIsNone(result["text"])
-        self.assertTrue(result["model_called"])  # a real call WAS made, unlike a denial
+        self.assertTrue(result["model_called"])  # a real call WAS made, unlike the denial cases above
         self.assertIn("max_tokens", result["denial_reason"])
 
-
-class ResponseTextExtractionTestCase(unittest.TestCase):
-    def test_strips_a_markdown_code_fence_wrapper(self):
-        create_fn = mock.Mock(return_value=_FakeResponse("```json\n{\"a\": 1}\n```"))
-        result = rg.call("GENUINE_AMBIGUITY_ANALYSIS", "s", "u", 100, create_fn=create_fn)
-        self.assertEqual(result["text"], '{"a": 1}')
-
-    def test_plain_text_with_no_fence_is_returned_stripped(self):
-        create_fn = mock.Mock(return_value=_FakeResponse("  hello world  \n"))
-        result = rg.call("HUMAN_EXPLANATION", "s", "u", 100, create_fn=create_fn)
-        self.assertEqual(result["text"], "hello world")
-
-
-class UsageRecordingTestCase(unittest.TestCase):
-    def test_real_usage_is_forwarded_to_metrics(self):
-        import metrics
-        metrics.reset()
-        create_fn = mock.Mock(return_value=_FakeResponse("ok"))
-        rg.call("HUMAN_EXPLANATION", "s", "u", 100, create_fn=create_fn)
-        events = metrics.get_model_usage_events()
-        self.assertEqual(len(events), 1)
-        self.assertEqual(events[0]["input_tokens"], 10)
-        self.assertEqual(events[0]["output_tokens"], 20)
+    def test_authority_is_always_the_literal_string_advisory(self):
+        # Every branch -- denial or success -- must carry this, so a
+        # caller can never mistake a result for authoritative by omission.
+        create_fn = MagicMock(return_value=_fake_response("ok"))
+        success = rg.call(purpose="HUMAN_EXPLANATION", system_prompt="s", user_message="u",
+                           max_tokens=10, create_fn=create_fn)
+        denial = rg.call(purpose="NOT_A_REAL_PURPOSE", system_prompt="s", user_message="u",
+                          max_tokens=10, create_fn=create_fn)
+        self.assertEqual(success["authority"], "ADVISORY")
+        self.assertEqual(denial["authority"], "ADVISORY")
 
 
 if __name__ == "__main__":
