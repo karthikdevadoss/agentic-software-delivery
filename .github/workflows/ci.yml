@@ -63,6 +63,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          # verify_change.py --base needs real merge-base history against
+          # origin/master, which a shallow (depth-1) checkout doesn't have.
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -99,6 +103,27 @@ jobs:
       - name: RAG/MCP retrieval + routing evals (must meet recorded thresholds)
         working-directory: agent
         run: python eval_runner.py all
+      # ADDITIVE ANNOTATION ONLY (docs/TESTING_ARCHITECTURE_V1.md's own
+      # stated plan, tracked in docs/ACTION_QUEUE.json's TESTING-ARCH-V1-GAPS
+      # item 3: wire verify_change.py in as an informational step first,
+      # never a silent authoritative-gate swap). --dry-run means it only
+      # classifies risk/blast-radius and prints the test-selection plan it
+      # WOULD run -- it executes zero real tests and always exits 0, so
+      # this step can never fail the build; the real gate above (mvn test
+      # -B, unconditional) is unchanged. continue-on-error is a second,
+      # belt-and-suspenders guard against any unexpected exception in the
+      # tool itself still not blocking CI.
+      - name: "Testing Architecture V1: verify-change plan (informational only, does not gate CI)"
+        working-directory: .
+        continue-on-error: true
+        shell: bash
+        run: |
+          # On a pull_request event, actions/checkout only fetches the PR's
+          # own merge ref, not origin/master -- fetch it explicitly so the
+          # base diff below has a real ref to compare against in both the
+          # push-to-master and pull_request cases.
+          git fetch origin master:refs/remotes/origin/master || true
+          python agent/verify_change.py --base origin/master --dry-run
 
   agentic-platform-frontend:
     name: Agentic platform frontend (Node)
