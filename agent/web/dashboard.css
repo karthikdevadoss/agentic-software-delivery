@@ -1,5 +1,46 @@
 main#dash-main { max-width: 1100px; }
 
+/* Zone dividers -- group the 15 panels into scannable sections instead
+   of one undifferentiated vertical list. */
+.zone-title {
+  margin: 2.5rem 0 0.75rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  font-weight: 700;
+}
+.zone-title:first-of-type { margin-top: 0; }
+
+/* Executive summary stat tiles -- the "30 second" answer, before detail. */
+.exec-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; }
+.exec-stat { border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.1rem; background: rgba(255,255,255,0.02); }
+.exec-value { font-size: 1.6rem; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+.exec-label { font-size: 0.78rem; color: var(--muted); margin-top: 0.2rem; }
+.exec-note { font-size: 0.72rem; color: var(--muted); margin-top: 0.35rem; opacity: 0.85; }
+
+/* AI Strategy two-column contrast */
+.ai-strategy-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+.ai-strategy-col { border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.1rem; }
+.ai-strategy-col h3 { margin: 0 0 0.6rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em; }
+.ai-strategy-col.used-for { border-left: 3px solid var(--accent); }
+.ai-strategy-col.used-for h3 { color: var(--accent); }
+.ai-strategy-col.not-trusted { border-left: 3px solid var(--amber); }
+.ai-strategy-col.not-trusted h3 { color: var(--amber); }
+.ai-strategy-col ul { margin: 0; padding-left: 1.1rem; font-size: 0.85rem; line-height: 1.6; color: var(--text); }
+@media (max-width: 640px) { .ai-strategy-grid { grid-template-columns: 1fr; } }
+
+/* Collapsed raw-state / long-text blocks -- keeps big text out of the
+   primary visual hierarchy without deleting it. */
+details.raw-state { margin-top: 0.5rem; }
+details.raw-state summary { cursor: pointer; font-size: 0.82rem; color: var(--accent); font-weight: 600; padding: 0.3rem 0; }
+details.raw-state summary:hover { text-decoration: underline; }
+.raw-state-body { margin-top: 0.5rem; padding: 0.85rem 1rem; background: #0d0f14; border: 1px solid var(--border); border-radius: 6px; font-size: 0.82rem; line-height: 1.6; color: var(--muted); max-height: 320px; overflow-y: auto; }
+.raw-state-body p { margin: 0 0 0.6rem; }
+.raw-state-body p:last-child { margin-bottom: 0; }
+
 .kv {
   display: flex;
   justify-content: space-between;

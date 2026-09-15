@@ -1,3 +1,14 @@
+/* The requirement input is the primary action of the whole page --
+   give it a command-bar treatment instead of looking like just another
+   panel in a generic stack. */
+#requirement-panel {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(91,147,255,0.08);
+}
+#requirement-panel h2 { color: var(--text); font-size: 0.95rem; text-transform: none; letter-spacing: normal; }
+#requirement-panel h2::before { display: none; }
+#requirement-input { font-size: 1rem; }
+
 .verified-run-link {
   display: inline-block;
   margin-top: 0.5rem;

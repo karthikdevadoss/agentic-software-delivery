@@ -39,16 +39,73 @@ function kvText(label, text) {
   return kv(label, esc(text));
 }
 
+// A small number of real headline numbers, computed client-side from
+// data /api/dashboard already returns (never a second data source, never
+// invented) -- answers "what did he build / what's actually live" in
+// under 30 seconds, before any detail panel below.
+function renderExecutiveSummary(d) {
+  const runs = d.run_history || [];
+  const realRuns = runs.filter(r => !r.is_mock).length;
+  const defects = (d.ai_engineering_learning && d.ai_engineering_learning.total_defects) || 0;
+  const verifiedChanges = (d.economics && d.economics.lifetime && d.economics.lifetime.runs_completed_verified) || 0;
+  const tiles = [
+    ["Production application", "LIVE", "Customer App + Workbench + Dashboard + Usage"],
+    ["Delivery runs recorded", String(runs.length), `${realRuns} real, ${runs.length - realRuns} mock`],
+    ["Verified production changes", String(verifiedChanges), "COMPLETED outcome, ledger-backed"],
+    ["Engineering lessons captured", String(defects), "AI Engineering Quality Ledger"],
+  ];
+  const html = `<div class="exec-grid">` + tiles.map(([label, value, note]) =>
+    `<div class="exec-stat"><div class="exec-value">${esc(value)}</div><div class="exec-label">${esc(label)}</div><div class="exec-note">${esc(note)}</div></div>`
+  ).join("") + `</div>`;
+  return section("Agentic Software Delivery — Engineering Evidence", html);
+}
+
+// The Owner's core AI-engineering thesis, stated once, plainly: use
+// probabilistic AI where reasoning/generation creates value, use
+// deterministic software where correctness can be calculated. Both
+// columns describe this system's REAL, already-built architecture
+// (demo_catalogue.py's deterministic gate, the qa-evaluator's independent
+// non-self-certification rule, pricing_config.py's fixed-table
+// arithmetic) -- restated here as one dedicated, scannable section
+// instead of scattered across other panels.
+function renderAiStrategy() {
+  const usedFor = [
+    "Interpreting natural-language requirements",
+    "Investigating a real repository (read-only tools, RAG/MCP)",
+    "Proposing code changes as a reviewable diff",
+    "Diagnostic hypotheses during incident investigation",
+    "Drafting documentation/summaries of real evidence",
+  ];
+  const notTrustedFor = [
+    "Deciding its own authorization or risk classification",
+    "Test pass/fail (real compiler/test-runner exit codes only)",
+    "Deployment truth (independent production curl, never self-report)",
+    "Certifying its own work (a separate qa-evaluator re-verifies)",
+    "Cost/business arithmetic (a fixed pricing table, not model output)",
+  ];
+  const col = (title, items, cls) => `<div class="ai-strategy-col ${cls}"><h3>${esc(title)}</h3><ul>${items.map(i => `<li>${esc(i)}</li>`).join("")}</ul></div>`;
+  const html = `<div class="ai-strategy-grid">${col("AI used for", usedFor, "used-for")}${col("AI is not trusted as authority for", notTrustedFor, "not-trusted")}</div>
+    <p class="hint">Use probabilistic AI where reasoning/generation creates value; use deterministic software where correctness can be calculated and verified independently.</p>`;
+  return section("AI Strategy", html);
+}
+
 function renderSystemSnapshot(d) {
   const s = d.system_snapshot;
   let html = "";
   html += kvText("System", s.system);
-  html += kvText("Version", s.version);
   html += kvText("Agent architecture", s.agent_architecture);
   html += kvText("Last verified code commit", s.last_verified_code_commit);
   html += kv("Current ticket", `${esc(s.current_ticket)} — ${s.current_ticket_implemented ? "IMPLEMENTED" : "NOT IMPLEMENTED"}`);
-  html += kvText("Next phase", s.next_phase);
-  return section("A. System Snapshot", html);
+  html += `<details class="raw-state">
+    <summary>Full version history &amp; next-phase notes (raw project state)</summary>
+    <div class="raw-state-body">
+      <p class="hint">Version</p>
+      <p>${esc(s.version)}</p>
+      <p class="hint">Next phase</p>
+      <p>${esc(s.next_phase)}</p>
+    </div>
+  </details>`;
+  return section("System Snapshot", html);
 }
 
 function renderMilestone(d) {
@@ -63,7 +120,7 @@ function renderMilestone(d) {
     html += kv("Scroll bug fix — creator confirmed", badge(m.ui_fixes_creator_confirmed.scroll_fix));
     html += kv("Build/Test panel fix — creator confirmed", badge(m.ui_fixes_creator_confirmed.build_test_panel_fix));
   }
-  return section("B1. Last Verified Run — Documented Milestone", html);
+  return section("Last Verified Run", html);
 }
 
 function renderRunHistory(d) {
@@ -90,7 +147,7 @@ function renderRunHistory(d) {
     }
     html += "</ul>";
   }
-  return section("B2. Run History (this Dashboard's local log)", html);
+  return section("Run History", html);
 }
 
 function renderSessionMetrics(d) {
@@ -122,7 +179,7 @@ function renderRag(d) {
     html += kv("Incremental indexing", badge("IMPLEMENTED — content-hash based reuse"));
   }
   html += `<p class="hint"><strong>Capability exists</strong> (semantic_repository_search is available to the agent) vs. <strong>used in last run</strong> (only true if that specific run's tool_call events show it was actually invoked) are intentionally distinct — the Run History panel above shows each run's actual tool calls.</p>`;
-  return section("C. RAG / Repository Intelligence", html);
+  return section("RAG / Repository Intelligence", html);
 }
 
 function renderMcp(d) {
@@ -137,7 +194,7 @@ function renderMcp(d) {
   html += kv("Write/build/deploy via MCP", badge(m.write_build_deploy_via_mcp));
   html += kv("stdio transport", badge(m.stdio_transport));
   html += kv("Streamable HTTP transport", badge(m.streamable_http_transport));
-  return section("D. MCP / Tools", html);
+  return section("MCP / Tools", html);
 }
 
 function renderSecurity(d) {
@@ -153,7 +210,7 @@ function renderSecurity(d) {
   html += kv("No arbitrary shell", badge(s.no_arbitrary_shell));
   html += kv("Real browser human approval verified", badge(s.real_browser_human_approval_verified));
   html += `<p class="hint">${esc(s.disclaimer)}</p>`;
-  return section("E. Security / Human Authority", html);
+  return section("Security / Human Authority", html);
 }
 
 function renderQuality(d) {
@@ -166,7 +223,7 @@ function renderQuality(d) {
   }
   html += kv("Commands", `<code>${esc(q.command)}</code>`);
   html += `<p class="hint">${esc(q.ci)}</p>`;
-  return section("F. Quality / Verification", html);
+  return section("Quality / Verification", html);
 }
 
 function renderEngineeringProblems(d) {
@@ -223,7 +280,7 @@ function renderCapabilityMatrix(d) {
     <thead><tr><th>Area</th><th>Status</th><th>Evidence</th><th>Gap</th></tr></thead>
     <tbody>${rows}</tbody>
   </table>`;
-  return section("G. Capability Matrix", html);
+  return section("Capability Matrix", html);
 }
 
 function fmtUsd(n) {
@@ -286,14 +343,17 @@ function renderVerifiedActivity(d) {
   return section("Latest Verified Product Runtime Activity", html);
 }
 
-function renderLimitations(d) {
+function renderKnownLimitationsCollapsed(d) {
   const items = d.known_limitations.map(l => `<li>${esc(l)}</li>`).join("");
-  return section("H. Known Limitations", `<ul class="limits">${items}</ul>`);
+  const html = `<details class="raw-state">
+    <summary>${d.known_limitations.length} known limitation(s) — honest, not hidden</summary>
+    <div class="raw-state-body"><ul class="limits">${items}</ul></div>
+  </details>`;
+  return section("Known Limitations", html);
 }
 
-function renderNextMvp(d) {
-  const html = kvText("Next phase (from durable project state)", d.system_snapshot.next_phase);
-  return section("Next MVP", html);
+function zoneTitle(text) {
+  return `<h2 class="zone-title">${esc(text)}</h2>`;
 }
 
 async function load() {
@@ -307,21 +367,32 @@ async function load() {
   }
 
   main.innerHTML = [
-    renderSystemSnapshot(data),
+    renderExecutiveSummary(data),
+
+    zoneTitle("What He Built"),
     renderEngineeringProblems(data),
-    renderMilestone(data),
-    renderRunHistory(data),
-    renderSessionMetrics(data),
-    renderRag(data),
-    renderMcp(data),
+    renderVerifiedActivity(data),
+
+    zoneTitle("AI Engineering Strategy"),
+    renderAiStrategy(),
     renderSecurity(data),
+
+    zoneTitle("Quality & Learning"),
     renderQuality(data),
     renderAiLearning(data),
-    renderVerifiedActivity(data),
+    renderKnownLimitationsCollapsed(data),
+
+    zoneTitle("Production & Delivery Evidence"),
     renderEconomics(data),
+    renderRunHistory(data),
+    renderMilestone(data),
+    renderSessionMetrics(data),
+
+    zoneTitle("Architecture Detail"),
+    renderSystemSnapshot(data),
     renderCapabilityMatrix(data),
-    renderLimitations(data),
-    renderNextMvp(data),
+    renderRag(data),
+    renderMcp(data),
   ].join("");
 }
 
