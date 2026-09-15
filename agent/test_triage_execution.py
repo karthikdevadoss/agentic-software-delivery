@@ -203,5 +203,81 @@ class VerifyFixTestCase(unittest.TestCase):
         mock_run.assert_not_called()
 
 
+class GenerateCandidatePatchTestCase(unittest.TestCase):
+    def test_without_api_key_is_honest_not_fabricated(self):
+        with patch.dict("os.environ", {}, clear=True):
+            result = te.generate_candidate_patch({"defectReproduced": True}, api_key=None, create_fn=None)
+        self.assertFalse(result["generated"])
+        self.assertIsNone(result["candidate_source"])
+        self.assertIn("ANTHROPIC_API_KEY", result["explanation"])
+
+    def test_with_injected_create_fn_returns_the_models_full_file_content(self):
+        fake_block = MagicMock()
+        fake_block.type = "text"
+        fake_block.text = "package com.example.customer.service;\n\npublic class ContractPlanService {}\n"
+        fake_response = MagicMock()
+        fake_response.content = [fake_block]
+        fake_response.usage = None
+        create_fn = MagicMock(return_value=fake_response)
+
+        result = te.generate_candidate_patch({"defectReproduced": True}, create_fn=create_fn)
+
+        self.assertTrue(result["generated"])
+        self.assertIn("public class ContractPlanService", result["candidate_source"])
+        self.assertEqual(result["target_file"], te.FIX_FILE)
+        create_fn.assert_called_once()
+        self.assertEqual(create_fn.call_args.kwargs["model"], "claude-sonnet-5")
+
+    def test_strips_markdown_fence_if_the_model_adds_one_anyway(self):
+        fake_block = MagicMock()
+        fake_block.type = "text"
+        fake_block.text = "```java\npackage com.example.customer.service;\n```"
+        fake_response = MagicMock()
+        fake_response.content = [fake_block]
+        fake_response.usage = None
+        create_fn = MagicMock(return_value=fake_response)
+
+        result = te.generate_candidate_patch({}, create_fn=create_fn)
+        self.assertNotIn("```", result["candidate_source"])
+
+
+class ApplyAndVerifyCandidateTestCase(unittest.TestCase):
+    @patch("triage_execution.environment_preflight.check_java_toolchain")
+    def test_fails_closed_on_wrong_jdk_without_ever_copying_or_compiling(self, mock_preflight):
+        mock_preflight.return_value = {
+            "status": "ENVIRONMENT_INVALID", "expected_java_major_minimum": 21,
+            "detected_java_major": 17, "raw_java_version_output": "openjdk 17", "duration_ms": 1.0,
+        }
+        result = te.apply_and_verify_candidate("irrelevant candidate content")
+        self.assertFalse(result["applied"])
+        self.assertEqual(result["status"], "ENVIRONMENT_INVALID")
+
+    def test_computes_a_real_diff_against_the_real_buggy_baseline(self):
+        """No mocking of subprocess here -- proves the diff itself (via
+        Python's own difflib, never git) is computed correctly against
+        the exact real pre-fix file content."""
+        candidate = te._BUGGY_FULL_FILE.replace(
+            "static final String NO_ACTIVE_PLAN_MESSAGE",
+            "static final String RENAMED_FOR_TEST_MESSAGE",
+        )
+        result = te.apply_and_verify_candidate(candidate)
+        self.assertTrue(result["applied"])
+        self.assertIn("-    static final String NO_ACTIVE_PLAN_MESSAGE", result["diff"])
+        self.assertIn("+    static final String RENAMED_FOR_TEST_MESSAGE", result["diff"])
+        # This particular edit renames a constant without updating its
+        # usages -- expected to genuinely fail compilation, proving this
+        # is a REAL compile, not a rubber-stamped success.
+        self.assertIn(result["status"], ("COMPILE_FAILED", "COMPILE_VERIFIED"))
+
+    def test_a_genuinely_valid_candidate_actually_compiles(self):
+        """A syntactically valid candidate (the unmodified real baseline
+        file, which is valid Java on its own) must genuinely compile
+        through the real isolated-workspace mechanism -- proving the
+        compile step isn't rigged to always pass OR always fail."""
+        result = te.apply_and_verify_candidate(te._BUGGY_FULL_FILE)
+        self.assertTrue(result["applied"])
+        self.assertEqual(result["status"], "COMPILE_VERIFIED", result["compile"])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -114,6 +114,32 @@ function renderPatch(p) {
     <div class="diff-view">${highlighted}</div>`;
 }
 
+function diffHighlight(diffText) {
+  return esc(diffText).split("\n").map(line => {
+    if (line.startsWith("+") && !line.startsWith("+++")) return `<span class="diff-add">${line}</span>`;
+    if (line.startsWith("-") && !line.startsWith("---")) return `<span class="diff-del">${line}</span>`;
+    return line;
+  }).join("\n");
+}
+
+function renderCandidate(result) {
+  const el = document.getElementById("candidate-body");
+  const g = result.generation, v = result.verification;
+  if (!g.generated) {
+    el.innerHTML = `<p class="hint">Candidate generation unavailable: ${esc(g.explanation || "model not called")}</p>`;
+    return;
+  }
+  let html = `<p class="hint">PROPOSED LIVE PATCH — written by the model just now, from the real defective file and real evidence, applied and compiled in an isolated workspace.</p>`;
+  if (v && v.status === "ENVIRONMENT_INVALID") {
+    html += `<div class="verdict defect">ENVIRONMENT_INVALID — cannot verify (wrong JDK), not a code defect</div>`;
+  } else if (v) {
+    html += `<div class="verdict ${v.status === "COMPILE_VERIFIED" ? "fixed" : "defect"}">${v.status === "COMPILE_VERIFIED" ? "COMPILE VERIFIED" : "COMPILE FAILED"} (isolated workspace, ${(v.compile.duration_ms / 1000).toFixed(1)}s)</div>
+      <div class="diff-view">${diffHighlight(v.diff)}</div>`;
+    if (v.status !== "COMPILE_VERIFIED") html += `<div class="source-excerpt">${esc(v.compile.output_tail || "")}</div>`;
+  }
+  el.innerHTML = html;
+}
+
 function renderVerify(v) {
   const el = document.getElementById("verify-body");
   el.innerHTML = `
@@ -138,6 +164,7 @@ document.getElementById("start-btn").addEventListener("click", async () => {
     show("step-investigate");
     renderInvestigate(result);
     show("step-diagnose");
+    show("step-candidate");
     show("step-patch");
     document.getElementById("patch-body").innerHTML = `<p class="hint">Loading…</p>`;
     renderPatch(await getJson("/api/triage/scenario-a/patch"));
@@ -165,6 +192,21 @@ document.getElementById("diagnose-btn").addEventListener("click", async () => {
   } finally {
     btn.disabled = false;
     btn.textContent = "RUN AI DIAGNOSIS";
+  }
+});
+
+document.getElementById("generate-candidate-btn").addEventListener("click", async () => {
+  const btn = document.getElementById("generate-candidate-btn");
+  btn.disabled = true;
+  btn.textContent = "GENERATING… (real model call + isolated compile, ~20-40s)";
+  document.getElementById("candidate-body").innerHTML = `<p class="hint">Asking the model to write the actual fix, then compiling it in an isolated workspace…</p>`;
+  try {
+    renderCandidate(await postJson("/api/triage/scenario-a/generate-candidate-patch", { reproduction_result: lastReproduction }));
+  } catch (err) {
+    document.getElementById("candidate-body").innerHTML = `<p class="hint">Candidate generation failed: ${esc(err.message)}</p>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "GENERATE CANDIDATE PATCH";
   }
 });
 

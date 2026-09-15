@@ -128,6 +128,194 @@ public ContractPlan enroll(Long customerId, ContractPlanEnrollRequest request) {
 // NOTE: no check anywhere for whether `request` duplicates the terms of
 // the plan already active -- every call unconditionally cancels+creates."""
 
+# The REAL, complete pre-fix file (see commit 2155a8a's parent,
+# `git show 2155a8a~1:<FIX_FILE>` -- a literal, byte-for-byte copy, not
+# reconstructed) -- this is what a candidate-patch-generation call is
+# given as "the current defective file" and asked to correct in full,
+# never just told the one-line answer.
+_BUGGY_FULL_FILE = """package com.example.customer.service;
+
+import com.example.customer.dto.ContractPlanEnrollRequest;
+import com.example.customer.model.ContractPlan;
+import com.example.customer.model.ContractPlanStatus;
+import com.example.customer.repository.ContractPlanRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.NoSuchElementException;
+
+/**
+ * BUSINESS REQUIREMENT: a customer has at most one ACTIVE energy plan at a
+ * time. Enrolling in a new plan must not silently leave two plans marked
+ * ACTIVE (a real data-integrity bug class this test suite specifically
+ * checks for) — the prior active plan is cancelled, end-dated on the new
+ * plan's start date, and kept (never deleted) so plan history is queryable.
+ */
+@Service
+public class ContractPlanService {
+
+    static final String NO_ACTIVE_PLAN_MESSAGE = "No active contract plan found for customer";
+
+    private final ContractPlanRepository contractPlanRepository;
+    private final CustomerService customerService;
+
+    public ContractPlanService(ContractPlanRepository contractPlanRepository, CustomerService customerService) {
+        this.contractPlanRepository = contractPlanRepository;
+        this.customerService = customerService;
+    }
+
+    public ContractPlan getActivePlan(Long customerId) {
+        return contractPlanRepository.findByCustomerIdAndStatus(customerId, ContractPlanStatus.ACTIVE)
+                .orElseThrow(() -> new NoSuchElementException(NO_ACTIVE_PLAN_MESSAGE + ": " + customerId));
+    }
+
+    @Transactional
+    public ContractPlan enroll(Long customerId, ContractPlanEnrollRequest request) {
+        customerService.getById(customerId); // 404s if the customer itself does not exist
+
+        // REAL BUG found only by a genuine Postgres integration test (H2's
+        // ddl-auto schema has no equivalent constraint to violate, so this
+        // was invisible there): Hibernate's default flush ORDER executes
+        // all pending INSERTs before any pending UPDATEs in a single
+        // transaction flush, regardless of the order save() was called in
+        // Java code. Using plain save() here let the new plan's INSERT
+        // reach Postgres before the old plan's cancellation UPDATE did --
+        // for one instant, two ACTIVE rows existed for the same customer,
+        // which uq_contract_plan_one_active_per_customer (a real,
+        // immediate, non-deferred Postgres constraint) correctly rejected
+        // with a 500. saveAndFlush() forces the cancellation to reach the
+        // database BEFORE the new row is ever inserted, closing the gap.
+        contractPlanRepository.findByCustomerIdAndStatus(customerId, ContractPlanStatus.ACTIVE)
+                .ifPresent(existing -> {
+                    existing.cancel(request.effectiveStartDate());
+                    contractPlanRepository.saveAndFlush(existing);
+                });
+
+        ContractPlan newPlan = new ContractPlan(
+                customerId, request.planName(), request.ratePerKwh(), request.effectiveStartDate());
+        return contractPlanRepository.save(newPlan);
+    }
+}
+"""
+
+CANDIDATE_PATCH_SYSTEM_PROMPT = """You are a senior backend engineer fixing a real defect in a Spring Boot
+service, given real evidence of the defect (not told the answer).
+
+You will be given the CURRENT (defective) complete source of one Java
+file, plus real database evidence showing the defect (duplicate rows
+created for what should be a single business action).
+
+Write the COMPLETE, corrected version of this ONE file that fixes the
+defect while preserving existing behavior, comments, and style. Do not
+change public method signatures. Do not add unrelated functionality.
+
+Respond with ONLY the complete corrected file content -- no markdown
+fences, no explanation before or after."""
+
+
+def generate_candidate_patch(reproduction_result: dict, api_key: str | None = None, create_fn=None) -> dict:
+    """A SECOND real, on-demand Claude call (distinct from diagnose()):
+    asks the model to write the actual fix, given the real defective
+    file and real evidence -- never the historical answer. Returns the
+    model's proposed complete file content, to be applied and verified
+    in an isolated workspace by apply_and_verify_candidate() below,
+    never written to the real repository directly."""
+    if create_fn is None:
+        api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
+        if not api_key:
+            return {"generated": False, "candidate_source": None,
+                    "explanation": "ANTHROPIC_API_KEY not set -- cannot generate a live candidate patch"}
+        from anthropic import Anthropic
+        create_fn = Anthropic(api_key=api_key).messages.create
+
+    user_message = (
+        f"Real database evidence after submitting the identical enrollment request twice:\n"
+        f"{json.dumps(reproduction_result, indent=2)}\n\n"
+        f"Current (defective) file content ({FIX_FILE}):\n{_BUGGY_FULL_FILE}"
+    )
+    response = create_fn(
+        model="claude-sonnet-5", max_tokens=2048,
+        system=CANDIDATE_PATCH_SYSTEM_PROMPT,
+        messages=[{"role": "user", "content": user_message}],
+    )
+    usage = getattr(response, "usage", None)
+    if usage is not None:
+        import metrics
+        metrics.record_model_usage(
+            provider="anthropic", model="claude-sonnet-5",
+            input_tokens=usage.input_tokens, output_tokens=usage.output_tokens,
+            cache_creation_input_tokens=getattr(usage, "cache_creation_input_tokens", None),
+            cache_read_input_tokens=getattr(usage, "cache_read_input_tokens", None),
+        )
+    text = "".join(b.text for b in response.content if getattr(b, "type", None) == "text")
+    stripped = text.strip()
+    if stripped.startswith("```"):
+        stripped = stripped.split("\n", 1)[1] if "\n" in stripped else stripped
+        if stripped.endswith("```"):
+            stripped = stripped[:-3]
+    candidate_source = stripped.strip() + "\n"
+    return {"generated": True, "candidate_source": candidate_source, "target_file": FIX_FILE}
+
+
+def apply_and_verify_candidate(candidate_source: str) -> dict:
+    """Applies the AI-generated candidate file content in an ISOLATED
+    temp copy of app/ -- never the real repository -- computes the real
+    diff against the actual pre-fix baseline the model was shown (via
+    Python's own difflib, not `git apply`, so this never depends on the
+    running environment's git history -- see AEQ-020), and compiles it
+    there. Always cleans up the temp workspace, success or failure."""
+    import difflib
+    import shutil
+    import tempfile
+    from pathlib import Path
+
+    preflight = environment_preflight.check_java_toolchain()
+    if preflight["status"] != "ENVIRONMENT_VALID":
+        return {
+            "applied": False, "status": "ENVIRONMENT_INVALID",
+            "diff": "", "compile": None, "environment_preflight": preflight,
+        }
+
+    target_rel = "src/main/java/com/example/customer/service/ContractPlanService.java"
+    diff = "".join(difflib.unified_diff(
+        _BUGGY_FULL_FILE.splitlines(keepends=True), candidate_source.splitlines(keepends=True),
+        fromfile=f"a/app/{target_rel}", tofile=f"b/app/{target_rel}",
+    ))
+
+    workspace = Path(tempfile.mkdtemp(prefix="triage-candidate-"))
+    try:
+        workspace_app = workspace / "app"
+        shutil.copytree(
+            APP_DIR, workspace_app,
+            ignore=shutil.ignore_patterns("target", ".git"),
+        )
+        (workspace_app / target_rel).write_text(candidate_source, encoding="utf-8")
+        workspace_mvnw = workspace_app / ("mvnw.cmd" if os.name == "nt" else "mvnw")
+        if os.name != "nt":
+            workspace_mvnw.chmod(0o755)
+
+        start = time.monotonic()
+        try:
+            proc = subprocess.run(
+                [str(workspace_mvnw), "-q", "compile"],
+                cwd=str(workspace_app), capture_output=True, text=True, timeout=180, shell=False,
+            )
+            compile_success = proc.returncode == 0
+            compile_output = (proc.stdout or "") + (proc.stderr or "")
+        except subprocess.TimeoutExpired:
+            compile_success = False
+            compile_output = "compile timed out after 180s"
+        duration_ms = round((time.monotonic() - start) * 1000, 1)
+
+        return {
+            "applied": True,
+            "status": "COMPILE_VERIFIED" if compile_success else "COMPILE_FAILED",
+            "diff": diff,
+            "compile": {"success": compile_success, "duration_ms": duration_ms, "output_tail": compile_output[-2000:]},
+        }
+    finally:
+        shutil.rmtree(workspace, ignore_errors=True)
+
 
 def diagnose(reproduction_result: dict, api_key: str | None = None, create_fn=None) -> dict:
     """One real, on-demand Claude call (never automatic/repeated) given

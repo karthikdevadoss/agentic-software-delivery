@@ -51,9 +51,16 @@
     <div id="diagnose-body"></div>
   </section>
 
+  <section class="panel triage-step" id="step-candidate" hidden>
+    <h2>4. AI-Generated Candidate Patch</h2>
+    <p class="hint">A real, on-demand model call writes the actual fix given the defective file and the evidence above — not told the answer. Applied and compiled in an isolated workspace, never the real repository.</p>
+    <button id="generate-candidate-btn">GENERATE CANDIDATE PATCH</button>
+    <div id="candidate-body"></div>
+  </section>
+
   <section class="panel triage-step" id="step-patch" hidden>
-    <h2>4. Proposed Fix</h2>
-    <p class="hint">The real diff that fixed this exact defect in production (commit <code>2155a8a</code>).</p>
+    <h2>4b. Historical Reference Patch</h2>
+    <p class="hint">HISTORICAL REFERENCE, not a live proposal: the real diff that actually fixed this exact defect in production (commit <code>2155a8a</code>) — shown for comparison against the AI-generated candidate above.</p>
     <div id="patch-body"></div>
   </section>
 

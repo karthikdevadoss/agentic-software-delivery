@@ -1595,6 +1595,23 @@ async def triage_patch(request: Request):
     return JSONResponse(await run_in_threadpool(triage_execution.get_patch_diff))
 
 
+async def triage_generate_candidate(request: Request):
+    """Real, on-demand candidate-patch generation: a SECOND Claude call
+    (distinct from diagnose) writes the actual fix given the real
+    defective file + real evidence -- never told the answer -- then the
+    result is applied and compiled in an isolated workspace, never the
+    real repository. Two real API-cost-bearing steps in one request, so
+    this is only ever triggered by an explicit user click, never
+    automatically."""
+    body = await request.json()
+    reproduction_result = body.get("reproduction_result") or {}
+    generation = await run_in_threadpool(triage_execution.generate_candidate_patch, reproduction_result)
+    if not generation.get("generated"):
+        return JSONResponse({"generation": generation, "verification": None})
+    verification = await run_in_threadpool(triage_execution.apply_and_verify_candidate, generation["candidate_source"])
+    return JSONResponse({"generation": generation, "verification": verification})
+
+
 async def triage_verify(request: Request):
     return JSONResponse(await run_in_threadpool(triage_execution.verify_fix))
 
@@ -1691,6 +1708,7 @@ routes = [
     Route("/api/triage/scenario-a/reproduce", triage_reproduce, methods=["POST"]),
     Route("/api/triage/scenario-a/diagnose", triage_diagnose, methods=["POST"]),
     Route("/api/triage/scenario-a/patch", triage_patch, methods=["GET"]),
+    Route("/api/triage/scenario-a/generate-candidate-patch", triage_generate_candidate, methods=["POST"]),
     Route("/api/triage/scenario-a/verify", triage_verify, methods=["POST"]),
     Route("/api/triage/scenario-a/approve", triage_approve, methods=["POST"]),
     # Five public surfaces (see docs/COMPANY_VISION.md's public product
