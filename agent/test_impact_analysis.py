@@ -57,13 +57,22 @@ JAVA_FILE_TO_TESTS = {
     "CustomerPreferenceUpdatedEvent.java": ["CustomerPreferenceEventFlowIntegrationTest"],
     "CustomerPreferenceEventConsumer.java": ["CustomerPreferenceEventFlowIntegrationTest"],
     "NotificationChannel.java": ["CustomerPreferenceControllerIntegrationTest"],
-    "ContractPlan.java": ["ContractPlanControllerIntegrationTest", "ContractPlanServiceTest"],
+    # TriageScenarioAIntegrationTest added to ContractPlan/ContractPlanService/
+    # ContractPlanStatus (Base Architecture V3 Section 8, real symbol/caller
+    # analysis, docs/CODE_INTELLIGENCE_EVALUATION.md): TriageScenarioAService's
+    # "fixed" path calls ContractPlanService.enroll() directly (a real,
+    # grep-verified caller, not a hypothetical one) -- a change to this file
+    # that ContractPlanServiceTest's mocks miss but a real end-to-end run
+    # would catch (as this session's own mutation testing proved both test
+    # classes independently detect) deserves this real caller in its
+    # selective-regression set, not just the fail-closed full suite.
+    "ContractPlan.java": ["ContractPlanControllerIntegrationTest", "ContractPlanServiceTest", "TriageScenarioAIntegrationTest"],
     "ContractPlanController.java": ["ContractPlanControllerIntegrationTest"],
-    "ContractPlanService.java": ["ContractPlanServiceTest", "ContractPlanControllerIntegrationTest"],
+    "ContractPlanService.java": ["ContractPlanServiceTest", "ContractPlanControllerIntegrationTest", "TriageScenarioAIntegrationTest"],
     "ContractPlanRepository.java": ["ContractPlanControllerIntegrationTest"],
     "ContractPlanEnrollRequest.java": ["ContractPlanControllerIntegrationTest"],
     "ContractPlanResponse.java": ["ContractPlanControllerIntegrationTest"],
-    "ContractPlanStatus.java": ["ContractPlanControllerIntegrationTest", "ContractPlanServiceTest"],
+    "ContractPlanStatus.java": ["ContractPlanControllerIntegrationTest", "ContractPlanServiceTest", "TriageScenarioAIntegrationTest"],
     "ContractPlanCacheService.java": ["ContractPlanCacheIntegrationTest"],
     "RedisCacheConfig.java": ["ContractPlanCacheIntegrationTest"],
     "AppointmentController.java": ["AppointmentControllerIntegrationTest"],
