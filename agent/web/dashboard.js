@@ -399,7 +399,7 @@ async function load() {
   main.innerHTML = [
     renderExecutiveSummary(data),
 
-    zoneTitle("What He Built"),
+    zoneTitle("What Was Built"),
     renderEngineeringProblems(data),
     renderVerifiedActivity(data),
 
