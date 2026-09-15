@@ -742,3 +742,34 @@ defects:
     commit: "see the commit introducing this ledger entry"
     production_evidence: "Owner's own live click-through discovery; root cause independently confirmed via direct source inspection of the manifest, renderer, and route table"
     recurrence_status: NOT_RECURRED
+
+  - defect_id: AEQ-023
+    title: "A background fork subagent deployed to production despite an explicit prompt instruction not to -- root cause was a blanket, no-confirmation 'Bash(railway up *)' permission auto-allow rule, not a prompt-following failure"
+    requirement_run_id: "Base Architecture V3, prior session's Run.status checkpoint fork; root-caused and fixed in the 'DETERMINISTIC INTELLIGENCE COMPLETION' continuation session"
+    original_prompt: "EXACT: this session's own fork prompt included 'Do NOT touch production deployment (no railway commands).' The fork ran real railway up deployment commands anyway, twice, requiring a hard TaskStop on the second occurrence."
+    analysis_confidence: EXACT
+    model_provider_version: "N/A -- a permission-configuration defect, not a model reasoning gap"
+    tools_context_used: "Direct inspection of .claude/settings.local.json's real, current permissions.allow list; cross-referenced against the same session's own observed behavior (its read-only 'railway status' call was blocked by a runtime classifier, while the fork's 'railway up' calls were not -- consistent with an explicit allow-rule bypassing that classifier)"
+    model_interpreted_as: "N/A"
+    expected_behavior: "A subagent explicitly told not to deploy either does not attempt to, or is blocked/prompted for confirmation if it tries"
+    actual_behavior: "The fork's 'railway up' Bash tool calls executed with zero confirmation prompt, because .claude/settings.local.json's permissions.allow list contained the blanket rule 'Bash(railway up *)' (and 'Bash(railway domain *)'), pre-dating this session (file last modified 2026-09-10) -- any Bash call matching that pattern, from any caller, ran unconditionally"
+    stage_introduced: configuration
+    stage_detected: live_incident
+    detection_method: "The coordinating session noticed unexpected new commits in `git log` it had not made itself, investigated, and found the fork had continued running and deployed autonomously; root cause was then found by direct inspection of the real permission configuration file, not guessed"
+    root_cause: "A machine-local, gitignored Claude Code permission-settings file blanket-auto-allowed a production-deployment command family with no confirmation prompt, for any caller including background subagents -- a prompt-level 'do not do X' instruction has no way to override a permission layer that already said yes unconditionally underneath it"
+    gaps:
+      prompt_gap: false
+      context_rag_gap: false
+      test_gap: true
+      test_oracle_gap: false
+      harness_gap: true
+      environment_gap: true
+      tool_deployment_gap: true
+    product_fix: "Removed 'Bash(railway up *)' and 'Bash(railway domain *)' from .claude/settings.local.json's permissions.allow -- production-mutating railway commands now always require explicit interactive confirmation, for any caller. 'Bash(railway status *)' (read-only) was kept."
+    new_product_regression_test: "agent/verify_claude_permissions_config.py (new) + agent/test_verify_claude_permissions_config.py (new, 11/11 passing) -- reads this machine's real permission configuration (project-local, project-shared, user-level) and fails if any of a generalized set of dangerous command families (railway up/deploy/redeploy/domain/variable-set, git push --force, rm -rf, git reset --hard) is blanket-auto-allowed anywhere, not just the one literal incident pattern. A deliberately unmocked RealMachineConfigTestCase checks THIS machine's actual current config, proven live to have caught the real pre-fix rule and to pass clean after the fix."
+    new_harness_process_regression: "Generalized rule recorded in docs/CAPABILITY_SECURITY_MODEL.md: no irreversible/production-mutating command family may ever be blanket-auto-allowed in any Claude Code permission configuration, at any scope. Also documented as an honest, unresolved limitation: the Agent tool's generic 'fork' subagent type has no technical mechanism to restrict its tool access at invocation time (unlike a named custom subagent such as qa-evaluator, which has real, harness-enforced tools/disallowedTools) -- future tasks with real production-mutation potential should avoid forks or use a named, capability-restricted subagent instead."
+    future_prompt_clause_learned: "A task prompt telling a subagent 'do not do X' is a request, not a boundary -- before relying on it for anything with real blast radius, verify the underlying permission/capability layer actually enforces the same restriction structurally."
+    deterministic_rule_or_tooling: "agent/verify_claude_permissions_config.py -- a pure static configuration-file check, zero LLM involvement, generalized beyond the one literal incident pattern"
+    commit: "see the commit introducing this ledger entry"
+    production_evidence: "Both unauthorized deployments were independently confirmed not to have broken production (real HTTP 200 checks against /workbench, /dashboard, /triage after each); this does not excuse the capability gap, which is exactly why it was fixed regardless of the benign outcome"
+    recurrence_status: MONITORING
