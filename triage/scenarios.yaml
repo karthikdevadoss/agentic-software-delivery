@@ -1,0 +1,178 @@
+# Incident Triage & Repair Lab -- scenario catalogue.
+#
+# STATUS: DESIGNED, NOT YET LIVE-WIRED. This file is the deterministic
+# contract a future agent/triage_execution.py would read to drive the
+# interactive UI (Reproduce -> Investigate -> AI Diagnosis -> Proposed
+# Fix -> Verification -> HUMAN APPROVAL -> Resolved). No public route
+# currently serves this file or executes against it. See
+# docs/TRIAGE_LAB_DESIGN.md for the full architecture and honest status.
+#
+# Every scenario here is grounded in a REAL engineering defect -- either
+# already found/fixed in this repo's real history (with a real commit as
+# evidence), or a real, currently-fixed gap being safely re-demonstrated
+# via an isolated, scenario-gated code path. None of these are a fake
+# `if (demoBug) return 500` shortcut standing in for a real mistake.
+
+_schema_note: >
+  Each scenario declares exactly the fields the master Triage Lab
+  instruction requires: id, title, business_context, healthy_behavior,
+  defective_behavior, reproduction_steps, allowed_modules, risk,
+  blast_radius, workspace_isolation, required_evidence, required_tests,
+  fix_acceptance_criteria, production_assertion, reset_behavior.
+
+scenarios:
+  - id: TRIAGE-A-PLAN-ENROLLMENT-IDEMPOTENCY
+    title: "Duplicate Plan Enrollment Creates a Phantom Churn Event"
+    engineering_area: "Transactions / idempotency / Spring Data JPA"
+    status: "REAL DEFECT, ALREADY FOUND AND FIXED (commit 2155a8a) -- interactive re-demo NOT yet wired"
+    risk: MEDIUM
+    approx_demo_duration_minutes: 4
+    business_context: >
+      A customer enrolls in an energy plan. A slow network causes a
+      double-click, or a client retries a request after a timeout whose
+      original call had actually already succeeded server-side --
+      routine, not exotic, failure modes in production.
+    healthy_behavior: >
+      Submitting the exact same enrollment (same plan name, rate,
+      effective date) while it is already the customer's active plan is
+      a no-op: the existing active plan is returned unchanged, no new
+      database rows are written.
+    defective_behavior: >
+      (Pre-fix, real, reproduced in ContractPlanServiceTest before the
+      fix landed) ContractPlanService.enroll() had no duplicate-request
+      check: a repeat call cancelled the plan the FIRST call had just
+      activated and created a second, identical plan -- two CANCELLED
+      rows plus a duplicate ACTIVE row in the customer's plan history for
+      one real customer action.
+    reproduction_steps:
+      - "POST /customers/{id}/plan with {planName, ratePerKwh, effectiveStartDate}"
+      - "POST the exact same body again immediately"
+      - "GET the customer's plan history: pre-fix, 2 rows exist for what should be 1 action"
+    allowed_modules:
+      - app/src/main/java/com/example/customer/service/ContractPlanService.java
+      - app/src/test/java/com/example/customer/service/ContractPlanServiceTest.java
+    blast_radius: LOCAL
+    workspace_isolation: >
+      A live interactive re-demo (not yet built) would need a
+      demo-workspace-scoped customer id and a scenario flag isolated to
+      that workspace's ContractPlanService calls only -- never a global
+      toggle -- following the exact isolation pattern already
+      established by DemoAppointmentProviderController (see Scenario B).
+    required_evidence:
+      - "Real plan-history query result (2 rows pre-fix, 1 row post-fix)"
+      - "The real code diff (isSameTerms() check + early return)"
+    required_tests:
+      - "ContractPlanServiceTest::enroll_whenIdenticalRequestSubmittedTwice_isIdempotentNoOp"
+    fix_acceptance_criteria: >
+      A repeat of an identical enroll request against the same active
+      plan performs zero repository writes and returns the existing
+      active plan unchanged; a genuinely different enrollment still
+      churns normally (existing regression coverage unchanged).
+    production_assertion: >
+      GET the customer's plan history after the duplicate-submission
+      sequence; count of plan rows created must equal 1, not 2.
+    reset_behavior: "N/A for the historical incident (already fixed in mainline). A future live re-demo would reset via the isolated demo-workspace customer's plan history being cleared, never touching a real customer."
+    evidence_links:
+      - docs/interview-scenarios/04-plan-enrollment-idempotency.md
+      - "commit 2155a8a"
+
+  - id: TRIAGE-B-APPOINTMENT-DOWNSTREAM-RESILIENCE
+    title: "Downstream Appointment Provider Timeout / Error Classification"
+    engineering_area: "HTTP integration / Resilience4j (retry, circuit breaker) / error mapping"
+    status: "REAL, SAFE SCENARIO INFRASTRUCTURE ALREADY LIVE (DemoAppointmentProviderController) -- currently demonstrates CORRECT behavior, not a bug; Triage Lab framing not yet wired"
+    risk: LOW
+    approx_demo_duration_minutes: 5
+    business_context: >
+      Appointment availability comes from a downstream scheduling
+      service over real HTTP. Downstream services are unreliable in the
+      real world -- slow, briefly down, or returning malformed data --
+      and the client must fail predictably, not hang the whole request
+      or silently show wrong data.
+    healthy_behavior: >
+      A downstream timeout triggers a real client-side timeout (1000ms
+      read timeout, already configured) plus Resilience4j retry/circuit
+      breaker; sustained failure opens the circuit breaker and the
+      client returns SERVICE_UNAVAILABLE quickly rather than continuing
+      to hammer a downstream that's already down. A downstream 4xx
+      (client error) is never retried; a downstream 5xx is retried up to
+      the configured attempt count.
+    defective_behavior: >
+      NONE CURRENTLY -- this path is already correct and covered by 7
+      real WireMock tests (success, 5xx retried 3x, 4xx never retried,
+      timeout, malformed body, sustained-failure circuit-breaker
+      behavior). Listed here as a scenario TEMPLATE: the real,
+      already-existing DemoAppointmentProviderController
+      (?scenario=timeout / ?scenario=error query param, isolated to
+      /internal/demo-appointment-provider, never touching a real
+      downstream) is the exact safe-simulation pattern every other
+      Triage scenario's live re-demo should copy. If a genuine defect is
+      later introduced deliberately for training/interview purposes
+      (e.g., a wrong retry predicate that retries 4xx), it must be
+      isolated the same way: a real HTTP round-trip to a synthetic
+      internal endpoint, never a hardcoded `if (demo) return error`
+      inside the real business logic.
+    reproduction_steps:
+      - "GET /customers/{id}/appointment-availability?date=...&scenario=timeout"
+      - "Observe: client-side timeout after 1000ms, Resilience4j retry, eventual SERVICE_UNAVAILABLE"
+      - "GET the same with scenario=error (downstream 500) -- observe retry-then-fail"
+    allowed_modules:
+      - app/src/main/java/com/example/customer/integration/appointment/**
+    blast_radius: LOCAL
+    workspace_isolation: "Already real: the demo provider is a separate internal controller, reached over genuine HTTP loopback, never a direct method call -- see its own Javadoc."
+    required_evidence:
+      - "Real HTTP response timing/status for scenario=timeout and scenario=error"
+      - "WireMock test assertions (request counts proving retry-not-infinite, 4xx-never-retried)"
+    required_tests:
+      - "app/src/test/java/com/example/customer/integration/appointment/AppointmentAvailabilityIntegrationTest.java (7 tests, already passing)"
+    fix_acceptance_criteria: "N/A today (no defect) -- this scenario currently exists to DEMONSTRATE resilience correctness, not diagnose a bug. Revisit if a real resilience defect is found."
+    production_assertion: "GET the real production endpoint with scenario=timeout and scenario=error and confirm SERVICE_UNAVAILABLE / correct status, never a raw 500 or a hang."
+    reset_behavior: "N/A -- stateless per-request simulation, nothing to reset."
+    evidence_links:
+      - app/src/main/java/com/example/customer/integration/appointment/demo/DemoAppointmentProviderController.java
+
+  - id: TRIAGE-C-ADMIN-SEARCH-POSTGRES-TYPE-INFERENCE
+    title: "Admin Customer Search: lower(bytea) Postgres 500"
+    engineering_area: "JPQL / Postgres bind-parameter type inference / production-only defect class"
+    status: "REAL, ALREADY-RESOLVED PRODUCTION INCIDENT (commit 9f35f27) -- full before/after evidence already documented, interactive re-demo NOT yet wired"
+    risk: LOW (historical, fixed)
+    approx_demo_duration_minutes: 4
+    business_context: >
+      An ADMIN searches customers by partial name/email. The feature
+      passed every local test (H2) and still broke in real production
+      the first time it was actually used there -- a textbook
+      "works on my machine, fails on the real database" class of defect.
+    healthy_behavior: >
+      GET /admin/customers?name=... returns a correctly filtered,
+      paginated result set against real Postgres.
+    defective_behavior: >
+      (Real, historical) An earlier version of the JPQL wrapped the bind
+      parameter itself in LOWER(CONCAT('%', :name, '%')). PostgreSQL's
+      JDBC driver could not infer a concrete type for a nullable String
+      flowing through a CONCAT-translated `||` operator, defaulting it to
+      `bytea` -- `LOWER(bytea)` doesn't exist, so every real search
+      request 500'd. H2 has no equivalent type-inference gap, so nothing
+      local could have caught this.
+    reproduction_steps:
+      - "GET /admin/customers?name=Lee against the pre-fix JPQL (see commit history before 9f35f27)"
+      - "Observe: real Postgres 500, org.postgresql.util.PSQLException: function lower(bytea) does not exist"
+    allowed_modules:
+      - app/src/main/java/com/example/customer/repository/CustomerRepository.java
+      - app/src/main/java/com/example/customer/controller/AdminCustomerController.java
+    blast_radius: MODULE
+    workspace_isolation: "N/A for the historical incident -- was a real production bug affecting the actual admin-search feature, found and fixed within minutes via direct railway logs, not a scenario-gated simulation."
+    required_evidence:
+      - "Real railway logs excerpt with the exact PSQLException"
+      - "The one-line root cause: bind parameter type ambiguity through CONCAT, not a business-logic mistake"
+    required_tests:
+      - "PostgresFlywayIntegrationTest::adminCustomerSearch_byNameAndEmail_worksAgainstRealPostgres_notJustH2 (Testcontainers, real Postgres, CI-only -- no local Docker on this dev machine)"
+    fix_acceptance_criteria: >
+      Search patterns are pre-built as plain, already-lowercased,
+      already-wildcarded Java Strings and bound as unambiguous String
+      parameters -- LOWER() applied only to the compared column, never
+      wrapping the bind parameter.
+    production_assertion: "Empty/name/email/customerId/no-result searches all return 200 with correct data against live production Postgres."
+    reset_behavior: "N/A -- historical incident, already fixed in mainline, nothing to reset."
+    evidence_links:
+      - docs/interview-scenarios/02-postgres-search-pagination.md
+      - docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml (AEQ-012)
+      - "commit 9f35f27"

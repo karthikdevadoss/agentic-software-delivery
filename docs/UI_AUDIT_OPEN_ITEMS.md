@@ -10,27 +10,16 @@ instead (durable, reusable defects), not duplicated here.
 
 ---
 
-## 1. Missing `<meta name="viewport">` on other public pages
+## 1. Missing `<meta name="viewport">` on other public pages — RESOLVED
 
-- **Issue:** `workbench.html`, `dashboard.html`, `profile.html`, and
-  `control-plane.html` have no viewport meta tag — confirmed by direct
-  grep across `agent/web/*.html`. Without it, mobile browsers render the
-  page at desktop width and zoom out, making any responsive CSS on those
-  pages ineffective.
-- **Evidence:** `grep -rn viewport agent/web/*.html` before this pass
-  found it in zero HTML files; this pass added it to `learn.html` and
-  `usage.html` only (the two pages in scope).
-- **Severity:** Medium (affects real mobile usability of 3-4 other
-  public pages, not the ones this pass covers).
-- **Recommended action:** Add the same one-line `<meta name="viewport"
-  content="width=device-width, initial-scale=1">` fix to the remaining
-  HTML files.
-- **Owner decision required?** No — this is a trivial, safe, one-line
-  fix per file with no design/product judgment involved. It was left out
-  of this pass purely to stay within the explicit scope ("the newly
-  implemented" 4 features), not because it's risky.
-- **Backlog relationship:** Small, standalone follow-up; not tied to any
-  existing P0 item.
+- **Original issue (2026-09-11):** `workbench.html`, `dashboard.html`,
+  `profile.html`, and `control-plane.html` had no viewport meta tag.
+- **Verified resolved (2026-09-15):** `grep -c viewport agent/web/*.html`
+  now shows exactly 1 match in every current public HTML file
+  (control-plane, dashboard, learn, showcase, usage, workbench) — fixed
+  in an intervening session (profile.html no longer exists as a public
+  page per the 2026-09-13 Profile privacy decision). No action needed;
+  this item is closed, not re-opened by a redesign.
 
 ## 2. `workbench.js`/`dashboard.js`/`profile` pages not audited for the same defect classes
 
