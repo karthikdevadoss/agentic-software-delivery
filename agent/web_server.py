@@ -113,6 +113,30 @@ STAGE_LABELS = {
 # file, add it here in the same change.
 TERMINAL_RUN_STATES = frozenset({"COMPLETED", "FAILED", "NO_CHANGE_NEEDED", "DEPLOYMENT_STATUS_UNKNOWN"})
 
+# Every non-terminal run.status value actually used anywhere in this file
+# (docs/INTELLIGENCE_PLACEMENT_V3.md's Phase 1 audit, MEDIUM-HIGH finding:
+# before this, run.status was a plain string set directly at ~30 call
+# sites with nothing validating it). Kept in the same file, next to
+# TERMINAL_RUN_STATES, for the same reason that set's own comment gives:
+# a new status value must be added here in the same change that
+# introduces it, not discovered later by its absence.
+NON_TERMINAL_RUN_STATES = frozenset({
+    "UNDERSTANDING REQUIREMENT",
+    "PLANNING",
+    "REPOSITORY INVESTIGATION",
+    "RAG / CONTEXT RETRIEVAL",
+    "PROPOSING CHANGE",
+    "WAITING FOR HUMAN APPROVAL",
+    "APPLYING CHANGE",
+    "BUILDING",
+    "TESTING",
+    "COMMITTING",
+    "PUSHING",
+    "DEPLOYING",
+    "VERIFYING PRODUCTION",
+})
+KNOWN_RUN_STATES = NON_TERMINAL_RUN_STATES | TERMINAL_RUN_STATES
+
 
 def _run_is_terminal(run: "Run") -> bool:
     return run.status in TERMINAL_RUN_STATES
@@ -316,7 +340,8 @@ class Run:
     def __init__(self, run_id: str, requirement: str):
         self.id = run_id
         self.requirement = requirement
-        self.status = "UNDERSTANDING REQUIREMENT"
+        self.status = None
+        self.set_status("UNDERSTANDING REQUIREMENT")
         self.events = []
         self.result_text = None
         self.pending_approvals = {}
@@ -331,6 +356,31 @@ class Run:
             status=self.status, training_eligibility=event_ledger.TRAINING_ALLOWED_AFTER_REDACTION,
             payload={"requirement": requirement},
         )
+
+    def set_status(self, new_status: str) -> None:
+        """The single sanctioned way to change a run's status (Phase 1
+        audit, MEDIUM-HIGH finding). Raises ValueError on an unrecognized
+        status string -- the real gap this closes: previously self.status
+        was set directly at every call site with nothing to catch a
+        typo'd or unenumerated value.
+
+        Deliberately validates only that the TARGET state is known, not
+        the full transition graph: this is the live, working, core
+        Workbench/Triage execution engine, and a run can legitimately
+        fail from almost any stage. A hand-built strict transition table
+        risks rejecting a real call path this audit didn't fully
+        enumerate and raising inside a real live run -- a false positive
+        far more costly here than the false negative of not also
+        validating transition order. If a stricter VALID_TRANSITIONS
+        graph is wanted later, build it additively on top of this, once
+        every real transition has been observed with confidence."""
+        if new_status not in KNOWN_RUN_STATES:
+            raise ValueError(
+                f"Unrecognized run status {new_status!r} -- add it to "
+                f"NON_TERMINAL_RUN_STATES or TERMINAL_RUN_STATES in the "
+                f"same change that introduces it"
+            )
+        self.status = new_status
 
     def emit(self, event_type: str, data: dict) -> None:
         with self._lock:
@@ -495,7 +545,7 @@ def _make_dispatch_fn(run: Run):
     def dispatch(name, tool_input):
         stage = STAGE_LABELS.get(name)
         if stage:
-            run.status = stage
+            run.set_status(stage)
             run.emit("stage", {"stage": stage})
         run.emit("tool_call", {"tool": name, "input_summary": _safe_input_summary(name, tool_input)})
 
@@ -518,7 +568,7 @@ def _web_approval_prompt_factory(run: Run):
     def prompt(edit) -> bool:
         decision_queue = queue.Queue()
         run.pending_approvals[edit.id] = decision_queue
-        run.status = "WAITING FOR HUMAN APPROVAL"
+        run.set_status("WAITING FOR HUMAN APPROVAL")
         run.emit("proposal", {
             "edit_id": edit.id, "path": edit.path, "diff": edit.diff,
             "is_new_file": edit.is_new_file,
@@ -537,7 +587,7 @@ def _run_agent_thread(run: Run) -> None:
     usage_start_index = len(metrics.get_model_usage_events())
     _CURRENT_RUN_ID = run.id
     try:
-        run.status = "PLANNING"
+        run.set_status("PLANNING")
         run.emit("stage", {"stage": "PLANNING"})
         result = run_agent_loop(
             run.requirement, API_KEY,
@@ -546,11 +596,11 @@ def _run_agent_thread(run: Run) -> None:
             system_prompt_suffix=EXECUTION_SYSTEM_PROMPT_SUFFIX,
         )
         run.result_text = result
-        run.status = "COMPLETED"
+        run.set_status("COMPLETED")
         run.emit("stage", {"stage": "COMPLETED"})
         run.emit("final_result", {"text": result})
     except Exception as exc:  # noqa: BLE001 - never crash the server for a run failure
-        run.status = "FAILED"
+        run.set_status("FAILED")
         run.emit("stage", {"stage": "FAILED"})
         run.emit("error", {"message": str(exc)})
     finally:
@@ -570,11 +620,11 @@ def _run_mock_thread(run: Run) -> None:
     Approve/Reject — this only fakes the model/tool side, not the approval
     boundary, which is the one thing we must never simulate."""
     try:
-        run.status = "PLANNING"
+        run.set_status("PLANNING")
         run.emit("stage", {"stage": "PLANNING"})
         time.sleep(0.3)
 
-        run.status = "REPOSITORY INVESTIGATION"
+        run.set_status("REPOSITORY INVESTIGATION")
         run.emit("stage", {"stage": "REPOSITORY INVESTIGATION"})
         for tool, arg in [
             ("list_repository_files", "app/src/test/java/com/example/customer"),
@@ -584,14 +634,14 @@ def _run_mock_thread(run: Run) -> None:
             time.sleep(0.2)
             run.emit("tool_result", {"tool": tool, "success": True, "duration_ms": 12.0, "result_size": 90})
 
-        run.status = "PROPOSING CHANGE"
+        run.set_status("PROPOSING CHANGE")
         run.emit("stage", {"stage": "PROPOSING CHANGE"})
         run.emit("tool_call", {"tool": "propose_source_change", "input_summary": "app/src/test/java/com/example/customer/MockDemoTest.java"})
 
         decision_queue = queue.Queue()
         edit_id = "mockdemo"
         run.pending_approvals[edit_id] = decision_queue
-        run.status = "WAITING FOR HUMAN APPROVAL"
+        run.set_status("WAITING FOR HUMAN APPROVAL")
         run.emit("proposal", {
             "edit_id": edit_id,
             "path": "app/src/test/java/com/example/customer/MockDemoTest.java",
@@ -603,18 +653,18 @@ def _run_mock_thread(run: Run) -> None:
         run.emit("approval_decision", {"edit_id": edit_id, "decision": decision})
 
         if decision != "approve":
-            run.status = "COMPLETED"
+            run.set_status("COMPLETED")
             run.emit("stage", {"stage": "COMPLETED"})
             run.emit("final_result", {"text": "[MOCK RUN] Proposal was rejected by the human operator. No change applied."})
             return
 
-        run.status = "APPLYING CHANGE"
+        run.set_status("APPLYING CHANGE")
         run.emit("stage", {"stage": "APPLYING CHANGE"})
         run.emit("tool_call", {"tool": "apply_approved_source_change", "input_summary": edit_id})
         time.sleep(0.2)
         run.emit("tool_result", {"tool": "apply_approved_source_change", "success": True, "duration_ms": 3.0, "result_size": 60})
 
-        run.status = "BUILDING"
+        run.set_status("BUILDING")
         run.emit("stage", {"stage": "BUILDING"})
         run.emit("tool_call", {"tool": "run_controlled_compile", "input_summary": ""})
         time.sleep(1.0)  # shortened stand-in for the real ~15.3s wait
@@ -623,7 +673,7 @@ def _run_mock_thread(run: Run) -> None:
             "result_size": 340, "summary": "[MOCK] compile SUCCEEDED in 15327.0ms\nBUILD SUCCESS",
         })
 
-        run.status = "TESTING"
+        run.set_status("TESTING")
         run.emit("stage", {"stage": "TESTING"})
         run.emit("tool_call", {"tool": "run_controlled_tests", "input_summary": ""})
         time.sleep(1.0)  # shortened stand-in for the real ~19.0s wait
@@ -637,11 +687,11 @@ def _run_mock_thread(run: Run) -> None:
             "human operator, applied, compiled successfully, and tests ran "
             "successfully. This text simulates the agent's closing summary."
         )
-        run.status = "COMPLETED"
+        run.set_status("COMPLETED")
         run.emit("stage", {"stage": "COMPLETED"})
         run.emit("final_result", {"text": run.result_text})
     except Exception as exc:  # noqa: BLE001
-        run.status = "FAILED"
+        run.set_status("FAILED")
         run.emit("stage", {"stage": "FAILED"})
         run.emit("error", {"message": f"[MOCK RUN] {exc}"})
     finally:
@@ -825,13 +875,13 @@ def _run_trainer_thread(run: "Run", requirement: str, normalized: "demo_catalogu
     run.trainer_changed_path = normalized.target_file
     workspace = None
     try:
-        run.status = "APPLYING CHANGE"
+        run.set_status("APPLYING CHANGE")
         run.emit("stage", {"stage": "APPLYING CHANGE"})
         workspace, clone_ok, clone_out = demo_execution.create_isolated_workspace(run.id)
         run.emit("workspace", {"isolated": True, "ok": clone_ok})
         if not clone_ok:
             run.emit("error", {"message": f"Could not create an isolated workspace (git clone failed) — not modifying anything: {clone_out[-400:]}"})
-            run.status = "FAILED"
+            run.set_status("FAILED")
             run.emit("stage", {"stage": "FAILED"})
             return
 
@@ -840,7 +890,7 @@ def _run_trainer_thread(run: "Run", requirement: str, normalized: "demo_catalogu
             old_content = target_path.read_text(encoding="utf-8")
         except OSError as exc:
             run.emit("error", {"message": f"Could not read {normalized.target_file} in the isolated workspace: {exc}"})
-            run.status = "FAILED"
+            run.set_status("FAILED")
             run.emit("stage", {"stage": "FAILED"})
             return
 
@@ -870,7 +920,7 @@ def _run_trainer_thread(run: "Run", requirement: str, normalized: "demo_catalogu
             if prod_html_precheck else None
         )
         if live_current_value == normalized.new_value:
-            run.status = "NO_CHANGE_NEEDED"
+            run.set_status("NO_CHANGE_NEEDED")
             run.emit("no_change_needed", {
                 "reason": f"{normalized.human_name} already has the requested value in live production — no source was modified, nothing was deployed.",
             })
@@ -900,7 +950,7 @@ def _run_trainer_thread(run: "Run", requirement: str, normalized: "demo_catalogu
                 line_idx, old_line, new_line = demo_catalogue.compute_single_line_diff(old_content, new_content)
             except RuntimeError as exc:
                 run.emit("error", {"message": f"Deterministic mutation refused (fail-closed, not applied): {exc}"})
-                run.status = "FAILED"
+                run.set_status("FAILED")
                 run.emit("stage", {"stage": "FAILED"})
                 return
             target_path.write_text(new_content, encoding="utf-8")
@@ -916,7 +966,7 @@ def _run_trainer_thread(run: "Run", requirement: str, normalized: "demo_catalogu
 
         # COMMIT — isolated workspace, dedicated demo/<run_id> branch,
         # never master directly.
-        run.status = "COMMITTING"
+        run.set_status("COMMITTING")
         run.emit("stage", {"stage": "COMMITTING"})
         commit_msg = f"Demo: {normalized.human_name} -> {normalized.new_value!r}"[:100]
         branch, commit_ok, commit_out = demo_execution.commit_change(workspace, run.id, normalized.target_file, commit_msg)
@@ -925,7 +975,7 @@ def _run_trainer_thread(run: "Run", requirement: str, normalized: "demo_catalogu
         # tolerance the Reset flow already relies on (docs/LESSONS.md).
         if not commit_ok and not (source_already_correct and "nothing to commit" in commit_out.lower()):
             run.emit("error", {"message": f"Git commit failed, deployment aborted: {commit_out[-400:]}"})
-            run.status = "FAILED"
+            run.set_status("FAILED")
             run.emit("stage", {"stage": "FAILED"})
             return
         # Layer 3 evidence, enforced not just tested: confirm the commit
@@ -935,7 +985,7 @@ def _run_trainer_thread(run: "Run", requirement: str, normalized: "demo_catalogu
             changed_files = demo_execution.get_changed_files(workspace)
             if changed_files != [normalized.target_file]:
                 run.emit("error", {"message": f"Commit touched unexpected files {changed_files} (expected only {[normalized.target_file]}) — blocking, not deployed."})
-                run.status = "FAILED"
+                run.set_status("FAILED")
                 run.emit("stage", {"stage": "FAILED"})
                 return
         production_commit = demo_execution.get_commit_sha(workspace)
@@ -951,7 +1001,7 @@ def _run_trainer_thread(run: "Run", requirement: str, normalized: "demo_catalogu
         # real deploy, real production verification — but the UI showed an
         # alarming "ERROR: git push failed..." line for this exact ordinary
         # not-configured case, indistinguishable from a real failure.
-        run.status = "PUSHING"
+        run.set_status("PUSHING")
         run.emit("stage", {"stage": "PUSHING"})
         push_status, push_out = demo_execution.push_change(workspace, branch)
         run.emit("push", {
@@ -968,14 +1018,14 @@ def _run_trainer_thread(run: "Run", requirement: str, normalized: "demo_catalogu
         # bug (three live acceptance runs) this replaced an ID-diff
         # check with: a stale, unrelated OLD deployment could otherwise
         # be mistaken for "the new one" simply because its id differed.
-        run.status = "DEPLOYING"
+        run.set_status("DEPLOYING")
         run.emit("stage", {"stage": "DEPLOYING"})
         deploy_triggered_after = demo_execution.server_verified_now_iso(PUBLIC_CUSTOMER_APP_URL)
         deploy_ok, deploy_out = demo_execution.trigger_deploy(
             workspace / "app", CUSTOMER_APP_PROJECT_ID, RAILWAY_SERVICE_NAME, RAILWAY_ENVIRONMENT)
         if not deploy_ok:
             run.emit("error", {"message": f"Railway deploy trigger failed: {deploy_out[-400:]}"})
-            run.status = "FAILED"
+            run.set_status("FAILED")
             run.emit("stage", {"stage": "FAILED"})
             return
 
@@ -983,7 +1033,7 @@ def _run_trainer_thread(run: "Run", requirement: str, normalized: "demo_catalogu
         # never HTTP 200/CLI text/elapsed time) AND a targeted production
         # assertion (the exact field's live value, never a whole-file
         # substring containment check).
-        run.status = "VERIFYING PRODUCTION"
+        run.set_status("VERIFYING PRODUCTION")
         run.emit("stage", {"stage": "VERIFYING PRODUCTION"})
         new_deployment_id, deploy_status, waited_s = demo_execution.wait_for_new_deployment(
             CUSTOMER_APP_PROJECT_ID, RAILWAY_SERVICE_NAME, RAILWAY_ENVIRONMENT, deploy_triggered_after, workspace)
@@ -1008,27 +1058,27 @@ def _run_trainer_thread(run: "Run", requirement: str, normalized: "demo_catalogu
 
         deploy_failed_explicitly = any(marker in deploy_status.upper() for marker in ("FAIL", "CRASH"))
         if deployment_identity_confirmed and content_verified:
-            run.status = "COMPLETED"
+            run.set_status("COMPLETED")
             run.emit("stage", {"stage": "COMPLETED"})
             run.emit("final_result", {"text": f"{normalized.human_name} is now \"{normalized.new_value}\" in production (deployment {new_deployment_id}, commit {production_commit})."})
         elif deploy_failed_explicitly:
             run.emit("error", {"message": f"Railway reported a failed deployment (status={deploy_status})."})
-            run.status = "FAILED"
+            run.set_status("FAILED")
             run.emit("stage", {"stage": "FAILED"})
         elif deployment_identity_confirmed and not content_verified:
             # A CONFIRMED negative result, not an ambiguous one: the new
             # deployment genuinely is serving, but the requested field's
             # live value does not match what was requested.
             run.emit("error", {"message": f"New deployment {new_deployment_id} is live, but {normalized.human_name} shows {live_value!r}, not the requested {normalized.new_value!r} — confirmed failure."})
-            run.status = "FAILED"
+            run.set_status("FAILED")
             run.emit("stage", {"stage": "FAILED"})
         else:
             run.emit("error", {"message": f"Deployment identity could not be confirmed within the wait window (status={deploy_status}). This is NOT a confirmed failure — check manually."})
-            run.status = "DEPLOYMENT_STATUS_UNKNOWN"
+            run.set_status("DEPLOYMENT_STATUS_UNKNOWN")
             run.emit("stage", {"stage": "DEPLOYMENT_STATUS_UNKNOWN"})
     except Exception as exc:  # noqa: BLE001
         run.emit("error", {"message": str(exc)})
-        run.status = "FAILED"
+        run.set_status("FAILED")
         run.emit("stage", {"stage": "FAILED"})
     finally:
         if workspace is not None:

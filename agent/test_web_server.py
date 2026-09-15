@@ -98,6 +98,65 @@ class TerminalStateDefinitionTestCase(unittest.TestCase):
                 self.assertTrue(ws._run_is_terminal(self._run_with_status(status)))
 
 
+class RunSetStatusValidationTestCase(unittest.TestCase):
+    """Regression coverage for the Phase 1 audit's MEDIUM-HIGH finding
+    (docs/INTELLIGENCE_PLACEMENT_V3.md): Run.status used to be a plain
+    string set directly at ~30 call sites with nothing validating it.
+    Run.set_status() is now the sole sanctioned mutator; these tests
+    prove it accepts every real known state and rejects the exact defect
+    class this closes -- an unenumerated/typo'd status string."""
+
+    def test_accepts_every_known_non_terminal_state(self):
+        run = ws.Run("test-run", "test requirement")
+        for status in ws.NON_TERMINAL_RUN_STATES:
+            with self.subTest(status=status):
+                run.set_status(status)
+                self.assertEqual(run.status, status)
+
+    def test_accepts_every_known_terminal_state(self):
+        run = ws.Run("test-run", "test requirement")
+        for status in ws.TERMINAL_RUN_STATES:
+            with self.subTest(status=status):
+                run.set_status(status)
+                self.assertEqual(run.status, status)
+
+    def test_rejects_an_unrecognized_status_string(self):
+        """The actual defect class this closes: before this change, a
+        typo like 'BULDING' (missing an 'I') or a genuinely new status
+        introduced without updating the known-state sets would have been
+        silently accepted as the real run.status with nothing to catch
+        it -- now it raises instead of silently corrupting state."""
+        run = ws.Run("test-run", "test requirement")
+        with self.assertRaises(ValueError):
+            run.set_status("BULDING")
+
+    def test_every_state_STAGE_LABELS_can_produce_is_known(self):
+        """STAGE_LABELS (the dict _make_dispatch_fn's dynamic
+        `run.status = stage` -- now `run.set_status(stage)` -- draws
+        from) must never be able to produce a status set_status() would
+        reject; this would be a real, live-breaking regression risk if
+        someone added a new tool to STAGE_LABELS without also adding its
+        label to a known-state set."""
+        for stage_label in ws.STAGE_LABELS.values():
+            with self.subTest(stage_label=stage_label):
+                self.assertIn(stage_label, ws.KNOWN_RUN_STATES)
+
+    def test_real_run_lifecycle_sequence_never_raises(self):
+        """Not just unit-testing the method in isolation: drives one real
+        Run instance through a representative real end-to-end sequence
+        (mirroring the real order status is set in _run_trainer_thread)
+        and confirms set_status() never raises along the way."""
+        run = ws.Run("test-run", "test requirement")
+        for status in [
+            "PLANNING", "REPOSITORY INVESTIGATION", "PROPOSING CHANGE",
+            "WAITING FOR HUMAN APPROVAL", "APPLYING CHANGE", "BUILDING",
+            "TESTING", "COMMITTING", "PUSHING", "DEPLOYING",
+            "VERIFYING PRODUCTION", "COMPLETED",
+        ]:
+            run.set_status(status)  # raises on failure -- no explicit assert needed
+        self.assertEqual(run.status, "COMPLETED")
+
+
 class SSEStreamTerminatesOnTerminalStateTestCase(unittest.IsolatedAsyncioTestCase):
     async def _run_to_status(self, status):
         run = ws.Run("test-run", "test requirement")
