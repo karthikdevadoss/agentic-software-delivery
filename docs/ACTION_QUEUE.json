@@ -268,6 +268,20 @@
       "verification_required": "DONE: re-ran agent/test_rag_index.py in isolation AND as part of the full Python suite, both clean.",
       "created_at_commit": "0767e06",
       "resolved_at_commit": "b3d6856"
+    },
+    {
+      "id": "TRIAGE-LAB-LIVE-WIRING",
+      "source": "product",
+      "title": "READY, NOT STARTED: wire Incident Triage & Repair Lab Scenario A into a real interactive UI",
+      "priority": "high",
+      "status": "open",
+      "scope": "new: agent/triage_catalogue.py, agent/web/triage.{html,js,css}, agent/web_server.py routes (GET /triage, GET /api/triage/scenarios, POST /api/triage/{id}/reproduce|diagnose|propose-fix|verify|approve|rerun)",
+      "reason": "docs/TRIAGE_LAB_DESIGN.md + triage/scenarios.yaml (2026-09-15) designed the full architecture and a 3-scenario catalogue, each grounded in a real defect already in this repo's history -- but no public route or execution engine exists yet. Scenario A (plan-enrollment idempotency, commit 2155a8a) is recommended as the first build: smallest, fully self-contained, 100% of its real evidence (before/after plan-history query, real diff, real test) already exists. The design doc recommends a READ-ONLY evidence-replay approach for Scenario A/C (present the real historical incident's evidence, never re-introduce a fixed bug behind a flag) rather than live re-execution, to avoid adding standing risk to already-correct production code.",
+      "evidence": "docs/TRIAGE_LAB_DESIGN.md, triage/scenarios.yaml, docs/interview-scenarios/04-plan-enrollment-idempotency.md (Scenario A's real defect/fix), docs/interview-scenarios/02-postgres-search-pagination.md (Scenario C's real defect/fix), app/src/main/java/com/example/customer/integration/appointment/demo/DemoAppointmentProviderController.java (Scenario B's already-live safe-simulation infrastructure).",
+      "safe_to_auto_execute": false,
+      "verification_required": "A real interactive walkthrough (Reproduce -> Investigate -> AI Diagnosis -> Proposed Fix -> Verification -> HUMAN APPROVAL REQUIRED gate visually distinct per docs/UI_UX_DESIGN_SYSTEM.md) exists at a real route, browser-verified, with the human-approval gate proven non-bypassable by a public/unauthenticated visitor.",
+      "created_at_commit": "2c91164",
+      "resolved_at_commit": null
     }
   ]
 }
