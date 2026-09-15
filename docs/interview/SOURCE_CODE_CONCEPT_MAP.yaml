@@ -1,0 +1,233 @@
+# Personal interview-prep infrastructure -- machine-readable, NOT public
+# UI. Purpose: precise mappings from engineering concepts to the exact
+# real code that demonstrates them, so tomorrow's deeper interview PDF
+# (built separately, NOT tonight) can be generated quickly without
+# re-deriving "where is this in the codebase" from scratch.
+#
+# Every entry maps only to code that genuinely exists (verified this
+# session, not guessed). Deep explanations belong in the PDF, not here --
+# this file is precise pointers, one paragraph max per concept.
+
+schema_note: >
+  concept: {name, category, business_why, implementation_status,
+  source_files: [{path, class, methods}], request_flow, related_tests,
+  production_evidence, related_incidents, interview_topics}
+
+concepts:
+
+  # ---------------- CORE JAVA / LANGUAGE ----------------
+  - name: "Records for immutable DTOs"
+    category: CORE_JAVA
+    business_why: "Request/response shapes should be immutable and free of boilerplate getters/equals/hashCode."
+    implementation_status: PRODUCTION_ACTIVE
+    source_files:
+      - path: app/src/main/java/com/example/customer/dto/ContractPlanEnrollRequest.java
+        class: ContractPlanEnrollRequest
+      - path: app/src/main/java/com/example/customer/dto/ContractPlanResponse.java
+        class: ContractPlanResponse
+        methods: ["from(ContractPlan)"]
+    interview_topics: ["records vs classes", "compact canonical constructors", "why DTOs shouldn't be JPA entities"]
+
+  - name: "Optional for null-safety in service logic"
+    category: CORE_JAVA
+    business_why: "Avoid NPEs on 'no active plan' style absent-value cases without sentinel nulls."
+    implementation_status: PRODUCTION_ACTIVE
+    source_files:
+      - path: app/src/main/java/com/example/customer/service/ContractPlanService.java
+        class: ContractPlanService
+        methods: ["enroll", "getActivePlan"]
+    related_incidents: ["AEQ-018 (plan-enrollment idempotency)"]
+    interview_topics: ["Optional.filter/ifPresent composition", "when NOT to use Optional (fields, params)"]
+
+  # ---------------- SPRING SECURITY ----------------
+  - name: "OAuth2 resource-server JWT validation (signature/expiry/issuer/audience)"
+    category: SPRING_SECURITY
+    business_why: "Multi-persona (USER/ADMIN) access must be cryptographically verified server-side, never client-trusted."
+    implementation_status: PRODUCTION_ACTIVE
+    source_files:
+      - path: app/src/main/java/com/example/customer/security/SecurityConfig.java
+        class: SecurityConfig
+        methods: ["securityFilterChain", "jwtDecoder"]
+      - path: app/src/main/java/com/example/customer/security/DemoJwtIssuer.java
+        class: DemoJwtIssuer
+      - path: app/src/main/java/com/example/customer/security/WorkspaceAccessGuard.java
+        class: WorkspaceAccessGuard
+        methods: ["assertAccessible"]
+    request_flow: "Bearer JWT -> NimbusJwtDecoder (sig+exp+iss+aud) -> SCOPE_* authority -> WorkspaceAccessGuard (cid claim vs path customerId) -> controller"
+    related_tests: [SecurityIntegrationTest, WorkspaceIsolationIntegrationTest]
+    production_evidence: "Real /auth/login + real 401/403 verified live (docs/interview-scenarios/01)"
+    interview_topics: ["JWT vs session auth", "scope-based authorization", "cross-tenant isolation enforcement"]
+
+  - name: "BCrypt password hashing"
+    category: SPRING_SECURITY
+    business_why: "Demo credentials still must never be stored/compared in plaintext."
+    implementation_status: PRODUCTION_ACTIVE
+    source_files:
+      - path: app/src/main/java/com/example/customer/security/DemoIdentitySeeder.java
+        class: DemoIdentitySeeder
+      - path: app/src/main/java/com/example/customer/security/DemoLoginController.java
+        class: DemoLoginController
+
+  # ---------------- JPA / HIBERNATE / POSTGRES ----------------
+  - name: "Flush-order transaction bug (INSERT-before-UPDATE)"
+    category: JPA_HIBERNATE
+    business_why: "A superseding plan enrollment must never leave two ACTIVE rows, even for one instant."
+    implementation_status: PRODUCTION_ACTIVE
+    source_files:
+      - path: app/src/main/java/com/example/customer/service/ContractPlanService.java
+        class: ContractPlanService
+        methods: ["enroll"]
+    related_tests: [ContractPlanServiceTest::enroll_whenActivePlanAlreadyExists_flushesTheCancellationBeforeInsertingTheNewPlan, PostgresFlywayIntegrationTest]
+    related_incidents: ["Hibernate default flush order bug -- invisible on H2, real on Postgres"]
+    interview_topics: ["Hibernate flush order", "saveAndFlush vs save", "why H2 hid this bug"]
+
+  - name: "Partial unique index as last line of defense"
+    category: POSTGRES
+    business_why: "Application-level idempotency logic can have gaps; the database constraint is the real guarantee."
+    implementation_status: PRODUCTION_ACTIVE
+    source_files:
+      - path: app/src/main/resources/db/migration
+        class: "uq_contract_plan_one_active_per_customer (Flyway migration)"
+    interview_topics: ["partial index WHERE clause", "constraint vs application logic layering"]
+
+  - name: "JPQL LOWER/CONCAT bind-parameter type-inference bug"
+    category: POSTGRES
+    business_why: "Case-insensitive admin search must work identically on the real production database, not just H2."
+    implementation_status: PRODUCTION_ACTIVE
+    source_files:
+      - path: app/src/main/java/com/example/customer/repository/CustomerRepository.java
+        class: CustomerRepository
+      - path: app/src/main/java/com/example/customer/controller/AdminCustomerController.java
+        class: AdminCustomerController
+        methods: ["likePattern"]
+    related_incidents: ["AEQ-012, real production 500: function lower(bytea) does not exist"]
+    production_evidence: "docs/interview-scenarios/02-postgres-search-pagination.md"
+    interview_topics: ["pgjdbc type inference", "why a green H2 suite isn't proof", "LIKE pattern building in Java vs JPQL"]
+
+  - name: "Server-side pagination + workspace-scoped search"
+    category: POSTGRES
+    business_why: "Never download the full customer table to filter client-side."
+    implementation_status: PRODUCTION_ACTIVE
+    source_files:
+      - path: app/src/main/java/com/example/customer/repository/CustomerRepository.java
+      - path: app/src/main/java/com/example/customer/controller/AdminCustomerController.java
+    related_tests: [AdminCustomerControllerIntegrationTest]
+    interview_topics: ["Pageable/Page", "correlated subquery vs JOIN for scoping"]
+
+  # ---------------- CACHING / REDIS ----------------
+  - name: "Cache-aside with fail-open fallback"
+    category: REDIS
+    business_why: "Active-plan reads happen on every page load; an optional cache must never become a hard dependency."
+    implementation_status: "INTEGRATION_TESTED (Testcontainers) -- NOT PRODUCTION PROVISIONED"
+    source_files:
+      - path: app/src/main/java/com/example/customer/cache/ContractPlanCacheService.java
+        class: ContractPlanCacheService
+        methods: ["getActivePlan", "evict", "tryGet", "tryPut"]
+      - path: app/src/main/java/com/example/customer/cache/RedisCacheConfig.java
+    related_tests: [ContractPlanCacheIntegrationTest]
+    production_evidence: "Real production behavior: cache_requests_total meter shows hit=0/miss=1/redis-unavailable=1 -- honest reflection of Redis genuinely not being provisioned"
+    interview_topics: ["cache-aside vs write-through", "TTL choice (60s)", "why programmatic over @Cacheable here", "designing for the cache being down"]
+
+  # ---------------- KAFKA / EVENT-DRIVEN ----------------
+  - name: "Transactional outbox pattern"
+    category: KAFKA
+    business_why: "A preference update and its downstream event must commit atomically -- no dual-write race."
+    implementation_status: "INTEGRATION_TESTED (real CI Testcontainers) -- NOT PRODUCTION PROVISIONED (app.kafka.enabled=false)"
+    source_files:
+      - path: app/src/main/java/com/example/customer/outbox/OutboxPublisher.java
+        class: OutboxPublisher
+        methods: ["publishPendingEvents", "publishOne"]
+      - path: app/src/main/java/com/example/customer/outbox/OutboxEvent.java
+      - path: app/src/main/java/com/example/customer/messaging/CustomerPreferenceEventConsumer.java
+        class: CustomerPreferenceEventConsumer
+        methods: ["onMessage"]
+      - path: app/src/main/java/com/example/customer/outbox/ProcessedEvent.java
+    request_flow: "CustomerPreferenceService write (1 tx: preference row + outbox row) -> OutboxPublisher poll (2s) -> Kafka -> CustomerPreferenceEventConsumer (idempotent via processed_event) -> DLT on repeated failure"
+    related_tests: [CustomerPreferenceEventFlowIntegrationTest]
+    related_incidents: ["Spring Boot 4 split spring-boot-kafka from spring-kafka", "log-flood incident: always-on @KafkaListener with no broker -- fixed via app.kafka.enabled gate"]
+    interview_topics: ["dual-write problem", "at-least-once vs exactly-once", "idempotent consumer design", "why gate the WHOLE subsystem, not just retry politely"]
+    docs: docs/interview-scenarios/05-kafka-transactional-outbox.md
+
+  # ---------------- RESILIENCE / HTTP INTEGRATION ----------------
+  - name: "Resilience4j circuit breaker + retry (programmatic composition)"
+    category: RESILIENCE
+    business_why: "A slow/down downstream appointment provider must not cascade into this service's own availability."
+    implementation_status: PRODUCTION_ACTIVE
+    source_files:
+      - path: app/src/main/java/com/example/customer/integration/appointment/AppointmentAvailabilityService.java
+        class: AppointmentAvailabilityService
+      - path: app/src/main/java/com/example/customer/integration/appointment/AppointmentAvailabilityConfig.java
+        class: AppointmentAvailabilityConfig
+      - path: app/src/main/java/com/example/customer/integration/appointment/demo/DemoAppointmentProviderController.java
+        class: DemoAppointmentProviderController
+    related_tests: [AppointmentAvailabilityIntegrationTest (7 real WireMock cases)]
+    interview_topics: ["circuit breaker states", "retry predicate (why 4xx never retried)", "timeout config", "why CORE module not the annotation starter (Spring Boot 4 BOM gap)"]
+
+  # ---------------- OBSERVABILITY ----------------
+  - name: "Structured logging + Micrometer + tracing"
+    category: OBSERVABILITY
+    business_why: "Production debugging needs correlated, machine-parseable logs and real request metrics, not print statements."
+    implementation_status: PRODUCTION_ACTIVE
+    source_files:
+      - path: app/src/main/resources/application.properties
+        class: "logging.structured.format.console=ecs"
+    related_tests: [ObservabilityIntegrationTest]
+    related_incidents: ["P0: idle-in-transaction DB connection froze every route -- root-caused via pg_stat_activity, fixed with run_in_threadpool + statement_timeout"]
+    interview_topics: ["ECS structured logging", "trace/span IDs via Brave", "security.rejections custom Micrometer counter", "diagnosing a full-service hang from evidence, not guesses"]
+
+  # ---------------- TESTING ----------------
+  - name: "Test Impact Analysis + risk/blast-radius classification"
+    category: TESTING
+    business_why: "An AI-assisted delivery pipeline must not run the entire test universe for every small change, but must never under-test a risky one."
+    implementation_status: DEMO_AVAILABLE
+    source_files:
+      - path: agent/change_risk.py
+      - path: agent/test_impact_analysis.py
+      - path: agent/verify_change.py
+    docs: docs/TESTING_ARCHITECTURE_V1.md
+    interview_topics: ["risk/blast-radius taxonomy", "fail-closed unknown-path handling", "selective regression vs full suite"]
+
+  - name: "Real (not mocked) database/broker tests via Testcontainers + WireMock"
+    category: TESTING
+    business_why: "A green H2-only suite has repeatedly hidden real production defects (AEQ-011, AEQ-012) -- only real infra tests catch this class of bug."
+    implementation_status: PRODUCTION_ACTIVE
+    source_files:
+      - path: app/src/test/java/com/example/customer/integration/PostgresFlywayIntegrationTest.java
+      - path: app/src/test/java/com/example/customer/messaging/CustomerPreferenceEventFlowIntegrationTest.java
+      - path: app/src/test/java/com/example/customer/integration/appointment/AppointmentAvailabilityIntegrationTest.java
+    interview_topics: ["why mocks alone under-test infra-dependent bugs", "disabledWithoutDocker pattern for a Docker-less dev machine + real CI"]
+
+  # ---------------- AI DELIVERY ----------------
+  - name: "Environment/toolchain preflight (fail-closed, not a code-defect false-positive)"
+    category: AI_DELIVERY
+    business_why: "A real JDK-version mismatch must never be reported as a test/code failure -- it's a categorically different, more actionable failure class."
+    implementation_status: PRODUCTION_ACTIVE
+    source_files:
+      - path: agent/environment_preflight.py
+        class: "check_java_toolchain, required_java_major_version"
+      - path: agent/build_tools.py
+        class: "run_maven (calls preflight before any subprocess)"
+      - path: agent/triage_execution.py
+        class: "verify_fix (same preflight)"
+    related_incidents: ["AEQ-021: platform-backend Docker image had JDK 17 while pom.xml required 21 -- silently broke every real compile/test from that container"]
+    interview_topics: ["detected >= expected, never equality (a newer JDK cross-compiles fine)", "ENVIRONMENT_INVALID as its own status distinct from FAILED"]
+
+  - name: "AI-generated candidate patch, verified in an isolated workspace"
+    category: AI_DELIVERY
+    business_why: "Diagnosing a defect and actually writing a correct fix are different capabilities -- both must be demonstrated, and neither should be trusted without independent verification."
+    implementation_status: DEMO_AVAILABLE
+    source_files:
+      - path: agent/triage_execution.py
+        class: "generate_candidate_patch, apply_and_verify_candidate"
+    request_flow: "real evidence + real defective file -> Claude call (not told the answer) -> candidate file content -> isolated temp copy of app/ -> difflib diff -> real mvnw compile -> result shown, never auto-promoted to master"
+    related_tests: [test_triage_execution.py::GenerateCandidatePatchTestCase, ApplyAndVerifyCandidateTestCase]
+    interview_topics: ["why ask for full file content, not a raw unified diff (line-number fragility)", "why isolate via temp copy instead of git worktree (AEQ-020 container git-history gap)", "the deliberate boundary: verify, never auto-promote"]
+
+  - name: "Independent QA evaluator (builder cannot certify its own work)"
+    category: AI_DELIVERY
+    business_why: "An AI that both writes and grades its own change has an obvious conflict of interest."
+    implementation_status: DEMO_AVAILABLE
+    source_files:
+      - path: .claude/agents/qa-evaluator.md
+    docs: docs/ARCHITECTURE_V2_EVALUATION_PLAN.md
+    interview_topics: ["Shadow Trial #2: a seeded defect caught with byte-exact evidence", "evaluator usefulness measurement, not assumed"]
