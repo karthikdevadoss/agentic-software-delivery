@@ -893,3 +893,50 @@ periodically, not just internal health/consistency (see docs/LESSONS.md).
 
 See `docs/PROJECT_STATE.json`'s `next_phase`/`next_action` for the
 current, corrected state summary and next priority.
+
+
+# Current Reality (2026-09-15, continued): UI course-correction + live Incident Triage Lab
+
+**The Owner personally inspected the live Customer App, Dashboard, and
+Workbench and confirmed this session's earlier conclusion ("UI already
+close to target aesthetic") was wrong.** This phase shipped a real, live
+UI overhaul plus the first genuinely interactive Incident Triage Lab
+scenario -- not documentation.
+
+**Customer App**: full visual redesign -- developer-facing tech
+badges/copy removed from the customer-facing view, emoji replaced with
+one inline SVG brand mark, a real account-header hero, Current Plan made
+visually dominant, the specific confusing "No active plan yet" +
+populated-form contradiction fixed with progressive disclosure. A real
+horizontal-overflow CSS bug found via the mandatory post-deploy browser
+check was also fixed.
+
+**Dashboard**: a real Executive Summary (4 stat tiles from data already
+returned, nothing fabricated), a new AI Strategy section, and the
+previously-flagged giant Version/Next-phase text walls moved into a
+collapsed "raw project state" block -- all 15 data panels regrouped into
+5 scannable zones, nothing removed.
+
+**Incident Triage Lab Scenario A is now real and live at `/triage`** --
+a genuinely isolated live reproduction of the real historical
+plan-enrollment idempotency defect, a real on-demand Claude diagnosis
+call over real evidence, the real historical fix diff, a real focused
+Maven verification run, and a real ADMIN-JWT-gated approval action.
+Browser-verified end-to-end against live production including the full
+reproduce -> diagnose -> patch -> verify -> approve -> rerun-fixed
+lifecycle.
+
+**Three real bugs found and fixed via this session's own live testing**
+(see `docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml` AEQ-019/020/021): the
+Triage verdict's own logic falsely stayed "defect reproduced" forever
+after a genuine fix; the deployed container's git history doesn't
+include past commits (same root cause as an earlier Workbench incident,
+recurring in a new code path); and the platform-backend's Docker image
+had JDK 17 while `app/pom.xml` requires Java 21 -- this last bug had
+been silently breaking every real `mvnw compile/test` from inside that
+container, including Workbench's own build path, until this session's
+Triage verification step surfaced it.
+
+See `docs/PROJECT_STATE.json`'s `next_phase`/`next_action` for the full
+current-state summary and next priority (Usage page restructuring, then
+Triage Lab Scenarios B/C).

@@ -272,16 +272,16 @@
     {
       "id": "TRIAGE-LAB-LIVE-WIRING",
       "source": "product",
-      "title": "READY, NOT STARTED: wire Incident Triage & Repair Lab Scenario A into a real interactive UI",
+      "title": "RESOLVED (2026-09-15): Incident Triage & Repair Lab Scenario A is live and browser-verified end-to-end at /triage",
       "priority": "high",
-      "status": "open",
-      "scope": "new: agent/triage_catalogue.py, agent/web/triage.{html,js,css}, agent/web_server.py routes (GET /triage, GET /api/triage/scenarios, POST /api/triage/{id}/reproduce|diagnose|propose-fix|verify|approve|rerun)",
-      "reason": "docs/TRIAGE_LAB_DESIGN.md + triage/scenarios.yaml (2026-09-15) designed the full architecture and a 3-scenario catalogue, each grounded in a real defect already in this repo's history -- but no public route or execution engine exists yet. Scenario A (plan-enrollment idempotency, commit 2155a8a) is recommended as the first build: smallest, fully self-contained, 100% of its real evidence (before/after plan-history query, real diff, real test) already exists. The design doc recommends a READ-ONLY evidence-replay approach for Scenario A/C (present the real historical incident's evidence, never re-introduce a fixed bug behind a flag) rather than live re-execution, to avoid adding standing risk to already-correct production code.",
-      "evidence": "docs/TRIAGE_LAB_DESIGN.md, triage/scenarios.yaml, docs/interview-scenarios/04-plan-enrollment-idempotency.md (Scenario A's real defect/fix), docs/interview-scenarios/02-postgres-search-pagination.md (Scenario C's real defect/fix), app/src/main/java/com/example/customer/integration/appointment/demo/DemoAppointmentProviderController.java (Scenario B's already-live safe-simulation infrastructure).",
+      "status": "verified",
+      "scope": "app/src/main/java/com/example/customer/triage/ (new isolated reproduction service+controller), agent/triage_execution.py, agent/web_server.py (/triage + 6 API routes), agent/web/triage.{html,js,css}",
+      "reason": "Superseded by an explicit Owner course-correction the same night: rather than the originally-recommended read-only evidence replay, the Owner asked for a genuinely LIVE, isolated reproduction of the real historical defect with a real admin-gated approval action -- built as such. TriageScenarioAService isolates the real pre-fix logic (enrollBuggy, a labeled historical snapshot never reachable by real customer traffic) and the real current fix (enrollFixed, delegates to the actual ContractPlanService) against a dedicated synthetic customer created fresh on each reset().",
+      "evidence": "TriageScenarioAIntegrationTest (5 tests, real Spring context + H2): buggy path genuinely reproduces 2+ plan rows, admin-gated approve rejects anonymous (401) and non-admin (403), fixed path is genuinely idempotent, and a rerun-without-reset after approval correctly shows fixed (the exact sequence that caught AEQ-019). Real browser walkthrough (Claude-in-Chrome) against live production: reset -> reproduce (DEFECT REPRODUCED, 2 rows) -> real Claude API diagnosis (correct HIGH-confidence root cause, not told the answer) -> real diff shown (commit 2155a8a, with an honest fallback-source label after AEQ-020) -> real Maven verification (11.1s, real tests passing after the AEQ-021 JDK fix) -> real admin login+approve (200) -> rerun (0 new rows, fixed) -- the complete lifecycle, live.",
       "safe_to_auto_execute": false,
-      "verification_required": "A real interactive walkthrough (Reproduce -> Investigate -> AI Diagnosis -> Proposed Fix -> Verification -> HUMAN APPROVAL REQUIRED gate visually distinct per docs/UI_UX_DESIGN_SYSTEM.md) exists at a real route, browser-verified, with the human-approval gate proven non-bypassable by a public/unauthenticated visitor.",
+      "verification_required": "DONE: see evidence above. Found and fixed 3 real bugs along the way during this exact verification (AEQ-019/020/021), each documented in docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml.",
       "created_at_commit": "2c91164",
-      "resolved_at_commit": null
+      "resolved_at_commit": "00a6ce3"
     }
   ]
 }
