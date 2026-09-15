@@ -14,6 +14,67 @@ function section(title, innerHtml) {
   return `<section class="panel"><h2>${esc(title)}</h2>${innerHtml}</section>`;
 }
 
+function fmtUsd(n) {
+  if (n === null || n === undefined) return "—";
+  return "$" + n.toFixed(n < 0.01 ? 4 : 2);
+}
+
+// AI DELIVERY EFFICIENCY (Priority 1, flagship-completion redesign): this
+// page used to open directly on a plain session log with no headline
+// efficiency framing anywhere on it. This leads the page instead with the
+// real ratios a recruiter/engineer actually wants first (cost and tokens
+// PER VERIFIED CHANGE, not just raw totals) — computed entirely from
+// agent/event_ledger.py::get_usage_economics(), the SAME canonical
+// ledger-backed source Dashboard's Economics/Consumption section already
+// reads (see agent/sessions_data.py's economics key) — never a second,
+// divergent computation. The detailed per-window consumption breakdown
+// stays on Dashboard; this section's job is the efficiency headline plus
+// a compact recent-window strip, then the full session-level drill-down
+// below (unchanged) shows exactly how each number was produced.
+function renderEfficiencySummary(d) {
+  const e = d.economics;
+  if (!e || e.status !== "REACHABLE") {
+    return section("AI Delivery Efficiency", `<div class="econ-note">Event ledger ${e ? esc(e.status) : "UNAVAILABLE"} — real efficiency ratios require the remote event ledger; see the Event Ledger section below for detail.</div>`);
+  }
+  const lifetime = e.lifetime;
+  const verified = lifetime.runs_completed_verified;
+  const tokensPerVerified = verified > 0 ? Math.round((lifetime.input_tokens + lifetime.output_tokens) / verified) : null;
+  const tiles = [
+    ["Cost per verified change", e.cost_per_verified_change_usd != null ? fmtUsd(e.cost_per_verified_change_usd) : "INSUFFICIENT DATA", e.cost_per_verified_change_note],
+    ["Verified changes (lifetime)", String(verified), `of ${lifetime.runs_total} total delivery run(s)`],
+    ["Tokens per verified change", tokensPerVerified != null ? tokensPerVerified.toLocaleString() : "INSUFFICIENT DATA", "lifetime input+output tokens / verified changes"],
+    ["Lifetime AI spend", fmtUsd(lifetime.cost_usd), lifetime.cost_known_for_all_captured_runs ? "known for every captured run" : "partial — some runs' cost unknown"],
+  ];
+  const tilesHtml = `<div class="exec-grid">` + tiles.map(([label, value, note]) =>
+    `<div class="exec-stat"><div class="exec-value">${esc(value)}</div><div class="exec-label">${esc(label)}</div><div class="exec-note">${esc(note)}</div></div>`
+  ).join("") + `</div>`;
+
+  const windowCard = (label, w) => {
+    if (!w || w.runs_total === 0) {
+      return `<div class="econ-card"><div class="econ-label">${esc(label)}</div><div class="econ-value">no runs in this window</div></div>`;
+    }
+    return `<div class="econ-card">
+      <div class="econ-label">${esc(label)}</div>
+      <div class="econ-value">${fmtUsd(w.cost_usd)}${w.cost_known_for_all_captured_runs ? "" : " (partial)"}</div>
+      <div class="kv-row"><span>${w.runs_total} run(s)</span><span>${w.runs_completed_verified} verified</span></div>
+    </div>`;
+  };
+  const windowsHtml = `<div class="econ-grid">
+    ${windowCard("Last run", e.last_run)}
+    ${windowCard(`Today (${e.display_timezone})`, e.today)}
+    ${windowCard(`This week (${e.display_timezone})`, e.this_week)}
+    ${windowCard("Lifetime", lifetime)}
+  </div>`;
+
+  return section("AI Delivery Efficiency", `
+    <p class="hint" style="margin-top:0;">Real, ledger-backed ratios — never estimated, never fabricated. A failed or no-change run's real cost is still counted (see ${esc(e.canonical_source)}).</p>
+    ${tilesHtml}
+    <p class="hint" style="margin-top:1.2rem;">Recent windows:</p>
+    ${windowsHtml}
+    <p class="hint" style="margin-top:0.9rem;">Full per-window consumption breakdown (this hour/last 24h/this month, tokens by category, pricing versions): see <a href="/dashboard">Dashboard</a>'s Economics / Consumption section.</p>
+  `);
+}
+
 function scoreClass(score) {
   if (score == null) return "none";
   if (score >= 80) return "high";
@@ -595,6 +656,7 @@ async function load() {
   }
 
   main.innerHTML = [
+    renderEfficiencySummary(data),
     renderEventLedger(data),
     renderDevSessionControls(),
     renderSessionHistoryPanel(),

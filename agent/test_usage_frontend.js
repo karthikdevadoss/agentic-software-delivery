@@ -213,6 +213,34 @@ const FIXTURE_DETAIL = {
   });
   assertIncludes(unavailableHtml, "UNAVAILABLE", "a field with genuinely no captured evidence is shown honestly as UNAVAILABLE, never fabricated");
 
+  // ---- AI Delivery Efficiency summary (Priority 1 redesign) --------
+  const ECONOMICS_FIXTURE = {
+    status: "REACHABLE",
+    canonical_source: "event ledger (delivery_events, event_type=run_usage_summary)",
+    display_timezone: "Europe/Berlin",
+    last_run: { runs_total: 1, runs_completed_verified: 1, cost_usd: 0.0012, cost_known_for_all_captured_runs: true },
+    today: { runs_total: 3, runs_completed_verified: 2, cost_usd: 0.05, cost_known_for_all_captured_runs: true },
+    this_week: { runs_total: 20, runs_completed_verified: 15, cost_usd: 1.2, cost_known_for_all_captured_runs: true },
+    lifetime: { runs_total: 200, runs_completed_verified: 150, input_tokens: 900000, output_tokens: 100000, cost_usd: 12.5, cost_known_for_all_captured_runs: true },
+    cost_per_verified_change_usd: 0.0833,
+    cost_per_verified_change_note: "lifetime COMPLETED runs with known cost only",
+  };
+  const efficiencyHtml = sandbox.renderEfficiencySummary({ economics: ECONOMICS_FIXTURE });
+  assertIncludes(efficiencyHtml, "AI Delivery Efficiency", "the efficiency section has the exact required heading");
+  assertIncludes(efficiencyHtml, "$0.08", "cost per verified change is shown as a real computed ratio, not a placeholder");
+  assertIncludes(efficiencyHtml, "6,667", "tokens per verified change is derived from real lifetime totals ((900000+100000)/150)");
+  assertIncludes(efficiencyHtml, "150", "lifetime verified change count is shown");
+  assertIncludes(efficiencyHtml, "/dashboard", "the section links to Dashboard for the full per-window breakdown instead of duplicating it");
+
+  const efficiencyUnreachableHtml = sandbox.renderEfficiencySummary({ economics: { status: "UNREACHABLE", error: "connection refused" } });
+  assertIncludes(efficiencyUnreachableHtml, "AI Delivery Efficiency", "an unreachable ledger still renders the section with its real heading");
+  assert(!efficiencyUnreachableHtml.includes("INSUFFICIENT DATA") || efficiencyUnreachableHtml.includes("UNREACHABLE"), "an unreachable ledger is labeled honestly, never silently shown as zero/empty tiles");
+
+  const efficiencyNoDataHtml = sandbox.renderEfficiencySummary({
+    economics: { ...ECONOMICS_FIXTURE, cost_per_verified_change_usd: null, cost_per_verified_change_note: "INSUFFICIENT DATA", lifetime: { ...ECONOMICS_FIXTURE.lifetime, runs_completed_verified: 0 } },
+  });
+  assertIncludes(efficiencyNoDataHtml, "INSUFFICIENT DATA", "a genuinely absent ratio is labeled INSUFFICIENT DATA, never fabricated as $0.00 or similar");
+
   console.log(`${passed} passed, ${failures} failed`);
   process.exit(failures ? 1 : 0);
 })();

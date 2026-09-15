@@ -435,4 +435,11 @@ def build_sessions_snapshot(include_test_data: bool = False) -> dict:
             "trainer_demo", "staging", "yogacrm_pilot", "customer_production",
         ],
         "event_ledger": _event_ledger_recent(include_test_data=include_test_data),
+        # Same canonical source Dashboard's Economics/Consumption section
+        # already reads (event_ledger.get_usage_economics()) -- reused, not
+        # reimplemented, so the two pages can never disagree about a real
+        # number. Usage leads with this as "AI Delivery Efficiency" (ratios:
+        # cost/tokens per verified change); Dashboard shows the full
+        # per-window consumption breakdown.
+        "economics": event_ledger.get_usage_economics(),
     }
