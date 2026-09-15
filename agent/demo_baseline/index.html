@@ -179,9 +179,10 @@
   }
   section.card h2 { margin: 0 0 var(--sp-4); font-size: 0.95rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.03em; font-weight: 700; }
 
-  .account-layout { display: flex; flex-direction: column; gap: var(--sp-4); }
-  .row-2 { display: grid; grid-template-columns: 2fr 1fr; gap: var(--sp-4); align-items: start; }
-  .row-even { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4); align-items: start; }
+  .account-layout { display: flex; flex-direction: column; gap: var(--sp-4); min-width: 0; }
+  .row-2 { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
+  .row-even { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
+  .row-2 > *, .row-even > * { min-width: 0; }
   @media (max-width: 720px) {
     .row-2, .row-even { grid-template-columns: 1fr; }
   }
@@ -193,7 +194,7 @@
     padding: var(--sp-6); margin-bottom: 0;
   }
   .account-hero .account-name { margin: 0; font-size: 1.5rem; color: var(--brand-dark); }
-  .account-hero .account-meta { margin: 0.3rem 0 0; color: var(--muted); font-size: 0.85rem; }
+  .account-hero .account-meta { margin: 0.3rem 0 0; color: var(--muted); font-size: 0.85rem; display: flex; flex-wrap: wrap; gap: 0 0.4em; word-break: break-word; }
   .account-hero .account-meta span + span:before { content: " \00b7 "; color: var(--border-strong); }
 
   /* ---- Plan (dominant surface) ---- */
