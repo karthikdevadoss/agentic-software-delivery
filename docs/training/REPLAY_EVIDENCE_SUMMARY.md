@@ -1,0 +1,91 @@
+# Update Email V3 Replay — Real Evidence Summary
+
+Base commit (immediate parent of `4440f6d`, the real commit that first
+implemented Update Email on the actual project history):
+`26bcff087793b75964c70f5f1618f6722ef93dd6`
+
+Branch: `trainer-replay/update-email-v3` (isolated worktree at
+`C:\Users\Hemapriya\trainer-replay-update-email`, never merged to master,
+never deployed).
+
+Mechanism: the real V4.1 direct-tool-calling agent
+(`agent/execution_agent.py`'s real `run_agent_loop` +
+`EXECUTION_TOOL_SCHEMAS`/`dispatch_execution_tool_call`, driven via
+`agent/replay_driver.py`, a new driver script using
+`execution_tools.set_approval_prompt()` — a real, pre-existing extension
+point documented in that module's own source as existing "for automated
+tests and for a future non-CLI trusted host," not invented for this
+replay).
+
+## Real runs performed (3 completed, 1 blocked by billing)
+
+**Run 1** (`run1_real_tool_trace.log`) — `MAX_TOOL_CALLS=8` (the real,
+unmodified historical default). Real result: all 8 calls consumed by
+read-only investigation (`list_repository_files`, 6×`read_file`,
+1×`search_code`), never reached a proposal. Tool budget exhausted before
+investigation completed.
+
+**Run 2** (`run2_real_tool_trace.log`) — `MAX_TOOL_CALLS` raised to 20 (a
+disclosed, transparent runtime adaptation — see `replay_driver.py`'s own
+comment; does not touch any approval/write-scope/security boundary).
+Real result: 20 real tool calls, still all read-only investigation, still
+budget-exhausted before proposing. Produced a real, substantive partial
+finding: **no workspace/tenant/ownership concept exists anywhere in this
+codebase** — every demo JWT carries the same global scope set with no
+customer-id/tenant claim, so the ticket's "a user must not update another
+workspace/customer" requirement cannot be satisfied by anything beyond a
+scope check with the code as it stands. This is a genuine investigation
+finding, not fabricated.
+
+**Run 3** (`run3_real_tool_trace.log`) — `MAX_TOOL_CALLS=32`. Real result:
+27 real tool calls (stopped itself before hitting the raised ceiling),
+producing a complete, real 6-part implementation plan (Existing
+components / Required changes / Recommended changes / Order of
+implementation / Tests / Risks), explicitly confirming the workspace-gap
+finding from Run 2 and adding real detail: a proposed
+`CustomerEmailUpdateRequest` DTO (mirroring the existing
+`CustomerPreferenceUpdateRequest` pattern), 6 concrete test cases to add,
+and a named `SecurityConfig` matcher-ordering risk. The agent's own last
+line: *"I have not made any code changes yet — this is the planning
+deliverable requested... Let me know if you'd like me to proceed with
+implementation."* **It never called `propose_source_change`.**
+
+**Honest evidence-preservation gap**: Run 3's full final plan text was
+written to a JSON evidence file that was deleted before Run 4 (to avoid a
+real, observed side effect — Run 2's evidence file, written inside the
+repo tree, was itself read back by Run 3's own `read_file` calls, a
+genuine methodological contamination risk fixed by moving evidence
+output outside the repo tree for Run 4). Only the tool-call trace and a
+partial view of the final text (captured in the coordinating session's
+own terminal output, not re-transcribed here to avoid embellishing what
+was actually preserved) survive for Run 3. This gap is disclosed, not
+hidden.
+
+**Run 4** — added one explicit instruction to the ticket ("after forming
+your plan, proceed directly to `propose_source_change`... rather than
+waiting for a separate confirmation") to close the real behavioral gap
+Runs 1-3 exposed (the base `SYSTEM_PROMPT`, shared from V2/V3, literally
+asks for "a numbered implementation plan" with no instruction to
+implement afterward — a real, disclosed prompt-design gap, not a
+scripted trick). **Failed before any tool use**: a direct minimal test
+call independently confirmed `anthropic.BadRequestError: Your credit
+balance is too low to access the Anthropic API` — a genuine, persistent
+billing block, not transient (re-tested once, same error).
+
+## What this means for the trainer exercise
+
+The real V3/V4.1 agent's requirement-interpretation and repository-
+investigation phases are fully, genuinely demonstrated (3 real runs, 55
+real tool calls total across them, real findings including the
+workspace-authorization gap). **The propose→approval boundary was never
+reached** — not because of a human-approval stop (the intended, designed
+boundary this exercise wanted to demonstrate), but because of a real
+Anthropic billing exhaustion discovered while trying to get the agent
+past its own planning-first default behavior.
+
+**No candidate hash, diff hash, or pending-approval artifact exists to
+approve** — there is nothing to approve yet. The next real step (once
+billing is restored) is: re-run `agent/replay_driver.py` from this exact
+worktree/branch, let it reach a real `propose_source_change` call, and
+THEN the Owner has a real candidate to review and approve or reject —
+not before.
