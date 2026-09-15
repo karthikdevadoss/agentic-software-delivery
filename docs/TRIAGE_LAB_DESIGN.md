@@ -1,12 +1,39 @@
 # Incident Triage & Repair Lab — Architecture and Status
 
-**Status: DESIGNED, NOT YET LIVE-WIRED.** This document and
-`triage/scenarios.yaml` are a real, complete design — grounded in three
-genuine engineering defects already in this repo's history, not
-hypothetical ones — but no public route, execution engine, or
-interactive UI exists yet. This is recorded honestly, following this
-project's own established pattern (see `docs/TESTING_ARCHITECTURE_V1.md`'s
-"designed-only" sections) rather than claiming a partial build is done.
+**STATUS UPDATE (2026-09-15): Scenario A is LIVE at `/triage`, not just
+designed.** Everything below describing Scenario A's original read-only
+"historical evidence replay" recommendation was superseded the same
+night by an explicit Owner course-correction asking for genuine live
+reproduction plus a real AI-generated candidate patch — both now exist:
+
+- Real, isolated live reproduction of the actual historical defect
+  (`app/src/main/java/com/example/customer/triage/TriageScenarioAService`).
+- Real on-demand Claude diagnosis over real evidence (`agent/triage_execution.py::diagnose`).
+- Real historical reference diff (relabeled "HISTORICAL REFERENCE PATCH",
+  never shown as a live proposal) via `get_patch_diff()`.
+- **Real AI-generated candidate patch** (`generate_candidate_patch()`): a
+  second Claude call, never told the historical answer, writes an actual
+  fix from the real defective file + real evidence.
+- **Real isolated verification** (`apply_and_verify_candidate()`): the
+  candidate is applied in a temp copy of `app/` (never the real repo) and
+  compiled for real via `mvnw compile` — browser-verified live: the model
+  produced a correct fix and it genuinely `COMPILE_VERIFIED`.
+- Real admin-JWT-gated human approval (401 anonymous, 403 non-admin, 200
+  real admin1/admin2 login) — the scenario's one HUMAN APPROVAL REQUIRED
+  action, flipping only the isolated scenario's own state.
+
+**Still genuinely not built** (deliberately parked, not a gap that was
+missed): promoting an APPROVED candidate patch to an actual git commit,
+push, and Customer App deployment — see `docs/ACTION_QUEUE.json`'s
+`TRIAGE-CANDIDATE-PROMOTION-PIPELINE`. Autonomously committing
+AI-generated code to the real repository and deploying it to real
+production with no human present to review the diff first is exactly
+the class of irreversible action this project reserves for genuine human
+approval, not a capability this session lacked time for.
+
+The original design content below (`triage/scenarios.yaml`'s 3-scenario
+catalogue, Scenarios B/C) remains accurate for what it describes — only
+Scenario A's own status line above is corrected.
 
 ## Why this exists (recap)
 
