@@ -27,6 +27,7 @@ import urllib.request
 
 import tools
 import environment_preflight
+import reasoning_gateway
 
 CUSTOMER_APP_BASE = "https://agentic-delivery-customer-app-production.up.railway.app"
 APP_DIR = tools.REPO_ROOT / "app"
@@ -225,7 +226,7 @@ def generate_candidate_patch(reproduction_result: dict, api_key: str | None = No
         f"Real database evidence after submitting the identical enrollment request twice:\n"
         f"{json.dumps(reproduction_result, indent=2)}\n\n"
         f"Current (defective) file content ({FIX_FILE}):\n{_BUGGY_FULL_FILE}",
-        4096, api_key, create_fn, effort="low",
+        4096, api_key, create_fn, effort="low", purpose="NOVEL_IMPLEMENTATION_PROPOSAL",
     )
     if unavailable is not None:
         return {"generated": False, "candidate_source": None,
@@ -247,14 +248,28 @@ def apply_and_verify_candidate(candidate_source: str) -> dict:
 
 
 def _call_model_text(system_prompt: str, user_message: str, max_tokens: int,
-                      api_key: str | None, create_fn, effort: str | None = None) -> tuple[str | None, dict | None]:
-    """Shared low-level Anthropic call + response-text extraction, reused
-    by both Scenario A and Scenario B's diagnose()/generate_candidate_patch()
-    functions -- the SAME engine, not a parallel implementation per
-    scenario. Returns (stripped_text, None) on success, or (None,
-    honest_unavailable_dict) when no API key is configured. Real usage is
-    recorded via metrics.record_model_usage() exactly as before this was
-    extracted, for every caller.
+                      api_key: str | None, create_fn, effort: str | None = None,
+                      purpose: str = "NOVEL_ROOT_CAUSE_HYPOTHESES") -> tuple[str | None, dict | None]:
+    """Shared low-level model call + response-text extraction, reused by
+    all three scenarios' diagnose()/generate_candidate_patch() functions
+    -- the SAME engine, not a parallel implementation per scenario.
+    Returns (stripped_text, None) on success, or (None,
+    honest_unavailable_dict) when denied/unavailable.
+
+    Base Architecture V3 Phase 3: delegates to reasoning_gateway.call()
+    (agent/reasoning_gateway.py) -- the one sanctioned boundary for a
+    single-shot advisory model call, purpose-gated and LLM_MODE=DISABLED-
+    aware. This function's own (text, unavailable) tuple contract is kept
+    unchanged so every existing caller below needs zero changes beyond
+    passing the correct `purpose` for what it's actually asking the model
+    to do.
+
+    purpose: must be a real reasoning_gateway.ADVISORY_PURPOSES value.
+    Callers here use NOVEL_ROOT_CAUSE_HYPOTHESES for diagnose() (the
+    model is asked to hypothesize why a real reproduced defect happened)
+    and NOVEL_IMPLEMENTATION_PROPOSAL for generate_candidate_patch() (the
+    model is asked to write an actual candidate fix) -- distinct
+    purposes for what are, underneath, genuinely distinct kinds of ask.
 
     effort (optional, e.g. "low"/"medium"): passed through as
     output_config.effort -- claude-sonnet-5 runs ADAPTIVE THINKING BY
@@ -265,58 +280,13 @@ def _call_model_text(system_prompt: str, user_message: str, max_tokens: int,
     blocks). For a mechanical code-generation task (not a hard reasoning
     problem), bounding effort is the correct lever, not an ever-larger
     max_tokens -- see callers that pass effort='low'."""
-    if create_fn is None:
-        api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
-        if not api_key:
-            return None, {"explanation": "ANTHROPIC_API_KEY not set -- cannot run a live model call"}
-        from anthropic import Anthropic
-        create_fn = Anthropic(api_key=api_key).messages.create
-
-    kwargs = {}
-    if effort is not None:
-        kwargs["output_config"] = {"effort": effort}
-    response = create_fn(
-        model="claude-sonnet-5", max_tokens=max_tokens,
-        system=system_prompt,
-        messages=[{"role": "user", "content": user_message}],
-        **kwargs,
+    result = reasoning_gateway.call(
+        purpose=purpose, system_prompt=system_prompt, user_message=user_message,
+        max_tokens=max_tokens, api_key=api_key, create_fn=create_fn, effort=effort,
     )
-    usage = getattr(response, "usage", None)
-    if usage is not None:
-        import metrics
-        metrics.record_model_usage(
-            provider="anthropic", model="claude-sonnet-5",
-            input_tokens=usage.input_tokens, output_tokens=usage.output_tokens,
-            cache_creation_input_tokens=getattr(usage, "cache_creation_input_tokens", None),
-            cache_read_input_tokens=getattr(usage, "cache_read_input_tokens", None),
-        )
-    text = "".join(b.text for b in response.content if getattr(b, "type", None) == "text")
-    stripped = text.strip()
-    if stripped.startswith("```"):
-        stripped = stripped.split("\n", 1)[1] if "\n" in stripped else stripped
-        if stripped.endswith("```"):
-            stripped = stripped[:-3]
-    stripped = stripped.strip()
-    if not stripped:
-        # REAL BUG FOUND (2026-09-15, live production testing of Triage
-        # Scenario C): extended thinking can consume the ENTIRE max_tokens
-        # budget before the model emits any real text block --
-        # response.content then contains only a ThinkingBlock,
-        # stop_reason="max_tokens", and zero "text" blocks. Silently
-        # returning an empty string let a downstream caller write a
-        # blank file and report a confusing, unrelated "COMPILE_FAILED"
-        # (missing class) instead of the real, honest reason -- fixed by
-        # detecting this here, once, for every caller of this shared
-        # helper, rather than patching it per call site.
-        stop_reason = getattr(response, "stop_reason", None)
-        return None, {
-            "explanation": (
-                f"model produced no real text content (stop_reason={stop_reason!r}) -- "
-                f"likely extended thinking consumed the entire max_tokens budget before "
-                f"any answer text; retry with a larger max_tokens"
-            ),
-        }
-    return stripped, None
+    if result["text"] is None:
+        return None, {"explanation": result["denial_reason"]}
+    return result["text"], None
 
 
 def _isolated_compile_java_candidate(
@@ -440,7 +410,10 @@ def diagnose(reproduction_result: dict, api_key: str | None = None, create_fn=No
         f"request twice):\n{json.dumps(reproduction_result, indent=2)}\n\n"
         f"Defective method source:\n{DEFECTIVE_SOURCE_EXCERPT}"
     )
-    text, unavailable = _call_model_text(DIAGNOSIS_SYSTEM_PROMPT, evidence, 512, api_key, create_fn)
+    text, unavailable = _call_model_text(
+        DIAGNOSIS_SYSTEM_PROMPT, evidence, 512, api_key, create_fn,
+        purpose="NOVEL_ROOT_CAUSE_HYPOTHESES",
+    )
     if unavailable is not None:
         return {
             "hypothesis": None, "root_cause": None, "affected_component": None,
@@ -842,7 +815,10 @@ def diagnose_b(reproduction_result: dict, api_key: str | None = None, create_fn=
         f"{json.dumps(reproduction_result, indent=2)}\n\n"
         f"Current retry predicate source:\n{DEFECTIVE_SOURCE_EXCERPT_B}"
     )
-    text, unavailable = _call_model_text(DIAGNOSIS_SYSTEM_PROMPT_B, evidence, 512, api_key, create_fn)
+    text, unavailable = _call_model_text(
+        DIAGNOSIS_SYSTEM_PROMPT_B, evidence, 512, api_key, create_fn,
+        purpose="NOVEL_ROOT_CAUSE_HYPOTHESES",
+    )
     if unavailable is not None:
         return {
             "hypothesis": None, "root_cause": None, "affected_component": None,
@@ -885,7 +861,7 @@ def generate_candidate_patch_b(reproduction_result: dict, api_key: str | None = 
         f"{json.dumps(reproduction_result, indent=2)}\n\n"
         f"Reference (a DIFFERENT, already-correct retry instance in this codebase):\n{REFERENCE_SOURCE_EXCERPT_B}\n\n"
         f"Current (defective) file content ({FIX_FILE_B}):\n{_BUGGY_FULL_FILE_B}",
-        4096, api_key, create_fn, effort="low",
+        4096, api_key, create_fn, effort="low", purpose="NOVEL_IMPLEMENTATION_PROPOSAL",
     )
     if unavailable is not None:
         return {"generated": False, "candidate_source": None,
@@ -1142,7 +1118,10 @@ def diagnose_c(reproduction_result: dict, api_key: str | None = None, create_fn=
         f"{json.dumps(reproduction_result, indent=2)}\n\n"
         f"Current query source:\n{DEFECTIVE_SOURCE_EXCERPT_C}"
     )
-    text, unavailable = _call_model_text(DIAGNOSIS_SYSTEM_PROMPT_C, evidence, 512, api_key, create_fn)
+    text, unavailable = _call_model_text(
+        DIAGNOSIS_SYSTEM_PROMPT_C, evidence, 512, api_key, create_fn,
+        purpose="NOVEL_ROOT_CAUSE_HYPOTHESES",
+    )
     if unavailable is not None:
         return {
             "hypothesis": None, "root_cause": None, "affected_component": None,
@@ -1182,7 +1161,7 @@ def generate_candidate_patch_c(reproduction_result: dict, api_key: str | None = 
         f"{json.dumps(reproduction_result, indent=2)}\n\n"
         f"Reference (a DIFFERENT, already-correct query in this codebase):\n{REFERENCE_SOURCE_EXCERPT_C}\n\n"
         f"Current (defective) file content ({FIX_FILE_C}):\n{_BUGGY_FULL_FILE_C}",
-        4096, api_key, create_fn, effort="low",
+        4096, api_key, create_fn, effort="low", purpose="NOVEL_IMPLEMENTATION_PROPOSAL",
     )
     if unavailable is not None:
         return {"generated": False, "candidate_source": None,
