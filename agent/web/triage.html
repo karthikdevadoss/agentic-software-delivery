@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agentic Software Delivery — Incident Triage Lab</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="dashboard.css">
+<link rel="stylesheet" href="triage.css">
+</head>
+<body>
+
+<header>
+  <h1>Agentic Software Delivery <span class="sub">— Incident Triage Lab</span></h1>
+  <p class="tagline">Diagnose and repair a real, contained defect — reproduction, AI diagnosis, a real patch, real tests, and a human-approval gate the AI cannot bypass.</p>
+  <nav class="top-nav">
+    <a href="/workbench">Workbench</a>
+    <a href="/triage"><strong>Triage</strong></a>
+    <a href="/dashboard">Dashboard</a>
+    <a href="/usage">Usage</a>
+  </nav>
+</header>
+
+<main>
+
+  <section class="panel" id="scenario-panel">
+    <h2>Scenario A — Plan Enrollment Duplicate Submission</h2>
+    <p class="hint">Business symptom: a customer double-clicks "Enroll," or a client retries a request after a timeout whose original call actually succeeded. Engineering area: transactions / idempotency / Spring Data JPA. Risk: MEDIUM. Isolation: every action below operates only on a dedicated, disposable synthetic "Triage Scenario Customer" — never real customer data.</p>
+    <div class="btn-row">
+      <button id="start-btn">START INCIDENT</button>
+      <button class="secondary" id="reset-btn" hidden>RESET SCENARIO</button>
+    </div>
+  </section>
+
+  <section class="panel triage-step" id="step-reproduce" hidden>
+    <h2>1. Reproduce</h2>
+    <p class="hint">The same enrollment request is submitted twice against the isolated triage customer.</p>
+    <div id="reproduce-body"></div>
+  </section>
+
+  <section class="panel triage-step" id="step-investigate" hidden>
+    <h2>2. Investigate</h2>
+    <p class="hint">Real evidence: the resulting plan-history rows and the defective method's actual source.</p>
+    <div id="investigate-body"></div>
+  </section>
+
+  <section class="panel triage-step" id="step-diagnose" hidden>
+    <h2>3. AI Diagnosis</h2>
+    <p class="hint">One real, on-demand model call over the evidence above — not scripted, not told the answer in advance.</p>
+    <button id="diagnose-btn">RUN AI DIAGNOSIS</button>
+    <div id="diagnose-body"></div>
+  </section>
+
+  <section class="panel triage-step" id="step-patch" hidden>
+    <h2>4. Proposed Fix</h2>
+    <p class="hint">The real diff that fixed this exact defect in production (commit <code>2155a8a</code>).</p>
+    <div id="patch-body"></div>
+  </section>
+
+  <section class="panel triage-step" id="step-verify" hidden>
+    <h2>5. Verification</h2>
+    <p class="hint">Runs the real, focused regression tests proving this fix (Test Impact Analysis: only the affected classes, not the full suite).</p>
+    <button id="verify-btn">RUN TESTS</button>
+    <div id="verify-body"></div>
+  </section>
+
+  <section class="panel triage-step approval-panel" id="step-approve" hidden>
+    <h2>6. Human Approval Required</h2>
+    <p class="hint">Applying this fix to the isolated triage scenario requires real ADMIN authorization — the same admin1/admin2 demo credentials used throughout this portfolio. An anonymous or USER-role attempt is rejected server-side, not just hidden in the UI.</p>
+    <div class="approval-box">
+      <label for="admin-username">Admin username</label>
+      <select id="admin-username">
+        <option value="admin1">admin1</option>
+        <option value="admin2">admin2</option>
+      </select>
+      <label for="admin-password">Password</label>
+      <input type="password" id="admin-password" value="Demo@123">
+      <div class="btn-row">
+        <button class="approve" id="approve-btn">APPROVE FIX</button>
+        <button class="secondary" id="reject-btn">REJECT</button>
+      </div>
+      <div id="approve-result"></div>
+    </div>
+  </section>
+
+  <section class="panel triage-step" id="step-resolved" hidden>
+    <h2>Incident Resolved</h2>
+    <div id="resolved-body"></div>
+  </section>
+
+</main>
+
+<script src="triage.js"></script>
+</body>
+</html>

@@ -57,6 +57,7 @@ import demo_catalogue
 import showcase_data
 import demo_execution
 import estimation
+import triage_execution
 import event_ledger
 import execution_tools
 import learn_pdf
@@ -1554,6 +1555,73 @@ async def get_showcase_data(request: Request):
     return JSONResponse(showcase)
 
 
+# --- Incident Triage & Repair Lab, Scenario A -------------------------------
+#
+# Every handler below is a thin, honest pass-through to agent/
+# triage_execution.py's real server-to-server calls into the Customer
+# App's real /internal/triage/scenario-a/* endpoints (see
+# app/src/main/java/com/example/customer/triage/) -- never a scripted or
+# fabricated response. run_in_threadpool for the same reason as every
+# other real-I/O handler in this file (see the RELIABILITY P0 note
+# above): none of these calls may ever block the event loop for other
+# requests.
+
+async def triage_page(request: Request):
+    return FileResponse(str(WEB_DIR / "triage.html"))
+
+
+async def triage_reset(request: Request):
+    try:
+        return JSONResponse(await run_in_threadpool(triage_execution.reset_scenario))
+    except triage_execution.TriageExecutionError as e:
+        return JSONResponse({"error": str(e)}, status_code=502)
+
+
+async def triage_reproduce(request: Request):
+    try:
+        return JSONResponse(await run_in_threadpool(triage_execution.reproduce_scenario))
+    except triage_execution.TriageExecutionError as e:
+        return JSONResponse({"error": str(e)}, status_code=502)
+
+
+async def triage_diagnose(request: Request):
+    body = await request.json()
+    reproduction_result = body.get("reproduction_result") or {}
+    result = await run_in_threadpool(triage_execution.diagnose, reproduction_result)
+    return JSONResponse(result)
+
+
+async def triage_patch(request: Request):
+    return JSONResponse(await run_in_threadpool(triage_execution.get_patch_diff))
+
+
+async def triage_verify(request: Request):
+    return JSONResponse(await run_in_threadpool(triage_execution.verify_fix))
+
+
+async def triage_approve(request: Request):
+    """The scenario's one HUMAN APPROVAL REQUIRED action. Requires real
+    ADMIN persona credentials (admin1/admin2 + the public demo password,
+    the same credentials the Customer App's own login already documents
+    publicly) -- verified server-to-server against the Customer App's
+    real /auth/login, never trusted from the request alone. An
+    anonymous/USER-role attempt is rejected with the real 401/403 the
+    Customer App itself returns, surfaced honestly rather than silently
+    downgraded to a generic error."""
+    body = await request.json()
+    username = (body.get("username") or "").strip()
+    password = body.get("password") or ""
+    if not username or not password:
+        return JSONResponse({"error": "admin username and password are required to approve"}, status_code=400)
+    try:
+        result = await run_in_threadpool(triage_execution.approve_scenario, username, password)
+        return JSONResponse(result)
+    except triage_execution.ApprovalAuthError as e:
+        return JSONResponse({"error": str(e)}, status_code=401)
+    except triage_execution.TriageExecutionError as e:
+        return JSONResponse({"error": str(e)}, status_code=502)
+
+
 async def get_session_history(request: Request):
     limit = int(request.query_params.get("limit", "20"))
     before = request.query_params.get("before")
@@ -1612,6 +1680,12 @@ routes = [
     Route("/api/sessions/history", get_session_history, methods=["GET"]),
     Route("/api/sessions/history/{session_id}", get_session_detail, methods=["GET"]),
     Route("/api/showcase/{slug}", get_showcase_data, methods=["GET"]),
+    Route("/api/triage/scenario-a/reset", triage_reset, methods=["POST"]),
+    Route("/api/triage/scenario-a/reproduce", triage_reproduce, methods=["POST"]),
+    Route("/api/triage/scenario-a/diagnose", triage_diagnose, methods=["POST"]),
+    Route("/api/triage/scenario-a/patch", triage_patch, methods=["GET"]),
+    Route("/api/triage/scenario-a/verify", triage_verify, methods=["POST"]),
+    Route("/api/triage/scenario-a/approve", triage_approve, methods=["POST"]),
     # Five public surfaces (see docs/COMPANY_VISION.md's public product
     # structure decision). "/" and "/workbench" both serve the same public
     # preview page — Workbench is the flagship/default landing surface.
@@ -1621,6 +1695,7 @@ routes = [
     Route("/usage", usage_page, methods=["GET"]),
     Route("/usage/session/{session_id}", usage_page, methods=["GET"]),
     Route("/showcase/{slug}", showcase_page, methods=["GET"]),
+    Route("/triage", triage_page, methods=["GET"]),
     Route("/learn", learn_page, methods=["GET"]),
     Route("/learn/{path:path}", learn_page, methods=["GET"]),
     # Retired public terminology — kept as redirects, not dead links.
