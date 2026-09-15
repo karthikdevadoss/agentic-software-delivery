@@ -199,7 +199,7 @@ class Layer3ChangeDiffTestCase(unittest.TestCase):
         """Changing one field must never touch the <script> block, other
         buttons, or unrelated sections."""
         new_content = dc.apply_operation(BASELINE, "subtitle_text", "Totally Different Subtitle")
-        for unrelated_marker in ("function authFetch", "OPEN WORKBENCH", "appt-check-btn",
+        for unrelated_marker in ("function authFetch", "eng-menu", "appt-check-btn",
                                   '<footer class="app-footer">Powered by Agentic Delivery</footer>'):
             self.assertIn(unrelated_marker, new_content, f"{unrelated_marker!r} should be unchanged but is missing/altered")
 

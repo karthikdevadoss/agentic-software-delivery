@@ -6,230 +6,253 @@
 <title>Energy Customer Platform</title>
 <style>
   :root {
-    --blue: #0b5fff;
-    --blue-light: #e8f0ff;
-    --blue-border: #b6d0ff;
+    /* ---- Design tokens (docs/UI_UX_DESIGN_SYSTEM.md) ---- */
+    --brand: #1c4b6b;
+    --brand-dark: #123449;
+    --brand-tint: #eaf1f5;
+    --brand-border: #c3d6e0;
+    --accent: #b5762a;
+    --accent-tint: #f7ecdf;
     --green: #1e7a34;
     --green-bg: #e6f4ea;
     --green-border: #b7dfc0;
-    --red: #611a15;
+    --red: #a02622;
     --red-bg: #fdecea;
     --red-border: #f5c6c2;
     --amber: #8a6d3b;
     --amber-bg: #fcf3e3;
     --amber-border: #f0dca0;
-    --ink: #1a1a1a;
-    --muted: #666;
-    --border: #ddd;
+    --ink: #16202a;
+    --ink-soft: #3d4a58;
+    --muted: #667284;
+    --border: #e2e6ea;
+    --border-strong: #ccd3da;
+    --surface: #ffffff;
+    --bg: #f4f6f8;
+    --radius: 6px;
+    --sp-1: 0.25rem;
+    --sp-2: 0.5rem;
+    --sp-3: 0.75rem;
+    --sp-4: 1rem;
+    --sp-6: 1.5rem;
+    --sp-8: 2rem;
   }
   * { box-sizing: border-box; }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
   body {
-    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-    max-width: 900px;
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    max-width: 960px;
     margin: 0 auto;
-    padding: 1.25rem 1rem 3rem;
+    padding: var(--sp-6) var(--sp-4) 3rem;
     color: var(--ink);
-    background: #fafafa;
-    line-height: 1.4;
+    background: var(--bg);
+    line-height: 1.5;
+    font-size: 15px;
   }
-  header.app-header {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    margin-bottom: 0.5rem;
-  }
-  h1 {
-    margin: 0;
-    font-size: 1.5rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-  .subtitle {
-    color: var(--muted);
-    margin: 0.15rem 0 1.25rem;
-    font-size: 0.9rem;
-  }
-  nav.app-nav {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    align-items: center;
-  }
-  nav.app-nav a {
-    font-size: 0.8rem;
-    font-weight: 600;
-    text-decoration: none;
-    color: var(--blue);
-    background: var(--blue-light);
-    border: 1px solid var(--blue-border);
-    border-radius: 999px;
-    padding: 0.35rem 0.85rem;
-    white-space: nowrap;
-  }
-  nav.app-nav a:hover { background: var(--blue-border); }
-  .identity-badge {
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: var(--muted);
-    background: #fff;
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    padding: 0.3rem 0.75rem;
-  }
-  .identity-badge .role-tag { color: var(--blue); text-transform: uppercase; letter-spacing: 0.02em; }
-  #logout-btn { font-size: 0.78rem; padding: 0.3rem 0.75rem; }
+  h1, h2, h3 { line-height: 1.25; font-weight: 600; }
+  a { color: var(--brand); }
+  :focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 
-  .tech-strip {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem;
-    align-items: center;
-    background: #fff;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 0.6rem 0.9rem;
-    margin-bottom: 1.5rem;
-    font-size: 0.75rem;
-    color: var(--muted);
+  /* ---- Shared brand mark ---- */
+  .brand-mark {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 2rem; height: 2rem; border-radius: 7px;
+    background: var(--brand); color: #fff; flex-shrink: 0;
   }
-  .tech-strip .live-dot {
-    width: 8px; height: 8px; border-radius: 50%;
-    background: var(--green); display: inline-block;
-    box-shadow: 0 0 0 3px var(--green-bg);
-  }
-  .tech-badge {
-    background: #f2f2f2;
-    border: 1px solid #e0e0e0;
-    border-radius: 4px;
-    padding: 0.15rem 0.5rem;
-    font-weight: 600;
-    color: #444;
-  }
+  .brand-mark.small { width: 1.6rem; height: 1.6rem; border-radius: 6px; }
+  .brand-mark svg { width: 60%; height: 60%; }
 
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 1rem;
+  /* ---- Login view ---- */
+  #login-view { max-width: 400px; margin: 4.5rem auto 0; }
+  .auth-shell {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: var(--sp-8) var(--sp-6);
   }
-  section.card {
-    background: #fff;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 1.1rem 1.25rem;
-    margin-bottom: 1rem;
-  }
-  section.card h2 {
-    margin: 0 0 0.75rem;
-    font-size: 1.02rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-  }
-  section.card h2 .section-icon { font-size: 1.05em; }
-  .field-row { display: flex; justify-content: space-between; gap: 0.75rem; padding: 0.3rem 0; font-size: 0.92rem; border-bottom: 1px dashed #eee; }
-  .field-row:last-child { border-bottom: none; }
-  .field-label { color: var(--muted); }
-  .field-value { font-weight: 600; text-align: right; word-break: break-word; }
+  .brand-row { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-6); }
+  .brand-row .brand-mark { width: 2.5rem; height: 2.5rem; border-radius: 8px; }
+  #app-heading { margin: 0; font-size: 1.3rem; color: var(--ink); }
+  .subtitle { color: var(--muted); margin: 0.2rem 0 0; font-size: 0.85rem; }
+  #login-view label { display: block; font-size: 0.78rem; font-weight: 600; margin: var(--sp-4) 0 var(--sp-1); color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.03em; }
+  #login-view label:first-of-type { margin-top: 0; }
+  .role-choice { display: flex; gap: var(--sp-6); margin: var(--sp-1) 0; }
+  .role-choice label { display: flex; align-items: center; gap: 0.4rem; margin: 0; font-size: 0.92rem; color: var(--ink); font-weight: 500; text-transform: none; letter-spacing: normal; }
+  .role-choice input[type="radio"] { width: auto; accent-color: var(--brand); }
+  .demo-note { font-size: 0.76rem; color: var(--muted); margin-top: var(--sp-2); }
+  #login-btn { width: 100%; margin-top: var(--sp-6); padding: 0.65rem; font-size: 0.95rem; }
 
-  label { display: block; font-size: 0.82rem; margin: 0.6rem 0 0.25rem; color: #333; }
   input, select {
     width: 100%;
-    padding: 0.45rem 0.55rem;
+    padding: 0.5rem 0.6rem;
     font-size: 0.92rem;
-    border: 1px solid #ccc;
-    border-radius: 4px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
     font-family: inherit;
+    background: #fff;
+    color: var(--ink);
   }
-  .btn-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.85rem; }
+  input:focus, select:focus { border-color: var(--brand); }
+
+  .btn-row { display: flex; gap: var(--sp-2); flex-wrap: wrap; margin-top: var(--sp-4); }
   button {
-    padding: 0.45rem 0.9rem;
+    padding: 0.5rem 1rem;
     font-size: 0.88rem;
     font-weight: 600;
     cursor: pointer;
-    border-radius: 5px;
-    border: 1px solid var(--blue);
-    background: var(--blue);
+    border-radius: var(--radius);
+    border: 1px solid var(--brand);
+    background: var(--brand);
     color: #fff;
   }
-  button.secondary { background: #fff; color: var(--blue); }
-  button.subtle { background: #fff; color: #555; border-color: #ccc; }
+  button.secondary { background: #fff; color: var(--brand); }
+  button.subtle { background: #fff; color: var(--ink-soft); border-color: var(--border-strong); }
   button:disabled { cursor: not-allowed; opacity: 0.55; }
-  button:hover:not(:disabled) { filter: brightness(0.95); }
+  button:hover:not(:disabled) { filter: brightness(0.94); }
 
-  .msg { margin-top: 0.65rem; padding: 0.55rem 0.7rem; border-radius: 4px; font-size: 0.85rem; white-space: pre-wrap; }
+  .msg { margin-top: var(--sp-3); padding: 0.55rem 0.7rem; border-radius: var(--radius); font-size: 0.85rem; white-space: pre-wrap; }
   .msg.success { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
   .msg.error { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
-  .msg.info { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
-  .msg.loading { background: #f0f0f0; color: #555; border: 1px solid #ddd; }
+  .msg.info { background: #f2f4f6; color: var(--ink-soft); border: 1px solid var(--border); }
+  .msg.loading { background: #f2f4f6; color: var(--muted); border: 1px solid var(--border); }
 
-  .status-pill { display: inline-block; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; border-radius: 999px; padding: 0.12rem 0.55rem; }
+  .status-pill { display: inline-block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; border-radius: 999px; padding: 0.15rem 0.6rem; }
   .status-pill.available, .status-pill.active { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
   .status-pill.unavailable, .status-pill.cancelled { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
   .status-pill.service_unavailable, .status-pill.pending { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
 
-  #activity-list { list-style: none; margin: 0; padding: 0; font-size: 0.82rem; max-height: 220px; overflow-y: auto; }
-  #activity-list li { padding: 0.3rem 0; border-bottom: 1px solid #f2f2f2; color: #444; }
-  #activity-list li .ts { color: #999; margin-right: 0.4rem; font-variant-numeric: tabular-nums; }
-  #activity-list li:last-child { border-bottom: none; }
-  .activity-note { font-size: 0.75rem; color: var(--muted); margin-top: 0.5rem; }
+  /* ---- Top bar (shared by USER + ADMIN) ---- */
+  .topbar {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: var(--sp-3); margin-bottom: var(--sp-6); padding-bottom: var(--sp-4);
+    border-bottom: 1px solid var(--border);
+  }
+  .topbar-brand { display: flex; align-items: center; gap: var(--sp-2); font-weight: 600; font-size: 1.02rem; color: var(--ink); }
+  .admin-tag {
+    font-size: 0.62rem; font-weight: 700; letter-spacing: 0.04em; color: var(--brand);
+    background: var(--brand-tint); border: 1px solid var(--brand-border); border-radius: 999px;
+    padding: 0.1rem 0.5rem; text-transform: uppercase; margin-left: var(--sp-1);
+  }
+  .topbar-actions { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+  .identity-chip {
+    font-size: 0.76rem; font-weight: 600; color: var(--ink-soft);
+    background: #fff; border: 1px solid var(--border); border-radius: 999px; padding: 0.3rem 0.75rem;
+  }
+  .identity-chip .role-tag { color: var(--brand); text-transform: uppercase; letter-spacing: 0.02em; font-size: 0.68rem; margin-left: 0.3em; }
 
+  /* Restrained "Engineering" utility menu -- deliberately secondary to
+     customer navigation, native <details> so it needs no extra JS. */
+  details.eng-menu { position: relative; }
+  details.eng-menu summary {
+    list-style: none; cursor: pointer; font-size: 0.76rem; font-weight: 600; color: var(--muted);
+    border: 1px solid var(--border); border-radius: 999px; padding: 0.3rem 0.75rem;
+    background: #fff; user-select: none;
+  }
+  details.eng-menu summary::-webkit-details-marker { display: none; }
+  details.eng-menu summary:after { content: " \25BE"; }
+  details.eng-menu[open] summary { border-color: var(--border-strong); }
+  .eng-menu-panel {
+    position: absolute; right: 0; top: calc(100% + 6px); z-index: 20;
+    background: #fff; border: 1px solid var(--border-strong); border-radius: var(--radius);
+    box-shadow: 0 6px 20px rgba(20, 30, 40, 0.12);
+    min-width: 170px; padding: var(--sp-2);
+  }
+  .eng-menu-panel a {
+    display: block; padding: 0.4rem 0.6rem; border-radius: 4px; font-size: 0.82rem;
+    text-decoration: none; color: var(--ink-soft); font-weight: 500;
+  }
+  .eng-menu-panel a:hover { background: var(--bg); color: var(--brand); }
+
+  /* ---- Banner ---- */
   .banner {
-    background: #fff8e1;
-    border: 1px solid #ffe082;
-    color: #6d5000;
-    border-radius: 6px;
-    padding: 0.7rem 1rem;
-    margin-bottom: 1.25rem;
-    font-size: 0.88rem;
-    display: none;
+    background: var(--accent-tint); border: 1px solid #e6cda3; color: #6d4a10;
+    border-radius: var(--radius); padding: 0.7rem 1rem; margin-bottom: var(--sp-6);
+    font-size: 0.88rem; display: none;
   }
   .banner.show { display: block; }
-  .banner button { margin-left: 0.5rem; padding: 0.3rem 0.7rem; font-size: 0.8rem; }
+  .banner button { margin-left: var(--sp-2); padding: 0.3rem 0.7rem; font-size: 0.8rem; }
 
-  footer.app-footer { margin-top: 2rem; text-align: center; font-size: 0.78rem; color: #999; }
-
-  /* ---- Login view ---- */
-  #login-view { max-width: 420px; margin: 3rem auto 0; }
-  #login-view .card { padding: 1.5rem 1.75rem; }
-  #login-view h1 { justify-content: center; margin-bottom: 0.25rem; }
-  #login-view .subtitle { text-align: center; }
-  .role-choice { display: flex; gap: 1.25rem; margin: 0.7rem 0 0.3rem; }
-  .role-choice label { display: flex; align-items: center; gap: 0.4rem; margin: 0; font-size: 0.92rem; color: var(--ink); font-weight: 600; }
-  .role-choice input[type="radio"] { width: auto; }
-  .demo-note { font-size: 0.76rem; color: var(--muted); margin-top: 0.4rem; }
-  #login-btn { width: 100%; margin-top: 1rem; padding: 0.6rem; font-size: 0.95rem; }
-
-  /* ---- Admin dashboard ---- */
-  .admin-header-tag {
-    font-size: 0.6rem;
-    font-weight: 700;
-    letter-spacing: 0.03em;
-    color: var(--blue);
-    background: var(--blue-light);
-    border: 1px solid var(--blue-border);
-    border-radius: 999px;
-    padding: 0.1rem 0.5rem;
-    vertical-align: middle;
+  /* ---- Section surfaces: NOT every block is an equal card ---- */
+  section.card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: var(--sp-4) var(--sp-6); margin-bottom: var(--sp-4);
   }
-  .admin-search-row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: flex-end; margin-bottom: 0.9rem; }
+  section.card h2 { margin: 0 0 var(--sp-4); font-size: 0.95rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.03em; font-weight: 700; }
+
+  .account-layout { display: flex; flex-direction: column; gap: var(--sp-4); }
+  .row-2 { display: grid; grid-template-columns: 2fr 1fr; gap: var(--sp-4); align-items: start; }
+  .row-even { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4); align-items: start; }
+  @media (max-width: 720px) {
+    .row-2, .row-even { grid-template-columns: 1fr; }
+  }
+
+  /* ---- Account header (hero) ---- */
+  .account-hero {
+    background: linear-gradient(180deg, var(--brand-tint), var(--surface) 70%);
+    border: 1px solid var(--brand-border); border-radius: 10px;
+    padding: var(--sp-6); margin-bottom: 0;
+  }
+  .account-hero .account-name { margin: 0; font-size: 1.5rem; color: var(--brand-dark); }
+  .account-hero .account-meta { margin: 0.3rem 0 0; color: var(--muted); font-size: 0.85rem; }
+  .account-hero .account-meta span + span:before { content: " \00b7 "; color: var(--border-strong); }
+
+  /* ---- Plan (dominant surface) ---- */
+  .plan-card { border-color: var(--brand-border); }
+  .plan-summary .plan-name-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); margin-bottom: var(--sp-4); }
+  .plan-summary .plan-name { font-size: 1.2rem; font-weight: 700; color: var(--ink); }
+  .plan-stats { display: flex; gap: var(--sp-8); flex-wrap: wrap; }
+  .plan-stat .stat-value { display: block; font-size: 1.5rem; font-weight: 700; color: var(--brand-dark); font-variant-numeric: tabular-nums; }
+  .plan-stat .stat-label { display: block; font-size: 0.74rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; margin-top: 0.1rem; }
+  .plan-empty { text-align: left; }
+  .plan-empty p { color: var(--muted); margin: 0 0 var(--sp-4); font-size: 0.9rem; }
+
+  .field-row { display: flex; justify-content: space-between; gap: var(--sp-3); padding: 0.4rem 0; font-size: 0.9rem; border-bottom: 1px dashed var(--border); }
+  .field-row:last-child { border-bottom: none; }
+  .field-label { color: var(--muted); }
+  .field-value { font-weight: 600; text-align: right; word-break: break-word; }
+
+  label { display: block; font-size: 0.78rem; font-weight: 600; margin: var(--sp-3) 0 0.25rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.02em; }
+  label:first-of-type { margin-top: 0; }
+
+  /* ---- Demo controls: visually distinct from real customer fields ---- */
+  .demo-controls {
+    margin-top: var(--sp-4); padding: var(--sp-3) var(--sp-4);
+    border: 1px dashed var(--border-strong); border-radius: var(--radius);
+    background: #fafbfc;
+  }
+  .demo-controls .demo-controls-label {
+    font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--muted); margin: 0 0 var(--sp-2);
+  }
+
+  /* ---- Activity timeline ---- */
+  #activity-list { list-style: none; margin: 0; padding: 0 0 0 var(--sp-4); font-size: 0.85rem; max-height: 260px; overflow-y: auto; position: relative; }
+  #activity-list:before { content: ""; position: absolute; left: 3px; top: 0.4rem; bottom: 0.4rem; width: 1px; background: var(--border); }
+  #activity-list li { position: relative; padding: 0.4rem 0 0.4rem 1rem; color: var(--ink-soft); }
+  #activity-list li:before { content: ""; position: absolute; left: -1px; top: 0.7rem; width: 7px; height: 7px; border-radius: 50%; background: var(--brand); border: 2px solid var(--surface); }
+  #activity-list li .ts { color: var(--muted); margin-right: var(--sp-2); font-variant-numeric: tabular-nums; font-size: 0.78rem; }
+  .activity-note { font-size: 0.75rem; color: var(--muted); margin-top: var(--sp-3); }
+
+  footer.app-footer { margin-top: var(--sp-8); text-align: center; font-size: 0.78rem; color: var(--muted); }
+
+  /* ---- Admin console ---- */
+  .admin-search-row { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: flex-end; margin-bottom: var(--sp-4); }
   .admin-search-row input { width: auto; flex: 1 1 160px; min-width: 120px; }
   .admin-search-row button { flex-shrink: 0; }
-  table.admin-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
-  table.admin-table th { text-align: left; color: var(--muted); font-weight: 600; font-size: 0.78rem; padding: 0.4rem 0.5rem; border-bottom: 2px solid var(--border); }
-  table.admin-table td { padding: 0.5rem; border-bottom: 1px solid #eee; vertical-align: middle; word-break: break-word; }
+  table.admin-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+  table.admin-table th { text-align: left; color: var(--muted); font-weight: 700; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.03em; padding: 0.5rem; border-bottom: 2px solid var(--border); }
+  table.admin-table td { padding: 0.55rem 0.5rem; border-bottom: 1px solid var(--border); vertical-align: middle; word-break: break-word; }
+  table.admin-table tr:hover td { background: var(--bg); }
   table.admin-table tr:last-child td { border-bottom: none; }
   table.admin-table button { padding: 0.3rem 0.7rem; font-size: 0.78rem; }
   .admin-plan-status { font-size: 0.78rem; color: var(--muted); }
 
   @media (max-width: 520px) {
-    body { padding: 1rem 0.75rem 2.5rem; }
-    h1 { font-size: 1.25rem; }
+    body { padding: var(--sp-4) var(--sp-3) 2.5rem; font-size: 14px; }
+    .account-hero .account-name { font-size: 1.25rem; }
     .field-row { flex-direction: column; gap: 0.1rem; }
     .field-value { text-align: left; }
+    .plan-stats { gap: var(--sp-6); }
   }
 </style>
 </head>
@@ -237,9 +260,16 @@
 
 <!-- ================= LOGIN VIEW ================= -->
 <div id="login-view">
-  <section class="card">
-    <h1 id="app-heading">&#9889; Energy Customer Platform</h1>
-    <p class="subtitle" id="app-subtitle">Portfolio demo sign-in &mdash; real authentication, public demo credentials.</p>
+  <div class="auth-shell">
+    <div class="brand-row">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/></svg>
+      </span>
+      <div>
+        <h1 id="app-heading">Energy Customer Platform</h1>
+        <p class="subtitle" id="app-subtitle">Portfolio demo sign-in &mdash; real authentication, public demo credentials.</p>
+      </div>
+    </div>
 
     <label>User type</label>
     <div class="role-choice">
@@ -256,30 +286,42 @@
 
     <button id="login-btn">LOGIN</button>
     <div id="login-result"></div>
-  </section>
+  </div>
 </div>
 
-<!-- ================= ADMIN DASHBOARD ================= -->
+<!-- ================= ADMIN CONSOLE ================= -->
 <div id="admin-view" style="display:none">
 
-<header class="app-header">
-  <h1>&#128272; Energy Customer Platform <span class="admin-header-tag">ADMIN</span></h1>
-  <nav class="app-nav">
-    <span class="identity-badge">Signed in as <strong id="admin-header-username">&mdash;</strong> <span class="role-tag">ADMIN</span></span>
-    <button class="subtle" id="admin-logout-btn">LOG OUT</button>
+<header class="topbar">
+  <div class="topbar-brand">
+    <span class="brand-mark small" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/></svg>
+    </span>
+    Energy Customer Platform <span class="admin-tag">Admin</span>
+  </div>
+  <nav class="topbar-actions">
+    <span class="identity-chip">Signed in as <strong id="admin-header-username">&mdash;</strong><span class="role-tag">Admin</span></span>
+    <details class="eng-menu">
+      <summary>Engineering</summary>
+      <div class="eng-menu-panel">
+        <a href="https://agentic-platform-backend-production.up.railway.app/workbench" target="_blank" rel="noopener">Workbench</a>
+        <a href="https://agentic-platform-backend-production.up.railway.app/dashboard" target="_blank" rel="noopener">Dashboard</a>
+        <a href="https://agentic-platform-backend-production.up.railway.app/usage" target="_blank" rel="noopener">Usage</a>
+      </div>
+    </details>
+    <button class="subtle" id="admin-logout-btn">Log out</button>
   </nav>
 </header>
-<p class="subtitle">Administer customers within the current demo workspace &mdash; real backend search and pagination.</p>
 
 <div id="admin-list-view">
   <section class="card">
-    <h2><span><span class="section-icon">&#128100;</span> All Customers</span></h2>
+    <h2>All Customers</h2>
     <div class="admin-search-row">
       <input type="text" id="admin-search-id" placeholder="Customer ID" inputmode="numeric">
       <input type="text" id="admin-search-name" placeholder="Name">
       <input type="text" id="admin-search-email" placeholder="Email">
-      <button id="admin-search-btn">SEARCH</button>
-      <button class="subtle" id="admin-clear-btn">CLEAR</button>
+      <button id="admin-search-btn">Search</button>
+      <button class="subtle" id="admin-clear-btn">Clear</button>
     </div>
     <div id="admin-customers-table"><div class="msg loading">Loading customers&hellip;</div></div>
     <div class="btn-row" id="admin-pagination"></div>
@@ -287,45 +329,48 @@
 </div>
 
 <div id="admin-detail-view" style="display:none">
-  <div class="btn-row"><button class="subtle" id="admin-back-btn">&larr; BACK TO ALL CUSTOMERS</button></div>
-  <div class="grid">
+  <div class="btn-row"><button class="subtle" id="admin-back-btn">&larr; Back to all customers</button></div>
 
-    <section class="card" id="admin-overview-card">
-      <h2><span><span class="section-icon">&#128100;</span> Overview</span></h2>
+  <div class="account-layout">
+    <section class="card account-hero" id="admin-overview-card">
       <div id="admin-overview-body"></div>
     </section>
 
-    <section class="card" id="admin-profile-card">
-      <h2><span><span class="section-icon">&#9993;&#65039;</span> Profile</span></h2>
-      <div id="admin-profile-body"></div>
-    </section>
+    <div class="row-2">
+      <section class="card plan-card" id="admin-plan-card">
+        <h2>Current Plan</h2>
+        <div id="admin-plan-body"></div>
+      </section>
+      <section class="card" id="admin-profile-card">
+        <h2>Account</h2>
+        <div id="admin-profile-body"></div>
+      </section>
+    </div>
 
-    <section class="card" id="admin-plan-card">
-      <h2><span><span class="section-icon">&#128196;</span> Current Plan</span></h2>
-      <div id="admin-plan-body"></div>
-    </section>
-
-    <section class="card" id="admin-preferences-card">
-      <h2><span><span class="section-icon">&#9881;&#65039;</span> Preferences</span></h2>
-      <div id="admin-preferences-body"></div>
-    </section>
-
-    <section class="card" id="admin-appointments-card">
-      <h2><span><span class="section-icon">&#128197;</span> Appointment Availability</span></h2>
-      <div id="admin-appointments-body">
-        <label for="admin-appt-date">Date to check</label>
-        <input type="date" id="admin-appt-date">
-        <label for="admin-appt-scenario">Demo scenario</label>
-        <select id="admin-appt-scenario">
-          <option value="">Normal</option>
-          <option value="timeout">Simulate downstream timeout</option>
-          <option value="error">Simulate downstream failure</option>
-        </select>
-        <div class="btn-row"><button id="admin-appt-check-btn">CHECK AVAILABILITY</button></div>
-        <div id="admin-appt-result"></div>
-      </div>
-    </section>
-
+    <div class="row-even">
+      <section class="card" id="admin-preferences-card">
+        <h2>Preferences</h2>
+        <div id="admin-preferences-body"></div>
+      </section>
+      <section class="card" id="admin-appointments-card">
+        <h2>Appointment Availability</h2>
+        <div id="admin-appointments-body">
+          <label for="admin-appt-date">Date to check</label>
+          <input type="date" id="admin-appt-date">
+          <div class="demo-controls">
+            <p class="demo-controls-label">Demo controls</p>
+            <label for="admin-appt-scenario">Downstream scenario</label>
+            <select id="admin-appt-scenario">
+              <option value="">Normal</option>
+              <option value="timeout">Simulate downstream timeout</option>
+              <option value="error">Simulate downstream failure</option>
+            </select>
+          </div>
+          <div class="btn-row"><button id="admin-appt-check-btn">Check availability</button></div>
+          <div id="admin-appt-result"></div>
+        </div>
+      </section>
+    </div>
   </div>
 </div>
 
@@ -334,72 +379,77 @@
 <!-- ================= USER APP VIEW ================= -->
 <div id="app-view" style="display:none">
 
-<header class="app-header">
-  <h1>&#9889; Energy Customer Platform</h1>
-  <nav class="app-nav">
-    <span class="identity-badge">Signed in as <strong id="user-username">&mdash;</strong> <span class="role-tag">USER</span></span>
-    <button class="subtle" id="logout-btn">LOG OUT</button>
-    <a href="https://agentic-platform-backend-production.up.railway.app/workbench" target="_blank" rel="noopener">OPEN WORKBENCH</a>
-    <a href="https://agentic-platform-backend-production.up.railway.app/dashboard" target="_blank" rel="noopener">VIEW DASHBOARD</a>
-    <a href="https://agentic-platform-backend-production.up.railway.app/usage" target="_blank" rel="noopener">VIEW USAGE</a>
+<header class="topbar">
+  <div class="topbar-brand">
+    <span class="brand-mark small" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/></svg>
+    </span>
+    Energy Customer Platform
+  </div>
+  <nav class="topbar-actions">
+    <span class="identity-chip">Signed in as <strong id="user-username">&mdash;</strong><span class="role-tag">User</span></span>
+    <details class="eng-menu">
+      <summary>Engineering</summary>
+      <div class="eng-menu-panel">
+        <a href="https://agentic-platform-backend-production.up.railway.app/workbench" target="_blank" rel="noopener">Workbench</a>
+        <a href="https://agentic-platform-backend-production.up.railway.app/dashboard" target="_blank" rel="noopener">Dashboard</a>
+        <a href="https://agentic-platform-backend-production.up.railway.app/usage" target="_blank" rel="noopener">Usage</a>
+      </div>
+    </details>
+    <button class="subtle" id="logout-btn">Log out</button>
   </nav>
 </header>
-<p class="subtitle">Live demo sandbox for the real Java/Spring target application behind our Agentic Software Delivery System.</p>
-
-<div class="tech-strip">
-  <span class="live-dot"></span> <strong>Live demo environment</strong>
-  <span class="tech-badge">Java 21</span>
-  <span class="tech-badge">Spring Boot</span>
-  <span class="tech-badge">Secured API (JWT)</span>
-  <span class="tech-badge">PostgreSQL-backed</span>
-  <span class="tech-badge">Production deployed</span>
-</div>
+<p class="subtitle">Manage your plan, preferences, and service appointments.</p>
 
 <div class="banner" id="session-banner">
   <span id="session-banner-text"></span>
   <button id="restart-demo-btn">RESTART DEMO</button>
 </div>
 
-<div class="grid">
+<div class="account-layout">
 
-  <section class="card" id="overview-card">
-    <h2><span><span class="section-icon">&#128100;</span> Overview</span></h2>
-    <div id="overview-body"><div class="msg loading">Loading demo customer&hellip;</div></div>
+  <section class="card account-hero" id="overview-card">
+    <div id="overview-body"><div class="msg loading">Loading account&hellip;</div></div>
   </section>
 
-  <section class="card" id="profile-card">
-    <h2><span><span class="section-icon">&#9993;&#65039;</span> Profile</span></h2>
-    <div id="profile-body"><div class="msg loading">Loading&hellip;</div></div>
-  </section>
+  <div class="row-2">
+    <section class="card plan-card" id="plan-card">
+      <h2>Current Plan</h2>
+      <div id="plan-body"><div class="msg loading">Loading&hellip;</div></div>
+    </section>
+    <section class="card" id="profile-card">
+      <h2>Account</h2>
+      <div id="profile-body"><div class="msg loading">Loading&hellip;</div></div>
+    </section>
+  </div>
 
-  <section class="card" id="plan-card">
-    <h2><span><span class="section-icon">&#128196;</span> Current Plan</span></h2>
-    <div id="plan-body"><div class="msg loading">Loading&hellip;</div></div>
-  </section>
-
-  <section class="card" id="preferences-card">
-    <h2><span><span class="section-icon">&#9881;&#65039;</span> Preferences</span></h2>
-    <div id="preferences-body"><div class="msg loading">Loading&hellip;</div></div>
-  </section>
-
-  <section class="card" id="appointments-card">
-    <h2><span><span class="section-icon">&#128197;</span> Appointment Availability</span></h2>
-    <div id="appointments-body">
-      <label for="appt-date">Date to check</label>
-      <input type="date" id="appt-date">
-      <label for="appt-scenario">Demo scenario</label>
-      <select id="appt-scenario">
-        <option value="">Normal</option>
-        <option value="timeout">Simulate downstream timeout</option>
-        <option value="error">Simulate downstream failure</option>
-      </select>
-      <div class="btn-row"><button id="appt-check-btn">CHECK AVAILABILITY</button></div>
-      <div id="appt-result"></div>
-    </div>
-  </section>
+  <div class="row-even">
+    <section class="card" id="preferences-card">
+      <h2>Preferences</h2>
+      <div id="preferences-body"><div class="msg loading">Loading&hellip;</div></div>
+    </section>
+    <section class="card" id="appointments-card">
+      <h2>Appointment Availability</h2>
+      <div id="appointments-body">
+        <label for="appt-date">Date to check</label>
+        <input type="date" id="appt-date">
+        <div class="demo-controls">
+          <p class="demo-controls-label">Demo controls</p>
+          <label for="appt-scenario">Downstream scenario</label>
+          <select id="appt-scenario">
+            <option value="">Normal</option>
+            <option value="timeout">Simulate downstream timeout</option>
+            <option value="error">Simulate downstream failure</option>
+          </select>
+        </div>
+        <div class="btn-row"><button id="appt-check-btn">Check availability</button></div>
+        <div id="appt-result"></div>
+      </div>
+    </section>
+  </div>
 
   <section class="card" id="activity-card">
-    <h2><span><span class="section-icon">&#128203;</span> Activity</span></h2>
+    <h2>Activity</h2>
     <ul id="activity-list"></ul>
     <p class="activity-note">This session's real actions, recorded in your browser only &mdash; not a durable server-side history.</p>
   </section>
@@ -699,7 +749,7 @@
         '<td>' + esc(row.name) + '</td>' +
         '<td>' + esc(row.email) + '</td>' +
         '<td class="admin-plan-status">' + esc(row.planStatus) + '</td>' +
-        '<td><button class="secondary admin-view-customer-btn" data-customer-id="' + esc(row.customerId) + '">VIEW CUSTOMER</button></td>' +
+        '<td><button class="secondary admin-view-customer-btn" data-customer-id="' + esc(row.customerId) + '">View</button></td>' +
         '</tr>';
     }).join('');
     tableEl.innerHTML =
@@ -712,9 +762,9 @@
 
     var totalPages = result.totalPages || 1;
     var current = result.page || 0;
-    var pagerHtml = '<button class="subtle" id="admin-prev-btn"' + (current <= 0 ? ' disabled' : '') + '>&larr; PREV</button>' +
+    var pagerHtml = '<button class="subtle" id="admin-prev-btn"' + (current <= 0 ? ' disabled' : '') + '>&larr; Prev</button>' +
       '<span class="field-label" style="align-self:center;">Page ' + (current + 1) + ' of ' + totalPages + ' (' + result.totalElements + ' total)</span>' +
-      '<button class="subtle" id="admin-next-btn"' + (current + 1 >= totalPages ? ' disabled' : '') + '>NEXT &rarr;</button>';
+      '<button class="subtle" id="admin-next-btn"' + (current + 1 >= totalPages ? ' disabled' : '') + '>Next &rarr;</button>';
     pagerEl.innerHTML = pagerHtml;
     var prevBtn = document.getElementById('admin-prev-btn');
     var nextBtn = document.getElementById('admin-next-btn');
@@ -731,7 +781,7 @@
   });
   document.getElementById('admin-back-btn').addEventListener('click', showAdminList);
 
-  // ---------- Overview ----------
+  // ---------- Overview / account header ----------
   //
   // Every card-rendering function below takes an explicit customerId and
   // an idPrefix ('' for the USER app-view's own elements, 'admin-' for
@@ -745,15 +795,14 @@
 
   async function loadOverview(customerId, idPrefix) {
     var el = document.getElementById(elId(idPrefix, 'overview-body'));
-    setMsg(el, 'Loading demo customer…', 'loading');
+    setMsg(el, 'Loading account…', 'loading');
     try {
       var response = await authFetch('/customers/' + customerId);
       if (!response.ok) throw new Error(await parseErrorBody(response));
       var customer = await response.json();
       el.innerHTML =
-        '<div class="field-row"><span class="field-label">Customer ID</span><span class="field-value">' + esc(customer.id) + '</span></div>' +
-        '<div class="field-row"><span class="field-label">Name</span><span class="field-value">' + esc(customer.name) + '</span></div>' +
-        '<div class="field-row"><span class="field-label">Email</span><span class="field-value">' + esc(customer.email) + '</span></div>';
+        '<h2 class="account-name">' + esc(customer.name) + '</h2>' +
+        '<p class="account-meta"><span>Customer ID ' + esc(customer.id) + '</span><span>' + esc(customer.email) + '</span></p>';
       logActivity('Customer overview loaded (id ' + customer.id + ')');
       return customer;
     } catch (err) {
@@ -770,7 +819,7 @@
     var editBtnId = elId(idPrefix, 'edit-email-btn');
     el.innerHTML =
       '<div class="field-row"><span class="field-label">Email</span><span class="field-value">' + esc(email) + '</span></div>' +
-      '<div class="btn-row"><button class="secondary" id="' + editBtnId + '">EDIT EMAIL</button></div>';
+      '<div class="btn-row"><button class="secondary" id="' + editBtnId + '">Edit email</button></div>';
     document.getElementById(editBtnId).addEventListener('click', function () { renderProfileEdit(customerId, idPrefix, email); });
   }
 
@@ -783,7 +832,7 @@
     el.innerHTML =
       '<label for="' + newEmailId + '">New email</label>' +
       '<input type="email" id="' + newEmailId + '" value="' + esc(currentEmail) + '">' +
-      '<div class="btn-row"><button id="' + saveBtnId + '">SAVE</button><button class="subtle" id="' + cancelBtnId + '">CANCEL</button></div>' +
+      '<div class="btn-row"><button id="' + saveBtnId + '">Save</button><button class="subtle" id="' + cancelBtnId + '">Cancel</button></div>' +
       '<div id="' + resultId + '"></div>';
     document.getElementById(cancelBtnId).addEventListener('click', function () { renderProfileView(customerId, idPrefix, currentEmail); });
     document.getElementById(saveBtnId).addEventListener('click', async function () {
@@ -826,21 +875,38 @@
     return '<span class="status-pill ' + status.toLowerCase() + '">' + status + '</span>';
   }
 
+  /** Clean empty state first -- the enrollment FORM itself is only
+   * revealed on demand (progressive disclosure), never shown stacked
+   * directly under "No active plan yet," which used to read as a
+   * confusing contradiction (empty-state message immediately followed
+   * by populated form fields). */
   function renderEnrollForm(customerId, idPrefix) {
+    var el = document.getElementById(elId(idPrefix, 'plan-body'));
+    var startBtnId = elId(idPrefix, 'start-enroll-btn');
+    el.innerHTML =
+      '<div class="plan-empty">' +
+      '<p>This customer isn&rsquo;t enrolled in an energy plan yet.</p>' +
+      '<button id="' + startBtnId + '">Enroll in a plan</button>' +
+      '</div>';
+    document.getElementById(startBtnId).addEventListener('click', function () { renderEnrollFormFields(customerId, idPrefix); });
+  }
+
+  function renderEnrollFormFields(customerId, idPrefix) {
     var el = document.getElementById(elId(idPrefix, 'plan-body'));
     var today = new Date().toISOString().slice(0, 10);
     var nameId = elId(idPrefix, 'plan-name'), rateId = elId(idPrefix, 'plan-rate'),
-        startId = elId(idPrefix, 'plan-start'), btnId = elId(idPrefix, 'enroll-btn'), resultId = elId(idPrefix, 'enroll-result');
+        startId = elId(idPrefix, 'plan-start'), btnId = elId(idPrefix, 'enroll-btn'),
+        cancelId = elId(idPrefix, 'enroll-cancel-btn'), resultId = elId(idPrefix, 'enroll-result');
     el.innerHTML =
-      '<div class="msg info">No active plan yet.</div>' +
       '<label for="' + nameId + '">Plan name</label>' +
       '<input type="text" id="' + nameId + '" value="Green Energy 12mo">' +
       '<label for="' + rateId + '">Rate per kWh ($)</label>' +
       '<input type="number" id="' + rateId + '" value="0.14" step="0.01" min="0.01">' +
       '<label for="' + startId + '">Effective start date</label>' +
       '<input type="date" id="' + startId + '" value="' + today + '">' +
-      '<div class="btn-row"><button id="' + btnId + '">ENROLL IN PLAN</button></div>' +
+      '<div class="btn-row"><button id="' + btnId + '">Enroll in plan</button><button class="subtle" id="' + cancelId + '">Cancel</button></div>' +
       '<div id="' + resultId + '"></div>';
+    document.getElementById(cancelId).addEventListener('click', function () { renderEnrollForm(customerId, idPrefix); });
     document.getElementById(btnId).addEventListener('click', async function () {
       var resultEl = document.getElementById(resultId);
       setMsg(resultEl, 'Enrolling…', 'loading');
@@ -867,10 +933,12 @@
   function renderActivePlan(customerId, idPrefix, plan) {
     var el = document.getElementById(elId(idPrefix, 'plan-body'));
     el.innerHTML =
-      '<div class="field-row"><span class="field-label">Plan</span><span class="field-value">' + esc(plan.planName) + '</span></div>' +
-      '<div class="field-row"><span class="field-label">Rate</span><span class="field-value">$' + esc(plan.ratePerKwh) + ' / kWh</span></div>' +
-      '<div class="field-row"><span class="field-label">Effective from</span><span class="field-value">' + esc(plan.effectiveStartDate) + '</span></div>' +
-      '<div class="field-row"><span class="field-label">Status</span><span class="field-value">' + planStatusPill(plan.status) + '</span></div>';
+      '<div class="plan-summary">' +
+      '<div class="plan-name-row"><span class="plan-name">' + esc(plan.planName) + '</span>' + planStatusPill(plan.status) + '</div>' +
+      '<div class="plan-stats">' +
+      '<div class="plan-stat"><span class="stat-value">$' + esc(plan.ratePerKwh) + '</span><span class="stat-label">per kWh</span></div>' +
+      '<div class="plan-stat"><span class="stat-value">' + esc(plan.effectiveStartDate) + '</span><span class="stat-label">Effective from</span></div>' +
+      '</div></div>';
   }
 
   async function loadPlan(customerId, idPrefix) {
@@ -905,7 +973,7 @@
       '<select id="' + paperlessId + '"><option value="true"' + (pref.paperlessBilling ? ' selected' : '') + '>On</option><option value="false"' + (!pref.paperlessBilling ? ' selected' : '') + '>Off</option></select>' +
       '<label for="' + channelId + '">Notification channel</label>' +
       '<select id="' + channelId + '">' + options + '</select>' +
-      '<div class="btn-row"><button id="' + btnId + '">SAVE PREFERENCES</button></div>' +
+      '<div class="btn-row"><button id="' + btnId + '">Save preferences</button></div>' +
       '<div id="' + resultId + '"></div>';
     var saveBtn = document.getElementById(btnId);
     saveBtn.addEventListener('click', async function () {
