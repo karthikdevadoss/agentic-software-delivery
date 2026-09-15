@@ -17,11 +17,20 @@
 FROM python:3.12-slim-bookworm
 
 # git: real local commits (_run_controlled(["git", ...])).
-# openjdk-17-jdk-headless: app/mvnw needs a JDK on PATH (Maven itself is
-#   downloaded by the wrapper on first run).
+# openjdk-21-jdk-headless: app/mvnw needs a JDK on PATH (Maven itself is
+#   downloaded by the wrapper on first run). REAL PRODUCTION BUG found via
+#   live browser testing of the Incident Triage Lab (2026-09-15): this was
+#   openjdk-17-jdk-headless, but app/pom.xml's <java.version> was bumped to
+#   21 in an earlier session (MASTER BUILD PHASE) -- every real mvnw
+#   compile/test invocation running INSIDE this container (Workbench's
+#   agent/build_tools.py, the Triage Lab's verify step) was silently
+#   broken ("release version 21 not supported"), invisible until something
+#   actually exercised a real compile/test from within this specific
+#   container rather than a local dev machine that happened to have a
+#   newer JDK already installed.
 # curl + ca-certificates: fetch the Railway CLI release below.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git openjdk-17-jdk-headless curl ca-certificates \
+    git openjdk-21-jdk-headless curl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Railway CLI — exact version/URL pattern confirmed from the real,

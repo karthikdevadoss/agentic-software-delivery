@@ -680,3 +680,34 @@ defects:
     commit: "0e860b8"
     production_evidence: "Live browser walkthrough before the fix showed the literal 'fatal: bad revision' error in the Proposed Fix panel; after redeploy, the panel showed the real diff via the embedded fallback path with an honest source label"
     recurrence_status: NOT_RECURRED
+
+  - defect_id: AEQ-021
+    title: "platform-backend's Docker image had JDK 17, but app/pom.xml requires Java 21 -- every real mvnw compile/test from inside that container was silently broken"
+    requirement_run_id: "Overnight flagship hardening pass, 2026-09-15 -- Triage Lab Scenario A real browser walkthrough, Verification step"
+    original_prompt: "NOT_RETAINED"
+    analysis_confidence: EXACT
+    model_provider_version: "N/A -- infrastructure/environment version mismatch, not a model reasoning gap"
+    tools_context_used: "Real browser walkthrough of the live /triage page's Verification step, which shells out to the real mvnw test inside the platform-backend container"
+    model_interpreted_as: "N/A"
+    expected_behavior: "mvnw test compiles and runs the Customer App's real tests inside the platform-backend container, same as on a real developer machine"
+    actual_behavior: "[ERROR] Failed to execute goal ... maven-compiler-plugin:3.15.0:compile: Fatal error compiling: error: release version 21 not supported -- the container's installed JDK (17) is older than app/pom.xml's <java.version>21</java.version>, set in an earlier session's Java 17->21 migration"
+    stage_introduced: infrastructure
+    stage_detected: live_browser_verification
+    detection_method: "Driving the real Triage Lab's Verification step in a browser against live production and reading the actual Maven error output rendered in the UI"
+    root_cause: "The platform-backend Dockerfile's JDK version (openjdk-17-jdk-headless) was never bumped when a later, unrelated session migrated app/pom.xml from Java 17 to 21 -- the two files are maintained independently and nothing cross-checks them"
+    gaps:
+      prompt_gap: false
+      context_rag_gap: false
+      test_gap: true
+      test_oracle_gap: false
+      harness_gap: true
+      environment_gap: true
+      tool_deployment_gap: true
+    product_fix: "Dockerfile: openjdk-17-jdk-headless -> openjdk-21-jdk-headless"
+    new_product_regression_test: "N/A -- an infrastructure/Dockerfile version pin, not a unit-testable code boundary; the real regression signal is the Triage Lab's own live Verification step succeeding"
+    new_harness_process_regression: "General lesson: any session that changes a target application's language/runtime version must also check every OTHER environment that independently builds/runs that same application (here: the platform-backend's own Docker image, separate from the Customer App's own Nixpacks-based Railway build) -- version pins living in two unrelated files with nothing cross-checking them is a real, recurring risk class in this project (see also the earlier Flyway/Kafka Spring Boot 4 module-split incidents, a different but related 'two things silently drifted out of sync' pattern)"
+    future_prompt_clause_learned: "When bumping a target application's language/runtime version, grep the whole repo for every other place that version might be pinned (Dockerfiles, CI workflow files, other services' build images) before considering the migration complete."
+    deterministic_rule_or_tooling: "Not yet built: a CI check that greps app/pom.xml's java.version against every Dockerfile's installed JDK version and fails if they mismatch"
+    commit: "see next platform-backend deploy after this ledger entry"
+    production_evidence: "Live browser walkthrough before the fix showed the literal Maven 'release version 21 not supported' error in the Verification panel"
+    recurrence_status: NOT_RECURRED
