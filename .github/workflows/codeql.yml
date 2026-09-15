@@ -20,7 +20,41 @@ on:
     - cron: '0 6 * * 1' # weekly, matching dependabot.yml's cadence
 
 jobs:
-  analyze:
+  analyze-java:
+    name: Analyze (java-kotlin)
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: java-kotlin
+          # Explicit manual build, not autobuild: app/pom.xml lives in a
+          # subdirectory, not the repo root, and autobuild's real first
+          # run on this exact repo layout failed to see any source
+          # (verified live: run 34999309094 -- Python and JS jobs in the
+          # same run succeeded, only java-kotlin's autobuild-driven
+          # analyze step failed) -- a documented, common CodeQL/Maven
+          # subdirectory gotcha, not a hypothetical concern.
+          build-mode: manual
+
+      - name: Build app/ for CodeQL to trace
+        working-directory: app
+        run: ./mvnw -q -B compile
+
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:java-kotlin"
+
+  analyze-other:
     name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
     permissions:
@@ -29,13 +63,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - language: java-kotlin
-            build-mode: autobuild
-          - language: python
-            build-mode: none
-          - language: javascript-typescript
-            build-mode: none
+        language: [python, javascript-typescript]
 
     steps:
       - uses: actions/checkout@v5
@@ -43,7 +71,7 @@ jobs:
       - uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
-          build-mode: ${{ matrix.build-mode }}
+          build-mode: none
 
       - uses: github/codeql-action/analyze@v3
         with:

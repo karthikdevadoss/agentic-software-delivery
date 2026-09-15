@@ -13,13 +13,16 @@ matching test_triage_execution.py's own existing pattern.
 Run: python agent/test_triage_promotion.py
 """
 
+import json
 import shutil
 import subprocess
 import tempfile
 import unittest
+import uuid
 from pathlib import Path
 from unittest import mock
 
+import event_ledger as el
 import triage_promotion as tp
 
 
@@ -207,6 +210,68 @@ class RealLocalGitPromotionTestCase(unittest.TestCase):
         self.assertEqual(payload["candidate_hash"], result["candidate_hash"])
         self.assertEqual(payload["baseline_hash"], tp._sha256(self.baseline_source))
         self.assertEqual(payload["resolved"], True)
+
+    @mock.patch("triage_promotion.demo_execution.wait_for_new_deployment")
+    @mock.patch("triage_promotion.demo_execution.trigger_deploy")
+    def test_recovery_drill_promotion_still_succeeds_when_the_durable_ledger_is_unreachable(
+        self, mock_deploy, mock_wait,
+    ):
+        """Base Architecture V3 Section 12 (durable execution / recovery):
+        a real dependency-unavailable drill, not a hypothetical one. The
+        durable event-ledger write added in Section 11 must never become a
+        NEW way for the actual promotion (commit+push+deploy, the real
+        business action) to fail just because Postgres happens to be
+        unreachable at that exact moment -- event_ledger.record_event()'s
+        own design already guarantees this (write-through with a local
+        spool fallback, never raises to the caller); this proves that
+        guarantee holds through the real triage_promotion.py call site,
+        not just in event_ledger's own unit tests."""
+        import demo_execution as de
+
+        mock_deploy.return_value = (True, "deploy triggered")
+        mock_wait.return_value = ("real-deployment-id-789", "SUCCESS", 5)
+        self._record_valid_candidate()
+
+        fake_rerun = {"fixApplied": True, "attemptCount": 1, "expectedAttemptCount": 1,
+                      "exceptionType": None, "exceptionMessage": None, "defectReproduced": False}
+
+        def _push_to_local_origin(workspace, branch):
+            return de.push_to_remote(workspace, str(self.origin), branch)
+
+        spool_path = Path(el.SPOOL_PATH).parent / f"event_spool_test_{uuid.uuid4().hex[:8]}.jsonl"
+        try:
+            with mock.patch("triage_promotion.te._request", side_effect=self._admin_login_side_effect), \
+                 mock.patch("triage_promotion.te.reproduce_scenario_b", return_value=fake_rerun), \
+                 mock.patch("triage_promotion.demo_execution.push_change", side_effect=_push_to_local_origin), \
+                 mock.patch.object(el, "SPOOL_PATH", spool_path), \
+                 mock.patch.object(el, "_insert", side_effect=RuntimeError("simulated Postgres outage")):
+                # The real drill: the durable store is down for the ENTIRE
+                # promotion, not just the one record_event call -- proves
+                # the actual commit/push/deploy business action (the thing
+                # that matters) is genuinely independent of ledger health.
+                result = tp.promote_verified_candidate("b", "admin1", "Demo@123", repo_url=str(self.origin))
+
+            # The real action succeeded despite the outage -- this is the
+            # actual property being tested, not a mocked assertion.
+            self.assertTrue(result["promoted"])
+            self.assertTrue(result["deployment_identity_confirmed"])
+            origin_branches = _git(["branch", "--list", result["branch"]], self.origin)
+            self.assertIn(result["branch"], origin_branches)
+
+            # And the provenance record was never silently dropped -- it's
+            # durably spooled, recoverable by a later el.sync_spool() once
+            # the real database comes back (exactly as documented in
+            # event_ledger.py's own module docstring). Read the spool file
+            # directly rather than el.spool_pending_count(), since the
+            # SPOOL_PATH patch above is no longer active outside the `with`.
+            spool_lines = [l for l in spool_path.read_text(encoding="utf-8").splitlines() if l.strip()]
+            self.assertEqual(len(spool_lines), 1)
+            spooled = json.loads(spool_lines[0])
+            self.assertEqual(spooled["event_type"], "candidate_promoted")
+            self.assertEqual(spooled["payload"]["candidate_hash"], result["candidate_hash"])
+        finally:
+            if spool_path.exists():
+                spool_path.unlink()
 
     @mock.patch("triage_promotion.demo_execution.wait_for_new_deployment")
     @mock.patch("triage_promotion.demo_execution.trigger_deploy")
