@@ -298,6 +298,32 @@ class PublicRouteStructureTestCase(unittest.TestCase):
             self.assertNotIn("control-plane", public_path)
 
 
+class NestedRouteAssetPathTestCase(unittest.TestCase):
+    """Regression lock for a real, twice-found defect class (SESSION-HISTORY-P0,
+    2026-09-11: usage.html/learn.html; flagship-completion session,
+    2026-09-15: triage-b.html): a relative CSS/JS href/src (e.g.
+    href="style.css") resolves against the CURRENT URL's directory, which
+    is wrong the moment a page is served at a route with more than one
+    path segment (e.g. /triage/scenario-b resolves "style.css" to the
+    nonsensical /triage/style.css, not /style.css) -- live-browser-verified
+    to silently break the page with zero console error surfaced by this
+    session's own tooling, only visible via network-request inspection.
+    Every served HTML page's local asset references must be root-absolute
+    (start with "/"), which is correct regardless of route depth."""
+
+    def test_every_served_html_page_uses_only_absolute_local_asset_paths(self):
+        import re as re_module
+        relative_local_asset = re_module.compile(
+            r'''(?:href|src)=["'](?!https?://|//|/|#)([a-zA-Z0-9_\-./]+\.(?:css|js))["']''')
+        offenders = {}
+        for html_file in sorted(ws.WEB_DIR.glob("*.html")):
+            text = html_file.read_text(encoding="utf-8")
+            matches = relative_local_asset.findall(text)
+            if matches:
+                offenders[html_file.name] = matches
+        self.assertEqual(offenders, {}, f"relative local asset path(s) found: {offenders}")
+
+
 class ProfilePrivacyTestCase(unittest.TestCase):
     """P0 privacy regression lock (2026-09-13): /profile must never be a
     reachable route, must not exist inside the publicly-served WEB_DIR
