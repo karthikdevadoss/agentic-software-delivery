@@ -648,3 +648,35 @@ defects:
     commit: "b0919af"
     production_evidence: "Live curl sequence against production before the fix reproduced the exact false verdict; the same sequence after redeploy showed defectReproduced:false with zero new rows created"
     recurrence_status: NOT_RECURRED
+
+  - defect_id: AEQ-020
+    title: "Triage Lab's Proposed Fix step failed in the deployed container: git show for a historical commit found no such revision"
+    requirement_run_id: "Overnight flagship hardening pass, 2026-09-15 -- Triage Lab Scenario A real browser walkthrough"
+    original_prompt: "NOT_RETAINED"
+    analysis_confidence: EXACT
+    model_provider_version: "N/A -- deployment-environment gap, not a model reasoning gap"
+    tools_context_used: "Real browser walkthrough (Claude-in-Chrome) of the live /triage page in production"
+    model_interpreted_as: "N/A"
+    expected_behavior: "The Proposed Fix step shows the real diff for commit 2155a8a"
+    actual_behavior: "get_patch_diff() ran `git show 2155a8a -- <file>` against the DEPLOYED container's own git repository and got 'fatal: bad revision 2155a8a' -- genuinely no such commit exists there"
+    stage_introduced: implementation
+    stage_detected: live_browser_verification
+    detection_method: "Driving the real Triage Lab UI in a browser against live production and inspecting the actual DOM content of the Proposed Fix panel"
+    root_cause: "railway up uploads only the working directory, not .git -- the exact same root cause already documented for the Workbench's own commit path (see docs/LESSONS.md's earlier 'no .git in the deployed image' incident); the deployed container's git repo is freshly initialized at Docker build time with a single baseline commit, so any earlier real commit genuinely does not exist there, even though the identical command works in any real developer checkout"
+    stage_detected_note: "This is the SAME defect class recurring in a new code path, not a new mechanism -- the earlier fix (giving the container a real git repo for the WRITE side, i.e. committing) did not also solve the READ side (looking up a specific historical commit that predates the container's own fresh baseline)"
+    gaps:
+      prompt_gap: false
+      context_rag_gap: false
+      test_gap: true
+      test_oracle_gap: false
+      harness_gap: false
+      environment_gap: true
+      tool_deployment_gap: true
+    product_fix: "get_patch_diff() tries real git show first, falls back to a literal, previously-captured copy of that exact same command's real output when the commit isn't in the running environment's git history -- never a fabricated diff, and the UI now honestly labels which source served it"
+    new_product_regression_test: "test_get_patch_diff_falls_back_to_the_embedded_diff_when_git_history_is_unavailable, test_get_patch_diff_prefers_real_git_when_available"
+    new_harness_process_regression: "Rule reinforced: any feature reading a SPECIFIC historical commit (not just 'does a git repo exist') must be tested against a container that only has a fresh baseline commit, mirroring real deployment conditions -- not just a real dev checkout with full history"
+    future_prompt_clause_learned: "Before shipping any feature that shells out to `git show <a past commit>`, check whether it will run inside a container built via `railway up` (working-directory-only upload, no .git) -- if so, it needs either a pre-generated artifact or an embedded fallback, not an assumption of full history."
+    deterministic_rule_or_tooling: "N/A -- caught by this session's own mandatory real-browser verification step before being presented as done"
+    commit: "0e860b8"
+    production_evidence: "Live browser walkthrough before the fix showed the literal 'fatal: bad revision' error in the Proposed Fix panel; after redeploy, the panel showed the real diff via the embedded fallback path with an honest source label"
+    recurrence_status: NOT_RECURRED
