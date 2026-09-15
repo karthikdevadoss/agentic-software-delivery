@@ -773,3 +773,31 @@ defects:
     commit: "see the commit introducing this ledger entry"
     production_evidence: "Both unauthorized deployments were independently confirmed not to have broken production (real HTTP 200 checks against /workbench, /dashboard, /triage after each); this does not excuse the capability gap, which is exactly why it was fixed regardless of the benign outcome"
     recurrence_status: MONITORING
+
+  - defect_id: AEQ-024
+    title: "'Role Showcase' was completely absent from all 6 core engineering pages' top navigation -- each page hand-copied its own independently-drifting <nav> block instead of sharing one canonical list"
+    requirement_run_id: "FINAL AUTONOMOUS RUN -- fix public navigation + complete trainer homework, Task 0"
+    original_prompt: "EXACT: 'When entering /showcase/senior-java-ai-transformation the Role Showcase page is visible. But after opening Workbench directly or navigating to another engineering surface such as /workbench, /triage, /dashboard, /usage, the Role Showcase navigation entry disappears.'"
+    analysis_confidence: EXACT
+    model_provider_version: "N/A -- static markup defect, not a model reasoning gap"
+    tools_context_used: "Direct source inspection of every public HTML page's <nav> block (agent/web/*.html)"
+    model_interpreted_as: "N/A"
+    expected_behavior: "Every recruiter-facing engineering surface renders the same canonical set of intended public engineering destinations (Workbench/Triage/Dashboard/Usage/Learn/Role Showcase); only current-page marking should differ"
+    actual_behavior: "workbench.html/dashboard.html/usage.html/triage.html/triage-b.html/triage-c.html each hardcoded their own 4-link <nav> (Workbench/Triage/Dashboard/Usage only) -- Role Showcase was never added to ANY of them, and Learn was also missing from all 6. Only learn.html and showcase.html included Learn; only the Customer App's own separate Engineering menu (app/src/main/resources/static/index.html) already had Role Showcase, but was itself missing Learn."
+    root_cause: "8 independently-maintained, hand-copied <nav> blocks across agent/web/*.html with no single canonical source -- the exact 'separately-maintained lists drifting' pattern; a link added to one page's copy had no mechanism forcing it into the other 7"
+    gaps:
+      prompt_gap: false
+      context_rag_gap: false
+      test_gap: true
+      test_oracle_gap: false
+      harness_gap: true
+      environment_gap: false
+      tool_deployment_gap: false
+    product_fix: "agent/web/nav.js: ONE canonical CANONICAL_NAV_DESTINATIONS array (6 real destinations) + a render function every page calls via a shared <nav class=\"top-nav\" id=\"top-nav\"></nav> placeholder and <script src=\"/nav.js\">. All 8 agent/web/*.html files converted from hardcoded links to this shared source. app/src/main/resources/static/index.html's Engineering menu (both USER and ADMIN views) also given the missing Learn link for full consistency with the canonical set."
+    new_product_regression_test: "agent/test_nav_frontend.js (new, 37/37): asserts the canonical list is exactly the 6 intended destinations including Role Showcase with no duplicate Showcase URL, verifies every page's <nav id=\"top-nav\"> is empty in raw HTML (no hardcoded links, which would silently drift again), and includes a defect-seeding proof. e2e/nav-consistency.spec.js (new, 17/17 local): real rendered-DOM check across all 8 public routes that all 6 canonical labels are visible and clickable, nav is unchanged after a hard reload, and a real browser journey (Role Showcase -> Workbench -> Usage -> Triage -> Dashboard -> Role Showcase) never loses the Role Showcase link. Proven live to catch the original defect: reverting workbench.html to its old hardcoded nav made agent/test_nav_frontend.js fail with the exact 3 assertions naming the defect, before being restored."
+    new_harness_process_regression: "Generalized rule: no public page may hand-copy its own navigation markup -- every page must render from agent/web/nav.js's single canonical list. e2e/link-integrity.spec.js and e2e/golden-journey.spec.js (from the prior Base Architecture V3 session) proved links RESOLVE and pages render real content, but neither asserted the SET of nav links was consistent/complete across pages -- a distinct test gap this session's own audit found, now closed."
+    future_prompt_clause_learned: "'Every link resolves' and 'every page shows the same canonical set of links' are two different invariants -- a link-integrity sweep does not substitute for a navigation-set-consistency sweep."
+    deterministic_rule_or_tooling: "agent/web/nav.js (canonical source) + agent/test_nav_frontend.js (static/logic guard) + e2e/nav-consistency.spec.js (rendered-DOM guard) -- zero LLM involvement in any layer"
+    commit: "see the commit introducing this ledger entry"
+    production_evidence: "Owner's own manual discovery; root cause independently confirmed via direct source inspection of all 8 public HTML files plus the Customer App's Engineering menu"
+    recurrence_status: NOT_RECURRED
