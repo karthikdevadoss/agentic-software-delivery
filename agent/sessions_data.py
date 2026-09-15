@@ -367,12 +367,15 @@ VALUE_LEDGER = {
 }
 
 
-def _event_ledger_recent(limit: int = 10) -> dict:
+def _event_ledger_recent(limit: int = 10, include_test_data: bool = False) -> dict:
     """Minimal real event-ledger evidence for Usage — recent events with
     real source/activity_class/duration/model/token fields where captured.
-    Never a redesign of this page: one additional section, read-only."""
+    Never a redesign of this page: one additional section, read-only.
+    Excludes source='workbench_mock' test-fixture rows by default (same
+    convention as session_history.py's session list) so recruiter-facing
+    Usage never shows synthetic fixture data unless explicitly opted in."""
     try:
-        recent = event_ledger.get_recent_events(limit=limit)
+        recent = event_ledger.get_recent_events(limit=limit, include_test_data=include_test_data)
         count = event_ledger.count_events()
         return {
             "status": "REACHABLE",
@@ -398,7 +401,7 @@ def _event_ledger_recent(limit: int = 10) -> dict:
         return {"status": "UNREACHABLE", "error": str(exc)}
 
 
-def build_sessions_snapshot() -> dict:
+def build_sessions_snapshot(include_test_data: bool = False) -> dict:
     project_state = dashboard_data.read_project_state()
     reconstructed = _reconstructed_sessions()
     _apply_verification_scores(reconstructed, project_state)
@@ -431,5 +434,5 @@ def build_sessions_snapshot() -> dict:
             "development", "product_runtime", "benchmark", "portfolio_demo",
             "trainer_demo", "staging", "yogacrm_pilot", "customer_production",
         ],
-        "event_ledger": _event_ledger_recent(),
+        "event_ledger": _event_ledger_recent(include_test_data=include_test_data),
     }

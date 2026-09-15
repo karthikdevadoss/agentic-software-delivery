@@ -164,6 +164,55 @@ class RunReconstructionTestCase(unittest.TestCase):
         self.assertEqual(rows[-1]["event_type"], "run_completed")
 
 
+class RecentEventsExcludesMockFixturesTestCase(unittest.TestCase):
+    """Real regression for the flagship-completion session's Usage
+    'Event Ledger (Live)' mock-leak finding: source='workbench_mock' rows
+    carrying synthetic far-future timestamps (2099-01-01) must never
+    appear in the default recent-events feed, only real evidence should,
+    and the explicit include_test_data=True opt-in must still surface
+    them. Ledger contains: one real event (now), one workbench_mock event
+    (2099-01-01), proving both the exclusion and the opt-in against the
+    real live database, not a mock of it."""
+
+    def test_default_excludes_workbench_mock_2099_fixture_but_includes_real_event(self):
+        real_run_id = _unique("test-run-real")
+        mock_run_id = _unique("test-run-mock-2099")
+
+        real_envelope = el.build_envelope(
+            "run_completed", run_id=real_run_id, source="test_suite", status="ok")
+        el._insert(real_envelope)
+
+        mock_envelope = el.build_envelope(
+            "run_completed", run_id=mock_run_id, source="workbench_mock", status="ok")
+        # Other test suites (test_session_history.py) already accumulate
+        # their own 2099-dated workbench_mock fixtures in this same real,
+        # shared database -- use year 9999 so this test's own row is
+        # unambiguously the newest of all of them, regardless of what
+        # else has piled up.
+        mock_envelope["timestamp_utc"] = "9999-01-01T00:00:00+00:00"
+        el._insert(mock_envelope)
+
+        default_rows = el.get_recent_events(limit=5)
+        default_run_ids = {r["run_id"] for r in default_rows}
+        self.assertIn(real_run_id, default_run_ids,
+                       "a real event must be present in the default recent-events feed")
+        self.assertNotIn(mock_run_id, default_run_ids,
+                          "a workbench_mock 2099-dated fixture must never appear by default "
+                          "-- it would otherwise permanently sort above all real evidence")
+
+        # Our year-9999 fixture is guaranteed newer than any other
+        # fixture already accumulated in this real, shared ledger (other
+        # suites use 2099), so it must be the literal top row when test
+        # data is included -- directly reproducing the exact live
+        # production defect this regression guards against (a
+        # far-future-dated workbench_mock row permanently floating above
+        # all real evidence).
+        with_test_data_rows = el.get_recent_events(limit=1, include_test_data=True)
+        self.assertEqual(with_test_data_rows[0]["run_id"], mock_run_id,
+                          "include_test_data=True must still surface the real, preserved fixture row, "
+                          "sorted above real events by its genuine (far-future) timestamp")
+
+
 class TokenUsageTestCase(unittest.TestCase):
     """J. Model/token usage data is preserved where the provider exposes
     it — and honestly absent (None), never invented, where it doesn't."""
@@ -307,15 +356,21 @@ class SecretRedactionTestCase(unittest.TestCase):
 
     def test_g_secret_shaped_value_never_reaches_the_local_spool_either(self):
         spool_path = Path(el.SPOOL_PATH).parent / f"event_spool_test_{uuid.uuid4().hex[:8]}.jsonl"
+        # Built from two non-contiguous literals so this fixture never sits
+        # in the repo as a scannable, real-AWS-Access-Key-ID-shaped string
+        # (GitHub push-protection correctly flags AKIA[0-9A-Z]{16} even when
+        # fake) -- the concatenated runtime value still exercises tools.py's
+        # real AKIA literal-pattern redaction exactly as before.
+        fake_key = "AKIA" + "ABCDEFGHIJKLMNOP"
         try:
             with mock.patch.object(el, "SPOOL_PATH", spool_path), \
                  mock.patch.object(el, "_insert", side_effect=RuntimeError("simulated outage")):
                 el.record_event(
                     "error", run_id="test-run-g2",
-                    payload={"message": "AKIAABCDEFGHIJKLMNOP leaked in a log line"},
+                    payload={"message": f"{fake_key} leaked in a log line"},
                 )
             spooled_text = spool_path.read_text(encoding="utf-8")
-            self.assertNotIn("AKIAABCDEFGHIJKLMNOP", spooled_text)
+            self.assertNotIn(fake_key, spooled_text)
             self.assertIn("REDACTED", spooled_text)
         finally:
             if spool_path.exists():

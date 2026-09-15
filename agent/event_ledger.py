@@ -560,7 +560,21 @@ def backfill_from_claude_code_transcript(transcript_path, window_start_iso, wind
 
 # --- read queries (minimal, for Dashboard/Usage live-proof only) ---------
 
-def get_recent_events(limit=20):
+_TEST_FIXTURE_SOURCES = ("workbench_mock",)
+# REAL BUG FOUND (2026-09-15 flagship-completion session): this raw
+# recent-events feed is what backs Usage's "Event Ledger (Live)" widget,
+# a separate query path from session_history.py's already-filtered
+# session list. Because it sorts by timestamp_utc DESC with no filter,
+# source='workbench_mock' fixture rows carrying synthetic 2099-dated
+# timestamps (this project's own internal test fixtures) permanently
+# floated to the very top of every "recent events" result, no matter how
+# much real production evidence accumulated underneath them — verified
+# live on the public /usage page. Excluded by default here, mirroring
+# session_history.py's _WORKBENCH_SOURCES_REAL_ONLY convention (never a
+# second, divergent classification), with the same explicit
+# include_test_data opt-in the session list already uses. Rows are never
+# deleted — this only changes what a default query returns.
+def get_recent_events(limit=20, include_test_data: bool = False):
     """Minimal read-only projection for Dashboard/Usage live-proof
     surfaces — broadened (Section 5, TRAINER PREVIEW V1) to include
     source/activity_class/duration/model/token columns so Usage can show
@@ -570,13 +584,23 @@ def get_recent_events(limit=20):
     conn = _connect()
     try:
         with conn.cursor() as cur:
-            cur.execute(
-                "SELECT event_id, timestamp_utc, event_type, run_id, status, "
-                "source, activity_class, duration_ms, provider, model, "
-                "input_tokens, output_tokens "
-                "FROM delivery_events ORDER BY timestamp_utc DESC LIMIT %s",
-                (limit,),
-            )
+            if include_test_data:
+                cur.execute(
+                    "SELECT event_id, timestamp_utc, event_type, run_id, status, "
+                    "source, activity_class, duration_ms, provider, model, "
+                    "input_tokens, output_tokens "
+                    "FROM delivery_events ORDER BY timestamp_utc DESC LIMIT %s",
+                    (limit,),
+                )
+            else:
+                cur.execute(
+                    "SELECT event_id, timestamp_utc, event_type, run_id, status, "
+                    "source, activity_class, duration_ms, provider, model, "
+                    "input_tokens, output_tokens "
+                    "FROM delivery_events WHERE source IS NULL OR source <> ALL(%s) "
+                    "ORDER BY timestamp_utc DESC LIMIT %s",
+                    (list(_TEST_FIXTURE_SOURCES), limit),
+                )
             cols = [d[0] for d in cur.description]
             return [dict(zip(cols, row)) for row in cur.fetchall()]
     finally:

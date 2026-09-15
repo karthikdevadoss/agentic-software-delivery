@@ -194,7 +194,16 @@
     padding: var(--sp-6); margin-bottom: 0;
   }
   .account-hero .account-name { margin: 0; font-size: 1.5rem; color: var(--brand-dark); }
-  .account-hero .account-meta { margin: 0.3rem 0 0; color: var(--muted); font-size: 0.85rem; display: flex; flex-wrap: wrap; gap: 0 0.4em; word-break: break-word; }
+  /* REAL BUG FOUND (2026-09-15 flagship-completion session): word-break:
+     break-word (a legacy alias of overflow-wrap: anywhere) shrinks a flex
+     item's computed minimum content size, so the layout engine breaks the
+     email mid-word (e.g. "energydemo.lo" / "cal") to keep it on the
+     current flex line even when there is room to wrap the whole span to
+     its own line below. overflow-wrap: break-word does NOT affect that
+     minimum-size calculation, so flex-wrap: wrap moves the whole email to
+     a new line first and only breaks inside it as a genuine last resort
+     (e.g. a very long email on a narrow phone screen). */
+  .account-hero .account-meta { margin: 0.3rem 0 0; color: var(--muted); font-size: 0.85rem; display: flex; flex-wrap: wrap; gap: 0 0.4em; overflow-wrap: break-word; }
   .account-hero .account-meta span + span:before { content: " \00b7 "; color: var(--border-strong); }
 
   /* ---- Plan (dominant surface) ---- */
@@ -309,6 +318,7 @@
         <a href="https://agentic-platform-backend-production.up.railway.app/triage" target="_blank" rel="noopener">Triage</a>
         <a href="https://agentic-platform-backend-production.up.railway.app/dashboard" target="_blank" rel="noopener">Dashboard</a>
         <a href="https://agentic-platform-backend-production.up.railway.app/usage" target="_blank" rel="noopener">Usage</a>
+        <a href="https://agentic-platform-backend-production.up.railway.app/showcase/senior-java-ai-transformation" target="_blank" rel="noopener">Role Showcase</a>
       </div>
     </details>
     <button class="subtle" id="admin-logout-btn">Log out</button>
@@ -397,6 +407,7 @@
         <a href="https://agentic-platform-backend-production.up.railway.app/triage" target="_blank" rel="noopener">Triage</a>
         <a href="https://agentic-platform-backend-production.up.railway.app/dashboard" target="_blank" rel="noopener">Dashboard</a>
         <a href="https://agentic-platform-backend-production.up.railway.app/usage" target="_blank" rel="noopener">Usage</a>
+        <a href="https://agentic-platform-backend-production.up.railway.app/showcase/senior-java-ai-transformation" target="_blank" rel="noopener">Role Showcase</a>
       </div>
     </details>
     <button class="subtle" id="logout-btn">Log out</button>

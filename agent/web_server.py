@@ -1522,7 +1522,8 @@ async def dashboard_page(request: Request):
 
 
 async def get_sessions_data(request: Request):
-    return JSONResponse(await run_in_threadpool(sessions_data.build_sessions_snapshot))
+    include_test_data = request.query_params.get("include_test_data") == "1"
+    return JSONResponse(await run_in_threadpool(sessions_data.build_sessions_snapshot, include_test_data))
 
 
 async def usage_page(request: Request):
