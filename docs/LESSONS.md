@@ -977,3 +977,36 @@ surprising verified behavior would otherwise get rediscovered later.
   state (here: production content, via direct curl) before assuming
   anything was left inconsistent, since a mid-test-phase kill in this
   pipeline's design happens before any commit/deploy step ever runs.
+
+- **The platform-backend Railway service does not auto-redeploy on
+  `git push` -- it only redeploys when something explicitly runs
+  `railway up` against it -- so a run of docs-only or Python/agent-only
+  commits (no reason to touch the live orchestration server) silently
+  leaves the DEPLOYED image further and further behind
+  `origin/master` with every such session, even though the *repo* is
+  fully up to date. Found live (2026-09-15): the deployed Dashboard was
+  20 commits behind HEAD (still serving a `dd3b762`-era build), so it
+  was actively telling recruiters that USER/ADMIN login and the ADMIN
+  dashboard "are genuinely not yet built" -- both of which had been
+  real, live, production-verified features for at least a day. Nothing
+  in this project's own regression/verification tooling checks
+  *deployed-commit distance from HEAD*; every existing check verifies
+  "is the currently-deployed thing internally consistent/healthy," not
+  "is the currently-deployed thing the CURRENT thing." Compounding
+  this: `docs/PROJECT_STATE.json`'s own `next_phase`/`next_action`/
+  `last_verified_code_commit` fields (which the Dashboard reads
+  directly, unmodified, at request time -- not a cached/hardcoded
+  Python constant) had themselves gone stale in the committed repo,
+  last edited in an earlier session and never updated across 6
+  subsequent commits that added real capability (RBAC/interview-scenario/
+  AI-docs work) -- so even a fresh redeploy would still have shown a
+  stale narrative until that file's own content was corrected too.
+  **Lesson: staleness has two independent layers that must both be
+  checked -- (1) is the deployed container's code actually built from
+  a recent commit (compare the running service's own reported commit
+  to `git log --oneline <that-commit>..HEAD | wc -l`), and (2) is the
+  CONTENT of any human-readable summary file the Dashboard surfaces
+  (PROJECT_STATE.json's narrative fields, not just its structured
+  `completed_capabilities` list) actually current, not just present.**
+  A session that adds real capability should end by asking both
+  questions, not just "did my new commit compile and pass tests."
