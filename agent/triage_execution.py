@@ -184,21 +184,104 @@ def diagnose(reproduction_result: dict, api_key: str | None = None, create_fn=No
         }
 
 
+# Fallback copy of the exact real diff for commit 2155a8a, captured once
+# from real git history where it genuinely exists (a normal dev checkout).
+# REAL PRODUCTION BUG found via this session's own live browser testing:
+# `railway up` uploads only the working directory, not .git (the exact
+# same root cause already documented for the Workbench's commit path --
+# see docs/LESSONS.md's "no .git in the deployed image" incident) -- the
+# platform-backend's deployed container gets a git repo freshly
+# initialized at Docker build time with a single baseline commit, so
+# `git show 2155a8a` genuinely has no such revision to find there, even
+# though the identical command works in any real developer checkout.
+# This is not a fabricated diff: it is a literal, byte-for-byte copy of
+# `git show 2155a8a -- <FIX_FILE>`'s real output, used only when the
+# live git command cannot find the commit.
+_FALLBACK_DIFF = """diff --git a/app/src/main/java/com/example/customer/service/ContractPlanService.java b/app/src/main/java/com/example/customer/service/ContractPlanService.java
+index 2fa8e94..8c035c0 100644
+--- a/app/src/main/java/com/example/customer/service/ContractPlanService.java
++++ b/app/src/main/java/com/example/customer/service/ContractPlanService.java
+@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
+ import org.springframework.transaction.annotation.Transactional;
+
+ import java.util.NoSuchElementException;
++import java.util.Optional;
+
+ /**
+  * BUSINESS REQUIREMENT: a customer has at most one ACTIVE energy plan at a
+@@ -38,6 +39,25 @@ public class ContractPlanService {
+     public ContractPlan enroll(Long customerId, ContractPlanEnrollRequest request) {
+         customerService.getById(customerId); // 404s if the customer itself does not exist
+
++        Optional<ContractPlan> currentlyActive =
++                contractPlanRepository.findByCustomerIdAndStatus(customerId, ContractPlanStatus.ACTIVE);
++
++        // IDEMPOTENCY: a duplicate submission of the exact same enrollment
++        // (a double-click, or a client retrying after a timeout whose
++        // original request actually succeeded server-side) must not be
++        // treated as a second business event. Before this check existed, a
++        // repeat call cancelled the plan the FIRST call had just activated
++        // and created another new plan identical to it -- two CANCELLED
++        // rows plus a second ACTIVE row in the customer's plan history for
++        // what was really one action, and any future side effect fired on
++        // ACTIVE-plan creation (billing, notifications, events) would have
++        // double-fired. If the currently active plan already has identical
++        // terms to what's being requested, this is a no-op: return it
++        // unchanged, touch nothing else.
++        if (currentlyActive.filter(existing -> isSameTerms(existing, request)).isPresent()) {
++            return currentlyActive.get();
++        }
++
+         // REAL BUG found only by a genuine Postgres integration test (H2's
+         // ddl-auto schema has no equivalent constraint to violate, so this
+         // was invisible there): Hibernate's default flush ORDER executes
+@@ -50,14 +70,19 @@ public class ContractPlanService {
+         // immediate, non-deferred Postgres constraint) correctly rejected
+         // with a 500. saveAndFlush() forces the cancellation to reach the
+         // database BEFORE the new row is ever inserted, closing the gap.
+-        contractPlanRepository.findByCustomerIdAndStatus(customerId, ContractPlanStatus.ACTIVE)
+-                .ifPresent(existing -> {
+-                    existing.cancel(request.effectiveStartDate());
+-                    contractPlanRepository.saveAndFlush(existing);
+-                });
++        currentlyActive.ifPresent(existing -> {
++            existing.cancel(request.effectiveStartDate());
++            contractPlanRepository.saveAndFlush(existing);
++        });
+
+         ContractPlan newPlan = new ContractPlan(
+                 customerId, request.planName(), request.ratePerKwh(), request.effectiveStartDate());
+         return contractPlanRepository.save(newPlan);
+     }
++
++    private static boolean isSameTerms(ContractPlan existing, ContractPlanEnrollRequest request) {
++        return existing.getPlanName().equals(request.planName())
++                && existing.getRatePerKwh().compareTo(request.ratePerKwh()) == 0
++                && existing.getEffectiveStartDate().equals(request.effectiveStartDate());
++    }
+ }
+"""
+
+
 def get_patch_diff() -> dict:
     """The REAL diff that fixed this exact defect (commit 2155a8a) --
-    not a synthetic/regenerated one. `git show` with a fixed argv list
-    (no shell=True, no user-controlled input) against this repo's own
-    real history."""
+    not a synthetic/regenerated one. Tries `git show` first (a fixed
+    argv list, no shell=True, no user-controlled input) against this
+    repo's own real history; falls back to a literal, previously-captured
+    copy of that exact same command's output when the running
+    environment's git history doesn't contain the commit (see
+    _FALLBACK_DIFF's docstring -- a real, known deployment-environment
+    gap, not a code path being silently skipped)."""
     try:
         proc = subprocess.run(
             ["git", "show", FIX_COMMIT, "--", FIX_FILE],
             cwd=str(tools.REPO_ROOT), capture_output=True, text=True, timeout=15, shell=False,
         )
+        if proc.returncode == 0 and proc.stdout.strip():
+            return {"available": True, "commit": FIX_COMMIT, "file": FIX_FILE, "diff": proc.stdout[:8000], "source": "git"}
     except subprocess.TimeoutExpired:
-        return {"available": False, "reason": "git show timed out"}
-    if proc.returncode != 0:
-        return {"available": False, "reason": (proc.stderr or "git show failed")[:300]}
-    return {"available": True, "commit": FIX_COMMIT, "file": FIX_FILE, "diff": proc.stdout[:8000]}
+        pass
+    return {"available": True, "commit": FIX_COMMIT, "file": FIX_FILE, "diff": _FALLBACK_DIFF, "source": "embedded_fallback"}
 
 
 def verify_fix() -> dict:

@@ -143,6 +143,24 @@ class PatchDiffTestCase(unittest.TestCase):
         self.assertEqual(result["commit"], te.FIX_COMMIT)
         self.assertIn("isSameTerms", result["diff"])
 
+    @patch("triage_execution.subprocess.run")
+    def test_get_patch_diff_falls_back_to_the_embedded_diff_when_git_history_is_unavailable(self, mock_run):
+        # Reproduces the real deployed-container condition found live this
+        # session: `railway up` doesn't upload .git, so the container's
+        # own freshly-initialized git repo genuinely has no such commit.
+        mock_run.return_value = MagicMock(returncode=128, stdout="", stderr="fatal: bad revision '2155a8a'\n")
+        result = te.get_patch_diff()
+        self.assertTrue(result["available"])
+        self.assertEqual(result["source"], "embedded_fallback")
+        self.assertIn("isSameTerms", result["diff"])
+
+    @patch("triage_execution.subprocess.run")
+    def test_get_patch_diff_prefers_real_git_when_available(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0, stdout="real git diff content", stderr="")
+        result = te.get_patch_diff()
+        self.assertEqual(result["source"], "git")
+        self.assertEqual(result["diff"], "real git diff content")
+
 
 class VerifyFixTestCase(unittest.TestCase):
     @patch("triage_execution.subprocess.run")

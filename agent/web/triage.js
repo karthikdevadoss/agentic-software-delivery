@@ -106,7 +106,11 @@ function renderPatch(p) {
     if (line.startsWith("-") && !line.startsWith("---")) return `<span class="diff-del">${line}</span>`;
     return line;
   }).join("\n");
+  const sourceNote = p.source === "git"
+    ? "read live from this server's git history"
+    : "this environment's own git history doesn't include this commit (a known deployment-environment gap, not fabricated) -- showing a literal, previously-captured copy of the same real diff";
   el.innerHTML = `<p><strong>Commit</strong> <code>${esc(p.commit)}</code> — <code>${esc(p.file)}</code></p>
+    <p class="hint">${esc(sourceNote)}</p>
     <div class="diff-view">${highlighted}</div>`;
 }
 
