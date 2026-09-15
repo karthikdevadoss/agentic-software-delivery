@@ -10,14 +10,16 @@ old date as due for re-verification, not as current truth.
 
 - **NAME:** agentic-software-delivery (local repo name)
 - **PURPOSE:** Source of truth for all code, docs, and durable state.
-- **PROVIDER:** Local Git only.
-- **REMOTE:** **NONE CONFIGURED** — `git remote -v` returns empty.
+- **PROVIDER:** GitHub — `github.com/karthikdevadoss/agentic-software-delivery.git`.
+- **REMOTE:** `origin` configured (confirmed via `git remote -v`).
 - **DEFAULT BRANCH:** `master`
-- **STATUS:** CURRENT (local), **NOT DURABLE** (no remote)
-- **LAST VERIFIED:** 2026-09-10
-- **NOTES:** This is the single most important gap this registry records.
-  All commits exist only on this laptop until a remote is configured and
-  pushed to. See docs/PROJECT_STATE.json's `next_action` for current status.
+- **STATUS:** CURRENT and DURABLE — `git ls-remote origin HEAD` matches
+  local `HEAD` (`81e81e0`) as of last verification, confirming the latest
+  local commit is actually pushed, not just committed.
+- **LAST VERIFIED:** 2026-09-16 (this entry was found stale during the
+  context-portability migration — it previously claimed no remote was
+  configured; corrected after `git remote -v` and `git ls-remote` showed
+  otherwise).
 
 ## Existing personal portfolio site
 

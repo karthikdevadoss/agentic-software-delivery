@@ -82,6 +82,22 @@ In this order:
 9. `knowledge/INDEX.md` — narrative incident/session records (interview-prep evidence)
 10. `CLAUDE.md` — the operating instructions an AI session actually follows
 
+## Where is the model-neutral context entry layer?
+
+**docs/context/** — a small pointer layer so any capable LLM (not only
+whichever one has the longest chat history) can pick up this project's
+purpose, engineering principles, and current state without duplicating
+the canonical files above. Start at `docs/context/PROJECT_CONTEXT_INDEX.md`.
+
+## Where is Karthik's private professional/career context?
+
+In a **separate, private** repository, `karthikdevadoss/karthik-ai-context`
+— never in this public repo. It holds career history, job-search context,
+resume rules, interview prep, trainer/workshop state, and model
+collaboration preferences. This public repo intentionally does not link
+its contents (private by design); a session with access to it should start
+at that repository's `CONTEXT_BOOTSTRAP.md`.
+
 ## Where are source/runtime services/resources documented?
 
 **docs/RESOURCE_REGISTRY.md** — the canonical non-secret registry of every
