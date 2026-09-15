@@ -227,6 +227,11 @@ class GenerateCandidatePatchTestCase(unittest.TestCase):
         self.assertEqual(result["target_file"], te.FIX_FILE)
         create_fn.assert_called_once()
         self.assertEqual(create_fn.call_args.kwargs["model"], "claude-sonnet-5")
+        # Bounds thinking depth for this mechanical code-generation task --
+        # see _call_model_text's Javadoc-equivalent docstring for why
+        # (extended thinking otherwise runs adaptive by default and can
+        # consume the entire max_tokens budget before any text output).
+        self.assertEqual(create_fn.call_args.kwargs["output_config"], {"effort": "low"})
 
     def test_strips_markdown_fence_if_the_model_adds_one_anyway(self):
         fake_block = MagicMock()

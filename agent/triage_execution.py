@@ -225,7 +225,7 @@ def generate_candidate_patch(reproduction_result: dict, api_key: str | None = No
         f"Real database evidence after submitting the identical enrollment request twice:\n"
         f"{json.dumps(reproduction_result, indent=2)}\n\n"
         f"Current (defective) file content ({FIX_FILE}):\n{_BUGGY_FULL_FILE}",
-        4096, api_key, create_fn,
+        4096, api_key, create_fn, effort="low",
     )
     if unavailable is not None:
         return {"generated": False, "candidate_source": None,
@@ -246,14 +246,24 @@ def apply_and_verify_candidate(candidate_source: str) -> dict:
 
 
 def _call_model_text(system_prompt: str, user_message: str, max_tokens: int,
-                      api_key: str | None, create_fn) -> tuple[str | None, dict | None]:
+                      api_key: str | None, create_fn, effort: str | None = None) -> tuple[str | None, dict | None]:
     """Shared low-level Anthropic call + response-text extraction, reused
     by both Scenario A and Scenario B's diagnose()/generate_candidate_patch()
     functions -- the SAME engine, not a parallel implementation per
     scenario. Returns (stripped_text, None) on success, or (None,
     honest_unavailable_dict) when no API key is configured. Real usage is
     recorded via metrics.record_model_usage() exactly as before this was
-    extracted, for every caller."""
+    extracted, for every caller.
+
+    effort (optional, e.g. "low"/"medium"): passed through as
+    output_config.effort -- claude-sonnet-5 runs ADAPTIVE THINKING BY
+    DEFAULT when this is omitted (verified live, 2026-09-15: extended
+    thinking consumed an entire 2048-, then 4096-, token max_tokens
+    budget before emitting any text for Triage Scenario C's
+    candidate-patch generation -- stop_reason='max_tokens', zero text
+    blocks). For a mechanical code-generation task (not a hard reasoning
+    problem), bounding effort is the correct lever, not an ever-larger
+    max_tokens -- see callers that pass effort='low'."""
     if create_fn is None:
         api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
         if not api_key:
@@ -261,10 +271,14 @@ def _call_model_text(system_prompt: str, user_message: str, max_tokens: int,
         from anthropic import Anthropic
         create_fn = Anthropic(api_key=api_key).messages.create
 
+    kwargs = {}
+    if effort is not None:
+        kwargs["output_config"] = {"effort": effort}
     response = create_fn(
         model="claude-sonnet-5", max_tokens=max_tokens,
         system=system_prompt,
         messages=[{"role": "user", "content": user_message}],
+        **kwargs,
     )
     usage = getattr(response, "usage", None)
     if usage is not None:
@@ -822,7 +836,7 @@ def generate_candidate_patch_b(reproduction_result: dict, api_key: str | None = 
         f"{json.dumps(reproduction_result, indent=2)}\n\n"
         f"Reference (a DIFFERENT, already-correct retry instance in this codebase):\n{REFERENCE_SOURCE_EXCERPT_B}\n\n"
         f"Current (defective) file content ({FIX_FILE_B}):\n{_BUGGY_FULL_FILE_B}",
-        4096, api_key, create_fn,
+        4096, api_key, create_fn, effort="low",
     )
     if unavailable is not None:
         return {"generated": False, "candidate_source": None,
@@ -1118,7 +1132,7 @@ def generate_candidate_patch_c(reproduction_result: dict, api_key: str | None = 
         f"{json.dumps(reproduction_result, indent=2)}\n\n"
         f"Reference (a DIFFERENT, already-correct query in this codebase):\n{REFERENCE_SOURCE_EXCERPT_C}\n\n"
         f"Current (defective) file content ({FIX_FILE_C}):\n{_BUGGY_FULL_FILE_C}",
-        4096, api_key, create_fn,
+        4096, api_key, create_fn, effort="low",
     )
     if unavailable is not None:
         return {"generated": False, "candidate_source": None,
