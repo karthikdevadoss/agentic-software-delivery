@@ -85,6 +85,13 @@ public class SecurityConfig {
                                 "/internal/triage/scenario-b/reproduce").permitAll()
                         .requestMatchers(HttpMethod.GET, "/internal/triage/scenario-b/state").permitAll()
                         .requestMatchers(HttpMethod.POST, "/internal/triage/scenario-b/approve").hasAuthority("SCOPE_admin:read")
+                        // Incident Triage Lab, Scenario C: same shape as Scenarios A/B above --
+                        // queries run only against dedicated synthetic customer rows created
+                        // by TriageScenarioCService.reset(), never real business data.
+                        .requestMatchers(HttpMethod.POST, "/internal/triage/scenario-c/reset",
+                                "/internal/triage/scenario-c/reproduce").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/internal/triage/scenario-c/state").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/internal/triage/scenario-c/approve").hasAuthority("SCOPE_admin:read")
                         .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
                         // Everything else under /actuator (metrics, prometheus, env, etc.)
                         // requires at least a valid token -- no admin scope exists in

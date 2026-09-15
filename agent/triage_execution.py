@@ -823,3 +823,301 @@ def verify_fix_b() -> dict:
     """Same focused-Maven-test mechanism as verify_fix() (Scenario A) --
     reuses _run_focused_maven_tests()."""
     return _run_focused_maven_tests(["TriageScenarioBIntegrationTest"])
+
+
+# =============================================================================
+# Incident Triage Lab -- Scenario C (admin search: Postgres bind-parameter
+# type inference). REUSES THE SAME ENGINE AS SCENARIOS A/B above -- only
+# the scenario-specific evidence/prompts/target file differ.
+# =============================================================================
+
+FIX_FILE_C = "app/src/main/java/com/example/customer/triage/TriageScenarioCService.java"
+
+DIAGNOSIS_SYSTEM_PROMPT_C = """You are assisting a senior backend engineer diagnosing a real production
+defect: an admin search feature that works fine on H2 (local tests) but
+fails against real PostgreSQL. You will be given: (1) real evidence from
+actually running the search query against the real database, (2) the
+real defective JPQL source, (3) the scenario's business context.
+
+Respond with ONLY a JSON object (no markdown fences), with exactly these
+keys: "hypothesis" (one sentence, what you think is wrong), "root_cause"
+(2-3 sentences, the precise mechanical reason), "affected_component"
+(the class/method name), "confidence" (one of: HIGH, MEDIUM, LOW).
+Be concise and technically precise. Do not guess beyond the evidence
+given."""
+
+# The real, currently-seeded defective JPQL -- shown to the model as
+# evidence, exactly mirroring Scenario A/B's DEFECTIVE_SOURCE_EXCERPT.
+DEFECTIVE_SOURCE_EXCERPT_C = """private List<Customer> searchBuggy() {
+    return entityManager.createQuery(
+                    "SELECT c FROM Customer c WHERE (:term IS NULL OR "
+                    + "LOWER(c.name) LIKE LOWER(CONCAT('%', :term, '%')))",
+                    Customer.class)
+            .setParameter("term", SEARCH_TERM)
+            .getResultList();
+}
+// NOTE: the :term bind parameter is used in BOTH an ":term IS NULL" check
+// AND wrapped inside LOWER(CONCAT('%', :term, '%')) -- this dual-context
+// usage is what made real PostgreSQL's JDBC driver unable to infer a
+// concrete type for the parameter, defaulting it to bytea and failing
+// with "function lower(bytea) does not exist". H2 has no equivalent
+// type-inference gap, so this query succeeds there regardless."""
+
+# The REAL production predicate (CustomerRepository.searchWorkspaceCustomers)
+# -- shown to the model as the ground-truth reference for what a correct
+# query looks like elsewhere in this same codebase.
+REFERENCE_SOURCE_EXCERPT_C = """// From CustomerRepository.java's real, already-correct, already-tested
+// production searchWorkspaceCustomers query (AdminCustomerController
+// pre-builds the full "%value%" LIKE pattern in Java first):
+@Query("SELECT c FROM Customer c WHERE ... "
+        + "AND (:namePattern IS NULL OR LOWER(c.name) LIKE :namePattern) "
+        + "AND (:emailPattern IS NULL OR LOWER(c.email) LIKE :emailPattern)")
+Page<Customer> searchWorkspaceCustomers(...);
+// namePattern/emailPattern are ALREADY-BUILT "%value%" patterns (see
+// AdminCustomerController.likePattern()) -- the bind parameter itself is
+// never wrapped in CONCAT/LOWER, only compared directly via LIKE."""
+
+CANDIDATE_PATCH_SYSTEM_PROMPT_C = """You are a senior backend engineer fixing a real defect in a Spring Boot
+service's JPQL search query, given real evidence of the defect (not told
+the answer).
+
+You will be given the CURRENT (defective) complete source of one Java
+file, real evidence that its search query fails against real PostgreSQL
+(succeeding harmlessly on H2), and a reference excerpt showing the
+correct query style already used elsewhere in this codebase (for a
+DIFFERENT search method) -- you must still write the actual corrected
+query for THIS file yourself, not copy the reference verbatim if it does
+not fit this file's own structure.
+
+Write the COMPLETE, corrected version of this ONE file that fixes the
+defect while preserving existing behavior, comments, and style. Do not
+change public method signatures or the class's constructor. Do not add
+unrelated functionality.
+
+Respond with ONLY the complete corrected file content -- no markdown
+fences, no explanation before or after."""
+
+# The REAL, complete current source of TriageScenarioCService.java
+# (literal, matching the file on disk) -- what a candidate-patch-
+# generation call is given as "the current defective file" to correct in
+# full, never just told the one-line answer.
+_BUGGY_FULL_FILE_C = """package com.example.customer.triage;
+
+import com.example.customer.model.Customer;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
+
+/**
+ * Incident Triage Lab -- Scenario C (admin search: Postgres bind-parameter
+ * type inference).
+ *
+ * ISOLATION CONTRACT, mirroring TriageScenarioAService/TriageScenarioBService
+ * exactly: every method here operates ONLY on dedicated, clearly-labeled
+ * synthetic "Triage Scenario C" customer rows (name/email prefix
+ * "triagescenarioc-"), created fresh by reset() -- never touches
+ * CustomerRepository.searchWorkspaceCustomers (the real, already-fixed
+ * production admin-search query) or any real customer's data.
+ */
+@Service
+public class TriageScenarioCService {
+
+    private static final AtomicLong RESET_COUNTER = new AtomicLong();
+    private static final String SEARCH_TERM = "triagescenarioc";
+
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    private volatile boolean fixApplied = false;
+
+    @Transactional
+    public synchronized TriageCState reset() {
+        long n = RESET_COUNTER.incrementAndGet();
+        Customer customer = new Customer(
+                "TriageScenarioC Search Target " + n, "triagescenarioc-" + n + "@triagelab.internal");
+        entityManager.persist(customer);
+        this.fixApplied = false;
+        return state();
+    }
+
+    @Transactional(readOnly = true)
+    public TriageCReproductionResult reproduce() {
+        boolean querySucceeded;
+        int resultCount = 0;
+        String errorType = null;
+        String errorMessage = null;
+        try {
+            List<Customer> results = fixApplied ? searchFixed() : searchBuggy();
+            resultCount = results.size();
+            querySucceeded = true;
+        } catch (RuntimeException e) {
+            querySucceeded = false;
+            Throwable root = rootCause(e);
+            errorType = root.getClass().getSimpleName();
+            errorMessage = root.getMessage();
+        }
+        boolean defectReproduced = !fixApplied && !querySucceeded;
+        return new TriageCReproductionResult(fixApplied, querySucceeded, resultCount, errorType, errorMessage, defectReproduced);
+    }
+
+    /**
+     * REAL, DELIBERATELY-PRESERVED PRE-FIX SHAPE (isolated pedagogical
+     * replay, never reachable by the real admin-search endpoint): the
+     * bind parameter itself is wrapped in LOWER(CONCAT('%', :term, '%')),
+     * and the same parameter is also compared via ":term IS NULL" --
+     * this exact dual-context usage is the real historical trigger for
+     * PostgreSQL's bytea type-inference default.
+     */
+    private List<Customer> searchBuggy() {
+        return entityManager.createQuery(
+                        "SELECT c FROM Customer c WHERE (:term IS NULL OR LOWER(c.name) LIKE LOWER(CONCAT('%', :term, '%')))",
+                        Customer.class)
+                .setParameter("term", SEARCH_TERM)
+                .getResultList();
+    }
+
+    /**
+     * REAL FIX SHAPE, mirroring CustomerRepository.searchWorkspaceCustomers's
+     * actual current production query exactly: the full "%value%" LIKE
+     * pattern is pre-built in Java and bound as a plain String parameter,
+     * never wrapped in CONCAT/LOWER itself.
+     */
+    private List<Customer> searchFixed() {
+        String pattern = "%" + SEARCH_TERM + "%";
+        return entityManager.createQuery(
+                        "SELECT c FROM Customer c WHERE (:pattern IS NULL OR LOWER(c.name) LIKE :pattern)",
+                        Customer.class)
+                .setParameter("pattern", pattern)
+                .getResultList();
+    }
+
+    private static Throwable rootCause(Throwable t) {
+        Throwable cause = t;
+        while (cause.getCause() != null && cause.getCause() != cause) {
+            cause = cause.getCause();
+        }
+        return cause;
+    }
+
+    /** Requires ADMIN authorization at the controller layer (see
+     * TriageScenarioCController) -- flips only this isolated scenario's
+     * own state, never touches the real production search query. */
+    public synchronized TriageCState approveFix() {
+        this.fixApplied = true;
+        return state();
+    }
+
+    public TriageCState state() {
+        return new TriageCState(fixApplied);
+    }
+}
+"""
+
+
+def reset_scenario_c() -> dict:
+    return _request("POST", "/internal/triage/scenario-c/reset")
+
+
+def reproduce_scenario_c() -> dict:
+    return _request("POST", "/internal/triage/scenario-c/reproduce")
+
+
+def get_state_c() -> dict:
+    return _request("GET", "/internal/triage/scenario-c/state")
+
+
+def approve_scenario_c(admin_username: str, admin_password: str) -> dict:
+    """Same real login + admin-gated approve pattern as approve_scenario()
+    (Scenario A) -- reuses the same _request() helper, just a different
+    target path."""
+    try:
+        login = _request("POST", "/auth/login", body={"username": admin_username, "password": admin_password})
+    except TriageExecutionError as e:
+        raise ApprovalAuthError(f"admin login failed: {e}") from e
+    token = login.get("accessToken")
+    if not token:
+        raise ApprovalAuthError("login succeeded but no accessToken was returned")
+    try:
+        return _request("POST", "/internal/triage/scenario-c/approve", token=token)
+    except TriageExecutionError as e:
+        raise ApprovalAuthError(f"approve rejected: {e}") from e
+
+
+def diagnose_c(reproduction_result: dict, api_key: str | None = None, create_fn=None) -> dict:
+    """One real, on-demand Claude call, same shape as diagnose()/diagnose_b()
+    -- reuses _call_model_text()."""
+    evidence = (
+        f"Business context: an ADMIN searches customers by partial name/email; the feature "
+        f"passed every local (H2) test and still broke the first time it was used against "
+        f"real production Postgres -- a textbook 'works on my machine' class of defect.\n\n"
+        f"Reproduction result (real outcome of actually running the search query):\n"
+        f"{json.dumps(reproduction_result, indent=2)}\n\n"
+        f"Current query source:\n{DEFECTIVE_SOURCE_EXCERPT_C}"
+    )
+    text, unavailable = _call_model_text(DIAGNOSIS_SYSTEM_PROMPT_C, evidence, 512, api_key, create_fn)
+    if unavailable is not None:
+        return {
+            "hypothesis": None, "root_cause": None, "affected_component": None,
+            "confidence": None, "model_called": False,
+            "explanation": "ANTHROPIC_API_KEY not set -- cannot run live AI diagnosis",
+        }
+    try:
+        parsed = json.loads(text)
+        parsed["model_called"] = True
+        return parsed
+    except json.JSONDecodeError:
+        return {
+            "hypothesis": None, "root_cause": None, "affected_component": None, "confidence": None,
+            "model_called": True, "explanation": f"model did not return valid JSON: {text[:300]!r}",
+        }
+
+
+def get_reference_c() -> dict:
+    """Like Scenario B, honestly shows the REAL production query already
+    live elsewhere in this codebase (CustomerRepository) as ground truth,
+    rather than fabricating a synthetic reference for this real
+    historical incident's already-known fix."""
+    return {
+        "available": True, "kind": "production_reference",
+        "file": "app/src/main/java/com/example/customer/repository/CustomerRepository.java",
+        "excerpt": REFERENCE_SOURCE_EXCERPT_C,
+    }
+
+
+def generate_candidate_patch_c(reproduction_result: dict, api_key: str | None = None, create_fn=None) -> dict:
+    """A SECOND real, on-demand Claude call, same shape as Scenarios A/B --
+    reuses _call_model_text()."""
+    text, unavailable = _call_model_text(
+        CANDIDATE_PATCH_SYSTEM_PROMPT_C,
+        f"Real evidence: the buggy query {'succeeded' if reproduction_result.get('querySucceeded') else 'failed'} "
+        f"(querySucceeded={reproduction_result.get('querySucceeded')}).\n"
+        f"{json.dumps(reproduction_result, indent=2)}\n\n"
+        f"Reference (a DIFFERENT, already-correct query in this codebase):\n{REFERENCE_SOURCE_EXCERPT_C}\n\n"
+        f"Current (defective) file content ({FIX_FILE_C}):\n{_BUGGY_FULL_FILE_C}",
+        2048, api_key, create_fn,
+    )
+    if unavailable is not None:
+        return {"generated": False, "candidate_source": None,
+                "explanation": "ANTHROPIC_API_KEY not set -- cannot generate a live candidate patch"}
+    candidate_source = text + "\n"
+    return {"generated": True, "candidate_source": candidate_source, "target_file": FIX_FILE_C}
+
+
+def apply_and_verify_candidate_c(candidate_source: str) -> dict:
+    """Same isolated-workspace diff+compile mechanism as Scenarios A/B --
+    reuses _isolated_compile_java_candidate()."""
+    return _isolated_compile_java_candidate(
+        "com/example/customer/triage/TriageScenarioCService.java", _BUGGY_FULL_FILE_C, candidate_source)
+
+
+def verify_fix_c() -> dict:
+    """Same focused-Maven-test mechanism as Scenarios A/B -- reuses
+    _run_focused_maven_tests(). Scoped to the H2-based lifecycle test
+    only (TriageScenarioCPostgresIntegrationTest needs a real Docker
+    daemon, unavailable both on this dev machine and inside the deployed
+    container -- CI-only, see its own Javadoc)."""
+    return _run_focused_maven_tests(["TriageScenarioCIntegrationTest"])

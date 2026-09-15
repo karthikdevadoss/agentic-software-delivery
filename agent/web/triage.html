@@ -26,7 +26,7 @@
   <section class="panel" id="scenario-panel">
     <h2>Scenario A — Plan Enrollment Duplicate Submission</h2>
     <p class="hint">Business symptom: a customer double-clicks "Enroll," or a client retries a request after a timeout whose original call actually succeeded. Engineering area: transactions / idempotency / Spring Data JPA. Risk: MEDIUM. Isolation: every action below operates only on a dedicated, disposable synthetic "Triage Scenario Customer" — never real customer data.</p>
-    <p class="hint">Other scenarios: <a href="/triage/scenario-b">Scenario B — Appointment Downstream Resilience</a></p>
+    <p class="hint">Other scenarios: <a href="/triage/scenario-b">Scenario B — Appointment Downstream Resilience</a> · <a href="/triage/scenario-c">Scenario C — Admin Search Postgres Type Inference</a></p>
     <div class="btn-row">
       <button id="start-btn">START INCIDENT</button>
       <button class="secondary" id="reset-btn" hidden>RESET SCENARIO</button>
