@@ -1,0 +1,35 @@
+# Invariant Registry
+
+Phase 7 of the Base Architecture V3 directive. Machine-readable in spirit
+(each row names its real machine expression), not yet a separate
+machine-readable file — see "Why not a separate JSON/YAML file yet" below.
+Every row traces to real code inspected during Phase 1's audit
+(`docs/INTELLIGENCE_PLACEMENT_V3.md`) or this session's own fixes.
+
+| invariant_id | Business meaning | Scope | Machine expression | Authority | Sensor/test proving it | Failure action |
+|---|---|---|---|---|---|---|
+| `SEC-01` | A USER can never read/write another customer's data | Customer App | `WorkspaceAccessGuard.java` — per-request ownership check | DETERMINISTIC (Spring Security + compiled guard) | Security integration tests (route-level, see `SecurityConfig.java`'s matrix) | 403, real HTTP status, not a filtered 200 |
+| `SEC-02` | A USER can never perform ADMIN-only actions | Customer App + Triage Lab | `SecurityConfig.java`'s `hasAuthority("SCOPE_...")` per-route matrix; Triage approve routes independently re-check admin JWT server-side | DETERMINISTIC | `TriageScenarioAIntegrationTest`'s admin-gate tests (401 anonymous, 403 non-admin) | 401/403, real HTTP status |
+| `BIZ-01` | A duplicate enrollment request must not create a duplicate active plan or cancel a just-activated one | Customer App | `ContractPlanService.enroll()`'s idempotency no-op check (the real AEQ-family historical defect fix, commit `2155a8a`) | DETERMINISTIC (compiled Java + DB read-before-write) | `TriageScenarioAIntegrationTest` reproduces the historical bug and proves the fix | Wrong outcome silently reachable before the fix; now structurally prevented |
+| `APR-01` | AI output never directly advances a `Run`'s workflow state | Workbench | `agent/execution_tools.py::_EXECUTION_DISPATCH` — `approve_edit`/`reject_edit` provably absent (exact set-membership, not substring match) | DETERMINISTIC (Python dict membership) | `agent/test_execution_tools.py` | Structurally impossible for the model to self-approve, not just instructed not to |
+| `APR-02` | A run's status can only ever be one of the 17 known states | Workbench | `agent/web_server.py::Run.set_status()` — the sole sanctioned mutator (this session's fix, commit `bd9bae0`) | DETERMINISTIC | `agent/test_web_server.py` (5 dedicated tests) | Raises `ValueError` on an unrecognized status string |
+| `TRG-01` | An AI-generated Triage candidate is not eligible for human promotion approval unless it both compiles AND the real scenario regression test passes against it | Triage Lab | `agent/triage_execution.py::_isolated_compile_java_candidate()` (this session's fix, commit `72dbe4d`) — returns `TESTS_FAILED`, distinct from `COMPILE_VERIFIED`, when compile succeeds but the test doesn't | DETERMINISTIC | `agent/test_triage_execution.py`'s real before/after proof using the actual historical pre-fix file | Candidate cannot reach `record_verified_candidate()` |
+| `PRV-01` | The candidate a human approves is byte-identical to the one promoted | Triage Lab | `agent/triage_promotion.py`'s SHA256 hash binding at approval time, re-verified at promotion time (TOCTOU-safe) | DETERMINISTIC (hash equality) | `agent/test_triage_promotion.py` (8/8, real local git repo) | `APPROVAL_INVALIDATED` on any mismatch |
+| `PRV-02` | An applied source edit is byte-identical to the one a human approved | Workbench | `agent/write_tools.py`'s approve/apply `sha256(path, content)` hash binding | DETERMINISTIC | `agent/test_write_tools.py` | Apply refused if either path or content changed since approval |
+| `DPL-01` | A deployment is only asserted successful from real, independent production observation — never CLI status alone | Workbench + Triage promotion | `agent/demo_execution.py::wait_for_new_deployment()` (timestamp-parsed, not raw-string-compared) + `_decide_deployment_outcome()` | DETERMINISTIC (direct HTTP check as primary evidence) | Real acceptance runs (`agent/test_demo_execution.py`, live production checks) | `DEPLOYMENT_STATUS_UNKNOWN` when neither confirms — never silently folded into `FAILED` |
+| `NAV-01` | Every rendered public-page link resolves to a real destination | All 9 public routes | `agent/test_showcase_data.py::classify_link()` (manifest links) + `e2e/link-integrity.spec.js` (every rendered `<a href>`, this session's fixes for AEQ-022) | DETERMINISTIC (Starlette `Route.matches()` / real HTTP fetch) | 6/6 + 9/9, independently re-run against live production this session | Build fails on a `BARE_RELATIVE_PATH`/`BROKEN_INTERNAL_ROUTE` |
+| `LLM-01` | A model call is only made for a recognized advisory purpose, and its output is never trusted as authority | Triage Lab (so far — see `docs/ARCHITECTURE_V3_DECISIONS.md` D5 for scope) | `agent/reasoning_gateway.py::call()` — default-denied `ADVISORY_PURPOSES` allowlist, `authority: "ADVISORY"` on every result | DETERMINISTIC (frozenset membership) | `agent/test_reasoning_gateway.py` (13/13) | Denied before any network call; every caller independently re-verifies (compile+test for candidates, display-only for diagnosis) |
+| `LLM-02` | Zero-LLM mode makes zero network calls when active | Reasoning Gateway | `agent/reasoning_gateway.py::llm_mode_disabled()` — `LLM_MODE=DISABLED` env var, checked live per call | DETERMINISTIC | `agent/test_reasoning_gateway.py::ZeroLlmModeTestCase` | Honest structured denial, not a crash or silent fallback |
+| `LEDGER-01` | A retried event write never creates a duplicate row | Event ledger | `agent/event_ledger.py`'s `ON CONFLICT DO NOTHING` on `event_id` | DETERMINISTIC (Postgres constraint) | `agent/test_event_ledger.py`'s duplicate-retry test | Idempotent by construction |
+
+## Why not a separate machine-readable file yet
+
+Every invariant above already has its real enforcement point AND its real
+test — the registry's value right now is as a single, named index a human
+(or a future session) can scan, not as a new runtime check. Converting
+this table into a `.yaml`/`.json` file that some CI step diffs against the
+actual test suite is real, valuable future work (it would catch a test
+being silently deleted without its invariant being noticed) — deferred
+because no such drift has been observed yet, consistent with this
+directive's own Phase 24 rule: build the mechanism once there is evidence
+of the problem it prevents, not speculatively.
