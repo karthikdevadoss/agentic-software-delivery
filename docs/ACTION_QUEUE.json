@@ -296,6 +296,20 @@
       "verification_required": "Build the promotion step to reuse demo_execution.py's real isolated-workspace clone/commit/push/deploy machinery (never a second implementation), guarded by: candidate-hash verification (the approved diff must exactly match what's promoted -- no TOCTOU substitution), a dedicated branch (never master directly), and deployment-identity confirmation before asserting RESOLVED. A real human (not this session) must exercise the actual approval for the first live run.",
       "created_at_commit": "e7360bf",
       "resolved_at_commit": null
+    },
+    {
+      "id": "LOCAL-MEMORY-PRESSURE-FULL-SUITE",
+      "source": "environment",
+      "title": "ENVIRONMENT_LIMITATION (Owner-classified, not a product defect): local machine memory pressure killed the full Python regression suite twice during the flagship-completion session's Checkpoint 3",
+      "priority": "low",
+      "status": "open",
+      "scope": "This dev machine's own available RAM only -- no code change, no test change needed to resolve this specific item.",
+      "reason": "During Checkpoint 3 (Triage Scenario C + a shared-engine reliability fix), `python -m unittest discover -p 'test_*.py'` (the full ~600-test suite) was killed twice by the OS due to low system memory (observed ~2.3GB free of ~16GB total, likely from many hours of accumulated Maven/Node/browser-automation/IDE processes across this long session). This is a real, observed local resource constraint -- not a test failure, and not evidence of a code regression. The Owner explicitly instructed: stop retrying the same memory-heavy full suite locally, run only targeted tests for the actual change, and treat GitHub Actions CI as the authoritative full-suite lane. Checkpoint 3's changes were verified instead via: the complete agent/test_triage_execution.py suite (47/47, covering every function touched), the specific Java Scenario C test classes (TriageScenarioCIntegrationTest 4/4, TriageScenarioCPostgresIntegrationTest 2/2 honestly skipped -- no local Docker), and direct live-production verification of the actual deployed behavior (curl-level end-to-end Scenario C lifecycle, including the reliability-fixed candidate-patch step).",
+      "evidence": "Two killed background task runs during this session (memory pressure, not test assertions failing) -- see docs/PROJECT_STATE.json's CHECKPOINT 3 completed_capabilities entry for the full narrative. A lingering ~3.16GB python.exe process from one of the killed runs was found and terminated (taskkill) before targeted verification proceeded.",
+      "safe_to_auto_execute": false,
+      "verification_required": "No code action needed. If this recurs across multiple sessions, consider: closing unused local applications before a long autonomous session, or relying on GitHub Actions CI (.github/workflows/ci.yml, already established and proven) as the primary full-suite signal rather than local `python -m unittest discover` for large regression runs.",
+      "created_at_commit": "4d42e57",
+      "resolved_at_commit": null
     }
   ]
 }
