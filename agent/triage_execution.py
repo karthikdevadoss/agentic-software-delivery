@@ -242,7 +242,8 @@ def apply_and_verify_candidate(candidate_source: str) -> dict:
     running environment's git history -- see AEQ-020), and compiles it
     there. Always cleans up the temp workspace, success or failure."""
     return _isolated_compile_java_candidate(
-        "com/example/customer/service/ContractPlanService.java", _BUGGY_FULL_FILE, candidate_source)
+        "com/example/customer/service/ContractPlanService.java", _BUGGY_FULL_FILE, candidate_source,
+        test_classes=["ContractPlanServiceTest", "TriageScenarioAIntegrationTest"])
 
 
 def _call_model_text(system_prompt: str, user_message: str, max_tokens: int,
@@ -318,15 +319,34 @@ def _call_model_text(system_prompt: str, user_message: str, max_tokens: int,
     return stripped, None
 
 
-def _isolated_compile_java_candidate(target_rel_path: str, baseline_source: str, candidate_source: str) -> dict:
-    """Shared isolated-workspace diff+compile mechanism, reused by both
-    Scenario A and Scenario B's apply_and_verify_candidate() functions --
-    the SAME engine, not a parallel implementation per scenario. Applies
+def _isolated_compile_java_candidate(
+    target_rel_path: str, baseline_source: str, candidate_source: str,
+    test_classes: list[str] | None = None,
+) -> dict:
+    """Shared isolated-workspace diff+compile(+test) mechanism, reused by
+    all three scenarios' apply_and_verify_candidate*() functions -- the
+    SAME engine, not a parallel implementation per scenario. Applies
     candidate_source at target_rel_path (relative to app/src/main/java/...)
     in an isolated temp copy of app/ -- never the real repository --
     computes the real diff via Python's own difflib (never `git apply`,
     so this never depends on the running environment's git history), and
-    compiles it there. Always cleans up the temp workspace."""
+    compiles it there. Always cleans up the temp workspace.
+
+    HIGH-priority fix (docs/INTELLIGENCE_PLACEMENT_V3.md's Phase 1 audit):
+    a candidate used to be labeled COMPILE_VERIFIED -- and become eligible
+    for human-approved production promotion (agent/triage_promotion.py) --
+    after only a successful compile, never proving the reproduced defect
+    is actually fixed. When test_classes is given, a real focused Maven
+    test run (mirroring _run_focused_maven_tests()'s own subprocess shape)
+    now runs INSIDE THE SAME ISOLATED WORKSPACE after a successful
+    compile, and COMPILE_VERIFIED now means "compiled AND (no tests
+    requested OR the requested tests passed)". A compile-only caller
+    (test_classes=None) keeps the exact previous meaning -- still an
+    honest, legal call shape -- but every real caller in this codebase
+    now passes test_classes. A new TESTS_FAILED status is returned when
+    compile succeeds but the tests don't, so a human approver (and any
+    log reader) can tell this apart from COMPILE_FAILED/ENVIRONMENT_INVALID
+    at a glance."""
     import difflib
     import shutil
     import tempfile
@@ -336,7 +356,7 @@ def _isolated_compile_java_candidate(target_rel_path: str, baseline_source: str,
     if preflight["status"] != "ENVIRONMENT_VALID":
         return {
             "applied": False, "status": "ENVIRONMENT_INVALID",
-            "diff": "", "compile": None, "environment_preflight": preflight,
+            "diff": "", "compile": None, "test": None, "environment_preflight": preflight,
         }
 
     diff = "".join(difflib.unified_diff(
@@ -368,12 +388,41 @@ def _isolated_compile_java_candidate(target_rel_path: str, baseline_source: str,
             compile_success = False
             compile_output = "compile timed out after 180s"
         duration_ms = round((time.monotonic() - start) * 1000, 1)
+        compile_result = {"success": compile_success, "duration_ms": duration_ms, "output_tail": compile_output[-2000:]}
+
+        test_result = None
+        test_success = True  # vacuously true when no tests were requested
+        if compile_success and test_classes:
+            test_start = time.monotonic()
+            try:
+                test_proc = subprocess.run(
+                    [str(workspace_mvnw), "-q", f"-Dtest={','.join(test_classes)}", "test"],
+                    cwd=str(workspace_app), capture_output=True, text=True, timeout=240, shell=False,
+                )
+                test_success = test_proc.returncode == 0
+                test_output = (test_proc.stdout or "") + (test_proc.stderr or "")
+            except subprocess.TimeoutExpired:
+                test_success = False
+                test_output = "test run timed out after 240s"
+            test_duration_ms = round((time.monotonic() - test_start) * 1000, 1)
+            test_result = {
+                "success": test_success, "tests": test_classes,
+                "duration_ms": test_duration_ms, "output_tail": test_output[-2000:],
+            }
+
+        if not compile_success:
+            status = "COMPILE_FAILED"
+        elif not test_success:
+            status = "TESTS_FAILED"
+        else:
+            status = "COMPILE_VERIFIED"
 
         return {
             "applied": True,
-            "status": "COMPILE_VERIFIED" if compile_success else "COMPILE_FAILED",
+            "status": status,
             "diff": diff,
-            "compile": {"success": compile_success, "duration_ms": duration_ms, "output_tail": compile_output[-2000:]},
+            "compile": compile_result,
+            "test": test_result,
         }
     finally:
         shutil.rmtree(workspace, ignore_errors=True)
@@ -850,7 +899,8 @@ def apply_and_verify_candidate_b(candidate_source: str) -> dict:
     apply_and_verify_candidate() (Scenario A) -- reuses
     _isolated_compile_java_candidate()."""
     return _isolated_compile_java_candidate(
-        "com/example/customer/triage/TriageScenarioBService.java", _BUGGY_FULL_FILE_B, candidate_source)
+        "com/example/customer/triage/TriageScenarioBService.java", _BUGGY_FULL_FILE_B, candidate_source,
+        test_classes=["TriageScenarioBIntegrationTest"])
 
 
 def verify_fix_b() -> dict:
@@ -1145,7 +1195,8 @@ def apply_and_verify_candidate_c(candidate_source: str) -> dict:
     """Same isolated-workspace diff+compile mechanism as Scenarios A/B --
     reuses _isolated_compile_java_candidate()."""
     return _isolated_compile_java_candidate(
-        "com/example/customer/triage/TriageScenarioCService.java", _BUGGY_FULL_FILE_C, candidate_source)
+        "com/example/customer/triage/TriageScenarioCService.java", _BUGGY_FULL_FILE_C, candidate_source,
+        test_classes=["TriageScenarioCIntegrationTest"])
 
 
 def verify_fix_c() -> dict:

@@ -133,9 +133,17 @@ function renderCandidate(result) {
   if (v && v.status === "ENVIRONMENT_INVALID") {
     html += `<div class="verdict defect">ENVIRONMENT_INVALID — cannot verify (wrong JDK), not a code defect</div>`;
   } else if (v) {
-    html += `<div class="verdict ${v.status === "COMPILE_VERIFIED" ? "fixed" : "defect"}">${v.status === "COMPILE_VERIFIED" ? "COMPILE VERIFIED" : "COMPILE FAILED"} (isolated workspace, ${(v.compile.duration_ms / 1000).toFixed(1)}s)</div>
+    // TESTS_FAILED (real fix, docs/INTELLIGENCE_PLACEMENT_V3.md HIGH item): a
+    // candidate that compiled but failed the scenario's own regression test
+    // must not read as a generic "COMPILE FAILED", and its diagnostic output
+    // must come from the real test run, not the (successful) compile log.
+    const label = v.status === "COMPILE_VERIFIED" ? "COMPILE + TESTS VERIFIED"
+      : v.status === "TESTS_FAILED" ? "TESTS FAILED"
+      : "COMPILE FAILED";
+    const outputTail = v.status === "TESTS_FAILED" ? (v.test && v.test.output_tail) : (v.compile && v.compile.output_tail);
+    html += `<div class="verdict ${v.status === "COMPILE_VERIFIED" ? "fixed" : "defect"}">${label} (isolated workspace, ${(v.compile.duration_ms / 1000).toFixed(1)}s)</div>
       <div class="diff-view">${diffHighlight(v.diff)}</div>`;
-    if (v.status !== "COMPILE_VERIFIED") html += `<div class="source-excerpt">${esc(v.compile.output_tail || "")}</div>`;
+    if (v.status !== "COMPILE_VERIFIED") html += `<div class="source-excerpt">${esc(outputTail || "")}</div>`;
     if (v.status === "COMPILE_VERIFIED") show("step-promote");
   }
   el.innerHTML = html;

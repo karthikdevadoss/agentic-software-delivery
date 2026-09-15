@@ -295,17 +295,57 @@ class ApplyAndVerifyCandidateTestCase(unittest.TestCase):
         self.assertIn("+    static final String RENAMED_FOR_TEST_MESSAGE", result["diff"])
         # This particular edit renames a constant without updating its
         # usages -- expected to genuinely fail compilation, proving this
-        # is a REAL compile, not a rubber-stamped success.
-        self.assertIn(result["status"], ("COMPILE_FAILED", "COMPILE_VERIFIED"))
+        # is a REAL compile, not a rubber-stamped success. TESTS_FAILED is
+        # included defensively (not expected) since test_classes is now
+        # always passed by the real call site -- if it somehow compiled,
+        # a renamed-but-unused constant should not pass the real tests either.
+        self.assertIn(result["status"], ("COMPILE_FAILED", "TESTS_FAILED", "COMPILE_VERIFIED"))
 
-    def test_a_genuinely_valid_candidate_actually_compiles(self):
-        """A syntactically valid candidate (the unmodified real baseline
-        file, which is valid Java on its own) must genuinely compile
-        through the real isolated-workspace mechanism -- proving the
-        compile step isn't rigged to always pass OR always fail."""
+    def test_a_candidate_that_compiles_but_does_not_actually_fix_the_defect_is_marked_tests_failed(self):
+        """THE REAL DEFECT CLASS THIS FIX CLOSES (docs/INTELLIGENCE_PLACEMENT_V3.md's
+        Phase 1 audit, HIGH item): the unmodified historical pre-fix file
+        is syntactically valid Java (so it genuinely compiles), but it IS
+        the exact defective version this scenario reproduces the bug
+        against -- before this fix, the old compile-only contract would
+        have wrongly labeled this COMPILE_VERIFIED (eligible for
+        human-approved promotion) despite never actually fixing anything.
+        Proves both halves for real: compile succeeds, but the real
+        scenario test genuinely fails against it."""
         result = te.apply_and_verify_candidate(te._BUGGY_FULL_FILE)
         self.assertTrue(result["applied"])
-        self.assertEqual(result["status"], "COMPILE_VERIFIED", result["compile"])
+        self.assertTrue(result["compile"]["success"], result["compile"])
+        self.assertIsNotNone(result["test"])
+        self.assertFalse(result["test"]["success"], result["test"])
+        self.assertEqual(result["status"], "TESTS_FAILED")
+
+    def test_a_candidate_that_genuinely_fixes_the_defect_reaches_compile_verified(self):
+        """The real, current, already-fixed ContractPlanService.java
+        content (read directly from the actual repository -- the same
+        content the historical fix commit 2155a8a produced) must compile
+        AND pass the real TriageScenarioAIntegrationTest/
+        ContractPlanServiceTest -- proving COMPILE_VERIFIED now means
+        what it claims (compiled AND the reproduced defect is genuinely
+        fixed), not just "it compiled". No regression from the previous
+        compile-only contract for a real, correct candidate."""
+        real_fixed_source = (
+            te.APP_DIR / "src" / "main" / "java" / "com" / "example"
+            / "customer" / "service" / "ContractPlanService.java"
+        ).read_text(encoding="utf-8")
+        result = te.apply_and_verify_candidate(real_fixed_source)
+        self.assertTrue(result["applied"])
+        self.assertTrue(result["compile"]["success"], result["compile"])
+        self.assertIsNotNone(result["test"])
+        self.assertTrue(result["test"]["success"], result["test"])
+        self.assertEqual(result["status"], "COMPILE_VERIFIED")
+
+    @patch("triage_execution._isolated_compile_java_candidate")
+    def test_wires_the_real_scenario_a_test_classes_through_to_the_shared_engine(self, mock_isolated):
+        mock_isolated.return_value = {"applied": True, "status": "COMPILE_VERIFIED", "diff": "", "compile": {}, "test": {}}
+        te.apply_and_verify_candidate("some candidate source")
+        self.assertEqual(
+            mock_isolated.call_args.kwargs.get("test_classes"),
+            ["ContractPlanServiceTest", "TriageScenarioAIntegrationTest"],
+        )
 
 
 class ScenarioBRequestHelperTestCase(unittest.TestCase):
@@ -420,14 +460,25 @@ class ApplyAndVerifyCandidateBTestCase(unittest.TestCase):
         self.assertFalse(result["applied"])
         self.assertEqual(result["status"], "ENVIRONMENT_INVALID")
 
-    def test_a_genuinely_valid_candidate_actually_compiles(self):
+    def test_a_genuinely_valid_candidate_actually_compiles_and_passes_tests(self):
         """The unmodified real baseline file (matching the actual Java
-        source on disk) must genuinely compile through the real
+        source on disk, already correct) must genuinely compile AND pass
+        the real TriageScenarioBIntegrationTest through the real
         isolated-workspace mechanism -- proving this reused engine works
-        for Scenario B's target file exactly like it does for Scenario A's."""
+        for Scenario B's target file exactly like it does for Scenario A's,
+        and that COMPILE_VERIFIED now requires both, not compile alone."""
         result = te.apply_and_verify_candidate_b(te._BUGGY_FULL_FILE_B)
         self.assertTrue(result["applied"])
-        self.assertEqual(result["status"], "COMPILE_VERIFIED", result["compile"])
+        self.assertTrue(result["compile"]["success"], result["compile"])
+        self.assertIsNotNone(result["test"])
+        self.assertTrue(result["test"]["success"], result["test"])
+        self.assertEqual(result["status"], "COMPILE_VERIFIED")
+
+    @patch("triage_execution._isolated_compile_java_candidate")
+    def test_wires_the_real_scenario_b_test_class_through_to_the_shared_engine(self, mock_isolated):
+        mock_isolated.return_value = {"applied": True, "status": "COMPILE_VERIFIED", "diff": "", "compile": {}, "test": {}}
+        te.apply_and_verify_candidate_b("some candidate source")
+        self.assertEqual(mock_isolated.call_args.kwargs.get("test_classes"), ["TriageScenarioBIntegrationTest"])
 
 
 class VerifyFixBTestCase(unittest.TestCase):
@@ -546,14 +597,25 @@ class ApplyAndVerifyCandidateCTestCase(unittest.TestCase):
         self.assertFalse(result["applied"])
         self.assertEqual(result["status"], "ENVIRONMENT_INVALID")
 
-    def test_a_genuinely_valid_candidate_actually_compiles(self):
+    def test_a_genuinely_valid_candidate_actually_compiles_and_passes_tests(self):
         """The unmodified real baseline file (matching the actual Java
-        source on disk) must genuinely compile through the real
+        source on disk, already correct) must genuinely compile AND pass
+        the real TriageScenarioCIntegrationTest through the real
         isolated-workspace mechanism -- proving this reused engine works
-        for Scenario C's target file exactly like it does for A/B."""
+        for Scenario C's target file exactly like it does for A/B, and
+        that COMPILE_VERIFIED now requires both, not compile alone."""
         result = te.apply_and_verify_candidate_c(te._BUGGY_FULL_FILE_C)
         self.assertTrue(result["applied"])
-        self.assertEqual(result["status"], "COMPILE_VERIFIED", result["compile"])
+        self.assertTrue(result["compile"]["success"], result["compile"])
+        self.assertIsNotNone(result["test"])
+        self.assertTrue(result["test"]["success"], result["test"])
+        self.assertEqual(result["status"], "COMPILE_VERIFIED")
+
+    @patch("triage_execution._isolated_compile_java_candidate")
+    def test_wires_the_real_scenario_c_test_class_through_to_the_shared_engine(self, mock_isolated):
+        mock_isolated.return_value = {"applied": True, "status": "COMPILE_VERIFIED", "diff": "", "compile": {}, "test": {}}
+        te.apply_and_verify_candidate_c("some candidate source")
+        self.assertEqual(mock_isolated.call_args.kwargs.get("test_classes"), ["TriageScenarioCIntegrationTest"])
 
 
 class VerifyFixCTestCase(unittest.TestCase):
