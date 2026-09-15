@@ -14,24 +14,38 @@
 # agent/build_tools.py's actual subprocess calls (see docs/DECISIONS.md),
 # not assumed: git, a JDK (for app/mvnw), and the Railway CLI.
 
+# JDK 21 source stage: Debian bookworm's own apt repos only carry JDK 17
+# (openjdk-21-jdk-headless: "Unable to locate package" -- confirmed via a
+# real failed Railway build, not assumed), so JDK 21 is copied from
+# Eclipse Temurin's official image instead of installed via apt.
+FROM eclipse-temurin:21-jdk-jammy AS jdk
+
 FROM python:3.12-slim-bookworm
 
 # git: real local commits (_run_controlled(["git", ...])).
-# openjdk-21-jdk-headless: app/mvnw needs a JDK on PATH (Maven itself is
-#   downloaded by the wrapper on first run). REAL PRODUCTION BUG found via
-#   live browser testing of the Incident Triage Lab (2026-09-15): this was
-#   openjdk-17-jdk-headless, but app/pom.xml's <java.version> was bumped to
-#   21 in an earlier session (MASTER BUILD PHASE) -- every real mvnw
-#   compile/test invocation running INSIDE this container (Workbench's
-#   agent/build_tools.py, the Triage Lab's verify step) was silently
-#   broken ("release version 21 not supported"), invisible until something
-#   actually exercised a real compile/test from within this specific
-#   container rather than a local dev machine that happened to have a
-#   newer JDK already installed.
+# JDK 21 (copied from the eclipse-temurin stage above): app/mvnw needs a
+#   JDK on PATH (Maven itself is downloaded by the wrapper on first run).
+#   REAL PRODUCTION BUG found via live browser testing of the Incident
+#   Triage Lab (2026-09-15): this image previously installed
+#   openjdk-17-jdk-headless via apt, but app/pom.xml's <java.version> was
+#   bumped to 21 in an earlier session (MASTER BUILD PHASE) -- every real
+#   mvnw compile/test invocation running INSIDE this container
+#   (Workbench's agent/build_tools.py, the Triage Lab's verify step) was
+#   silently broken ("release version 21 not supported"), invisible until
+#   something actually exercised a real compile/test from within this
+#   specific container rather than a local dev machine that happened to
+#   have a newer JDK already installed. openjdk-21-jdk-headless is not a
+#   real apt package in Debian bookworm (confirmed via a real failed
+#   build, not assumed), hence copying a real JDK from Temurin's image
+#   instead of a second, different apt attempt.
 # curl + ca-certificates: fetch the Railway CLI release below.
+COPY --from=jdk /opt/java/openjdk /opt/java/openjdk
+ENV JAVA_HOME=/opt/java/openjdk
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git openjdk-21-jdk-headless curl ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+    git curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && java -version
 
 # Railway CLI — exact version/URL pattern confirmed from the real,
 # installed @railway/cli npm package's own postinstall config (not
