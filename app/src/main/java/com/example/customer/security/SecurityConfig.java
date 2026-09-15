@@ -67,6 +67,17 @@ public class SecurityConfig {
                         // (GET /customers/{id}/appointment-availability, below) remains
                         // fully JWT-protected.
                         .requestMatchers("/internal/demo-appointment-provider/**").permitAll()
+                        // Incident Triage Lab, Scenario A: reset/reproduce/state operate
+                        // ONLY on a dedicated synthetic "Triage Scenario Customer" (see
+                        // TriageScenarioAService's isolation contract), never real
+                        // business data -- permitted anonymously by the same reasoning as
+                        // the appointment demo provider above. approve is the scenario's
+                        // one HUMAN APPROVAL REQUIRED action and is deliberately NOT
+                        // included here, so it falls through to the admin-only rule below.
+                        .requestMatchers(HttpMethod.POST, "/internal/triage/scenario-a/reset",
+                                "/internal/triage/scenario-a/reproduce").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/internal/triage/scenario-a/state").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/internal/triage/scenario-a/approve").hasAuthority("SCOPE_admin:read")
                         .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
                         // Everything else under /actuator (metrics, prometheus, env, etc.)
                         // requires at least a valid token -- no admin scope exists in
