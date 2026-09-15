@@ -96,6 +96,24 @@
     <div id="resolved-body"></div>
   </section>
 
+  <section class="panel triage-step approval-panel" id="step-promote" hidden>
+    <h2>7. Promote This Candidate to REAL Production (Advanced)</h2>
+    <p class="hint">Distinct from Step 6 above (which only flips this isolated demo's own state): this commits the exact AI-generated candidate file shown in Step 4 to a dedicated branch, pushes it, deploys the REAL Customer App, and re-runs this exact reproduction against the newly-deployed production build. Requires real ADMIN authorization. A real human must exercise this — nothing in this system can promote a candidate on its own.</p>
+    <div class="approval-box">
+      <label for="promote-admin-username">Admin username</label>
+      <select id="promote-admin-username">
+        <option value="admin1">admin1</option>
+        <option value="admin2">admin2</option>
+      </select>
+      <label for="promote-admin-password">Password</label>
+      <input type="password" id="promote-admin-password" value="Demo@123">
+      <div class="btn-row">
+        <button class="approve" id="promote-btn">PROMOTE TO PRODUCTION</button>
+      </div>
+      <div id="promote-result"></div>
+    </div>
+  </section>
+
 </main>
 
 <script src="/triage-b.js"></script>

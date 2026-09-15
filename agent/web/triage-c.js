@@ -130,6 +130,7 @@ function renderCandidate(result) {
     html += `<div class="verdict ${v.status === "COMPILE_VERIFIED" ? "fixed" : "defect"}">${v.status === "COMPILE_VERIFIED" ? "COMPILE VERIFIED" : "COMPILE FAILED"} (isolated workspace, ${(v.compile.duration_ms / 1000).toFixed(1)}s)</div>
       <div class="diff-view">${diffHighlight(v.diff)}</div>`;
     if (v.status !== "COMPILE_VERIFIED") html += `<div class="source-excerpt">${esc(v.compile.output_tail || "")}</div>`;
+    if (v.status === "COMPILE_VERIFIED") show("step-promote");
   }
   el.innerHTML = html;
 }
@@ -251,4 +252,33 @@ document.getElementById("approve-btn").addEventListener("click", async () => {
 
 document.getElementById("reject-btn").addEventListener("click", () => {
   document.getElementById("approve-result").innerHTML = `<p class="hint">Rejected. No change was applied to the scenario.</p>`;
+});
+
+document.getElementById("promote-btn").addEventListener("click", async () => {
+  const resultEl = document.getElementById("promote-result");
+  const btn = document.getElementById("promote-btn");
+  const username = document.getElementById("promote-admin-username").value;
+  const password = document.getElementById("promote-admin-password").value;
+  if (!confirm("This will commit the AI-generated candidate to a real branch, push it, and deploy the REAL Customer App. Continue?")) return;
+  btn.disabled = true;
+  btn.textContent = "PROMOTING… (real commit + push + deploy, this can take several minutes)";
+  resultEl.innerHTML = `<p class="hint">Verifying admin credentials, then committing, pushing, and deploying the real Customer App…</p>`;
+  try {
+    const result = await postJson("/api/triage/scenario-c/promote", { username, password });
+    resultEl.innerHTML = `
+      <div class="verdict ${result.resolved ? "fixed" : "defect"}">${result.resolved ? "PROMOTED AND RESOLVED IN REAL PRODUCTION" : "PROMOTED — deployment/resolution not fully confirmed, see details"}</div>
+      <p><strong>Branch:</strong> ${esc(result.branch)} &middot; <strong>Commit:</strong> ${esc(result.production_commit)}</p>
+      <p><strong>Push:</strong> ${esc(result.push_status)} &middot; <strong>Deployment:</strong> ${esc(result.deployment_status)} (identity confirmed: ${result.deployment_identity_confirmed ? "yes" : "no"})</p>`;
+  } catch (err) {
+    if (err.status === 401) {
+      resultEl.innerHTML = `<p class="hint">AWAITING OWNER APPROVAL — ${esc(err.message)}</p>`;
+    } else if (err.status === 409) {
+      resultEl.innerHTML = `<p class="hint">Promotion refused: ${esc(err.message)}</p>`;
+    } else {
+      resultEl.innerHTML = `<p class="hint">Promotion failed: ${esc(err.message)}</p>`;
+    }
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "PROMOTE TO PRODUCTION";
+  }
 });

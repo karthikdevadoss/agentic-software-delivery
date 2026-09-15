@@ -58,6 +58,7 @@ import showcase_data
 import demo_execution
 import estimation
 import triage_execution
+import triage_promotion
 import event_ledger
 import execution_tools
 import learn_pdf
@@ -1610,6 +1611,10 @@ async def triage_generate_candidate(request: Request):
     if not generation.get("generated"):
         return JSONResponse({"generation": generation, "verification": None})
     verification = await run_in_threadpool(triage_execution.apply_and_verify_candidate, generation["candidate_source"])
+    if verification.get("status") == "COMPILE_VERIFIED":
+        triage_promotion.record_verified_candidate(
+            "a", "com/example/customer/service/ContractPlanService.java",
+            triage_execution._BUGGY_FULL_FILE, generation["candidate_source"], verification.get("diff", ""))
     return JSONResponse({"generation": generation, "verification": verification})
 
 
@@ -1638,6 +1643,37 @@ async def triage_approve(request: Request):
         return JSONResponse({"error": str(e)}, status_code=401)
     except triage_execution.TriageExecutionError as e:
         return JSONResponse({"error": str(e)}, status_code=502)
+
+
+async def triage_promotion_status(request: Request):
+    """Read-only: whether a real, genuinely COMPILE_VERIFIED AI-generated
+    candidate is currently available to promote for this scenario --
+    hashes/preview only, see triage_promotion.get_verified_candidate_summary's
+    own docstring for why the full source is never re-exposed here."""
+    summary = await run_in_threadpool(triage_promotion.get_verified_candidate_summary, "a")
+    return JSONResponse(summary or {"available": False})
+
+
+async def triage_promote(request: Request):
+    """PROMOTE TO PRODUCTION -- the scenario's second, higher-stakes HUMAN
+    APPROVAL REQUIRED action (distinct from the isolated-scenario approve
+    above): real ADMIN credentials -> real isolated-workspace clone ->
+    the exact server-held verified candidate (never client-supplied
+    content) -> real commit to a dedicated branch -> real push attempt ->
+    real Railway deploy of the real Customer App -> real deployment-
+    identity confirmation -> real re-run of the same reproduction against
+    the now-updated production. See triage_promotion.py's own docstring
+    for the full approval-binding and fail-closed design."""
+    body = await request.json()
+    username = (body.get("username") or "").strip()
+    password = body.get("password") or ""
+    if not username or not password:
+        return JSONResponse({"error": "admin username and password are required to promote"}, status_code=400)
+    try:
+        result = await run_in_threadpool(triage_promotion.promote_verified_candidate, "a", username, password)
+        return JSONResponse(result)
+    except triage_promotion.PromotionError as e:
+        return JSONResponse({"error": str(e)}, status_code=409)
 
 
 # --- Incident Triage & Repair Lab, Scenario B --------------------------------
@@ -1683,6 +1719,10 @@ async def triage_generate_candidate_b(request: Request):
     if not generation.get("generated"):
         return JSONResponse({"generation": generation, "verification": None})
     verification = await run_in_threadpool(triage_execution.apply_and_verify_candidate_b, generation["candidate_source"])
+    if verification.get("status") == "COMPILE_VERIFIED":
+        triage_promotion.record_verified_candidate(
+            "b", "com/example/customer/triage/TriageScenarioBService.java",
+            triage_execution._BUGGY_FULL_FILE_B, generation["candidate_source"], verification.get("diff", ""))
     return JSONResponse({"generation": generation, "verification": verification})
 
 
@@ -1703,6 +1743,25 @@ async def triage_approve_b(request: Request):
         return JSONResponse({"error": str(e)}, status_code=401)
     except triage_execution.TriageExecutionError as e:
         return JSONResponse({"error": str(e)}, status_code=502)
+
+
+async def triage_promotion_status_b(request: Request):
+    summary = await run_in_threadpool(triage_promotion.get_verified_candidate_summary, "b")
+    return JSONResponse(summary or {"available": False})
+
+
+async def triage_promote_b(request: Request):
+    """See triage_promote's docstring -- identical shape, Scenario B."""
+    body = await request.json()
+    username = (body.get("username") or "").strip()
+    password = body.get("password") or ""
+    if not username or not password:
+        return JSONResponse({"error": "admin username and password are required to promote"}, status_code=400)
+    try:
+        result = await run_in_threadpool(triage_promotion.promote_verified_candidate, "b", username, password)
+        return JSONResponse(result)
+    except triage_promotion.PromotionError as e:
+        return JSONResponse({"error": str(e)}, status_code=409)
 
 
 # --- Incident Triage & Repair Lab, Scenario C --------------------------------
@@ -1746,6 +1805,10 @@ async def triage_generate_candidate_c(request: Request):
     if not generation.get("generated"):
         return JSONResponse({"generation": generation, "verification": None})
     verification = await run_in_threadpool(triage_execution.apply_and_verify_candidate_c, generation["candidate_source"])
+    if verification.get("status") == "COMPILE_VERIFIED":
+        triage_promotion.record_verified_candidate(
+            "c", "com/example/customer/triage/TriageScenarioCService.java",
+            triage_execution._BUGGY_FULL_FILE_C, generation["candidate_source"], verification.get("diff", ""))
     return JSONResponse({"generation": generation, "verification": verification})
 
 
@@ -1766,6 +1829,25 @@ async def triage_approve_c(request: Request):
         return JSONResponse({"error": str(e)}, status_code=401)
     except triage_execution.TriageExecutionError as e:
         return JSONResponse({"error": str(e)}, status_code=502)
+
+
+async def triage_promotion_status_c(request: Request):
+    summary = await run_in_threadpool(triage_promotion.get_verified_candidate_summary, "c")
+    return JSONResponse(summary or {"available": False})
+
+
+async def triage_promote_c(request: Request):
+    """See triage_promote's docstring -- identical shape, Scenario C."""
+    body = await request.json()
+    username = (body.get("username") or "").strip()
+    password = body.get("password") or ""
+    if not username or not password:
+        return JSONResponse({"error": "admin username and password are required to promote"}, status_code=400)
+    try:
+        result = await run_in_threadpool(triage_promotion.promote_verified_candidate, "c", username, password)
+        return JSONResponse(result)
+    except triage_promotion.PromotionError as e:
+        return JSONResponse({"error": str(e)}, status_code=409)
 
 
 async def get_session_history(request: Request):
@@ -1840,6 +1922,8 @@ routes = [
     Route("/api/triage/scenario-a/generate-candidate-patch", triage_generate_candidate, methods=["POST"]),
     Route("/api/triage/scenario-a/verify", triage_verify, methods=["POST"]),
     Route("/api/triage/scenario-a/approve", triage_approve, methods=["POST"]),
+    Route("/api/triage/scenario-a/promotion-status", triage_promotion_status, methods=["GET"]),
+    Route("/api/triage/scenario-a/promote", triage_promote, methods=["POST"]),
     Route("/api/triage/scenario-b/reset", triage_reset_b, methods=["POST"]),
     Route("/api/triage/scenario-b/reproduce", triage_reproduce_b, methods=["POST"]),
     Route("/api/triage/scenario-b/diagnose", triage_diagnose_b, methods=["POST"]),
@@ -1847,6 +1931,8 @@ routes = [
     Route("/api/triage/scenario-b/generate-candidate-patch", triage_generate_candidate_b, methods=["POST"]),
     Route("/api/triage/scenario-b/verify", triage_verify_b, methods=["POST"]),
     Route("/api/triage/scenario-b/approve", triage_approve_b, methods=["POST"]),
+    Route("/api/triage/scenario-b/promotion-status", triage_promotion_status_b, methods=["GET"]),
+    Route("/api/triage/scenario-b/promote", triage_promote_b, methods=["POST"]),
     Route("/api/triage/scenario-c/reset", triage_reset_c, methods=["POST"]),
     Route("/api/triage/scenario-c/reproduce", triage_reproduce_c, methods=["POST"]),
     Route("/api/triage/scenario-c/diagnose", triage_diagnose_c, methods=["POST"]),
@@ -1854,6 +1940,8 @@ routes = [
     Route("/api/triage/scenario-c/generate-candidate-patch", triage_generate_candidate_c, methods=["POST"]),
     Route("/api/triage/scenario-c/verify", triage_verify_c, methods=["POST"]),
     Route("/api/triage/scenario-c/approve", triage_approve_c, methods=["POST"]),
+    Route("/api/triage/scenario-c/promotion-status", triage_promotion_status_c, methods=["GET"]),
+    Route("/api/triage/scenario-c/promote", triage_promote_c, methods=["POST"]),
     # Five public surfaces (see docs/COMPANY_VISION.md's public product
     # structure decision). "/" and "/workbench" both serve the same public
     # preview page — Workbench is the flagship/default landing surface.

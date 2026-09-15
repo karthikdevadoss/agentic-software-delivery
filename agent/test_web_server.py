@@ -297,6 +297,16 @@ class PublicRouteStructureTestCase(unittest.TestCase):
         for public_path in ("/", "/workbench", "/dashboard", "/usage", "/learn"):
             self.assertNotIn("control-plane", public_path)
 
+    def test_triage_promotion_routes_are_registered_for_all_three_scenarios(self):
+        routes = self._route_map()
+        for scenario in ("a", "b", "c"):
+            status_path = f"/api/triage/scenario-{scenario}/promotion-status"
+            promote_path = f"/api/triage/scenario-{scenario}/promote"
+            self.assertIn(status_path, routes, f"{status_path} is not registered")
+            self.assertIn("GET", routes[status_path].methods)
+            self.assertIn(promote_path, routes, f"{promote_path} is not registered")
+            self.assertIn("POST", routes[promote_path].methods)
+
 
 class NestedRouteAssetPathTestCase(unittest.TestCase):
     """Regression lock for a real, twice-found defect class (SESSION-HISTORY-P0,
