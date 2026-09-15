@@ -67,7 +67,7 @@ jobs:
           # verify_change.py --base needs real merge-base history against
           # origin/master, which a shallow (depth-1) checkout doesn't have.
           fetch-depth: 0
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
           cache: pip
