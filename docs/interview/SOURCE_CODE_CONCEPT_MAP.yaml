@@ -1,12 +1,20 @@
 # Personal interview-prep infrastructure -- machine-readable, NOT public
 # UI. Purpose: precise mappings from engineering concepts to the exact
-# real code that demonstrates them, so tomorrow's deeper interview PDF
-# (built separately, NOT tonight) can be generated quickly without
-# re-deriving "where is this in the codebase" from scratch.
+# real code that demonstrates them, so a later interview PDF can be
+# generated quickly without re-deriving "where is this in the codebase"
+# from scratch.
 #
-# Every entry maps only to code that genuinely exists (verified this
-# session, not guessed). Deep explanations belong in the PDF, not here --
-# this file is precise pointers, one paragraph max per concept.
+# Every entry maps only to code that genuinely exists -- verified against
+# the real repository (file existence + read content), never guessed.
+# Deep explanations belong in the PDF, not here -- this file is precise
+# pointers, one paragraph max per concept.
+#
+# EXPANDED 2026-09-15 (flagship-completion session, Priority 9): grown
+# from 17 to a fuller pass across Core Java, Spring Core/Boot/MVC/
+# Security, Transactions, JPA/Hibernate, PostgreSQL, JDBC/HikariCP,
+# Redis, Kafka, Resilience, Testing, Observability, AI Delivery, and
+# Delivery/CI-CD -- every new entry's source_files were confirmed to
+# exist and were read in full before being cited here.
 
 schema_note: >
   concept: {name, category, business_why, implementation_status,
@@ -15,7 +23,7 @@ schema_note: >
 
 concepts:
 
-  # ---------------- CORE JAVA / LANGUAGE ----------------
+  # ================= CORE JAVA / LANGUAGE =================
   - name: "Records for immutable DTOs"
     category: CORE_JAVA
     business_why: "Request/response shapes should be immutable and free of boilerplate getters/equals/hashCode."
@@ -26,6 +34,10 @@ concepts:
       - path: app/src/main/java/com/example/customer/dto/ContractPlanResponse.java
         class: ContractPlanResponse
         methods: ["from(ContractPlan)"]
+      - path: app/src/main/java/com/example/customer/triage/TriageBReproductionResult.java
+        class: TriageBReproductionResult
+      - path: app/src/main/java/com/example/customer/triage/TriageCReproductionResult.java
+        class: TriageCReproductionResult
     interview_topics: ["records vs classes", "compact canonical constructors", "why DTOs shouldn't be JPA entities"]
 
   - name: "Optional for null-safety in service logic"
@@ -39,7 +51,149 @@ concepts:
     related_incidents: ["AEQ-018 (plan-enrollment idempotency)"]
     interview_topics: ["Optional.filter/ifPresent composition", "when NOT to use Optional (fields, params)"]
 
-  # ---------------- SPRING SECURITY ----------------
+  - name: "Enums for exhaustive, type-safe state modeling"
+    category: CORE_JAVA
+    business_why: "A contract plan's lifecycle (ACTIVE/CANCELLED/PENDING) and a preference's channel (EMAIL/SMS/NONE) must never be a loose, typo-prone String."
+    implementation_status: PRODUCTION_ACTIVE
+    source_files:
+      - path: app/src/main/java/com/example/customer/model/ContractPlanStatus.java
+        class: ContractPlanStatus
+      - path: app/src/main/java/com/example/customer/model/NotificationChannel.java
+        class: NotificationChannel
+    interview_topics: ["enum vs String constants", "@Enumerated storage in JPA", "exhaustive switch over an enum"]
+
+  - name: "Custom unchecked exceptions mapped to specific HTTP statuses"
+    category: CORE_JAVA
+    business_why: "A cross-tenant access attempt (403) and a bad login (401) are different failure classes from 'not found' (404) -- each needs its own exception type, not a shared generic one."
+    implementation_status: PRODUCTION_ACTIVE
+    source_files:
+      - path: app/src/main/java/com/example/customer/exception/ForbiddenWorkspaceAccessException.java
+        class: ForbiddenWorkspaceAccessException
+      - path: app/src/main/java/com/example/customer/exception/InvalidCredentialsException.java
+        class: InvalidCredentialsException
+      - path: app/src/main/java/com/example/customer/exception/GlobalExceptionHandler.java
+        class: GlobalExceptionHandler
+    interview_topics: ["checked vs unchecked for a domain exception", "one exception type per real failure class, not a generic RuntimeException"]
+
+  - name: "AtomicLong + synchronized for simple isolated in-memory state"
+    category: CORE_JAVA
+    business_why: "Each Triage Lab scenario reset needs a genuinely unique, monotonically-increasing synthetic customer id, safe under concurrent recruiter/interviewer usage, without the overhead of a real distributed counter."
+    implementation_status: DEMO_AVAILABLE
+    source_files:
+      - path: app/src/main/java/com/example/customer/triage/TriageScenarioAService.java
+        class: TriageScenarioAService
+        methods: ["reset (RESET_COUNTER.incrementAndGet())"]
+      - path: app/src/main/java/com/example/customer/triage/TriageScenarioCService.java
+        class: TriageScenarioCService
+        methods: ["reset"]
+    interview_topics: ["AtomicLong vs synchronized(this) for a simple counter", "when in-memory state is acceptable (demo-scoped, not real business data)"]
+
+  # ================= SPRING CORE =================
+  - name: "Constructor injection as the only dependency-injection style"
+    category: SPRING_CORE
+    business_why: "Fields should be final and every dependency explicit at construction time -- no hidden @Autowired field magic, no partially-constructed objects."
+    implementation_status: PRODUCTION_ACTIVE
+    source_files:
+      - path: app/src/main/java/com/example/customer/controller/CustomerController.java
+        class: CustomerController
+      - path: app/src/main/java/com/example/customer/triage/TriageScenarioBService.java
+        class: TriageScenarioBService
+    interview_topics: ["constructor vs field vs setter injection", "why final fields force this discipline", "testability benefit (easy to construct with fakes)"]
+
+  - name: "@Lazy injection to break a bean-initialization-order bug"
+    category: SPRING_CORE
+    business_why: "A @SpringBootTest(webEnvironment=RANDOM_PORT) test resolves an eagerly-initialized @Value('${appointment.service.base-url}') before the real random port is published, breaking the self-loopback default."
+    implementation_status: PRODUCTION_ACTIVE
+    source_files:
+      - path: app/src/main/java/com/example/customer/integration/appointment/AppointmentAvailabilityConfig.java
+        class: AppointmentAvailabilityConfig
+        methods: ["appointmentAvailabilityClient (@Lazy bean)"]
+      - path: app/src/main/java/com/example/customer/integration/appointment/AppointmentAvailabilityService.java
+        class: AppointmentAvailabilityService
+        methods: ["constructor (@Lazy AppointmentAvailabilityClient injection point)"]
+      - path: app/src/main/java/com/example/customer/triage/TriageScenarioBService.java
+        class: TriageScenarioBService
+        methods: ["constructor (@Lazy AppointmentAvailabilityClient injection point)"]
+    related_incidents: ["@Lazy on the bean ALONE was not sufficient the first time this was tried -- the INJECTION POINT also needed @Lazy so Spring injects a lazy-resolving proxy there, deferring @Value resolution past finishBeanFactoryInitialization()"]
+    interview_topics: ["Spring bean lifecycle phases", "why @Lazy on a bean isn't enough without a lazy injection point too", "random-port test timing gotchas"]
+
+  - name: "@Configuration + @Bean programmatic composition (Resilience4j CORE, not the annotation starter)"
+    category: SPRING_CORE
+    business_why: "resilience4j-spring-boot3/4's annotation starter has a real, documented Spring Boot 4 BOM compatibility gap -- the CORE circuitbreaker/retry modules, wired programmatically, produce identical runtime behavior without that dependency risk."
+    implementation_status: PRODUCTION_ACTIVE
+    source_files:
+      - path: app/src/main/java/com/example/customer/integration/appointment/AppointmentAvailabilityConfig.java
+        class: AppointmentAvailabilityConfig
+        methods: ["circuitBreakerRegistry", "retryRegistry", "appointmentCircuitBreaker", "appointmentRetry"]
+    interview_topics: ["@Bean method composition vs component scanning", "why a registry (not a bare CircuitBreaker.of) -- Micrometer metrics binding"]
+
+  - name: "@Profile-gated bean wiring (postgres vs default H2)"
+    category: SPRING_CORE
+    business_why: "Local development and CI need a fast, zero-infrastructure H2 default; production needs real Postgres with Flyway-managed schema -- both from the same codebase, selected by one property."
+    implementation_status: PRODUCTION_ACTIVE
+    source_files:
+      - path: app/src/main/resources/application.properties
+      - path: app/src/main/resources/application-postgres.properties
+    related_tests: [PostgresFlywayIntegrationTest, TriageScenarioCPostgresIntegrationTest]
+    interview_topics: ["Spring profiles vs separate config files", "ddl-auto=validate on postgres vs default create-drop on H2", "why the H2 default was never removed even after the Postgres cutover"]
+
+  # ================= SPRING BOOT =================
+  - name: "Actuator health/info/metrics/Prometheus endpoints"
+    category: SPRING_BOOT
+    business_why: "A real production deployment needs a liveness/readiness probe Railway can poll, plus real scrapeable metrics -- not just 'the app didn't crash.'"
+    implementation_status: PRODUCTION_ACTIVE
+    source_files:
+      - path: app/src/main/resources/application.properties
+        class: "management.endpoints.web.exposure.include=health,info,metrics,prometheus"
+    related_incidents: ["management.health.redis.enabled=false / management.health.kafka.enabled=false -- both integrations exist in code but aren't production-provisioned, so their default Actuator health indicators would otherwise falsely report the whole app DOWN"]
+    interview_topics: ["liveness vs readiness probes", "why an optional/not-provisioned dependency's health check must be explicitly disabled, not left to fail"]
+
+  - name: "Starter dependencies + auto-configuration"
+    category: SPRING_BOOT
+    business_why: "spring-boot-starter-validation was once a declared-but-unused dependency -- a real, inspected gap, not a hypothetical one -- fixed by actually wiring Bean Validation into the entities/controllers that needed it."
+    implementation_status: PRODUCTION_ACTIVE
+    source_files:
+      - path: app/pom.xml
+    interview_topics: ["what a starter actually bundles", "auto-configuration conditional beans (@ConditionalOnClass etc.)", "the real Spring Boot 4 spring-boot-flyway split (a starter that quietly stopped being a transitive dependency of flyway-core)"]
+
+  # ================= SPRING MVC =================
+  - name: "Centralized @RestControllerAdvice exception mapping"
+    category: SPRING_MVC
+    business_why: "Every error response should be structured JSON with a consistent shape, not a mix of inline per-controller handlers and raw plain-text bodies."
+    implementation_status: PRODUCTION_ACTIVE
+    source_files:
+      - path: app/src/main/java/com/example/customer/exception/GlobalExceptionHandler.java
+        class: GlobalExceptionHandler
+        methods: ["handleNotFound", "handleValidationFailure", "handleBadRequest", "handleForbiddenWorkspace", "handleInvalidCredentials"]
+    interview_topics: ["@ExceptionHandler resolution order (most specific exception type wins)", "why this replaced an inline single-exception handler on CustomerController", "structured field-level validation errors vs a flat message"]
+
+  - name: "Bean Validation at the controller boundary (@Valid/@NotBlank/@Email)"
+    category: SPRING_MVC
+    business_why: "A malformed customer name or email should never reach the service/persistence layer -- reject it at the edge with a clear, field-level 400."
+    implementation_status: PRODUCTION_ACTIVE
+    source_files:
+      - path: app/src/main/java/com/example/customer/model/Customer.java
+        class: Customer
+        methods: ["name (@NotBlank)", "email (@NotBlank @Email)"]
+      - path: app/src/main/java/com/example/customer/controller/CustomerController.java
+        class: CustomerController
+        methods: ["createCustomer (@Valid @RequestBody)", "updateEmail (@Valid @RequestBody)"]
+    interview_topics: ["annotation-driven validation vs manual checks", "MethodArgumentNotValidException -> structured 400"]
+
+  - name: "@AuthenticationPrincipal Jwt + per-request workspace scoping"
+    category: SPRING_MVC
+    business_why: "A controller method needs the real, verified JWT claims (not a client-supplied header) to decide whether THIS caller may access THIS customer id."
+    implementation_status: PRODUCTION_ACTIVE
+    source_files:
+      - path: app/src/main/java/com/example/customer/controller/CustomerController.java
+        class: CustomerController
+        methods: ["getCustomer", "updateEmail"]
+      - path: app/src/main/java/com/example/customer/security/WorkspaceAccessGuard.java
+        class: WorkspaceAccessGuard
+        methods: ["assertAccessible"]
+    interview_topics: ["@AuthenticationPrincipal binding to the resolved Jwt", "server-side authorization vs trusting a client-supplied id"]
+
+  # ================= SPRING SECURITY =================
   - name: "OAuth2 resource-server JWT validation (signature/expiry/issuer/audience)"
     category: SPRING_SECURITY
     business_why: "Multi-persona (USER/ADMIN) access must be cryptographically verified server-side, never client-trusted."
@@ -68,7 +222,45 @@ concepts:
       - path: app/src/main/java/com/example/customer/security/DemoLoginController.java
         class: DemoLoginController
 
-  # ---------------- JPA / HIBERNATE / POSTGRES ----------------
+  - name: "Per-scenario ADMIN-only authorization rules (RBAC)"
+    category: SPRING_SECURITY
+    business_why: "Every Triage Lab scenario's one irreversible action (approving a fix) must require the real 'admin:read' scope -- reset/reproduce/state stay anonymous-reachable by design (isolated synthetic data only), the exact same shape repeated three times, not three different security postures."
+    implementation_status: PRODUCTION_ACTIVE
+    source_files:
+      - path: app/src/main/java/com/example/customer/security/SecurityConfig.java
+        class: SecurityConfig
+        methods: ["securityFilterChain (scenario-a/b/c matchers)"]
+    related_tests: [TriageScenarioAIntegrationTest, TriageScenarioBIntegrationTest, TriageScenarioCIntegrationTest]
+    interview_topics: ["hasAuthority vs hasRole", "why reset/reproduce are deliberately permitAll (isolation, not laziness)", "anonymous 401 vs authenticated-but-forbidden 403"]
+
+  # ================= TRANSACTIONS =================
+  - name: "@Transactional write boundary + readOnly hint"
+    category: TRANSACTIONS
+    business_why: "A write (enroll) needs a real transaction boundary; a pure read (a diagnostic search query) should be marked readOnly so a query-execution failure can never accidentally escalate an unrelated write's transaction."
+    implementation_status: PRODUCTION_ACTIVE
+    source_files:
+      - path: app/src/main/java/com/example/customer/service/ContractPlanService.java
+        class: ContractPlanService
+        methods: ["enroll (@Transactional)"]
+      - path: app/src/main/java/com/example/customer/triage/TriageScenarioCService.java
+        class: TriageScenarioCService
+        methods: ["reproduce (@Transactional(readOnly = true))"]
+    interview_topics: ["propagation defaults (REQUIRED)", "why readOnly matters even for a query that might throw", "transaction boundary = the whole method, not just the DB call"]
+
+  - name: "Idempotency via a no-op check before mutating state"
+    category: TRANSACTIONS
+    business_why: "A duplicate submission (double-click, or a client retry after a timeout whose original call actually succeeded) must not be treated as a second business event."
+    implementation_status: PRODUCTION_ACTIVE
+    source_files:
+      - path: app/src/main/java/com/example/customer/service/ContractPlanService.java
+        class: ContractPlanService
+        methods: ["enroll", "isSameTerms"]
+    related_tests: [ContractPlanServiceTest::enroll_whenIdenticalRequestSubmittedTwice_isIdempotentNoOp]
+    related_incidents: ["AEQ-018: found by code inspection, not a bug report -- enroll() had NO duplicate-request protection at all before this fix"]
+    docs: docs/interview-scenarios/04-plan-enrollment-idempotency.md
+    interview_topics: ["idempotency key patterns vs domain-level equality check", "why 'the second call is a no-op' beats 'the second call errors'"]
+
+  # ================= JPA / HIBERNATE =================
   - name: "Flush-order transaction bug (INSERT-before-UPDATE)"
     category: JPA_HIBERNATE
     business_why: "A superseding plan enrollment must never leave two ACTIVE rows, even for one instant."
@@ -81,14 +273,44 @@ concepts:
     related_incidents: ["Hibernate default flush order bug -- invisible on H2, real on Postgres"]
     interview_topics: ["Hibernate flush order", "saveAndFlush vs save", "why H2 hid this bug"]
 
+  - name: "Direct EntityManager JPQL vs Spring Data derived/@Query repositories"
+    category: JPA_HIBERNATE
+    business_why: "Most of this codebase uses Spring Data JpaRepository + @Query for real business queries; the Triage Lab's isolated pedagogical replay deliberately uses EntityManager directly instead, so its query never lives in (or could ever be confused with) a real production repository interface."
+    implementation_status: DEMO_AVAILABLE
+    source_files:
+      - path: app/src/main/java/com/example/customer/triage/TriageScenarioCService.java
+        class: TriageScenarioCService
+        methods: ["searchBuggy", "searchFixed"]
+      - path: app/src/main/java/com/example/customer/repository/CustomerRepository.java
+        class: CustomerRepository
+        methods: ["searchWorkspaceCustomers (the real, current, correct production query)"]
+    interview_topics: ["when to drop to EntityManager.createQuery vs a repository method", "isolating a deliberately-defective query so it can never be reached by real traffic"]
+
+  # ================= POSTGRESQL =================
+  - name: "Flyway versioned schema migrations"
+    category: POSTGRES
+    business_why: "Schema changes must be ordered, repeatable, and applied identically in every environment (local postgres profile, CI Testcontainers, real production) -- never a hand-run ALTER TABLE."
+    implementation_status: PRODUCTION_ACTIVE
+    source_files:
+      - path: app/src/main/resources/db/migration/V1__create_customer.sql
+      - path: app/src/main/resources/db/migration/V2__create_customer_preference.sql
+      - path: app/src/main/resources/db/migration/V3__create_contract_plan.sql
+      - path: app/src/main/resources/db/migration/V4__create_outbox_event.sql
+      - path: app/src/main/resources/db/migration/V5__create_processed_event.sql
+      - path: app/src/main/resources/db/migration/V6__create_demo_identity.sql
+    related_tests: [PostgresFlywayIntegrationTest::flywayMigrationsCreateTheExpectedRealPostgresTables]
+    related_incidents: ["Spring Boot 4 split spring-boot-flyway into its own autoconfiguration module -- flyway-core alone (the library) was on the classpath without it, root-caused only by decompiling FlywayAutoConfiguration's bytecode after two wrong-hypothesis fix attempts"]
+    interview_topics: ["versioned vs repeatable migrations", "ddl-auto=validate as a safety net against schema drift", "V1-V6 evolution as a readable history of the domain model"]
+
   - name: "Partial unique index as last line of defense"
     category: POSTGRES
     business_why: "Application-level idempotency logic can have gaps; the database constraint is the real guarantee."
     implementation_status: PRODUCTION_ACTIVE
     source_files:
-      - path: app/src/main/resources/db/migration
-        class: "uq_contract_plan_one_active_per_customer (Flyway migration)"
-    interview_topics: ["partial index WHERE clause", "constraint vs application logic layering"]
+      - path: app/src/main/resources/db/migration/V3__create_contract_plan.sql
+        class: "uq_contract_plan_one_active_per_customer (partial unique index)"
+    related_tests: [PostgresFlywayIntegrationTest::oneActivePlanPerCustomer_isEnforcedByTheRealDatabaseConstraint_notOnlyServiceLogic]
+    interview_topics: ["partial index WHERE clause", "constraint vs application logic layering", "a direct duplicate INSERT bypassing the service layer entirely, still rejected"]
 
   - name: "JPQL LOWER/CONCAT bind-parameter type-inference bug"
     category: POSTGRES
@@ -102,7 +324,7 @@ concepts:
         methods: ["likePattern"]
     related_incidents: ["AEQ-012, real production 500: function lower(bytea) does not exist"]
     production_evidence: "docs/interview-scenarios/02-postgres-search-pagination.md"
-    interview_topics: ["pgjdbc type inference", "why a green H2 suite isn't proof", "LIKE pattern building in Java vs JPQL"]
+    interview_topics: ["pgjdbc type inference", "why a green H2 suite isn't proof", "LIKE pattern building in Java vs JPQL", "2026-09-15 follow-up finding: this exact defect no longer reproduces on the current pgjdbc/Hibernate stack -- a real example of a dependency upgrade silently resolving an old bug (see Triage Scenario C)"]
 
   - name: "Server-side pagination + workspace-scoped search"
     category: POSTGRES
@@ -114,7 +336,18 @@ concepts:
     related_tests: [AdminCustomerControllerIntegrationTest]
     interview_topics: ["Pageable/Page", "correlated subquery vs JOIN for scoping"]
 
-  # ---------------- CACHING / REDIS ----------------
+  # ================= JDBC / HIKARI =================
+  - name: "HikariCP connection pooling (Spring Boot default)"
+    category: JDBC_HIKARI
+    business_why: "Every request that touches the database borrows a pooled physical connection rather than opening a new TCP/TLS connection per request -- and the pool's own lifecycle is what surfaced a real production incident when one connection was held open too long."
+    implementation_status: PRODUCTION_ACTIVE
+    source_files:
+      - path: app/src/main/resources/application.properties
+      - path: app/src/main/resources/application-postgres.properties
+    related_incidents: ["P0: an idle-in-transaction connection held for 963s blocked ensure_schema()'s DDL and froze every subsequent request routed through it -- root-caused via a direct pg_stat_activity query, fixed with statement_timeout and idle_in_transaction_session_timeout"]
+    interview_topics: ["connection pool sizing", "idle-in-transaction as a real production hazard class", "why a stuck DB call on the event loop can freeze unrelated requests"]
+
+  # ================= REDIS =================
   - name: "Cache-aside with fail-open fallback"
     category: REDIS
     business_why: "Active-plan reads happen on every page load; an optional cache must never become a hard dependency."
@@ -128,7 +361,7 @@ concepts:
     production_evidence: "Real production behavior: cache_requests_total meter shows hit=0/miss=1/redis-unavailable=1 -- honest reflection of Redis genuinely not being provisioned"
     interview_topics: ["cache-aside vs write-through", "TTL choice (60s)", "why programmatic over @Cacheable here", "designing for the cache being down"]
 
-  # ---------------- KAFKA / EVENT-DRIVEN ----------------
+  # ================= KAFKA / EVENT-DRIVEN =================
   - name: "Transactional outbox pattern"
     category: KAFKA
     business_why: "A preference update and its downstream event must commit atomically -- no dual-write race."
@@ -148,7 +381,7 @@ concepts:
     interview_topics: ["dual-write problem", "at-least-once vs exactly-once", "idempotent consumer design", "why gate the WHOLE subsystem, not just retry politely"]
     docs: docs/interview-scenarios/05-kafka-transactional-outbox.md
 
-  # ---------------- RESILIENCE / HTTP INTEGRATION ----------------
+  # ================= RESILIENCE / HTTP INTEGRATION =================
   - name: "Resilience4j circuit breaker + retry (programmatic composition)"
     category: RESILIENCE
     business_why: "A slow/down downstream appointment provider must not cascade into this service's own availability."
@@ -163,19 +396,19 @@ concepts:
     related_tests: [AppointmentAvailabilityIntegrationTest (7 real WireMock cases)]
     interview_topics: ["circuit breaker states", "retry predicate (why 4xx never retried)", "timeout config", "why CORE module not the annotation starter (Spring Boot 4 BOM gap)"]
 
-  # ---------------- OBSERVABILITY ----------------
-  - name: "Structured logging + Micrometer + tracing"
-    category: OBSERVABILITY
-    business_why: "Production debugging needs correlated, machine-parseable logs and real request metrics, not print statements."
-    implementation_status: PRODUCTION_ACTIVE
+  - name: "Isolated pedagogical replay of a wrong retry predicate"
+    category: RESILIENCE
+    business_why: "Demonstrating a retry-classification bug live (retrying a non-retryable 4xx) must never risk degrading the REAL, correct production retry policy real customers depend on."
+    implementation_status: DEMO_AVAILABLE
     source_files:
-      - path: app/src/main/resources/application.properties
-        class: "logging.structured.format.console=ecs"
-    related_tests: [ObservabilityIntegrationTest]
-    related_incidents: ["P0: idle-in-transaction DB connection froze every route -- root-caused via pg_stat_activity, fixed with run_in_threadpool + statement_timeout"]
-    interview_topics: ["ECS structured logging", "trace/span IDs via Brave", "security.rejections custom Micrometer counter", "diagnosing a full-service hang from evidence, not guesses"]
+      - path: app/src/main/java/com/example/customer/triage/TriageScenarioBService.java
+        class: TriageScenarioBService
+        methods: ["buggyRetry (private, unregistered Retry instance)", "reproduce"]
+    related_tests: [TriageScenarioBIntegrationTest]
+    production_evidence: "Live-verified: buggy predicate makes 3 real HTTP attempts against a genuine 400; the real production predicate makes exactly 1"
+    interview_topics: ["why the buggy Retry is a private field, never added to the shared RetryRegistry", "reaching the downstream over a genuine HTTP loopback (never a direct method call) so the mechanics stay real", "fixApplied delegating to the REAL production appointmentRetry bean, never a second copy of the fix"]
 
-  # ---------------- TESTING ----------------
+  # ================= TESTING =================
   - name: "Test Impact Analysis + risk/blast-radius classification"
     category: TESTING
     business_why: "An AI-assisted delivery pipeline must not run the entire test universe for every small change, but must never under-test a risky one."
@@ -195,9 +428,34 @@ concepts:
       - path: app/src/test/java/com/example/customer/integration/PostgresFlywayIntegrationTest.java
       - path: app/src/test/java/com/example/customer/messaging/CustomerPreferenceEventFlowIntegrationTest.java
       - path: app/src/test/java/com/example/customer/integration/appointment/AppointmentAvailabilityIntegrationTest.java
+      - path: app/src/test/java/com/example/customer/triage/TriageScenarioCPostgresIntegrationTest.java
     interview_topics: ["why mocks alone under-test infra-dependent bugs", "disabledWithoutDocker pattern for a Docker-less dev machine + real CI"]
 
-  # ---------------- AI DELIVERY ----------------
+  - name: "Honestly skipping vs honestly failing a test the local environment can't run"
+    category: TESTING
+    business_why: "A test that can't run locally (no Docker) must SKIP with a clear reason, never silently report a false pass or get deleted -- CI is where it actually proves anything."
+    implementation_status: PRODUCTION_ACTIVE
+    source_files:
+      - path: app/src/test/java/com/example/customer/triage/TriageScenarioCPostgresIntegrationTest.java
+        class: TriageScenarioCPostgresIntegrationTest
+        methods: ["@Testcontainers(disabledWithoutDocker = true)"]
+      - path: .github/workflows/ci.yml
+    related_incidents: ["This session's own full local Python regression suite was killed twice by real machine memory pressure -- classified as an environment limitation, not a code defect, with targeted per-change verification used instead and CI recorded as the authoritative full-suite lane (docs/ACTION_QUEUE.json's LOCAL-MEMORY-PRESSURE-FULL-SUITE)"]
+    interview_topics: ["skip vs xfail vs delete", "why a real CI Docker runner is the actual proof for a Testcontainers-gated test", "distinguishing environment limitations from product defects in a status report"]
+
+  # ================= OBSERVABILITY =================
+  - name: "Structured logging + Micrometer + tracing"
+    category: OBSERVABILITY
+    business_why: "Production debugging needs correlated, machine-parseable logs and real request metrics, not print statements."
+    implementation_status: PRODUCTION_ACTIVE
+    source_files:
+      - path: app/src/main/resources/application.properties
+        class: "logging.structured.format.console=ecs"
+    related_tests: [ObservabilityIntegrationTest]
+    related_incidents: ["P0: idle-in-transaction DB connection froze every route -- root-caused via pg_stat_activity, fixed with run_in_threadpool + statement_timeout"]
+    interview_topics: ["ECS structured logging", "trace/span IDs via Brave", "security.rejections custom Micrometer counter", "diagnosing a full-service hang from evidence, not guesses"]
+
+  # ================= AI DELIVERY =================
   - name: "Environment/toolchain preflight (fail-closed, not a code-defect false-positive)"
     category: AI_DELIVERY
     business_why: "A real JDK-version mismatch must never be reported as a test/code failure -- it's a categorically different, more actionable failure class."
@@ -208,7 +466,7 @@ concepts:
       - path: agent/build_tools.py
         class: "run_maven (calls preflight before any subprocess)"
       - path: agent/triage_execution.py
-        class: "verify_fix (same preflight)"
+        class: "_run_focused_maven_tests (same preflight, shared across all 3 Triage scenarios)"
     related_incidents: ["AEQ-021: platform-backend Docker image had JDK 17 while pom.xml required 21 -- silently broke every real compile/test from that container"]
     interview_topics: ["detected >= expected, never equality (a newer JDK cross-compiles fine)", "ENVIRONMENT_INVALID as its own status distinct from FAILED"]
 
@@ -218,10 +476,22 @@ concepts:
     implementation_status: DEMO_AVAILABLE
     source_files:
       - path: agent/triage_execution.py
-        class: "generate_candidate_patch, apply_and_verify_candidate"
+        class: "generate_candidate_patch/_b/_c, apply_and_verify_candidate/_b/_c, _isolated_compile_java_candidate (the ONE shared engine all three call)"
     request_flow: "real evidence + real defective file -> Claude call (not told the answer) -> candidate file content -> isolated temp copy of app/ -> difflib diff -> real mvnw compile -> result shown, never auto-promoted to master"
-    related_tests: [test_triage_execution.py::GenerateCandidatePatchTestCase, ApplyAndVerifyCandidateTestCase]
-    interview_topics: ["why ask for full file content, not a raw unified diff (line-number fragility)", "why isolate via temp copy instead of git worktree (AEQ-020 container git-history gap)", "the deliberate boundary: verify, never auto-promote"]
+    related_tests: [test_triage_execution.py::GenerateCandidatePatchTestCase, ApplyAndVerifyCandidateTestCase, GenerateCandidatePatchBTestCase, ApplyAndVerifyCandidateBTestCase, GenerateCandidatePatchCTestCase, ApplyAndVerifyCandidateCTestCase]
+    production_evidence: "Live-verified for all three scenarios: the model's independently-derived fix for Scenario B was substantively identical to the real production predicate it had never been shown"
+    interview_topics: ["why ask for full file content, not a raw unified diff (line-number fragility)", "why isolate via temp copy instead of git worktree (AEQ-020 container git-history gap)", "the deliberate boundary: verify, never auto-promote", "one shared engine reused by 3 scenarios vs 3 parallel implementations"]
+
+  - name: "Extended-thinking token-budget exhaustion -- effort control, not a bigger max_tokens"
+    category: AI_DELIVERY
+    business_why: "A model call that silently spends its ENTIRE token budget on internal reasoning and emits zero real output must be caught and reported honestly, not misread as an unrelated downstream failure (a blank file that then 'fails to compile')."
+    implementation_status: PRODUCTION_ACTIVE
+    source_files:
+      - path: agent/triage_execution.py
+        class: "_call_model_text"
+        methods: ["_call_model_text (empty-text detection + effort passthrough)"]
+    related_incidents: ["Live production testing of Triage Scenario C's candidate-patch step found generated=True with an EMPTY candidate_source, which then wrote a blank file and reported a confusing, unrelated COMPILE_FAILED. Root-caused with a direct diagnostic script (not guessed): response.content held only a ThinkingBlock, stop_reason='max_tokens' -- claude-sonnet-5 runs adaptive extended thinking by default and can consume an entire max_tokens budget before any text. Raising max_tokens alone (2048->4096) did not fully fix it; the real fix was output_config.effort='low' for this mechanical, non-hard-reasoning task."]
+    interview_topics: ["adaptive thinking vs a fixed thinking budget", "why 'increase the ceiling' is often the wrong first instinct for a token-budget bug", "detecting a silent empty-output failure mode in ONE shared helper vs patching each of 3 call sites separately"]
 
   - name: "Independent QA evaluator (builder cannot certify its own work)"
     category: AI_DELIVERY
@@ -231,3 +501,111 @@ concepts:
       - path: .claude/agents/qa-evaluator.md
     docs: docs/ARCHITECTURE_V2_EVALUATION_PLAN.md
     interview_topics: ["Shadow Trial #2: a seeded defect caught with byte-exact evidence", "evaluator usefulness measurement, not assumed"]
+
+  - name: "RAG: curated (not whole-repo) corpus + logical-boundary chunking + local embeddings"
+    category: AI_DELIVERY
+    business_why: "Give an LLM grounded, verifiable context about a real codebase instead of relying on its own guesses, without the cost/latency/infrastructure of embedding an entire repository."
+    implementation_status: DEMO_AVAILABLE
+    source_files:
+      - path: agent/backend_rag_corpus.py
+        class: "curated 10-document corpus (5 source files, 2 test files, 3 docs)"
+      - path: agent/backend_rag_index.py
+        class: "_chunk_java, _chunk_markdown, _chunk_json_catalogue, chunk_document"
+      - path: agent/embeddings.py
+    interview_topics: ["chunking at logical boundaries (brace-depth tracking for Java members) vs blind fixed windows", "why fastembed (local, no API key) over a hosted embedding API for this scope", "curated corpus vs whole-repo indexing"]
+
+  - name: "MCP read-only tool server"
+    category: AI_DELIVERY
+    business_why: "Expose repository-search capability to an MCP client via the official protocol, with the exact same security boundary (path traversal / secret-filename blocking) as the direct tool-calling agent -- zero duplicated logic."
+    implementation_status: DEMO_AVAILABLE
+    source_files:
+      - path: agent/mcp_server.py
+        class: "MCPServer"
+    interview_topics: ["MCP as a protocol vs a custom tool-calling loop", "read-only-by-design (no write/build/deploy tools exposed)", "stdio vs Streamable HTTP transport"]
+
+  - name: "Deterministic routing gate evaluated BEFORE any LLM call"
+    category: AI_DELIVERY
+    business_why: "Whether a requirement is even allowed to reach retrieval/the model at all must be decided by fast, auditable, non-probabilistic logic -- not by asking the LLM to police itself."
+    implementation_status: DEMO_AVAILABLE
+    source_files:
+      - path: agent/backend_planning.py
+        class: "classify_backend_routing"
+        methods: ["classify_backend_routing (DETERMINISTIC_ONLY / USE_RAG_MCP / REJECT_UNAUTHORIZED)"]
+    interview_topics: ["policy-before-retrieval as a security design principle", "reusing risk_policy.classify + demo_catalogue.normalize_requirement rather than a second authorization system"]
+
+  - name: "Structural prompt-injection inertness (retrieved content cannot reach authorization functions)"
+    category: AI_DELIVERY
+    business_why: "A malicious instruction hidden inside a retrieved document (e.g. 'ignore all security rules') must be provably unable to influence what the system is allowed to do, not merely 'usually ignored' by the model."
+    implementation_status: DEMO_AVAILABLE
+    source_files:
+      - path: agent/backend_planning.py
+        class: "check_groundedness"
+    related_tests: ["test_backend_planning.py::SecurityEvalTestCase (a deliberately adversarial prompt-injection fixture proven structurally unreachable, not just empirically unexploited)"]
+    interview_topics: ["structural guarantees vs behavioral/empirical ones for LLM security", "deterministic groundedness checking (flagging any file the model claims but never actually retrieved)"]
+
+  - name: "Evals distinct from unit tests (retrieval recall/MRR, tool-routing accuracy)"
+    category: AI_DELIVERY
+    business_why: "A unit test proves code behaves correctly for a fixed input; an eval measures how well a probabilistic system performs across a labeled set -- conflating the two hides real quality regressions."
+    implementation_status: DEMO_AVAILABLE
+    source_files:
+      - path: agent/eval_runner.py
+      - path: .claude/skills/ai-feature-evaluation/SKILL.md
+    production_evidence: "Baseline measured, not assumed: recall_at_3=1.0, recall_at_5=1.0, mrr=0.903 (12 hand-labeled retrieval cases); routing_accuracy=1.0, security_case_accuracy=1.0 (14 hand-labeled cases)"
+    interview_topics: ["Recall@k / MRR as retrieval-quality metrics", "thresholds chosen BEFORE seeing results, not tuned after", "why AI evals and application tests are kept in separate suites"]
+
+  - name: "Real AI usage/cost accounting, never fabricated"
+    category: AI_DELIVERY
+    business_why: "A run's true token spend and dollar cost must be reported honestly -- ACTUAL when captured, UNAVAILABLE when not, never a guessed number presented as fact."
+    implementation_status: PRODUCTION_ACTIVE
+    source_files:
+      - path: agent/pricing_config.py
+      - path: agent/metrics.py
+        class: "record_model_usage"
+    interview_topics: ["ACTUAL vs ESTIMATED vs UNAVAILABLE as the only three honest labels", "a versioned pricing table checked against the live official pricing page, not memorized"]
+
+  # ================= DELIVERY / CI-CD =================
+  - name: "Deployment-identity confirmation via real timestamps, not id-difference guessing"
+    category: DELIVERY
+    business_why: "A Railway 'SUCCESS' status alone doesn't prove which build is actually serving traffic -- comparing deployment ids can be wrong; comparing real creation timestamps against the moment THIS run triggered a deploy is the honest signal."
+    implementation_status: PRODUCTION_ACTIVE
+    source_files:
+      - path: agent/demo_execution.py
+        class: "wait_for_new_deployment, trigger_deploy, server_verified_now_iso"
+    related_incidents: ["A prior version compared deployment timestamps as raw strings instead of parsed datetimes -- happened to work for every prior fixture but wasn't reliably correct; fixed with real datetime parsing and a constructed counterexample regression test"]
+    interview_topics: ["why id-difference is not a safe deployment-identity signal", "server-verified 'now' (an independent time source) vs trusting the local clock"]
+
+  - name: "Independent production-content assertion after deploy (never HTTP 200 alone)"
+    category: DELIVERY
+    business_why: "A healthy HTTP 200 healthcheck proves the process is running, not that the REQUESTED change is actually live -- only checking the real, specific expected content does that."
+    implementation_status: PRODUCTION_ACTIVE
+    source_files:
+      - path: agent/web_server.py
+        class: "_verify_content_with_retry, _decide_deployment_outcome"
+    interview_topics: ["a genuine DEPLOYMENT_STATUS_UNKNOWN outcome vs silently folding uncertainty into FAILED", "content-verification retry window distinguishing build SUCCESS from traffic cutover"]
+
+  - name: "Isolated-workspace git clone/commit/push, never mutating the deployed container's own checkout"
+    category: DELIVERY
+    business_why: "The deployed container's own long-lived git checkout is not a safe thing to commit into live -- every real run clones a fresh, disposable workspace instead."
+    implementation_status: PRODUCTION_ACTIVE
+    source_files:
+      - path: agent/demo_execution.py
+        class: "create_isolated_workspace, commit_change, push_change, cleanup_workspace"
+    interview_topics: ["why NOT to git-push from inside the running deployed process's own checkout", "dedicated demo/<run_id> branches, never master directly", "redacting a push token from all captured subprocess output before it can reach any logged event"]
+
+  - name: "Docker multi-stage build for a Java web service"
+    category: DELIVERY
+    business_why: "The platform-backend's own deployment image needed a JDK matching app/pom.xml's real target (a mismatch silently broke every real compile/test from inside that container until this project's own testing caught it)."
+    implementation_status: PRODUCTION_ACTIVE
+    source_files:
+      - path: Dockerfile
+    related_incidents: ["AEQ-021: the platform-backend's Docker image shipped with JDK 17 while pom.xml requires Java 21"]
+    interview_topics: ["multi-stage builds for smaller final images", "matching a container's toolchain version to the actual build requirement, not assuming 'a JDK' is enough"]
+
+  - name: "GitHub Actions CI running real Testcontainers-gated tests"
+    category: DELIVERY
+    business_why: "A local dev machine with no Docker daemon cannot prove a real-Postgres-only defect is fixed -- CI's Docker-enabled runners are where that proof actually happens."
+    implementation_status: PRODUCTION_ACTIVE
+    source_files:
+      - path: .github/workflows/ci.yml
+    related_tests: [PostgresFlywayIntegrationTest, TriageScenarioCPostgresIntegrationTest]
+    interview_topics: ["why disabledWithoutDocker is an honest skip, not a workaround", "CI as the authoritative full-suite lane when local resources are constrained (this session's own real example -- see docs/ACTION_QUEUE.json's LOCAL-MEMORY-PRESSURE-FULL-SUITE)"]
