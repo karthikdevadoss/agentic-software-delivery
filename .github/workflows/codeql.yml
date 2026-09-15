@@ -1,0 +1,50 @@
+name: CodeQL
+
+# Base Architecture V3 Section 14: real static-analysis coverage this
+# repository had none of before (confirmed: no spotbugs/checkstyle/sonar
+# in app/pom.xml, no prior code-scanning workflow). Free for a public
+# repository, GitHub-hosted (no new infrastructure), and purely additive
+# -- runs independently of ci.yml, never blocks the real mvn test /
+# deploy gates. Dependabot (.github/dependabot.yml, already configured)
+# covers dependency vulnerabilities; CodeQL covers first-party source
+# code (SQL injection, XSS, hardcoded credentials, and similar real
+# vulnerability classes) -- a deliberately non-overlapping pair, not two
+# tools doing the same job.
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  schedule:
+    - cron: '0 6 * * 1' # weekly, matching dependabot.yml's cadence
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: java-kotlin
+            build-mode: autobuild
+          - language: python
+            build-mode: none
+          - language: javascript-typescript
+            build-mode: none
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
