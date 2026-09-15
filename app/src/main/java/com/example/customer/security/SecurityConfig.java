@@ -78,6 +78,13 @@ public class SecurityConfig {
                                 "/internal/triage/scenario-a/reproduce").permitAll()
                         .requestMatchers(HttpMethod.GET, "/internal/triage/scenario-a/state").permitAll()
                         .requestMatchers(HttpMethod.POST, "/internal/triage/scenario-a/approve").hasAuthority("SCOPE_admin:read")
+                        // Incident Triage Lab, Scenario B: same shape as Scenario A above --
+                        // the "buggy" behavior is an isolated Retry instance inside
+                        // TriageScenarioBService, never real business data.
+                        .requestMatchers(HttpMethod.POST, "/internal/triage/scenario-b/reset",
+                                "/internal/triage/scenario-b/reproduce").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/internal/triage/scenario-b/state").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/internal/triage/scenario-b/approve").hasAuthority("SCOPE_admin:read")
                         .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
                         // Everything else under /actuator (metrics, prometheus, env, etc.)
                         // requires at least a valid token -- no admin scope exists in

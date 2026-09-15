@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Agentic Software Delivery — Incident Triage Lab</title>
+<title>Agentic Software Delivery — Incident Triage Lab (Scenario B)</title>
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="dashboard.css">
 <link rel="stylesheet" href="triage.css">
@@ -24,9 +24,9 @@
 <main>
 
   <section class="panel" id="scenario-panel">
-    <h2>Scenario A — Plan Enrollment Duplicate Submission</h2>
-    <p class="hint">Business symptom: a customer double-clicks "Enroll," or a client retries a request after a timeout whose original call actually succeeded. Engineering area: transactions / idempotency / Spring Data JPA. Risk: MEDIUM. Isolation: every action below operates only on a dedicated, disposable synthetic "Triage Scenario Customer" — never real customer data.</p>
-    <p class="hint">Other scenarios: <a href="/triage/scenario-b">Scenario B — Appointment Downstream Resilience</a></p>
+    <h2>Scenario B — Appointment Downstream Resilience (Wrong Retry Predicate)</h2>
+    <p class="hint">Business symptom: checking technician appointment availability calls a real downstream HTTP service; a client-error response (HTTP 400) is never a transient condition, so retrying it can never help — only waste calls and delay the answer. Engineering area: HTTP integration / Resilience4j retry classification. Risk: LOW. Isolation: the "buggy" retry policy is a private, unregistered instance inside a dedicated Triage service — never wired into the real production path real customers' appointment checks use.</p>
+    <p class="hint">Other scenarios: <a href="/triage">Scenario A — Plan Enrollment Idempotency</a></p>
     <div class="btn-row">
       <button id="start-btn">START INCIDENT</button>
       <button class="secondary" id="reset-btn" hidden>RESET SCENARIO</button>
@@ -35,13 +35,13 @@
 
   <section class="panel triage-step" id="step-reproduce" hidden>
     <h2>1. Reproduce</h2>
-    <p class="hint">The same enrollment request is submitted twice against the isolated triage customer.</p>
+    <p class="hint">A real HTTP call to the synthetic downstream appointment provider, requesting a scenario that returns a genuine HTTP 400 (client error), wrapped in the currently-active retry policy.</p>
     <div id="reproduce-body"></div>
   </section>
 
   <section class="panel triage-step" id="step-investigate" hidden>
     <h2>2. Investigate</h2>
-    <p class="hint">Real evidence: the resulting plan-history rows and the defective method's actual source.</p>
+    <p class="hint">Real evidence: the actual number of HTTP attempts made, and the defective retry predicate's actual source.</p>
     <div id="investigate-body"></div>
   </section>
 
@@ -60,14 +60,14 @@
   </section>
 
   <section class="panel triage-step" id="step-patch" hidden>
-    <h2>4b. Historical Reference Patch</h2>
-    <p class="hint">HISTORICAL REFERENCE, not a live proposal: the real diff that actually fixed this exact defect in production (commit <code>2155a8a</code>) — shown for comparison against the AI-generated candidate above.</p>
+    <h2>4b. Production Reference</h2>
+    <p class="hint">REFERENCE, not a live proposal: this scenario's defect was deliberately seeded for training purposes (not a historical production incident), so instead of a git commit, this shows the REAL, already-correct, already-tested retry predicate already live elsewhere in this codebase for the same downstream call — for comparison against the AI-generated candidate above.</p>
     <div id="patch-body"></div>
   </section>
 
   <section class="panel triage-step" id="step-verify" hidden>
     <h2>5. Verification</h2>
-    <p class="hint">Runs the real, focused regression tests proving this fix (Test Impact Analysis: only the affected classes, not the full suite).</p>
+    <p class="hint">Runs the real, focused regression test proving this fix (Test Impact Analysis: only the affected class, not the full suite).</p>
     <button id="verify-btn">RUN TESTS</button>
     <div id="verify-body"></div>
   </section>
@@ -98,6 +98,6 @@
 
 </main>
 
-<script src="triage.js"></script>
+<script src="triage-b.js"></script>
 </body>
 </html>

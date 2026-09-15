@@ -220,22 +220,50 @@ def generate_candidate_patch(reproduction_result: dict, api_key: str | None = No
     model's proposed complete file content, to be applied and verified
     in an isolated workspace by apply_and_verify_candidate() below,
     never written to the real repository directly."""
+    text, unavailable = _call_model_text(
+        CANDIDATE_PATCH_SYSTEM_PROMPT,
+        f"Real database evidence after submitting the identical enrollment request twice:\n"
+        f"{json.dumps(reproduction_result, indent=2)}\n\n"
+        f"Current (defective) file content ({FIX_FILE}):\n{_BUGGY_FULL_FILE}",
+        2048, api_key, create_fn,
+    )
+    if unavailable is not None:
+        return {"generated": False, "candidate_source": None,
+                "explanation": "ANTHROPIC_API_KEY not set -- cannot generate a live candidate patch"}
+    candidate_source = text + "\n"
+    return {"generated": True, "candidate_source": candidate_source, "target_file": FIX_FILE}
+
+
+def apply_and_verify_candidate(candidate_source: str) -> dict:
+    """Applies the AI-generated candidate file content in an ISOLATED
+    temp copy of app/ -- never the real repository -- computes the real
+    diff against the actual pre-fix baseline the model was shown (via
+    Python's own difflib, not `git apply`, so this never depends on the
+    running environment's git history -- see AEQ-020), and compiles it
+    there. Always cleans up the temp workspace, success or failure."""
+    return _isolated_compile_java_candidate(
+        "com/example/customer/service/ContractPlanService.java", _BUGGY_FULL_FILE, candidate_source)
+
+
+def _call_model_text(system_prompt: str, user_message: str, max_tokens: int,
+                      api_key: str | None, create_fn) -> tuple[str | None, dict | None]:
+    """Shared low-level Anthropic call + response-text extraction, reused
+    by both Scenario A and Scenario B's diagnose()/generate_candidate_patch()
+    functions -- the SAME engine, not a parallel implementation per
+    scenario. Returns (stripped_text, None) on success, or (None,
+    honest_unavailable_dict) when no API key is configured. Real usage is
+    recorded via metrics.record_model_usage() exactly as before this was
+    extracted, for every caller."""
     if create_fn is None:
         api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
         if not api_key:
-            return {"generated": False, "candidate_source": None,
-                    "explanation": "ANTHROPIC_API_KEY not set -- cannot generate a live candidate patch"}
+            return None, {"explanation": "ANTHROPIC_API_KEY not set -- cannot run a live model call"}
         from anthropic import Anthropic
         create_fn = Anthropic(api_key=api_key).messages.create
 
-    user_message = (
-        f"Real database evidence after submitting the identical enrollment request twice:\n"
-        f"{json.dumps(reproduction_result, indent=2)}\n\n"
-        f"Current (defective) file content ({FIX_FILE}):\n{_BUGGY_FULL_FILE}"
-    )
     response = create_fn(
-        model="claude-sonnet-5", max_tokens=2048,
-        system=CANDIDATE_PATCH_SYSTEM_PROMPT,
+        model="claude-sonnet-5", max_tokens=max_tokens,
+        system=system_prompt,
         messages=[{"role": "user", "content": user_message}],
     )
     usage = getattr(response, "usage", None)
@@ -253,17 +281,18 @@ def generate_candidate_patch(reproduction_result: dict, api_key: str | None = No
         stripped = stripped.split("\n", 1)[1] if "\n" in stripped else stripped
         if stripped.endswith("```"):
             stripped = stripped[:-3]
-    candidate_source = stripped.strip() + "\n"
-    return {"generated": True, "candidate_source": candidate_source, "target_file": FIX_FILE}
+    return stripped.strip(), None
 
 
-def apply_and_verify_candidate(candidate_source: str) -> dict:
-    """Applies the AI-generated candidate file content in an ISOLATED
-    temp copy of app/ -- never the real repository -- computes the real
-    diff against the actual pre-fix baseline the model was shown (via
-    Python's own difflib, not `git apply`, so this never depends on the
-    running environment's git history -- see AEQ-020), and compiles it
-    there. Always cleans up the temp workspace, success or failure."""
+def _isolated_compile_java_candidate(target_rel_path: str, baseline_source: str, candidate_source: str) -> dict:
+    """Shared isolated-workspace diff+compile mechanism, reused by both
+    Scenario A and Scenario B's apply_and_verify_candidate() functions --
+    the SAME engine, not a parallel implementation per scenario. Applies
+    candidate_source at target_rel_path (relative to app/src/main/java/...)
+    in an isolated temp copy of app/ -- never the real repository --
+    computes the real diff via Python's own difflib (never `git apply`,
+    so this never depends on the running environment's git history), and
+    compiles it there. Always cleans up the temp workspace."""
     import difflib
     import shutil
     import tempfile
@@ -276,10 +305,9 @@ def apply_and_verify_candidate(candidate_source: str) -> dict:
             "diff": "", "compile": None, "environment_preflight": preflight,
         }
 
-    target_rel = "src/main/java/com/example/customer/service/ContractPlanService.java"
     diff = "".join(difflib.unified_diff(
-        _BUGGY_FULL_FILE.splitlines(keepends=True), candidate_source.splitlines(keepends=True),
-        fromfile=f"a/app/{target_rel}", tofile=f"b/app/{target_rel}",
+        baseline_source.splitlines(keepends=True), candidate_source.splitlines(keepends=True),
+        fromfile=f"a/app/src/main/java/{target_rel_path}", tofile=f"b/app/src/main/java/{target_rel_path}",
     ))
 
     workspace = Path(tempfile.mkdtemp(prefix="triage-candidate-"))
@@ -289,7 +317,7 @@ def apply_and_verify_candidate(candidate_source: str) -> dict:
             APP_DIR, workspace_app,
             ignore=shutil.ignore_patterns("target", ".git"),
         )
-        (workspace_app / target_rel).write_text(candidate_source, encoding="utf-8")
+        (workspace_app / "src" / "main" / "java" / target_rel_path).write_text(candidate_source, encoding="utf-8")
         workspace_mvnw = workspace_app / ("mvnw.cmd" if os.name == "nt" else "mvnw")
         if os.name != "nt":
             workspace_mvnw.chmod(0o755)
@@ -321,17 +349,6 @@ def diagnose(reproduction_result: dict, api_key: str | None = None, create_fn=No
     """One real, on-demand Claude call (never automatic/repeated) given
     real evidence. Mirrors agent/backend_planning.py::analyze_with_llm's
     injectable create_fn pattern so tests never make a real billed call."""
-    if create_fn is None:
-        api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
-        if not api_key:
-            return {
-                "hypothesis": None, "root_cause": None, "affected_component": None,
-                "confidence": None, "model_called": False,
-                "explanation": "ANTHROPIC_API_KEY not set -- cannot run live AI diagnosis",
-            }
-        from anthropic import Anthropic
-        create_fn = Anthropic(api_key=api_key).messages.create
-
     evidence = (
         f"Business context: a customer enrolls in an energy plan; a duplicate submission "
         f"(double-click, or a client retry after a timeout whose original call actually "
@@ -340,30 +357,15 @@ def diagnose(reproduction_result: dict, api_key: str | None = None, create_fn=No
         f"request twice):\n{json.dumps(reproduction_result, indent=2)}\n\n"
         f"Defective method source:\n{DEFECTIVE_SOURCE_EXCERPT}"
     )
-    response = create_fn(
-        model="claude-sonnet-5", max_tokens=512,
-        system=DIAGNOSIS_SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": evidence}],
-    )
-
-    usage = getattr(response, "usage", None)
-    if usage is not None:
-        import metrics
-        metrics.record_model_usage(
-            provider="anthropic", model="claude-sonnet-5",
-            input_tokens=usage.input_tokens, output_tokens=usage.output_tokens,
-            cache_creation_input_tokens=getattr(usage, "cache_creation_input_tokens", None),
-            cache_read_input_tokens=getattr(usage, "cache_read_input_tokens", None),
-        )
-
-    text = "".join(b.text for b in response.content if getattr(b, "type", None) == "text")
-    stripped = text.strip()
-    if stripped.startswith("```"):
-        stripped = stripped.split("\n", 1)[1] if "\n" in stripped else stripped
-        if stripped.endswith("```"):
-            stripped = stripped[:-3]
+    text, unavailable = _call_model_text(DIAGNOSIS_SYSTEM_PROMPT, evidence, 512, api_key, create_fn)
+    if unavailable is not None:
+        return {
+            "hypothesis": None, "root_cause": None, "affected_component": None,
+            "confidence": None, "model_called": False,
+            "explanation": "ANTHROPIC_API_KEY not set -- cannot run live AI diagnosis",
+        }
     try:
-        parsed = json.loads(stripped.strip())
+        parsed = json.loads(text)
         parsed["model_called"] = True
         return parsed
     except json.JSONDecodeError:
@@ -473,13 +475,10 @@ def get_patch_diff() -> dict:
     return {"available": True, "commit": FIX_COMMIT, "file": FIX_FILE, "diff": _FALLBACK_DIFF, "source": "embedded_fallback"}
 
 
-def verify_fix() -> dict:
-    """Runs the REAL, focused regression tests that prove this fix (and
-    the Triage scenario's own isolation) -- a live Maven subprocess, not
-    a cached/fabricated result. Scoped to exactly the two relevant test
-    classes (Test Impact Analysis judgment: this change only touches
-    ContractPlanService + the triage package, no reason to run the full
-    suite for a live UI-triggered verification step).
+def _run_focused_maven_tests(test_classes: list[str]) -> dict:
+    """Shared focused-Maven-test runner, reused by Scenario A and Scenario
+    B's verify_fix() functions -- the SAME engine, not a parallel
+    implementation per scenario.
 
     FAIL CLOSED (AEQ-021): checks environment_preflight.check_java_toolchain()
     FIRST -- a real mvnw test run with a JDK older than app/pom.xml's
@@ -492,7 +491,7 @@ def verify_fix() -> dict:
             "success": False,
             "status": "ENVIRONMENT_INVALID",
             "duration_ms": 0.0,
-            "tests": ["ContractPlanServiceTest", "TriageScenarioAIntegrationTest"],
+            "tests": test_classes,
             "output_tail": (
                 f"ENVIRONMENT_INVALID: required Java {preflight['expected_java_major_minimum']}+ "
                 f"but detected {preflight['detected_java_major']!r} -- refusing to run real tests "
@@ -505,7 +504,7 @@ def verify_fix() -> dict:
     start = time.monotonic()
     try:
         proc = subprocess.run(
-            [str(MVNW), "-q", "-Dtest=ContractPlanServiceTest,TriageScenarioAIntegrationTest", "test"],
+            [str(MVNW), "-q", f"-Dtest={','.join(test_classes)}", "test"],
             cwd=str(APP_DIR), capture_output=True, text=True, timeout=180, shell=False,
         )
         success = proc.returncode == 0
@@ -517,6 +516,310 @@ def verify_fix() -> dict:
     return {
         "success": success,
         "duration_ms": duration_ms,
-        "tests": ["ContractPlanServiceTest", "TriageScenarioAIntegrationTest"],
+        "tests": test_classes,
         "output_tail": raw_output[-2000:],
     }
+
+
+def verify_fix() -> dict:
+    """Runs the REAL, focused regression tests that prove this fix (and
+    the Triage scenario's own isolation) -- a live Maven subprocess, not
+    a cached/fabricated result. Scoped to exactly the two relevant test
+    classes (Test Impact Analysis judgment: this change only touches
+    ContractPlanService + the triage package, no reason to run the full
+    suite for a live UI-triggered verification step)."""
+    return _run_focused_maven_tests(["ContractPlanServiceTest", "TriageScenarioAIntegrationTest"])
+
+
+# =============================================================================
+# Incident Triage Lab -- Scenario B (appointment downstream resilience:
+# wrong retry predicate). REUSES THE SAME ENGINE AS SCENARIO A above
+# (_request, _call_model_text, _isolated_compile_java_candidate,
+# _run_focused_maven_tests) -- only the scenario-specific evidence/
+# prompts/target file differ, per the master instruction's explicit
+# "MUST REUSE THE ENGINE, do NOT create separate orchestration" rule.
+# =============================================================================
+
+FIX_FILE_B = "app/src/main/java/com/example/customer/triage/TriageScenarioBService.java"
+
+DIAGNOSIS_SYSTEM_PROMPT_B = """You are assisting a senior backend engineer diagnosing a real defect in a
+Spring Boot application's Resilience4j retry configuration. You will be
+given: (1) real evidence from actually calling a downstream service that
+returns an HTTP 400 (a non-retryable client error), (2) the real source of
+the retry predicate being used, (3) the scenario's business context.
+
+Respond with ONLY a JSON object (no markdown fences), with exactly these
+keys: "hypothesis" (one sentence, what you think is wrong), "root_cause"
+(2-3 sentences, the precise mechanical reason), "affected_component"
+(the class/field name), "confidence" (one of: HIGH, MEDIUM, LOW).
+Be concise and technically precise. Do not guess beyond the evidence
+given."""
+
+# The real, currently-seeded defective predicate -- shown to the model as
+# evidence, exactly mirroring Scenario A's DEFECTIVE_SOURCE_EXCERPT.
+DEFECTIVE_SOURCE_EXCERPT_B = """private final Retry buggyRetry = Retry.of("triageScenarioBBuggyRetry",
+        RetryConfig.custom()
+                .maxAttempts(3)
+                .waitDuration(Duration.ofMillis(50))
+                .retryOnException(ex -> true)
+                .build());
+// NOTE: retries on ANY exception, including a genuine downstream 4xx
+// client error -- a 4xx is not a transient condition, retrying it can
+// never succeed, so this wastes real HTTP round-trips and delays an
+// answer that will never change."""
+
+# The REAL production predicate (AppointmentAvailabilityConfig.java,
+# `appointmentRetry` bean) -- shown to the model as the ground-truth
+# reference for what a correct predicate looks like elsewhere in this
+# same codebase, never as "the answer to copy verbatim" (the model must
+# still write the actual corrected file itself).
+REFERENCE_SOURCE_EXCERPT_B = """// From AppointmentAvailabilityConfig.java's real, already-correct,
+// already-tested production `appointmentRetry` bean:
+RetryConfig config = RetryConfig.custom()
+        .maxAttempts(3)
+        .waitDuration(Duration.ofMillis(50))
+        .retryOnException(ex -> ex instanceof ResourceAccessException
+                || ex instanceof HttpServerErrorException)
+        .build();
+// Deliberately narrow: only retry on connectivity/timeout failures
+// (ResourceAccessException) or 5xx (HttpServerErrorException) -- a 4xx
+// client error is never retried."""
+
+CANDIDATE_PATCH_SYSTEM_PROMPT_B = """You are a senior backend engineer fixing a real defect in a Spring Boot
+service's Resilience4j retry configuration, given real evidence of the
+defect (not told the answer).
+
+You will be given the CURRENT (defective) complete source of one Java
+file, real evidence that its retry predicate wastefully retries a
+non-retryable HTTP 400 three times, and a reference excerpt showing the
+correct predicate style already used elsewhere in this codebase (for a
+DIFFERENT retry instance) -- you must still write the actual corrected
+predicate for THIS file yourself, not copy the reference verbatim if it
+does not fit this file's own imports/structure.
+
+Write the COMPLETE, corrected version of this ONE file that fixes the
+defect while preserving existing behavior, comments, and style. Do not
+change public method signatures or the class's constructor parameters.
+Do not add unrelated functionality.
+
+Respond with ONLY the complete corrected file content -- no markdown
+fences, no explanation before or after."""
+
+# The REAL, complete current source of TriageScenarioBService.java
+# (literal, matching the file on disk) -- what a candidate-patch-
+# generation call is given as "the current defective file" to correct in
+# full, never just told the one-line answer. Kept as a literal string
+# (not read from disk) so this module has no runtime dependency on the
+# Java source tree's exact current state matching byte-for-byte; the
+# regression test (test_computes_a_real_diff_against_the_real_buggy_baseline
+# equivalent for B) proves this stays a valid, compilable baseline.
+_BUGGY_FULL_FILE_B = """package com.example.customer.triage;
+
+import com.example.customer.integration.appointment.AppointmentAvailabilityClient;
+import io.github.resilience4j.retry.Retry;
+import io.github.resilience4j.retry.RetryConfig;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.stereotype.Service;
+
+import java.time.Duration;
+import java.time.LocalDate;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
+
+/**
+ * Incident Triage Lab -- Scenario B (appointment downstream resilience:
+ * wrong retry predicate).
+ *
+ * ISOLATION CONTRACT, mirroring TriageScenarioAService exactly: the
+ * "buggy" behavior below is a deliberately-seeded, clearly-labeled
+ * defect that exists ONLY inside this isolated scenario service --
+ * never wired into AppointmentAvailabilityService (the real, correct,
+ * already-tested production path real customers' appointment checks
+ * actually use). buggyRetry is a private, unregistered Retry instance,
+ * never added to the shared RetryRegistry -- structurally unreachable
+ * from real business logic. The "fixed" path here delegates to the REAL
+ * production `appointmentRetry` bean (constructor-injected, same bean
+ * AppointmentAvailabilityService itself uses).
+ */
+@Service
+public class TriageScenarioBService {
+
+    private final AppointmentAvailabilityClient client;
+    private final Retry productionRetry;
+
+    /**
+     * REAL, DELIBERATELY-SEEDED DEFECT (isolated pedagogical replay, never
+     * reachable by real customer traffic): retries on ANY exception,
+     * including a genuine downstream 4xx client error. A 4xx is not a
+     * transient condition -- retrying it can never succeed, so this
+     * wastes real HTTP round-trips and delays an answer that will never
+     * change, exactly the anti-pattern AppointmentAvailabilityConfig's own
+     * Javadoc explains the REAL predicate is narrow to avoid.
+     */
+    private final Retry buggyRetry = Retry.of("triageScenarioBBuggyRetry",
+            RetryConfig.custom()
+                    .maxAttempts(3)
+                    .waitDuration(Duration.ofMillis(50))
+                    .retryOnException(ex -> true)
+                    .build());
+
+    private volatile boolean fixApplied = false;
+
+    public TriageScenarioBService(@Lazy AppointmentAvailabilityClient appointmentAvailabilityClient,
+                                   Retry appointmentRetry) {
+        this.client = appointmentAvailabilityClient;
+        this.productionRetry = appointmentRetry;
+    }
+
+    public synchronized TriageBState reset() {
+        this.fixApplied = false;
+        return state();
+    }
+
+    /** Calls the real synthetic downstream (a genuine HTTP round-trip per
+     * attempt) with scenario=client_error (a real HTTP 400), wrapped in
+     * either the buggy or the real production retry policy depending on
+     * fixApplied, counting real attempts as they happen -- never
+     * estimated or asserted from the outside. */
+    public TriageBReproductionResult reproduce() {
+        AtomicInteger attempts = new AtomicInteger(0);
+        Retry retryToUse = fixApplied ? productionRetry : buggyRetry;
+        Supplier<AppointmentAvailabilityClient.DownstreamAvailabilityResponse> instrumented = () -> {
+            attempts.incrementAndGet();
+            return client.checkAvailability(LocalDate.now(), "client_error");
+        };
+
+        String exceptionType = null;
+        String exceptionMessage = null;
+        try {
+            Retry.decorateSupplier(retryToUse, instrumented).get();
+        } catch (Exception e) {
+            exceptionType = e.getClass().getSimpleName();
+            exceptionMessage = e.getMessage();
+        }
+
+        int attemptCount = attempts.get();
+        boolean defectReproduced = !fixApplied && attemptCount > 1;
+        return new TriageBReproductionResult(fixApplied, attemptCount, 1, exceptionType, exceptionMessage, defectReproduced);
+    }
+
+    /** Requires ADMIN authorization at the controller layer (see
+     * TriageScenarioBController) -- flips only this isolated scenario's
+     * own state, never touches real production config or any real
+     * downstream call. */
+    public synchronized TriageBState approveFix() {
+        this.fixApplied = true;
+        return state();
+    }
+
+    public TriageBState state() {
+        return new TriageBState(fixApplied);
+    }
+}
+"""
+
+
+def reset_scenario_b() -> dict:
+    return _request("POST", "/internal/triage/scenario-b/reset")
+
+
+def reproduce_scenario_b() -> dict:
+    return _request("POST", "/internal/triage/scenario-b/reproduce")
+
+
+def get_state_b() -> dict:
+    return _request("GET", "/internal/triage/scenario-b/state")
+
+
+def approve_scenario_b(admin_username: str, admin_password: str) -> dict:
+    """Same real login + admin-gated approve pattern as approve_scenario()
+    (Scenario A) -- reuses the same _request() helper, just a different
+    target path."""
+    try:
+        login = _request("POST", "/auth/login", body={"username": admin_username, "password": admin_password})
+    except TriageExecutionError as e:
+        raise ApprovalAuthError(f"admin login failed: {e}") from e
+    token = login.get("accessToken")
+    if not token:
+        raise ApprovalAuthError("login succeeded but no accessToken was returned")
+    try:
+        return _request("POST", "/internal/triage/scenario-b/approve", token=token)
+    except TriageExecutionError as e:
+        raise ApprovalAuthError(f"approve rejected: {e}") from e
+
+
+def diagnose_b(reproduction_result: dict, api_key: str | None = None, create_fn=None) -> dict:
+    """One real, on-demand Claude call, same shape as diagnose() (Scenario
+    A) -- reuses _call_model_text()."""
+    evidence = (
+        f"Business context: checking technician appointment availability requires a real "
+        f"downstream HTTP call; a 4xx client error means the request itself is malformed -- "
+        f"retrying it can never produce a different result, only waste time and calls.\n\n"
+        f"Reproduction result (real attempt count from actually calling the downstream twice):\n"
+        f"{json.dumps(reproduction_result, indent=2)}\n\n"
+        f"Current retry predicate source:\n{DEFECTIVE_SOURCE_EXCERPT_B}"
+    )
+    text, unavailable = _call_model_text(DIAGNOSIS_SYSTEM_PROMPT_B, evidence, 512, api_key, create_fn)
+    if unavailable is not None:
+        return {
+            "hypothesis": None, "root_cause": None, "affected_component": None,
+            "confidence": None, "model_called": False,
+            "explanation": "ANTHROPIC_API_KEY not set -- cannot run live AI diagnosis",
+        }
+    try:
+        parsed = json.loads(text)
+        parsed["model_called"] = True
+        return parsed
+    except json.JSONDecodeError:
+        return {
+            "hypothesis": None, "root_cause": None, "affected_component": None, "confidence": None,
+            "model_called": True, "explanation": f"model did not return valid JSON: {text[:300]!r}",
+        }
+
+
+def get_reference_b() -> dict:
+    """Scenario B has no historical git commit to replay (the defect was
+    deliberately seeded this session for training purposes, not a real
+    historical incident like Scenario A's) -- honestly shows the REAL
+    production predicate already live elsewhere in this codebase
+    (AppointmentAvailabilityConfig's appointmentRetry bean) as the
+    ground-truth reference instead of fabricating a commit hash."""
+    return {
+        "available": True, "kind": "production_reference",
+        "file": "app/src/main/java/com/example/customer/integration/appointment/AppointmentAvailabilityConfig.java",
+        "excerpt": REFERENCE_SOURCE_EXCERPT_B,
+    }
+
+
+def generate_candidate_patch_b(reproduction_result: dict, api_key: str | None = None, create_fn=None) -> dict:
+    """A SECOND real, on-demand Claude call (distinct from diagnose_b()),
+    same shape as generate_candidate_patch() (Scenario A) -- reuses
+    _call_model_text()."""
+    text, unavailable = _call_model_text(
+        CANDIDATE_PATCH_SYSTEM_PROMPT_B,
+        f"Real evidence: the buggy predicate made {reproduction_result.get('attemptCount', '?')} attempts "
+        f"against a non-retryable HTTP 400 (expected: {reproduction_result.get('expectedAttemptCount', 1)}).\n"
+        f"{json.dumps(reproduction_result, indent=2)}\n\n"
+        f"Reference (a DIFFERENT, already-correct retry instance in this codebase):\n{REFERENCE_SOURCE_EXCERPT_B}\n\n"
+        f"Current (defective) file content ({FIX_FILE_B}):\n{_BUGGY_FULL_FILE_B}",
+        2048, api_key, create_fn,
+    )
+    if unavailable is not None:
+        return {"generated": False, "candidate_source": None,
+                "explanation": "ANTHROPIC_API_KEY not set -- cannot generate a live candidate patch"}
+    candidate_source = text + "\n"
+    return {"generated": True, "candidate_source": candidate_source, "target_file": FIX_FILE_B}
+
+
+def apply_and_verify_candidate_b(candidate_source: str) -> dict:
+    """Same isolated-workspace diff+compile mechanism as
+    apply_and_verify_candidate() (Scenario A) -- reuses
+    _isolated_compile_java_candidate()."""
+    return _isolated_compile_java_candidate(
+        "com/example/customer/triage/TriageScenarioBService.java", _BUGGY_FULL_FILE_B, candidate_source)
+
+
+def verify_fix_b() -> dict:
+    """Same focused-Maven-test mechanism as verify_fix() (Scenario A) --
+    reuses _run_focused_maven_tests()."""
+    return _run_focused_maven_tests(["TriageScenarioBIntegrationTest"])

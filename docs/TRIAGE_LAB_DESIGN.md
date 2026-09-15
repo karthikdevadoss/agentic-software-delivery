@@ -1,5 +1,23 @@
 # Incident Triage & Repair Lab — Architecture and Status
 
+**STATUS UPDATE (2026-09-15, continued -- flagship-completion session):
+Scenario B is now also LIVE at `/triage/scenario-b`, reusing Scenario A's
+exact engine.** `agent/triage_execution.py` was refactored (behavior-
+preserving -- all 23 pre-existing tests still pass unchanged) to extract
+shared helpers (`_call_model_text`, `_isolated_compile_java_candidate`,
+`_run_focused_maven_tests`) that both Scenario A and Scenario B now call,
+rather than a second parallel implementation. Scenario B's defect is a
+deliberately-seeded, isolated Resilience4j retry predicate
+(`TriageScenarioBService.buggyRetry`, private and never registered in the
+shared `RetryRegistry` real production code uses) that retries a genuine
+downstream HTTP 400 three times before it should be retried zero extra
+times; admin approval switches `reproduce()` to delegate to the REAL
+production `appointmentRetry` bean, exactly mirroring Scenario A's
+`enrollFixed()` delegating to the real `ContractPlanService`. Real,
+non-mocked evidence: `TriageScenarioBIntegrationTest` (4/4 passing)
+proves 3 real HTTP attempts pre-fix, 1 real HTTP attempt post-fix. See
+`triage/scenarios.yaml`'s Scenario B entry for full details.
+
 **STATUS UPDATE (2026-09-15): Scenario A is LIVE at `/triage`, not just
 designed.** Everything below describing Scenario A's original read-only
 "historical evidence replay" recommendation was superseded the same

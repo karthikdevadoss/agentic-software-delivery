@@ -279,5 +279,138 @@ class ApplyAndVerifyCandidateTestCase(unittest.TestCase):
         self.assertEqual(result["status"], "COMPILE_VERIFIED", result["compile"])
 
 
+class ScenarioBRequestHelperTestCase(unittest.TestCase):
+    @patch("triage_execution.urllib.request.urlopen")
+    def test_reset_scenario_b_calls_the_real_endpoint(self, mock_urlopen):
+        mock_urlopen.return_value = _fake_http_response({"fixApplied": False})
+        result = te.reset_scenario_b()
+        self.assertEqual(result, {"fixApplied": False})
+        request = mock_urlopen.call_args[0][0]
+        self.assertEqual(request.full_url, te.CUSTOMER_APP_BASE + "/internal/triage/scenario-b/reset")
+        self.assertEqual(request.get_method(), "POST")
+
+    @patch("triage_execution.urllib.request.urlopen")
+    def test_reproduce_scenario_b_returns_real_evidence_shape(self, mock_urlopen):
+        payload = {"fixApplied": False, "attemptCount": 3, "expectedAttemptCount": 1,
+                   "exceptionType": "HttpClientErrorException$BadRequest", "exceptionMessage": "400 Bad Request",
+                   "defectReproduced": True}
+        mock_urlopen.return_value = _fake_http_response(payload)
+        self.assertEqual(te.reproduce_scenario_b(), payload)
+
+
+class ApproveScenarioBTestCase(unittest.TestCase):
+    @patch("triage_execution._request")
+    def test_approve_scenario_b_logs_in_then_calls_approve_with_the_real_token(self, mock_request):
+        mock_request.side_effect = [
+            {"accessToken": "real-admin-jwt", "role": "ADMIN"},
+            {"fixApplied": True},
+        ]
+        result = te.approve_scenario_b("admin1", "Demo@123")
+        self.assertEqual(result, {"fixApplied": True})
+        login_call, approve_call = mock_request.call_args_list
+        self.assertEqual(login_call.args[:2], ("POST", "/auth/login"))
+        self.assertEqual(approve_call.args[:2], ("POST", "/internal/triage/scenario-b/approve"))
+
+    @patch("triage_execution._request")
+    def test_approve_scenario_b_wrong_password_raises_approval_auth_error(self, mock_request):
+        mock_request.side_effect = te.TriageExecutionError("POST /auth/login -> HTTP 401: invalid username or password")
+        with self.assertRaises(te.ApprovalAuthError):
+            te.approve_scenario_b("admin1", "wrong-password")
+
+
+class DiagnoseBTestCase(unittest.TestCase):
+    def test_diagnose_b_without_api_key_is_honest_not_fabricated(self):
+        with patch.dict("os.environ", {}, clear=True):
+            result = te.diagnose_b({"defectReproduced": True}, api_key=None, create_fn=None)
+        self.assertFalse(result["model_called"])
+        self.assertIsNone(result["hypothesis"])
+        self.assertIn("ANTHROPIC_API_KEY", result["explanation"])
+
+    def test_diagnose_b_with_injected_create_fn_parses_real_response_shape(self):
+        fake_block = MagicMock()
+        fake_block.type = "text"
+        fake_block.text = json.dumps({
+            "hypothesis": "Retry predicate matches any exception, including non-retryable 4xx",
+            "root_cause": "retryOnException(ex -> true) retries a client error that can never succeed",
+            "affected_component": "TriageScenarioBService.buggyRetry",
+            "confidence": "HIGH",
+        })
+        fake_response = MagicMock()
+        fake_response.content = [fake_block]
+        fake_response.usage = None
+        create_fn = MagicMock(return_value=fake_response)
+
+        result = te.diagnose_b({"attemptCount": 3}, create_fn=create_fn)
+
+        self.assertTrue(result["model_called"])
+        self.assertEqual(result["confidence"], "HIGH")
+        create_fn.assert_called_once()
+        self.assertEqual(create_fn.call_args.kwargs["model"], "claude-sonnet-5")
+
+
+class GetReferenceBTestCase(unittest.TestCase):
+    def test_get_reference_b_is_honest_about_not_being_a_historical_commit(self):
+        result = te.get_reference_b()
+        self.assertTrue(result["available"])
+        self.assertEqual(result["kind"], "production_reference")
+        self.assertIn("AppointmentAvailabilityConfig", result["file"])
+        self.assertIn("ResourceAccessException", result["excerpt"])
+
+
+class GenerateCandidatePatchBTestCase(unittest.TestCase):
+    def test_without_api_key_is_honest_not_fabricated(self):
+        with patch.dict("os.environ", {}, clear=True):
+            result = te.generate_candidate_patch_b({"attemptCount": 3}, api_key=None, create_fn=None)
+        self.assertFalse(result["generated"])
+        self.assertIsNone(result["candidate_source"])
+
+    def test_with_injected_create_fn_returns_the_models_full_file_content(self):
+        fake_block = MagicMock()
+        fake_block.type = "text"
+        fake_block.text = "package com.example.customer.triage;\n\npublic class TriageScenarioBService {}\n"
+        fake_response = MagicMock()
+        fake_response.content = [fake_block]
+        fake_response.usage = None
+        create_fn = MagicMock(return_value=fake_response)
+
+        result = te.generate_candidate_patch_b({"attemptCount": 3}, create_fn=create_fn)
+
+        self.assertTrue(result["generated"])
+        self.assertIn("public class TriageScenarioBService", result["candidate_source"])
+        self.assertEqual(result["target_file"], te.FIX_FILE_B)
+
+
+class ApplyAndVerifyCandidateBTestCase(unittest.TestCase):
+    @patch("triage_execution.environment_preflight.check_java_toolchain")
+    def test_fails_closed_on_wrong_jdk_without_ever_copying_or_compiling(self, mock_preflight):
+        mock_preflight.return_value = {
+            "status": "ENVIRONMENT_INVALID", "expected_java_major_minimum": 21,
+            "detected_java_major": 17, "raw_java_version_output": "openjdk 17", "duration_ms": 1.0,
+        }
+        result = te.apply_and_verify_candidate_b("irrelevant candidate content")
+        self.assertFalse(result["applied"])
+        self.assertEqual(result["status"], "ENVIRONMENT_INVALID")
+
+    def test_a_genuinely_valid_candidate_actually_compiles(self):
+        """The unmodified real baseline file (matching the actual Java
+        source on disk) must genuinely compile through the real
+        isolated-workspace mechanism -- proving this reused engine works
+        for Scenario B's target file exactly like it does for Scenario A's."""
+        result = te.apply_and_verify_candidate_b(te._BUGGY_FULL_FILE_B)
+        self.assertTrue(result["applied"])
+        self.assertEqual(result["status"], "COMPILE_VERIFIED", result["compile"])
+
+
+class VerifyFixBTestCase(unittest.TestCase):
+    @patch("triage_execution.environment_preflight.check_java_toolchain", return_value=_VALID_PREFLIGHT)
+    @patch("triage_execution.subprocess.run")
+    def test_verify_fix_b_runs_the_scoped_test_class(self, mock_run, mock_preflight):
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+        result = te.verify_fix_b()
+        self.assertTrue(result["success"])
+        argv = mock_run.call_args.args[0]
+        self.assertIn("-Dtest=TriageScenarioBIntegrationTest", argv)
+
+
 if __name__ == "__main__":
     unittest.main()

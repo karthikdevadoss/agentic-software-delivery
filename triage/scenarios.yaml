@@ -79,7 +79,7 @@ scenarios:
   - id: TRIAGE-B-APPOINTMENT-DOWNSTREAM-RESILIENCE
     title: "Downstream Appointment Provider Timeout / Error Classification"
     engineering_area: "HTTP integration / Resilience4j (retry, circuit breaker) / error mapping"
-    status: "REAL, SAFE SCENARIO INFRASTRUCTURE ALREADY LIVE (DemoAppointmentProviderController) -- currently demonstrates CORRECT behavior, not a bug; Triage Lab framing not yet wired"
+    status: "LIVE at /triage/scenario-b (2026-09-15, flagship-completion session). A deliberately-seeded, isolated defect (TriageScenarioBService's buggyRetry -- retryOnException(ex -> true), never wired into real production AppointmentAvailabilityService) genuinely retries a real downstream HTTP 400 three times before this scenario's own admin-gated approve() switches it to delegate to the REAL production appointmentRetry bean. Reuses the exact same reproduce->diagnose->AI-candidate-patch->verify->approve->rerun engine as Scenario A (agent/triage_execution.py's shared _call_model_text/_isolated_compile_java_candidate/_run_focused_maven_tests helpers, extracted from Scenario A without changing its behavior). Real, non-mocked evidence: TriageScenarioBIntegrationTest (4/4 passing) proves the buggy path makes exactly 3 real HTTP attempts against a genuine 400 and the fixed path makes exactly 1."
     risk: LOW
     approx_demo_duration_minutes: 5
     business_context: >
@@ -97,37 +97,46 @@ scenarios:
       (client error) is never retried; a downstream 5xx is retried up to
       the configured attempt count.
     defective_behavior: >
-      NONE CURRENTLY -- this path is already correct and covered by 7
-      real WireMock tests (success, 5xx retried 3x, 4xx never retried,
-      timeout, malformed body, sustained-failure circuit-breaker
-      behavior). Listed here as a scenario TEMPLATE: the real,
-      already-existing DemoAppointmentProviderController
-      (?scenario=timeout / ?scenario=error query param, isolated to
-      /internal/demo-appointment-provider, never touching a real
-      downstream) is the exact safe-simulation pattern every other
-      Triage scenario's live re-demo should copy. If a genuine defect is
-      later introduced deliberately for training/interview purposes
-      (e.g., a wrong retry predicate that retries 4xx), it must be
-      isolated the same way: a real HTTP round-trip to a synthetic
-      internal endpoint, never a hardcoded `if (demo) return error`
-      inside the real business logic.
+      REAL PRODUCTION PATH (AppointmentAvailabilityService/Config) remains
+      correct and untouched -- covered by 7 real WireMock tests (success,
+      5xx retried 3x, 4xx never retried, timeout, malformed body,
+      sustained-failure circuit-breaker behavior). The DEFECT lives only
+      in an isolated, deliberately-seeded pedagogical replay
+      (TriageScenarioBService.buggyRetry, a private Retry instance never
+      registered in the shared RetryRegistry, never reachable by real
+      customer traffic): retryOnException(ex -> true) retries ANY
+      exception, including a genuine downstream HTTP 400 client error --
+      not a transient condition, so retrying it can never succeed, only
+      waste real HTTP round-trips and delay an answer that will never
+      change. DemoAppointmentProviderController gained one new, purely
+      additive scenario=client_error param (a real HTTP 400) for this
+      exact purpose.
     reproduction_steps:
-      - "GET /customers/{id}/appointment-availability?date=...&scenario=timeout"
-      - "Observe: client-side timeout after 1000ms, Resilience4j retry, eventual SERVICE_UNAVAILABLE"
-      - "GET the same with scenario=error (downstream 500) -- observe retry-then-fail"
+      - "POST /internal/triage/scenario-b/reset"
+      - "POST /internal/triage/scenario-b/reproduce"
+      - "Observe: attemptCount=3 against a real HTTP 400 (expectedAttemptCount=1) -- defectReproduced=true"
     allowed_modules:
-      - app/src/main/java/com/example/customer/integration/appointment/**
+      - app/src/main/java/com/example/customer/triage/TriageScenarioBService.java
+      - app/src/main/java/com/example/customer/triage/TriageScenarioBController.java
+      - app/src/main/java/com/example/customer/integration/appointment/demo/DemoAppointmentProviderController.java (additive scenario=client_error only)
     blast_radius: LOCAL
-    workspace_isolation: "Already real: the demo provider is a separate internal controller, reached over genuine HTTP loopback, never a direct method call -- see its own Javadoc."
+    workspace_isolation: "buggyRetry is a private, unregistered Retry instance inside TriageScenarioBService -- structurally unreachable from AppointmentAvailabilityService (the real production path). Reaches the downstream over a genuine HTTP loopback call (via the real AppointmentAvailabilityClient), never a direct method call, mirroring DemoAppointmentProviderController's existing isolation pattern exactly."
     required_evidence:
-      - "Real HTTP response timing/status for scenario=timeout and scenario=error"
-      - "WireMock test assertions (request counts proving retry-not-infinite, 4xx-never-retried)"
+      - "Real HTTP attempt count (client-side, incremented inside the Resilience4j Retry-decorated supplier) for both the buggy and fixed paths"
+      - "TriageScenarioBIntegrationTest (4 tests, real Spring context, real HTTP loopback -- not WireMock, not mocked)"
     required_tests:
-      - "app/src/test/java/com/example/customer/integration/appointment/AppointmentAvailabilityIntegrationTest.java (7 tests, already passing)"
-    fix_acceptance_criteria: "N/A today (no defect) -- this scenario currently exists to DEMONSTRATE resilience correctness, not diagnose a bug. Revisit if a real resilience defect is found."
-    production_assertion: "GET the real production endpoint with scenario=timeout and scenario=error and confirm SERVICE_UNAVAILABLE / correct status, never a raw 500 or a hang."
-    reset_behavior: "N/A -- stateless per-request simulation, nothing to reset."
+      - "app/src/test/java/com/example/customer/triage/TriageScenarioBIntegrationTest.java (4 tests, all passing)"
+      - "app/src/test/java/com/example/customer/integration/appointment/AppointmentAvailabilityIntegrationTest.java (7 tests, unaffected -- real production path never touched)"
+    fix_acceptance_criteria: >
+      After admin approval, reproduce() must delegate to the REAL
+      production appointmentRetry bean (never a second copy of the fix)
+      and make exactly 1 real HTTP attempt against the same non-retryable
+      HTTP 400 -- proven live, not asserted from configuration alone.
+    production_assertion: "POST /internal/triage/scenario-b/reproduce after approval and confirm attemptCount == 1 against a real HTTP 400."
+    reset_behavior: "POST /internal/triage/scenario-b/reset sets fixApplied back to false -- stateless otherwise (no database rows), nothing else to clean up."
     evidence_links:
+      - app/src/main/java/com/example/customer/triage/TriageScenarioBService.java
+      - app/src/test/java/com/example/customer/triage/TriageScenarioBIntegrationTest.java
       - app/src/main/java/com/example/customer/integration/appointment/demo/DemoAppointmentProviderController.java
 
   - id: TRIAGE-C-ADMIN-SEARCH-POSTGRES-TYPE-INFERENCE

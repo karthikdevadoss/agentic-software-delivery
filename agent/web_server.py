@@ -1640,6 +1640,71 @@ async def triage_approve(request: Request):
         return JSONResponse({"error": str(e)}, status_code=502)
 
 
+# --- Incident Triage & Repair Lab, Scenario B --------------------------------
+#
+# Same shape as every Scenario A handler above (reused engine, per the
+# flagship-completion task's explicit "do NOT create separate
+# orchestration" instruction) -- only the target functions in
+# agent/triage_execution.py differ.
+
+async def triage_page_b(request: Request):
+    return FileResponse(str(WEB_DIR / "triage-b.html"))
+
+
+async def triage_reset_b(request: Request):
+    try:
+        return JSONResponse(await run_in_threadpool(triage_execution.reset_scenario_b))
+    except triage_execution.TriageExecutionError as e:
+        return JSONResponse({"error": str(e)}, status_code=502)
+
+
+async def triage_reproduce_b(request: Request):
+    try:
+        return JSONResponse(await run_in_threadpool(triage_execution.reproduce_scenario_b))
+    except triage_execution.TriageExecutionError as e:
+        return JSONResponse({"error": str(e)}, status_code=502)
+
+
+async def triage_diagnose_b(request: Request):
+    body = await request.json()
+    reproduction_result = body.get("reproduction_result") or {}
+    result = await run_in_threadpool(triage_execution.diagnose_b, reproduction_result)
+    return JSONResponse(result)
+
+
+async def triage_reference_b(request: Request):
+    return JSONResponse(await run_in_threadpool(triage_execution.get_reference_b))
+
+
+async def triage_generate_candidate_b(request: Request):
+    body = await request.json()
+    reproduction_result = body.get("reproduction_result") or {}
+    generation = await run_in_threadpool(triage_execution.generate_candidate_patch_b, reproduction_result)
+    if not generation.get("generated"):
+        return JSONResponse({"generation": generation, "verification": None})
+    verification = await run_in_threadpool(triage_execution.apply_and_verify_candidate_b, generation["candidate_source"])
+    return JSONResponse({"generation": generation, "verification": verification})
+
+
+async def triage_verify_b(request: Request):
+    return JSONResponse(await run_in_threadpool(triage_execution.verify_fix_b))
+
+
+async def triage_approve_b(request: Request):
+    body = await request.json()
+    username = (body.get("username") or "").strip()
+    password = body.get("password") or ""
+    if not username or not password:
+        return JSONResponse({"error": "admin username and password are required to approve"}, status_code=400)
+    try:
+        result = await run_in_threadpool(triage_execution.approve_scenario_b, username, password)
+        return JSONResponse(result)
+    except triage_execution.ApprovalAuthError as e:
+        return JSONResponse({"error": str(e)}, status_code=401)
+    except triage_execution.TriageExecutionError as e:
+        return JSONResponse({"error": str(e)}, status_code=502)
+
+
 async def get_session_history(request: Request):
     limit = int(request.query_params.get("limit", "20"))
     before = request.query_params.get("before")
@@ -1712,6 +1777,13 @@ routes = [
     Route("/api/triage/scenario-a/generate-candidate-patch", triage_generate_candidate, methods=["POST"]),
     Route("/api/triage/scenario-a/verify", triage_verify, methods=["POST"]),
     Route("/api/triage/scenario-a/approve", triage_approve, methods=["POST"]),
+    Route("/api/triage/scenario-b/reset", triage_reset_b, methods=["POST"]),
+    Route("/api/triage/scenario-b/reproduce", triage_reproduce_b, methods=["POST"]),
+    Route("/api/triage/scenario-b/diagnose", triage_diagnose_b, methods=["POST"]),
+    Route("/api/triage/scenario-b/reference", triage_reference_b, methods=["GET"]),
+    Route("/api/triage/scenario-b/generate-candidate-patch", triage_generate_candidate_b, methods=["POST"]),
+    Route("/api/triage/scenario-b/verify", triage_verify_b, methods=["POST"]),
+    Route("/api/triage/scenario-b/approve", triage_approve_b, methods=["POST"]),
     # Five public surfaces (see docs/COMPANY_VISION.md's public product
     # structure decision). "/" and "/workbench" both serve the same public
     # preview page — Workbench is the flagship/default landing surface.
@@ -1722,6 +1794,7 @@ routes = [
     Route("/usage/session/{session_id}", usage_page, methods=["GET"]),
     Route("/showcase/{slug}", showcase_page, methods=["GET"]),
     Route("/triage", triage_page, methods=["GET"]),
+    Route("/triage/scenario-b", triage_page_b, methods=["GET"]),
     Route("/learn", learn_page, methods=["GET"]),
     Route("/learn/{path:path}", learn_page, methods=["GET"]),
     # Retired public terminology — kept as redirects, not dead links.

@@ -50,6 +50,14 @@ public class DemoAppointmentProviderController {
         if ("error".equalsIgnoreCase(scenario)) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
+        // Incident Triage Lab, Scenario B: a genuine downstream 4xx client
+        // error (never retried by the real, correct Resilience4j predicate
+        // in AppointmentAvailabilityConfig -- retrying a client error can
+        // never fix it) -- see TriageScenarioBService for how this is used
+        // to demonstrate a deliberately WRONG retry predicate.
+        if ("client_error".equalsIgnoreCase(scenario)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
 
         boolean isWeekend = date.getDayOfWeek() == DayOfWeek.SATURDAY || date.getDayOfWeek() == DayOfWeek.SUNDAY;
         return ResponseEntity.ok(isWeekend
