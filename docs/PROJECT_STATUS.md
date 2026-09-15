@@ -940,3 +940,50 @@ Triage verification step surfaced it.
 See `docs/PROJECT_STATE.json`'s `next_phase`/`next_action` for the full
 current-state summary and next priority (Usage page restructuring, then
 Triage Lab Scenarios B/C).
+
+
+# Current Reality (2026-09-15, continued): AI-generated candidate patch, hard toolchain enforcement, Dashboard/Usage truth fixes
+
+**Triage Scenario A now generates a real AI candidate patch**, not just a
+historical replay: a second, on-demand Claude call is given the real
+defective file and real evidence (never the historical answer), asked to
+write the actual fix, which is then applied in an isolated temp copy of
+`app/` and compiled for real. Browser-verified live: the model produced a
+correct, idiomatic fix and it genuinely `COMPILE_VERIFIED` in 2.5s. The
+historical diff is now clearly labeled "HISTORICAL REFERENCE PATCH",
+never presented as a live proposal. Deliberately parked tonight: actual
+git commit/push/deploy of an approved candidate to master, since that
+requires a real human to review the diff first (see
+`docs/ACTION_QUEUE.json`'s `TRIAGE-CANDIDATE-PROMOTION-PIPELINE`).
+
+**Hard JDK-toolchain preflight** (`agent/environment_preflight.py`) now
+fails closed *before* any real compile/test in both Workbench's
+`build_tools.py` and the Triage Lab, reporting `ENVIRONMENT_INVALID` as
+its own distinct status rather than letting a JDK mismatch masquerade as
+a code/test failure (the exact AEQ-021 defect class). Correctly uses
+`detected >= expected`, not equality — verified against this dev
+machine's own real JDK 24 compiling against a Java 21 target.
+
+**Dashboard truth-consistency fixes**: the real "0 Delivery runs vs 153
+Verified changes" contradiction is fixed (both now read the same durable
+ledger), RAG status no longer reads as if the capability doesn't exist,
+and test-evidence counts were refreshed with real numbers.
+
+**Usage mock-data leak fixed**: `source=workbench_mock` runs (including
+2099-dated fixtures) no longer appear in the public session list by
+default.
+
+**Customer App polish**: login copy no longer leads with "portfolio
+demo" language; a defensive CSS fix for the Account panel's email
+overflow.
+
+**Interview infrastructure**: `docs/interview/SOURCE_CODE_CONCEPT_MAP.yaml`
+(17 precise concept-to-code mappings) as personal learning infrastructure
+for a separately-built interview PDF.
+
+Full release-gate regression: 109 Java (0 failures), full Python suite
+(0 real failures), 92/92 Node — all clean.
+
+See `docs/PROJECT_STATE.json`'s `next_phase`/`next_action` for the full
+summary and next priority (Usage page's own visual restructuring into an
+efficiency-first narrative).
