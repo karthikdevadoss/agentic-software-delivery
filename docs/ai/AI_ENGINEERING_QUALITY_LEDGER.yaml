@@ -555,3 +555,96 @@ defects:
     commit: "N/A — investigation only, no code change"
     production_evidence: "Both services independently confirmed Online/healthy at investigation time (2026-09-14): platform-backend HTTP 200 on /workbench, customer-app HTTP 401 on an authenticated-only route (correct post-JWT-rollout behavior, not a crash)"
     recurrence_status: MONITORING
+
+  - defect_id: AEQ-017
+    title: "Deployed platform-backend was 20 commits behind HEAD, so the live Dashboard actively told recruiters real, shipped features 'are genuinely not yet built'"
+    requirement_run_id: "Overnight flagship hardening pass, 2026-09-15"
+    original_prompt: "NOT_RETAINED"
+    analysis_confidence: EXACT
+    model_provider_version: "N/A -- deployment/process gap, not a model reasoning gap"
+    tools_context_used: "railway deployment list --json, git log --oneline <commit>..HEAD"
+    model_interpreted_as: "N/A"
+    expected_behavior: "The live Dashboard reflects the current state of the repository, since docs/PROJECT_STATE.json is read directly at request time, not cached"
+    actual_behavior: "The platform-backend Railway service had not been redeployed since a dd3b762-era build, 20 commits behind origin/master -- so even though the file content was current in the repo, the DEPLOYED container's copy was stale, and separately the file's own next_phase/next_action fields had themselves gone stale since 2026-09-14 across 6 subsequent commits"
+    stage_introduced: process
+    stage_detected: real_browser_verification
+    detection_method: "A real browser walkthrough of USER/ADMIN login (this session) contradicted the live Dashboard's claim that these features didn't exist; git log --oneline confirmed the deployed commit was 20 behind HEAD"
+    root_cause: "Nothing in this project's own verification tooling checks deployed-commit distance from HEAD; docs-only/agent-only sessions have no reason to run railway up against the platform-backend, so it silently drifts stale with every such session"
+    gaps:
+      prompt_gap: false
+      context_rag_gap: false
+      test_gap: false
+      test_oracle_gap: false
+      harness_gap: true
+      environment_gap: false
+      tool_deployment_gap: true
+    product_fix: "Redeployed (railway up --service agentic-platform-backend) and corrected PROJECT_STATE.json's next_phase/next_action/last_verified_code_commit fields to current, evidence-backed state"
+    new_product_regression_test: "N/A -- a documentation/deployment-currency gap, not a code defect with a unit-testable boundary"
+    new_harness_process_regression: "docs/LESSONS.md: staleness has two independent layers to check -- deployed-commit distance from HEAD, and the CONTENT currency of any human-readable summary doc a Dashboard surfaces"
+    future_prompt_clause_learned: "A session that adds real capability should end by checking both: does the deployed container reflect a recent commit, and is PROJECT_STATE.json's own narrative content current -- not just 'did my new commit compile and pass tests.'"
+    deterministic_rule_or_tooling: "Not yet built: a real automated check comparing the live service's reported commit to git log distance from HEAD, to be run at the start of future sessions"
+    commit: "aff40eb (PROJECT_STATE.json fix), redeploy 42ceec6a / dbef1581"
+    production_evidence: "curl against /api/dashboard before and after showed last_verified_code_commit changing from 409cd32/dd3b762-era to 490e222, and next_phase changing from the stale 2026-09-14 text to the corrected current-state summary"
+    recurrence_status: NOT_RECURRED
+
+  - defect_id: AEQ-018
+    title: "Plan-enrollment idempotency gap: a duplicate enrollment request churned a duplicate ACTIVE plan instead of being a no-op"
+    requirement_run_id: "Overnight flagship hardening pass, 2026-09-15"
+    original_prompt: "NOT_RETAINED"
+    analysis_confidence: EXACT
+    model_provider_version: "N/A -- found by direct code inspection, not a model-authored defect with a retained prompt"
+    tools_context_used: "Direct reading of ContractPlanService.java and its existing test suite"
+    model_interpreted_as: "N/A"
+    expected_behavior: "Submitting the exact same enrollment twice (double-click, or a client retry after a timeout whose original call actually succeeded) is a no-op"
+    actual_behavior: "enroll() had no duplicate-request check: a repeat call cancelled the plan the first call had just activated and created a second, identical one -- two CANCELLED rows plus a duplicate ACTIVE row for one real customer action"
+    stage_introduced: implementation
+    stage_detected: code_inspection
+    detection_method: "No existing test covered a repeated identical enroll() call; reasoning about the method's actual behavior under a realistic duplicate-submission scenario surfaced the gap"
+    root_cause: "The original implementation only ever considered 'is there an existing active plan to supersede,' never 'does this request duplicate the plan already active'"
+    gaps:
+      prompt_gap: false
+      context_rag_gap: false
+      test_gap: true
+      test_oracle_gap: false
+      harness_gap: false
+      environment_gap: false
+      tool_deployment_gap: false
+    product_fix: "isSameTerms() early-return no-op check added to enroll() before any cancel/create logic runs"
+    new_product_regression_test: "ContractPlanServiceTest::enroll_whenIdenticalRequestSubmittedTwice_isIdempotentNoOp"
+    new_harness_process_regression: "docs/interview-scenarios/04-plan-enrollment-idempotency.md documents this as a durable interview anchor; also became the real, grounded defect behind Incident Triage Lab Scenario A"
+    future_prompt_clause_learned: "When reviewing a state-changing endpoint, explicitly ask 'what happens if this exact request is submitted twice' as a standing checklist item, not just 'does the happy path work.'"
+    deterministic_rule_or_tooling: "N/A -- a business-logic fix, not a tooling rule"
+    commit: "2155a8a"
+    production_evidence: "Live production probe: two identical POST /customers/{id}/plan calls resulted in exactly one plan row (id unchanged), not two"
+    recurrence_status: NOT_RECURRED
+
+  - defect_id: AEQ-019
+    title: "Incident Triage Lab's own defectReproduced verdict used cumulative historical row count, so it stayed 'defect reproduced' forever even after a genuine fix was applied and verified"
+    requirement_run_id: "Overnight flagship hardening pass, 2026-09-15 -- Triage Lab Scenario A build"
+    original_prompt: "NOT_RETAINED"
+    analysis_confidence: EXACT
+    model_provider_version: "N/A -- found by this session's own live production testing of code it had just written"
+    tools_context_used: "curl against the live /internal/triage/scenario-a/* endpoints in production"
+    model_interpreted_as: "N/A"
+    expected_behavior: "After approve() genuinely fixes the scenario, rerunning reproduce() without an intervening reset() shows the defect as fixed"
+    actual_behavior: "defectReproduced was computed as (total plan-history row count > 1) -- which is permanently true after the very first buggy call, since plan history is never deleted (by design, for audit trail); a post-fix rerun still reported 'defect reproduced' from stale history despite creating zero new rows"
+    stage_introduced: implementation
+    stage_detected: live_production_testing
+    detection_method: "This session's own manual curl sequence (reset -> reproduce -> approve -> reproduce again without reset) against real production, exactly the sequence the Triage UI performs"
+    root_cause: "The verdict compared a cumulative, ever-growing signal (total historical rows) instead of a call-scoped one (rows created by THIS specific reproduce() invocation)"
+    gaps:
+      prompt_gap: false
+      context_rag_gap: false
+      test_gap: true
+      test_oracle_gap: true
+      harness_gap: false
+      environment_gap: false
+      tool_deployment_gap: false
+    product_fix: "Capture rowsBefore/rowsAfter around the two enroll calls; defectReproduced = (rowsAfter - rowsBefore) > 1, a call-scoped signal instead of a cumulative one"
+    new_product_regression_test: "TriageScenarioAIntegrationTest::reproduceAfterApproval_withoutReset_correctlyShowsFixed_notStaleHistory"
+    new_harness_process_regression: "General lesson reinforced: a feature that itself reports pass/fail needs its own verdict logic tested against a REPLAY sequence (buggy -> fixed -> rerun), not just a single fresh-state assertion each way"
+    future_prompt_clause_learned: "When a verdict/oracle function reads from an append-only or non-deleting store, explicitly test the 'state changed but history didn't get cleared' case, not just isolated before/after snapshots."
+    deterministic_rule_or_tooling: "N/A -- caught by this session's own live testing before being presented as done, exactly the discipline this project already practices elsewhere"
+    commit: "b0919af"
+    production_evidence: "Live curl sequence against production before the fix reproduced the exact false verdict; the same sequence after redeploy showed defectReproduced:false with zero new rows created"
+    recurrence_status: NOT_RECURRED
