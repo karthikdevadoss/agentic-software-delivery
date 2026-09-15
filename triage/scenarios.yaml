@@ -142,7 +142,7 @@ scenarios:
   - id: TRIAGE-C-ADMIN-SEARCH-POSTGRES-TYPE-INFERENCE
     title: "Admin Customer Search: lower(bytea) Postgres 500"
     engineering_area: "JPQL / Postgres bind-parameter type inference / production-only defect class"
-    status: "REAL, ALREADY-RESOLVED PRODUCTION INCIDENT (commit 9f35f27) -- full before/after evidence already documented, interactive re-demo NOT yet wired"
+    status: "LIVE at /triage/scenario-c (2026-09-15, flagship-completion session), reusing the same engine as Scenarios A/B. HONEST FINDING: the historical bytea type-inference failure does not currently reproduce -- both this exact query shape and a 3-parameter variant matching the real original query byte-for-byte were empirically tested against the real deployed production PostgreSQL database and both succeeded, most likely because pgjdbc/Hibernate's type inference for this pattern has genuinely improved since the original incident. reproduce() honestly reports this (querySucceeded=true/defectReproduced=false for the 'buggy' path) rather than force a crash that no longer happens -- see TriageScenarioCService.java's Javadoc for the full investigation. The historical incident, root cause, and fix remain fully real and documented (commit 9f35f27, AEQ-012)."
     risk: LOW (historical, fixed)
     approx_demo_duration_minutes: 4
     business_context: >

@@ -35,6 +35,27 @@ import java.util.concurrent.atomic.AtomicLong;
  * to reach. On H2, the buggy query simply succeeds (H2 has no equivalent
  * type-inference gap) -- reproduce() reports this honestly via
  * querySucceeded/defectReproduced, never fabricated either way.
+ *
+ * HONEST FINDING (live-verified 2026-09-15, flagship-completion session):
+ * this exact query shape, and a 3-parameter variant matching the real
+ * original CustomerRepository query byte-for-byte (git show
+ * 9f35f27~1), were BOTH empirically tested against the real deployed
+ * production PostgreSQL database and BOTH SUCCEEDED -- the historical
+ * "function lower(bytea) does not exist" type-inference ambiguity does
+ * NOT currently reproduce on this stack's present Spring Boot 4.1.1 /
+ * Hibernate 7.4.5 / pgjdbc / PostgreSQL version combination, most likely
+ * because pgjdbc/Postgres type-inference for this exact pattern has
+ * genuinely improved since the original incident (commit 9f35f27, this
+ * project's own earlier session). This is not a fabricated defect: the
+ * historical incident, root cause, and fix are all real and remain
+ * accurately documented (see docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml's
+ * AEQ-012 and docs/interview-scenarios/02-postgres-search-pagination.md)
+ * -- reproduce() honestly reports querySucceeded=true/defectReproduced=false
+ * for the "buggy" path today rather than force a crash that no longer
+ * happens. The fixed query shape (searchFixed()) remains strictly better
+ * practice regardless (never depends on driver-version-specific type
+ * inference at all), which is the durable lesson this scenario still
+ * teaches even without a live crash to show.
  */
 @Service
 public class TriageScenarioCService {

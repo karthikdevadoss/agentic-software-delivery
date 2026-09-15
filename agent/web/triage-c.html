@@ -25,7 +25,8 @@
 
   <section class="panel" id="scenario-panel">
     <h2>Scenario C — Admin Search Postgres Type Inference</h2>
-    <p class="hint">Business symptom: an ADMIN searches customers by partial name; the feature passed every local (H2) test and still broke the first time it was used against real production PostgreSQL — a textbook "works on my machine" defect. Engineering area: JPQL / Postgres bind-parameter type inference. Risk: LOW (historical, fixed). Isolation: every query below runs only against dedicated, disposable synthetic "Triage Scenario C" customer rows created fresh on reset — never real customer data.</p>
+    <p class="hint">Business symptom (real historical incident, commit <code>9f35f27</code>): an ADMIN search feature passed every local (H2) test and still broke in real production PostgreSQL with "function lower(bytea) does not exist" — a textbook "works on my machine" defect. Engineering area: JPQL / Postgres bind-parameter type inference. Risk: LOW (historical, fixed). Isolation: every query below runs only against dedicated, disposable synthetic "Triage Scenario C" customer rows created fresh on reset — never real customer data.</p>
+    <p class="hint">Honest note: this specific defect does not currently reproduce on the live database — pgjdbc/Hibernate's type inference for this exact pattern has genuinely improved since the original incident. The steps below still walk through the real historical evidence, diagnosis, and fix; "Reproduce" reports the real, current outcome rather than a forced failure.</p>
     <p class="hint">Other scenarios: <a href="/triage">Scenario A — Plan Enrollment Idempotency</a> · <a href="/triage/scenario-b">Scenario B — Appointment Downstream Resilience</a></p>
     <div class="btn-row">
       <button id="start-btn">START INCIDENT</button>
