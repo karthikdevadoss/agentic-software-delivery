@@ -216,10 +216,22 @@
   .plan-empty { text-align: left; }
   .plan-empty p { color: var(--muted); margin: 0 0 var(--sp-4); font-size: 0.9rem; }
 
-  .field-row { display: flex; justify-content: space-between; gap: var(--sp-3); padding: 0.4rem 0; font-size: 0.9rem; border-bottom: 1px dashed var(--border); min-width: 0; }
+  /* REAL BUG FOUND (2026-09-15 flagship-completion session, live browser
+     verification): this is the actual element that was splitting a long
+     Account email into "energydemo.lo" / "cal" -- not account-meta, which
+     already had enough room. field-row kept label+value pinned to one
+     line (no flex-wrap), so a long unbroken value like an email had to
+     either shrink (min-width:0 lets it) or overflow; word-break:
+     break-word + overflow-wrap: anywhere let it shrink arbitrarily small
+     and break mid-word to stay beside the label instead of moving to its
+     own full-width line, where a value like this one comfortably fits.
+     flex-wrap: wrap lets the value drop to its own line first; dropping
+     overflow-wrap to break-word (never "anywhere"/word-break) means it
+     only breaks mid-word as a genuine last resort, not a first choice. */
+  .field-row { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0 var(--sp-3); padding: 0.4rem 0; font-size: 0.9rem; border-bottom: 1px dashed var(--border); min-width: 0; }
   .field-row:last-child { border-bottom: none; }
   .field-label { color: var(--muted); }
-  .field-value { font-weight: 600; text-align: right; word-break: break-word; overflow-wrap: anywhere; min-width: 0; flex-shrink: 1; }
+  .field-value { font-weight: 600; text-align: right; overflow-wrap: break-word; min-width: 0; flex-shrink: 1; flex-basis: max-content; }
 
   label { display: block; font-size: 0.78rem; font-weight: 600; margin: var(--sp-3) 0 0.25rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.02em; }
   label:first-of-type { margin-top: 0; }
