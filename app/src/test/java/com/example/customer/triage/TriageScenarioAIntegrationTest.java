@@ -105,4 +105,33 @@ class TriageScenarioAIntegrationTest {
         assertThat(result.plans()).hasSize(1);
         assertThat(result.activePlanCount()).isEqualTo(1);
     }
+
+    /**
+     * REAL BUG this test locks in, found by this session's own live
+     * production testing: rerunning reproduce() AFTER approval, WITHOUT
+     * an intervening reset(), must show the defect as fixed -- the exact
+     * "approve then rerun" sequence the Triage Lab UI actually performs.
+     * The original defectReproduced calculation compared cumulative
+     * historical row count (permanently >1 once the bug fired once,
+     * since plan history is never deleted), so it would have kept
+     * reporting "defect reproduced" forever even after a genuine fix.
+     * Fixed to compare rows created by THIS call only.
+     */
+    @Test
+    void reproduceAfterApproval_withoutReset_correctlyShowsFixed_notStaleHistory() {
+        restTemplate.postForEntity(url("/internal/triage/scenario-a/reset"), null, TriageState.class);
+        TriageReproductionResult buggyRun = restTemplate.postForObject(
+                url("/internal/triage/scenario-a/reproduce"), null, TriageReproductionResult.class);
+        assertThat(buggyRun.defectReproduced()).isTrue();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(adminToken());
+        restTemplate.exchange(url("/internal/triage/scenario-a/approve"), HttpMethod.POST, new HttpEntity<>(headers), TriageState.class);
+
+        TriageReproductionResult rerun = restTemplate.postForObject(
+                url("/internal/triage/scenario-a/reproduce"), null, TriageReproductionResult.class);
+
+        assertThat(rerun.defectReproduced()).isFalse();
+        assertThat(rerun.plans()).hasSize(2); // the pre-existing 2 rows from the buggy run -- no new rows added
+    }
 }

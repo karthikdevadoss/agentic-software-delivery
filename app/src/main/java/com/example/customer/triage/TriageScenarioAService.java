@@ -71,12 +71,24 @@ public class TriageScenarioAService {
     /** Submits the exact same enrollment request twice against the triage
      * customer -- using the buggy pre-fix path until approve() is called,
      * the real fixed ContractPlanService afterward -- and returns the
-     * real resulting plan history as evidence. */
+     * real resulting plan history as evidence.
+     *
+     * REAL BUG FOUND DURING THIS SESSION'S OWN LIVE TESTING: the original
+     * verdict compared total historical row COUNT (> 1) to decide
+     * defectReproduced -- which stays permanently true after the very
+     * first buggy call, even once approve() genuinely fixes later calls,
+     * because plan history is never deleted (by design, for audit trail).
+     * A rerun after a real fix would still have reported "defect
+     * reproduced" from stale history. Fixed to compare how many NEW rows
+     * THIS SPECIFIC call created (rowsBefore vs. rowsAfter) -- the real,
+     * call-scoped signal, not a cumulative one. */
     @Transactional
     public TriageReproductionResult reproduce() {
         if (triageCustomerId == null) reset();
         ContractPlanEnrollRequest request = new ContractPlanEnrollRequest(
                 "Green Energy 12mo", new BigDecimal("0.14"), LocalDate.now());
+
+        int rowsBefore = contractPlanRepository.findByCustomerIdOrderByIdAsc(triageCustomerId).size();
 
         if (fixApplied) {
             contractPlanService.enroll(triageCustomerId, request);
@@ -89,7 +101,9 @@ public class TriageScenarioAService {
         List<ContractPlan> history = contractPlanRepository.findByCustomerIdOrderByIdAsc(triageCustomerId);
         long activeCount = history.stream().filter(p -> p.getStatus() == ContractPlanStatus.ACTIVE).count();
         List<ContractPlanResponse> plans = history.stream().map(ContractPlanResponse::from).toList();
-        return new TriageReproductionResult(triageCustomerId, fixApplied, plans, history.size() > 1, activeCount);
+        int newRowsThisCall = history.size() - rowsBefore;
+        boolean defectReproduced = newRowsThisCall > 1;
+        return new TriageReproductionResult(triageCustomerId, fixApplied, plans, defectReproduced, activeCount);
     }
 
     /** Requires ADMIN authorization at the controller layer (see
