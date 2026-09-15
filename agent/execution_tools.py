@@ -104,13 +104,22 @@ def _tool_apply_approved_source_change(edit_id):
         return str(exc), True
 
 
+def _format_maven_result(goal: str, result: dict) -> str:
+    # ENVIRONMENT_INVALID (AEQ-021) is a categorically different outcome
+    # from a real compile/test failure -- labeled distinctly so neither a
+    # human nor the model mistakes "the JDK is too old" for "the code is
+    # broken."
+    if result.get("status") == "ENVIRONMENT_INVALID":
+        return f"{goal} ENVIRONMENT_INVALID (not a code/test failure) in {result['duration_ms']}ms\n{result['output']}"
+    return f"{goal} {'SUCCEEDED' if result['success'] else 'FAILED'} in {result['duration_ms']}ms\n{result['output']}"
+
+
 def _tool_run_controlled_compile(_input=None):
     try:
         result = build_tools.run_maven("compile")
     except build_tools.BuildToolError as exc:
         return str(exc), True
-    text = f"compile {'SUCCEEDED' if result['success'] else 'FAILED'} in {result['duration_ms']}ms\n{result['output']}"
-    return text, not result["success"]
+    return _format_maven_result("compile", result), not result["success"]
 
 
 def _tool_run_controlled_tests(_input=None):
@@ -118,8 +127,7 @@ def _tool_run_controlled_tests(_input=None):
         result = build_tools.run_maven("test")
     except build_tools.BuildToolError as exc:
         return str(exc), True
-    text = f"test {'SUCCEEDED' if result['success'] else 'FAILED'} in {result['duration_ms']}ms\n{result['output']}"
-    return text, not result["success"]
+    return _format_maven_result("test", result), not result["success"]
 
 
 _EXECUTION_ONLY_SCHEMAS = [

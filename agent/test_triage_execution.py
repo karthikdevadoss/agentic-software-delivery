@@ -4,6 +4,11 @@ from unittest.mock import patch, MagicMock
 
 import triage_execution as te
 
+_VALID_PREFLIGHT = {
+    "status": "ENVIRONMENT_VALID", "expected_java_major_minimum": 21,
+    "detected_java_major": 24, "raw_java_version_output": "openjdk 24", "duration_ms": 1.0,
+}
+
 
 def _fake_http_response(payload: dict):
     body = json.dumps(payload).encode("utf-8")
@@ -163,8 +168,9 @@ class PatchDiffTestCase(unittest.TestCase):
 
 
 class VerifyFixTestCase(unittest.TestCase):
+    @patch("triage_execution.environment_preflight.check_java_toolchain", return_value=_VALID_PREFLIGHT)
     @patch("triage_execution.subprocess.run")
-    def test_verify_fix_runs_the_exact_two_scoped_test_classes(self, mock_run):
+    def test_verify_fix_runs_the_exact_two_scoped_test_classes(self, mock_run, mock_preflight):
         mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
         result = te.verify_fix()
         self.assertTrue(result["success"])
@@ -172,12 +178,29 @@ class VerifyFixTestCase(unittest.TestCase):
         self.assertIn("-Dtest=ContractPlanServiceTest,TriageScenarioAIntegrationTest", argv)
         self.assertFalse(mock_run.call_args.kwargs.get("shell", False))
 
+    @patch("triage_execution.environment_preflight.check_java_toolchain", return_value=_VALID_PREFLIGHT)
     @patch("triage_execution.subprocess.run")
-    def test_verify_fix_reports_failure_honestly_on_nonzero_exit(self, mock_run):
+    def test_verify_fix_reports_failure_honestly_on_nonzero_exit(self, mock_run, mock_preflight):
         mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="1 test failed")
         result = te.verify_fix()
         self.assertFalse(result["success"])
         self.assertIn("failed", result["output_tail"])
+
+    @patch("triage_execution.environment_preflight.check_java_toolchain")
+    @patch("triage_execution.subprocess.run")
+    def test_verify_fix_fails_closed_on_wrong_jdk_without_ever_running_maven(self, mock_run, mock_preflight):
+        """The exact real AEQ-021 class of bug -- verify_fix() must
+        refuse to even attempt mvnw test when the JDK is too old, and
+        must report ENVIRONMENT_INVALID rather than a generic FAILED
+        that would look like a real test defect."""
+        mock_preflight.return_value = {
+            "status": "ENVIRONMENT_INVALID", "expected_java_major_minimum": 21,
+            "detected_java_major": 17, "raw_java_version_output": "openjdk 17", "duration_ms": 1.0,
+        }
+        result = te.verify_fix()
+        self.assertFalse(result["success"])
+        self.assertEqual(result["status"], "ENVIRONMENT_INVALID")
+        mock_run.assert_not_called()
 
 
 if __name__ == "__main__":

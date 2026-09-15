@@ -26,6 +26,7 @@ import urllib.error
 import urllib.request
 
 import tools
+import environment_preflight
 
 CUSTOMER_APP_BASE = "https://agentic-delivery-customer-app-production.up.railway.app"
 APP_DIR = tools.REPO_ROOT / "app"
@@ -290,7 +291,27 @@ def verify_fix() -> dict:
     a cached/fabricated result. Scoped to exactly the two relevant test
     classes (Test Impact Analysis judgment: this change only touches
     ContractPlanService + the triage package, no reason to run the full
-    suite for a live UI-triggered verification step)."""
+    suite for a live UI-triggered verification step).
+
+    FAIL CLOSED (AEQ-021): checks environment_preflight.check_java_toolchain()
+    FIRST -- a real mvnw test run with a JDK older than app/pom.xml's
+    required release target fails with a Maven error indistinguishable
+    from a real test failure unless this is checked and reported as its
+    own distinct, machine-readable status before any subprocess runs."""
+    preflight = environment_preflight.check_java_toolchain()
+    if preflight["status"] != "ENVIRONMENT_VALID":
+        return {
+            "success": False,
+            "status": "ENVIRONMENT_INVALID",
+            "duration_ms": 0.0,
+            "tests": ["ContractPlanServiceTest", "TriageScenarioAIntegrationTest"],
+            "output_tail": (
+                f"ENVIRONMENT_INVALID: required Java {preflight['expected_java_major_minimum']}+ "
+                f"but detected {preflight['detected_java_major']!r} -- refusing to run real tests "
+                f"that would fail for an environment reason, not a code reason."
+            ),
+            "environment_preflight": preflight,
+        }
     if not MVNW.exists():
         return {"success": False, "reason": f"Maven wrapper not found at {MVNW}"}
     start = time.monotonic()

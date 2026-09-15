@@ -93,6 +93,18 @@ KIND_WORKBENCH_RUN = "workbench_run"
 KIND_V2_TRIAL = "v2_trial_benchmark"
 
 _WORKBENCH_SOURCES = ("workbench", "workbench_trainer", "workbench_mock")
+# REAL BUG FOUND (2026-09-15 Priority-3/4 truth audit): the public Usage
+# page's default session list included source='workbench_mock' rows
+# (this project's own internal mock/demo-run mechanism, e.g. a fixture
+# with a synthetic 2099-01-01-style timestamp) mixed in with genuine
+# production Workbench runs, with no way to tell them apart at a glance
+# on a recruiter-facing page. workbench_mock rows are real ledger rows
+# (never deleted, real historical evidence of this project's own testing)
+# -- they should stay queryable, just not shown by DEFAULT on the public
+# view. v2_trial/act_006_verification are deliberately NOT excluded here:
+# those are real, controlled engineering trials (seeded-defect shadow
+# trials proving the qa-evaluator's catch rate), not synthetic UI filler.
+_WORKBENCH_SOURCES_REAL_ONLY = tuple(s for s in _WORKBENCH_SOURCES if s != "workbench_mock")
 _V2_SOURCES = ("v2_trial", "act_006_verification")
 
 _TERMINAL_WORKBENCH_EVENTS = (
@@ -146,11 +158,12 @@ SELECT id, kind, start_ts, end_ts, has_end_event, last_status FROM sessions
 """
 
 
-def _query_params():
+def _query_params(include_test_data: bool = False):
+    wb_sources = _WORKBENCH_SOURCES if include_test_data else _WORKBENCH_SOURCES_REAL_ONLY
     return {
         "kind_cc": KIND_CLAUDE_CODE, "kind_wb": KIND_WORKBENCH_RUN, "kind_v2": KIND_V2_TRIAL,
         "terminal_events": list(_TERMINAL_WORKBENCH_EVENTS),
-        "wb_sources": list(_WORKBENCH_SOURCES),
+        "wb_sources": list(wb_sources),
         "v2_sources": list(_V2_SOURCES),
     }
 
@@ -301,7 +314,7 @@ def _cost_coverage_summary(conn) -> dict:
     }
 
 
-def list_sessions(before_cursor: str = None, limit: int = 20) -> dict:
+def list_sessions(before_cursor: str = None, limit: int = 20, include_test_data: bool = False) -> dict:
     before_dt = None
     if before_cursor:
         try:
@@ -322,7 +335,7 @@ def list_sessions(before_cursor: str = None, limit: int = 20) -> dict:
         return {"status": "UNREACHABLE", "error": str(exc), "sessions": [], "next_cursor": None}
     try:
         el.ensure_schema()
-        params = _query_params()
+        params = _query_params(include_test_data=include_test_data)
         sql = f"SELECT * FROM ({_SESSIONS_CTE}) s WHERE (%(before)s::timestamptz IS NULL OR start_ts < %(before)s) ORDER BY start_ts DESC LIMIT %(limit)s"
         params["before"] = before_dt
         params["limit"] = limit + 1  # fetch one extra to know if more remain
@@ -715,7 +728,11 @@ def get_session_detail(session_id: str) -> dict:
         return {"status": "UNREACHABLE", "error": str(exc)}
     try:
         el.ensure_schema()
-        params = _query_params()
+        # A direct-by-id lookup (e.g. a saved link to a specific session's
+        # detail page) must always find the session regardless of its
+        # test-data status -- only the browsable LIST defaults to
+        # excluding workbench_mock rows, never a direct id lookup.
+        params = _query_params(include_test_data=True)
         with conn.cursor() as cur:
             cur.execute(f"SELECT * FROM ({_SESSIONS_CTE}) s WHERE id = %(id)s", {**params, "id": session_id})
             cols = [d[0] for d in cur.description]

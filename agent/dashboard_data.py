@@ -37,13 +37,14 @@ LEDGER_PATH = REPO_ROOT / "docs" / "ai" / "AI_ENGINEERING_QUALITY_LEDGER.yaml"
 TEST_EVIDENCE = {
     "python": {"total": 531, "passed": 530, "skipped": 1, "failed": 0,
                "skip_reason": "Windows lacks the privilege to create symlinks in this test environment (platform limitation, not a bug)",
-               "as_of_commit": "b3d6856"},
-    "java": {"total": 102, "passed": 91, "skipped": 11, "failed": 0,
+               "as_of_commit": "b3d6856",
+               "note": "STALE COUNT (Priority-3 truth audit, 2026-09-15): a real full run was re-verified this session (see docs/PROJECT_STATUS.md) but genuinely NEW test files were added afterward (test_triage_execution.py, test_environment_preflight.py) -- this number predates them. Re-verify and update rather than trust this count as current."},
+    "java": {"total": 109, "passed": 97, "skipped": 12, "failed": 0,
              "skip_reason": "Testcontainers-backed Postgres tests skip on this dev machine (no local Docker daemon) but run for real in GitHub Actions CI",
-             "as_of_commit": "4c31e17"},
+             "as_of_commit": "3c2ad64"},
     "node_frontend": {"total": 92, "passed": 92, "skipped": 0, "failed": 0,
-                       "as_of_commit": "b908f62 era (Preferences/Appointment frontend suites)"},
-    "command": "python -m unittest discover  (agent/)   |   mvnw test  (app/)   |   node --test (e2e/*.spec.js frontend harnesses)",
+                       "as_of_commit": "3c2ad64"},
+    "command": "python -m unittest discover  (agent/)   |   mvnw test  (app/)   |   node --test (agent/test_*_frontend.js)",
     "ci": "GitHub Actions (.github/workflows/ci.yml) runs the real Testcontainers-backed Postgres suite on every push — this dev machine has no local Docker daemon, so those tests can only be genuinely exercised in CI.",
 }
 

@@ -1625,7 +1625,14 @@ async def triage_approve(request: Request):
 async def get_session_history(request: Request):
     limit = int(request.query_params.get("limit", "20"))
     before = request.query_params.get("before")
-    result = await run_in_threadpool(session_history.list_sessions, before_cursor=before, limit=limit)
+    # Default EXCLUDES workbench_mock rows (this project's own internal
+    # test/demo-run mechanism) from the public recruiter-facing list --
+    # real historical evidence either way, just not shown by default on
+    # a page meant to represent genuine production usage. Explicit opt-in
+    # only, never the public default.
+    include_test_data = request.query_params.get("include_test_data") == "1"
+    result = await run_in_threadpool(
+        session_history.list_sessions, before_cursor=before, limit=limit, include_test_data=include_test_data)
     status_code = 400 if result.get("status") == "INVALID_CURSOR" else 200
     return JSONResponse(result, status_code=status_code)
 

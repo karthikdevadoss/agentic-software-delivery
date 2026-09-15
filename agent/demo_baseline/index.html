@@ -207,10 +207,10 @@
   .plan-empty { text-align: left; }
   .plan-empty p { color: var(--muted); margin: 0 0 var(--sp-4); font-size: 0.9rem; }
 
-  .field-row { display: flex; justify-content: space-between; gap: var(--sp-3); padding: 0.4rem 0; font-size: 0.9rem; border-bottom: 1px dashed var(--border); }
+  .field-row { display: flex; justify-content: space-between; gap: var(--sp-3); padding: 0.4rem 0; font-size: 0.9rem; border-bottom: 1px dashed var(--border); min-width: 0; }
   .field-row:last-child { border-bottom: none; }
   .field-label { color: var(--muted); }
-  .field-value { font-weight: 600; text-align: right; word-break: break-word; }
+  .field-value { font-weight: 600; text-align: right; word-break: break-word; overflow-wrap: anywhere; min-width: 0; flex-shrink: 1; }
 
   label { display: block; font-size: 0.78rem; font-weight: 600; margin: var(--sp-3) 0 0.25rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.02em; }
   label:first-of-type { margin-top: 0; }
@@ -268,7 +268,7 @@
       </span>
       <div>
         <h1 id="app-heading">Energy Customer Platform</h1>
-        <p class="subtitle" id="app-subtitle">Portfolio demo sign-in &mdash; real authentication, public demo credentials.</p>
+        <p class="subtitle" id="app-subtitle">Sign in to manage your plan, preferences, and appointments.</p>
       </div>
     </div>
 

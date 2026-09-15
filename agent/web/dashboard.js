@@ -44,14 +44,25 @@ function kvText(label, text) {
 // invented) -- answers "what did he build / what's actually live" in
 // under 30 seconds, before any detail panel below.
 function renderExecutiveSummary(d) {
-  const runs = d.run_history || [];
-  const realRuns = runs.filter(r => !r.is_mock).length;
   const defects = (d.ai_engineering_learning && d.ai_engineering_learning.total_defects) || 0;
-  const verifiedChanges = (d.economics && d.economics.lifetime && d.economics.lifetime.runs_completed_verified) || 0;
+  const lifetime = (d.economics && d.economics.lifetime) || {};
+  const totalRuns = lifetime.runs_total;
+  const verifiedChanges = lifetime.runs_completed_verified;
+  // REAL BUG FOUND AND FIXED (2026-09-15): this tile used to read
+  // d.run_history.length -- a LOCAL, per-container-instance log file
+  // that is genuinely wiped on every redeploy (agent/web_run_history.jsonl
+  // is not in git, "COPY . ." at build time never includes a prior
+  // container's runtime-written file). That made it show "0" right next
+  // to "153 Verified production changes" (the durable remote-ledger
+  // count) immediately after any deploy -- a real, recruiter-visible
+  // truth contradiction, not just two different real numbers shown
+  // without context. Both tiles now read the SAME durable, ledger-backed
+  // source (event_ledger.get_usage_economics()'s lifetime window), so
+  // they can never disagree about what "real" means.
   const tiles = [
     ["Production application", "LIVE", "Customer App + Workbench + Dashboard + Usage"],
-    ["Delivery runs recorded", String(runs.length), `${realRuns} real, ${runs.length - realRuns} mock`],
-    ["Verified production changes", String(verifiedChanges), "COMPLETED outcome, ledger-backed"],
+    ["Delivery runs (all-time, durable ledger)", totalRuns != null ? String(totalRuns) : "UNAVAILABLE", "event_ledger, survives every redeploy"],
+    ["Verified production changes (all-time)", verifiedChanges != null ? String(verifiedChanges) : "UNAVAILABLE", "COMPLETED outcome, same durable ledger"],
     ["Engineering lessons captured", String(defects), "AI Engineering Quality Ledger"],
   ];
   const html = `<div class="exec-grid">` + tiles.map(([label, value, note]) =>
@@ -95,7 +106,7 @@ function renderSystemSnapshot(d) {
   html += kvText("System", s.system);
   html += kvText("Agent architecture", s.agent_architecture);
   html += kvText("Last verified code commit", s.last_verified_code_commit);
-  html += kv("Current ticket", `${esc(s.current_ticket)} — ${s.current_ticket_implemented ? "IMPLEMENTED" : "NOT IMPLEMENTED"}`);
+  html += kv("Original V1 ticket (historical, long since superseded)", `${esc(s.current_ticket)} — ${s.current_ticket_implemented ? "IMPLEMENTED" : "NOT IMPLEMENTED"}`);
   html += `<details class="raw-state">
     <summary>Full version history &amp; next-phase notes (raw project state)</summary>
     <div class="raw-state-body">
@@ -125,7 +136,15 @@ function renderMilestone(d) {
 
 function renderRunHistory(d) {
   const runs = d.run_history;
-  let html = `<p class="hint">Local telemetry log (agent/web_run_history.jsonl) captured since this Dashboard feature was added — resets are NOT lost across restarts, but only covers runs since this log existed.</p>`;
+  // CORRECTED (2026-09-15): the previous wording ("resets are NOT lost
+  // across restarts") was misleading -- verified by direct observation
+  // across this session's own several real Railway redeploys that this
+  // LOCAL file genuinely does reset to empty on every redeploy (a fresh
+  // container image never includes a prior container's runtime-written
+  // file). It survives an in-place process restart of the SAME
+  // container, never a redeploy. The durable, redeploy-surviving source
+  // is the Economics section above (the remote event ledger).
+  let html = `<p class="hint">Local telemetry log (agent/web_run_history.jsonl), THIS container instance only — genuinely resets to empty on every redeploy (verified directly, not assumed). For durable, all-time counts that survive redeploys, see the Economics section above (event ledger).</p>`;
   if (!runs.length) {
     html += `<p>${badge("NOT CAPTURED YET")} — no runs recorded in the local run-history log yet.</p>`;
   } else {
@@ -169,8 +188,18 @@ function renderSessionMetrics(d) {
 function renderRag(d) {
   const r = d.rag;
   let html = "";
+  // CLARIFIED (2026-09-15): "NOT CAPTURED YET" previously read as if RAG
+  // itself doesn't exist. Three genuinely different facts were being
+  // conflated: (1) is RAG/embeddings CAPABILITY implemented and evalled
+  // -- yes, real code, real measured recall/MRR baselines; (2) does THIS
+  // specific container have a persisted local index file on disk right
+  // now -- honestly no, the index is built by the offline V3 CLI agent,
+  // not by this always-on server process; (3) was RAG actually used in
+  // the most recent run -- a separate, per-run fact shown in Run History.
   if (r.status === "NOT CAPTURED YET") {
-    html += `<p>${badge("NOT CAPTURED YET")} — ${esc(r.note)}</p>`;
+    html += kv("RAG/embeddings capability", badge("IMPLEMENTED + EVALLED"));
+    html += kv("Persisted index in THIS runtime", badge("NOT PRESENT"));
+    html += `<p class="hint">The capability is real (fastembed + local vector index + a measured eval baseline, see docs/DECISIONS.md) -- this always-on server process simply has no index file on its own disk right now, since the index is built by the offline V3 CLI agent, a separate execution path. ${esc(r.note)}</p>`;
   } else {
     html += kvText("Embedding model (local, no API key)", r.embedding_model);
     html += kvText("Chunking version", r.chunking_version);
@@ -220,6 +249,7 @@ function renderQuality(d) {
     if (!suite) continue;
     html += kv(label, `${suite.total} total, ${suite.passed} passed, ${suite.failed} failed, ${suite.skipped} skipped <span class="hint">(as of ${esc(suite.as_of_commit)})</span>`);
     if (suite.skip_reason) html += `<p class="hint">${esc(suite.skip_reason)}</p>`;
+    if (suite.note) html += `<p class="hint"><strong>${esc(suite.note)}</strong></p>`;
   }
   html += kv("Commands", `<code>${esc(q.command)}</code>`);
   html += `<p class="hint">${esc(q.ci)}</p>`;

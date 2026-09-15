@@ -477,6 +477,41 @@ class VerifiedRunSelectionTestCase(unittest.TestCase):
         # its source is excluded entirely, not merely out-ranked.
         self.assertNotEqual(selected, mock_id)
 
+    def test_list_sessions_excludes_mock_runs_by_default_but_can_include_them(self):
+        """REAL BUG FOUND (2026-09-15 Priority-3/4 truth audit): the
+        public Usage page's session BROWSER (list_sessions(), distinct
+        from get_latest_verified_workbench_run_id() above) had no
+        equivalent exclusion at all -- a workbench_mock run (this
+        project's own test/demo fixture, often with an unrealistic
+        timestamp like 2099-01-01) appeared in the default recruiter-
+        facing list indistinguishable from genuine production runs."""
+        mock_id = _unique("mock-listtest")
+        base = datetime.fromisoformat("2099-06-01T00:00:00+00:00")
+        el.record_event("run_started", run_id=mock_id, source="workbench_mock",
+                         status="UNDERSTANDING REQUIREMENT", timestamp_utc=base.isoformat(),
+                         payload={"requirement": "mock for list_sessions exclusion test"})
+        el.record_event("run_completed", run_id=mock_id, source="workbench_mock",
+                         status="COMPLETED", timestamp_utc=(base + timedelta(seconds=1)).isoformat(), payload={})
+
+        default_ids = [s["session_id"] for s in sh.list_sessions(limit=50)["sessions"]]
+        self.assertNotIn(mock_id, default_ids, "workbench_mock run leaked into the default (recruiter-facing) session list")
+
+        with_test_data_ids = [s["session_id"] for s in sh.list_sessions(limit=50, include_test_data=True)["sessions"]]
+        self.assertIn(mock_id, with_test_data_ids, "explicit include_test_data=True must still be able to find it")
+
+    def test_get_session_detail_finds_a_mock_run_directly_by_id_regardless_of_default_exclusion(self):
+        """A direct-by-id lookup (e.g. an already-shared link) must never
+        404 just because the session is test data -- only the browsable
+        LIST defaults to excluding it."""
+        mock_id = _unique("mock-detailtest")
+        el.record_event("run_started", run_id=mock_id, source="workbench_mock",
+                         status="UNDERSTANDING REQUIREMENT", payload={"requirement": "mock for detail lookup test"})
+        el.record_event("run_completed", run_id=mock_id, source="workbench_mock", status="COMPLETED", payload={})
+
+        detail = sh.get_session_detail(mock_id)
+        self.assertIsNotNone(detail)
+        self.assertEqual(detail["session_id"], mock_id)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

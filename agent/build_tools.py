@@ -15,6 +15,7 @@ import time
 
 import tools
 import metrics
+import environment_preflight
 
 APP_DIR = tools.REPO_ROOT / "app"
 MVNW = APP_DIR / ("mvnw.cmd" if os.name == "nt" else "mvnw")
@@ -38,6 +39,32 @@ def run_maven(goal: str, timeout_seconds: int = DEFAULT_TIMEOUT_SECONDS) -> dict
     if not MVNW.exists():
         _record(f"maven_{goal}", False, start)
         raise BuildToolError(f"Maven wrapper not found at {MVNW}")
+
+    # FAIL CLOSED (AEQ-021): never attempt a real compile/test with a JDK
+    # older than app/pom.xml's own required release target -- that
+    # produces a Maven error indistinguishable from a real code/test
+    # defect unless this is checked FIRST and reported as its own,
+    # distinct, machine-readable status.
+    preflight = environment_preflight.check_java_toolchain()
+    if preflight["status"] != "ENVIRONMENT_VALID":
+        duration_ms = round((time.monotonic() - start) * 1000, 1)
+        metrics.record_tool_call(
+            tool=f"maven_{goal}", input_summary=goal, success=False,
+            duration_ms=duration_ms, result_size=0,
+        )
+        return {
+            "goal": goal,
+            "success": False,
+            "status": "ENVIRONMENT_INVALID",
+            "duration_ms": duration_ms,
+            "output": (
+                f"ENVIRONMENT_INVALID: required Java {preflight['expected_java_major_minimum']}+ "
+                f"but detected {preflight['detected_java_major']!r} -- refusing to run a real "
+                f"{goal} that would fail for an environment reason, not a code reason. "
+                f"Raw: {preflight['raw_java_version_output']}"
+            ),
+            "environment_preflight": preflight,
+        }
 
     try:
         proc = subprocess.run(
@@ -66,6 +93,7 @@ def run_maven(goal: str, timeout_seconds: int = DEFAULT_TIMEOUT_SECONDS) -> dict
     return {
         "goal": goal,
         "success": success,
+        "status": "VERIFIED" if success else "FAILED",
         "duration_ms": duration_ms,
         "output": output,
     }
