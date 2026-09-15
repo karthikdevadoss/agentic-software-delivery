@@ -99,6 +99,34 @@ class ContractPlanServiceTest {
     }
 
     /**
+     * IDEMPOTENCY regression test for a real gap found during the 2026-09-15
+     * portfolio session (see docs/interview-scenarios/04-plan-enrollment-idempotency.md):
+     * before this fix, submitting the exact same enrollment twice (e.g. a
+     * double-click, or a client retry after a timeout whose original call
+     * had actually succeeded) cancelled the plan the first call had just
+     * activated and created a second, identical plan -- a duplicate churn
+     * event for what was really one customer action. A repeat of identical
+     * terms must now be a true no-op: the existing active plan is returned
+     * unchanged, and neither saveAndFlush() (cancel) nor save() (create) is
+     * ever called.
+     */
+    @Test
+    void enroll_whenIdenticalRequestSubmittedTwice_isIdempotentNoOp() {
+        ContractPlanService service = service(existingCustomer());
+        ContractPlan alreadyActive = new ContractPlan(1L, "Green Energy 12mo", new BigDecimal("0.1400"), LocalDate.of(2026, 9, 14));
+        when(contractPlanRepository.findByCustomerIdAndStatus(1L, ContractPlanStatus.ACTIVE)).thenReturn(Optional.of(alreadyActive));
+        ContractPlanEnrollRequest duplicateRequest = new ContractPlanEnrollRequest(
+                "Green Energy 12mo", new BigDecimal("0.14"), LocalDate.of(2026, 9, 14));
+
+        ContractPlan result = service.enroll(1L, duplicateRequest);
+
+        assertThat(result).isSameAs(alreadyActive);
+        assertThat(result.getStatus()).isEqualTo(ContractPlanStatus.ACTIVE);
+        verify(contractPlanRepository, org.mockito.Mockito.never()).saveAndFlush(any());
+        verify(contractPlanRepository, org.mockito.Mockito.never()).save(any());
+    }
+
+    /**
      * Regression test for a real bug caught ONLY by a genuine Postgres
      * Testcontainers run (see PostgresFlywayIntegrationTest and
      * docs/LESSONS.md): Hibernate's default flush order runs all pending
