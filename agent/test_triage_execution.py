@@ -240,6 +240,30 @@ class GenerateCandidatePatchTestCase(unittest.TestCase):
         result = te.generate_candidate_patch({}, create_fn=create_fn)
         self.assertNotIn("```", result["candidate_source"])
 
+    def test_thinking_only_response_is_reported_honestly_not_as_an_empty_candidate(self):
+        """REAL BUG this locks in (2026-09-15, live production testing of
+        Triage Scenario C): extended thinking consumed the entire
+        max_tokens budget before the model emitted any text block --
+        response.content held only a ThinkingBlock, stop_reason=
+        'max_tokens', zero text blocks. Silently returning an empty
+        string let apply_and_verify_candidate() write a blank file and
+        report a confusing, unrelated COMPILE_FAILED (missing class)
+        instead of the real, honest reason. generated must be False with
+        a real explanation, never an empty/whitespace candidate_source."""
+        fake_thinking_block = MagicMock()
+        fake_thinking_block.type = "thinking"
+        fake_response = MagicMock()
+        fake_response.content = [fake_thinking_block]
+        fake_response.usage = None
+        fake_response.stop_reason = "max_tokens"
+        create_fn = MagicMock(return_value=fake_response)
+
+        result = te.generate_candidate_patch({}, create_fn=create_fn)
+
+        self.assertFalse(result["generated"])
+        self.assertIsNone(result["candidate_source"])
+        self.assertIn("max_tokens", result["explanation"])
+
 
 class ApplyAndVerifyCandidateTestCase(unittest.TestCase):
     @patch("triage_execution.environment_preflight.check_java_toolchain")

@@ -225,11 +225,11 @@ def generate_candidate_patch(reproduction_result: dict, api_key: str | None = No
         f"Real database evidence after submitting the identical enrollment request twice:\n"
         f"{json.dumps(reproduction_result, indent=2)}\n\n"
         f"Current (defective) file content ({FIX_FILE}):\n{_BUGGY_FULL_FILE}",
-        2048, api_key, create_fn,
+        4096, api_key, create_fn,
     )
     if unavailable is not None:
         return {"generated": False, "candidate_source": None,
-                "explanation": "ANTHROPIC_API_KEY not set -- cannot generate a live candidate patch"}
+                "explanation": unavailable["explanation"]}
     candidate_source = text + "\n"
     return {"generated": True, "candidate_source": candidate_source, "target_file": FIX_FILE}
 
@@ -281,7 +281,27 @@ def _call_model_text(system_prompt: str, user_message: str, max_tokens: int,
         stripped = stripped.split("\n", 1)[1] if "\n" in stripped else stripped
         if stripped.endswith("```"):
             stripped = stripped[:-3]
-    return stripped.strip(), None
+    stripped = stripped.strip()
+    if not stripped:
+        # REAL BUG FOUND (2026-09-15, live production testing of Triage
+        # Scenario C): extended thinking can consume the ENTIRE max_tokens
+        # budget before the model emits any real text block --
+        # response.content then contains only a ThinkingBlock,
+        # stop_reason="max_tokens", and zero "text" blocks. Silently
+        # returning an empty string let a downstream caller write a
+        # blank file and report a confusing, unrelated "COMPILE_FAILED"
+        # (missing class) instead of the real, honest reason -- fixed by
+        # detecting this here, once, for every caller of this shared
+        # helper, rather than patching it per call site.
+        stop_reason = getattr(response, "stop_reason", None)
+        return None, {
+            "explanation": (
+                f"model produced no real text content (stop_reason={stop_reason!r}) -- "
+                f"likely extended thinking consumed the entire max_tokens budget before "
+                f"any answer text; retry with a larger max_tokens"
+            ),
+        }
+    return stripped, None
 
 
 def _isolated_compile_java_candidate(target_rel_path: str, baseline_source: str, candidate_source: str) -> dict:
@@ -362,7 +382,7 @@ def diagnose(reproduction_result: dict, api_key: str | None = None, create_fn=No
         return {
             "hypothesis": None, "root_cause": None, "affected_component": None,
             "confidence": None, "model_called": False,
-            "explanation": "ANTHROPIC_API_KEY not set -- cannot run live AI diagnosis",
+            "explanation": unavailable["explanation"],
         }
     try:
         parsed = json.loads(text)
@@ -764,7 +784,7 @@ def diagnose_b(reproduction_result: dict, api_key: str | None = None, create_fn=
         return {
             "hypothesis": None, "root_cause": None, "affected_component": None,
             "confidence": None, "model_called": False,
-            "explanation": "ANTHROPIC_API_KEY not set -- cannot run live AI diagnosis",
+            "explanation": unavailable["explanation"],
         }
     try:
         parsed = json.loads(text)
@@ -802,11 +822,11 @@ def generate_candidate_patch_b(reproduction_result: dict, api_key: str | None = 
         f"{json.dumps(reproduction_result, indent=2)}\n\n"
         f"Reference (a DIFFERENT, already-correct retry instance in this codebase):\n{REFERENCE_SOURCE_EXCERPT_B}\n\n"
         f"Current (defective) file content ({FIX_FILE_B}):\n{_BUGGY_FULL_FILE_B}",
-        2048, api_key, create_fn,
+        4096, api_key, create_fn,
     )
     if unavailable is not None:
         return {"generated": False, "candidate_source": None,
-                "explanation": "ANTHROPIC_API_KEY not set -- cannot generate a live candidate patch"}
+                "explanation": unavailable["explanation"]}
     candidate_source = text + "\n"
     return {"generated": True, "candidate_source": candidate_source, "target_file": FIX_FILE_B}
 
@@ -1063,7 +1083,7 @@ def diagnose_c(reproduction_result: dict, api_key: str | None = None, create_fn=
         return {
             "hypothesis": None, "root_cause": None, "affected_component": None,
             "confidence": None, "model_called": False,
-            "explanation": "ANTHROPIC_API_KEY not set -- cannot run live AI diagnosis",
+            "explanation": unavailable["explanation"],
         }
     try:
         parsed = json.loads(text)
@@ -1098,11 +1118,11 @@ def generate_candidate_patch_c(reproduction_result: dict, api_key: str | None = 
         f"{json.dumps(reproduction_result, indent=2)}\n\n"
         f"Reference (a DIFFERENT, already-correct query in this codebase):\n{REFERENCE_SOURCE_EXCERPT_C}\n\n"
         f"Current (defective) file content ({FIX_FILE_C}):\n{_BUGGY_FULL_FILE_C}",
-        2048, api_key, create_fn,
+        4096, api_key, create_fn,
     )
     if unavailable is not None:
         return {"generated": False, "candidate_source": None,
-                "explanation": "ANTHROPIC_API_KEY not set -- cannot generate a live candidate patch"}
+                "explanation": unavailable["explanation"]}
     candidate_source = text + "\n"
     return {"generated": True, "candidate_source": candidate_source, "target_file": FIX_FILE_C}
 
