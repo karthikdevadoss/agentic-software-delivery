@@ -12,8 +12,8 @@ import os
 import sys
 
 from dotenv import load_dotenv
-from anthropic import Anthropic
 
+import reasoning_gateway
 from repo_context import build_repository_context
 from agent_loop import run_agent_loop
 
@@ -84,25 +84,28 @@ def get_api_key() -> str:
     return api_key
 
 
-def build_plan(requirement: str, repo_context: str, api_key: str) -> str:
-    client = Anthropic(api_key=api_key)
+def build_plan(requirement: str, repo_context: str, api_key: str, create_fn=None) -> str:
+    """Base Architecture V3 Phase 3: routed through reasoning_gateway.call()
+    -- this codebase's one sanctioned boundary for a single-shot advisory
+    model call -- instead of calling the Anthropic SDK directly. Producing
+    an implementation plan from a ticket + real repository context is
+    SEMANTIC_REQUIREMENT_INTERPRETATION: genuine natural-language
+    interpretation the deterministic repo_context builder cannot do
+    itself. Output is advisory only (this V2-mode CLI never writes files
+    or calls the V4 execution/write tools)."""
     prompt = PROMPT_TEMPLATE.format(repo_context=repo_context, requirement=requirement)
-    message = client.messages.create(
-        model=MODEL,
+    result = reasoning_gateway.call(
+        purpose="SEMANTIC_REQUIREMENT_INTERPRETATION",
+        system_prompt="",
+        user_message=prompt,
         max_tokens=6000,
-        messages=[{"role": "user", "content": prompt}],
+        api_key=api_key,
+        create_fn=create_fn,
+        model=MODEL,
     )
-
-    text_blocks = [block.text for block in message.content if block.type == "text"]
-
-    if not text_blocks:
-        block_types = [block.type for block in message.content]
-        raise RuntimeError(
-            f"No text block in response (stop_reason={message.stop_reason!r}, "
-            f"content block types={block_types!r})"
-        )
-
-    return "".join(text_blocks)
+    if result["text"] is None:
+        raise RuntimeError(f"No usable model response: {result['denial_reason']}")
+    return result["text"]
 
 
 def main() -> None:
