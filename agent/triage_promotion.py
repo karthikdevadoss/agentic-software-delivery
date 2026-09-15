@@ -45,6 +45,7 @@ import time
 from pathlib import Path
 
 import demo_execution
+import event_ledger
 import triage_execution as te
 
 CUSTOMER_APP_PROJECT_ID = "e19ceaff-846f-4d4a-b840-ce1248dd3325"
@@ -195,6 +196,38 @@ def promote_verified_candidate(scenario: str, admin_username: str, admin_passwor
         rerun_result = _reproduce(scenario) if deployment_identity_confirmed else None
         resolved = bool(rerun_result is not None and not rerun_result.get("defectReproduced", True))
 
+        # DURABLE PROVENANCE (Base Architecture V3 Section 11): before this
+        # fix, this function's result was only ever an in-memory dict
+        # returned to whatever HTTP caller invoked it -- the ONE action
+        # this whole pipeline exists for (promoting AI-generated code to
+        # real production) had zero durable audit trail, and the
+        # candidate_hash that answers "is what was approved the same as
+        # what got deployed" was about to be erased from memory by the
+        # pop() below with nothing left to correlate it against. Recorded
+        # BEFORE the pop so the full identity chain (candidate_hash ->
+        # baseline_hash -> production_commit -> deployment_id) is captured
+        # in one queryable row, real write-through with local-spool
+        # fallback on any remote failure (never silently dropped).
+        event_ledger.record_event(
+            "candidate_promoted",
+            run_id=run_id,
+            git_commit=production_commit,
+            deployment_version=new_deployment_id,
+            status="RESOLVED" if resolved else ("DEPLOYED_UNCONFIRMED" if deployment_identity_confirmed else "DEPLOY_FAILED"),
+            source=f"triage_scenario_{scenario}",
+            activity_class="PRODUCT_RUNTIME",
+            payload={
+                "scenario": scenario,
+                "candidate_hash": entry["candidate_hash"],
+                "baseline_hash": entry["baseline_hash"],
+                "branch": branch,
+                "push_status": push_status,
+                "deployment_status": deploy_status,
+                "deployment_identity_confirmed": deployment_identity_confirmed,
+                "resolved": resolved,
+            },
+        )
+
         # A successful promotion invalidates this entry -- the exact
         # candidate that was just promoted can never be promoted a
         # second time from stale state.
@@ -204,6 +237,7 @@ def promote_verified_candidate(scenario: str, admin_username: str, admin_passwor
             "promoted": True,
             "branch": branch,
             "production_commit": production_commit,
+            "candidate_hash": entry["candidate_hash"],
             "push_status": push_status,
             "deployment_identity_confirmed": deployment_identity_confirmed,
             "new_deployment_id": new_deployment_id,

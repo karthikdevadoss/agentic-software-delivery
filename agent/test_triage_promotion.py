@@ -166,6 +166,48 @@ class RealLocalGitPromotionTestCase(unittest.TestCase):
         with self.assertRaises(tp.PromotionError):
             tp.promote_verified_candidate("b", "admin1", "Demo@123", repo_url=str(self.origin))
 
+    @mock.patch("triage_promotion.event_ledger.record_event")
+    @mock.patch("triage_promotion.demo_execution.wait_for_new_deployment")
+    @mock.patch("triage_promotion.demo_execution.trigger_deploy")
+    def test_promotion_durably_records_the_full_identity_chain_before_the_hash_is_erased(
+        self, mock_deploy, mock_wait, mock_record_event,
+    ):
+        """Base Architecture V3 Section 11: before this fix, the ONE
+        action this whole pipeline exists for had zero durable audit
+        trail -- candidate_hash was about to be popped from memory with
+        nothing left to correlate it against production_commit/
+        deployment_id. This proves the real durable write happens, with
+        the real identity chain, BEFORE that pop erases it."""
+        import demo_execution as de
+
+        mock_deploy.return_value = (True, "deploy triggered")
+        mock_wait.return_value = ("real-deployment-id-456", "SUCCESS", 10)
+        self._record_valid_candidate()
+        expected_candidate_hash = tp._sha256(self.candidate_source)
+
+        fake_rerun = {"fixApplied": True, "attemptCount": 1, "expectedAttemptCount": 1,
+                      "exceptionType": None, "exceptionMessage": None, "defectReproduced": False}
+
+        def _push_to_local_origin(workspace, branch):
+            return de.push_to_remote(workspace, str(self.origin), branch)
+
+        with mock.patch("triage_promotion.te._request", side_effect=self._admin_login_side_effect), \
+             mock.patch("triage_promotion.te.reproduce_scenario_b", return_value=fake_rerun), \
+             mock.patch("triage_promotion.demo_execution.push_change", side_effect=_push_to_local_origin):
+            result = tp.promote_verified_candidate("b", "admin1", "Demo@123", repo_url=str(self.origin))
+
+        mock_record_event.assert_called_once()
+        call_args, call_kwargs = mock_record_event.call_args
+        self.assertEqual(call_args[0], "candidate_promoted")
+        self.assertEqual(call_kwargs["git_commit"], result["production_commit"])
+        self.assertEqual(call_kwargs["deployment_version"], "real-deployment-id-456")
+        self.assertEqual(call_kwargs["status"], "RESOLVED")
+        payload = call_kwargs["payload"]
+        self.assertEqual(payload["candidate_hash"], expected_candidate_hash)
+        self.assertEqual(payload["candidate_hash"], result["candidate_hash"])
+        self.assertEqual(payload["baseline_hash"], tp._sha256(self.baseline_source))
+        self.assertEqual(payload["resolved"], True)
+
     @mock.patch("triage_promotion.demo_execution.wait_for_new_deployment")
     @mock.patch("triage_promotion.demo_execution.trigger_deploy")
     def test_deployment_not_confirmed_never_reruns_reproduction_or_claims_resolved(self, mock_deploy, mock_wait):

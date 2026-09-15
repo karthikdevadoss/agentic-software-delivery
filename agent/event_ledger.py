@@ -94,7 +94,7 @@ KNOWN_EVENT_TYPES = frozenset({
     "change_proposed", "authorization_requested", "authorization_decision", "change_applied",
     "build_started", "build_completed", "build_failed",
     "test_started", "test_completed", "test_failed",
-    "commit_created",
+    "commit_created", "candidate_promoted",
     "deployment_started", "deployment_status", "deployment_completed",
     "deployment_failed", "deployment_status_unknown",
     "production_verification_started", "production_verified", "production_verification_failed",
