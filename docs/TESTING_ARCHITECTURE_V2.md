@@ -33,21 +33,57 @@ proof: the unmodified historical pre-fix file now correctly returns
 | QA (independently re-verifies, cannot modify source) | Yes, for Architecture V2 shadow trials | `.claude/agents/qa-evaluator.md` — a structurally separate subagent, proven via 2 real shadow trials (one seeded defect, caught with byte-exact evidence — `docs/ARCHITECTURE_V2_EVALUATION_PLAN.md`) |
 | Test Architect (writes the acceptance/test contract BEFORE implementation, independent of the builder) | **Not yet a separate role in the live pipeline.** `.claude/skills/requirement-contract/SKILL.md` and `.claude/skills/test-change/SKILL.md` exist and are used, but as skills the same session invokes, not a structurally separate subagent the way `qa-evaluator` is | Honest gap — tracked here, not fabricated as done |
 
-## Mutation testing, property testing — evaluated, deliberately not built this session
+## Mutation testing — real defect-seeding evidence (Base Architecture V3 continuation)
 
-Per the directive's own instruction to evaluate before adopting
-(Phase 24's Technology Decision Rule) and per the audit's explicit DEFER
-recommendation:
+Answers the directive's actual diagnostic question directly — "if the
+defect exists, does the test fail?" — via manual defect seeding against
+`ContractPlanService.java` (no PIT dependency added; see below for why).
+Both mutations were made directly in the real file, the real focused test
+classes were run against them with real `mvnw test`, and the mutation was
+reverted immediately after each run (`git checkout --` confirmed clean,
+zero diff, before and after).
 
-- **PIT (mutation testing)**: zero `pit`/`pitest` dependency exists in
-  `app/pom.xml` (confirmed via grep, not assumed). Would answer a real
-  question this project doesn't currently have an answer to ("would
-  existing tests actually catch a seeded defect in `ContractPlanService`
-  or the Triage scenario files"), but adds a real new build-time
-  dependency and CI runtime cost. Deferred, not rejected — a good
-  candidate for a dedicated future session, scoped to the one or two
-  highest-value classes (e.g. `ContractPlanService`, given it's already
-  the site of one real historical defect).
+**Mutant 1 — reintroduce the real historical AEQ-family defect**
+(`if (false && currentlyActive.filter(...).isPresent())` disabling the
+idempotency no-op check entirely): **KILLED**. `ContractPlanServiceTest
+.enroll_whenIdenticalRequestSubmittedTwice_isIdempotentNoOp` failed, and
+`TriageScenarioAIntegrationTest` failed 2 of 5 tests (it exercises the
+real service end-to-end, so the mutation broke it too) — 3 real failures
+across 2 test classes, from one seeded defect. This is the exact defect
+this repository actually shipped once (commit `2155a8a`'s fix) — proof
+the regression coverage for it is real, not decorative.
+
+**Mutant 2 — a subtler, real `BigDecimal` gotcha** (`isSameTerms()`'s
+rate comparison changed from `.compareTo(...) == 0` to `.equals(...)` —
+`compareTo` treats `2.5`/`2.50` as equal, `.equals()` does not, a
+well-known Java pitfall): **also KILLED**
+(`enroll_whenIdenticalRequestSubmittedTwice_isIdempotentNoOp` +
+`TriageScenarioAIntegrationTest`'s
+`reproduceAfterApproval_withoutReset_correctlyShowsFixed_notStaleHistory`
+both failed). The likely reason: these are real Spring Boot integration
+tests exercising a genuine DB round-trip (not two freshly-constructed,
+identically-scaled `BigDecimal` literals compared in isolation) — a
+plan's rate is persisted and reloaded via JPA before the idempotency
+check compares it, and Postgres/H2's column scale can differ from the
+DTO's raw input scale. **No survivor found in either attempt** — both a
+crude and a subtle real mutation were caught by the existing suite.
+
+**Honest conclusion**: this specific subsystem's test coverage is
+genuinely effective, not merely present — evidenced by two real, killed
+mutants, not by "N tests passed." No `TEST GAP`/`WEAK ORACLE` classification
+was needed since nothing survived; per the directive's own instruction
+("do not chase 100% mutation score blindly... demonstrate at least one
+important behavior mutation that the test suite detects"), this
+satisfies the acceptance bar without further speculative mutation hunting
+on this class.
+
+**PIT was not adopted.** Manual defect seeding on the one real,
+historically-relevant class already answered the concrete question this
+session needed answered, at zero new build-time dependency or CI cost.
+PIT remains a real, deferred candidate for broader, automated mutation
+coverage across more classes than the two experiments above — genuinely
+useful future work, not rejected, just not yet justified by evidence of
+a gap PIT specifically (versus targeted manual seeding) would close.
 - **jqwik (property-based testing)**: no dependency exists. A plausible
   candidate would be `ContractPlanService`'s idempotency invariant itself
   ("N identical enrollment requests always result in exactly 1 active
@@ -90,10 +126,13 @@ V1's own honest accounting.
 
 ## Honest summary
 
-V2 is not "complete." What changed this session: one real, evidenced test-
-effectiveness gap closed (Triage candidate verification), one defect
-class generalized into a repeatable check (link integrity), and CI gained
-a first, safe (non-blocking) integration point for the selective
-regression engine V1 already built. Mutation/property testing and a
-structurally separate Test Architect subagent remain real, valuable,
-deliberately deferred work — see `docs/ACTION_QUEUE.json` for tracking.
+V2 is not "complete." What changed across both continuation sessions: one
+real, evidenced test-effectiveness gap closed (Triage candidate
+verification), one defect class generalized into a repeatable check (link
+integrity), CI gained a first, safe (non-blocking) integration point for
+the selective regression engine V1 already built, and two real,
+manually-seeded defects against `ContractPlanService` were both caught by
+the existing suite (no survivors found — see the mutation testing section
+above). Property testing and a structurally separate Test Architect
+subagent remain real, valuable, deliberately deferred work — see
+`docs/ACTION_QUEUE.json` for tracking.
