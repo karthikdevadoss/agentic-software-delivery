@@ -83,6 +83,45 @@ class ContractPlanControllerIntegrationTest {
     }
 
     @Test
+    void enroll_submittedNTimesIdentically_alwaysResultsInExactlyOneActivePlan_forSeveralRealValuesOfN() {
+        // Base Architecture V3 Section 5: systematic falsification testing
+        // of the real idempotency invariant ("N identical enrollment
+        // requests always result in exactly 1 active plan, for any N"),
+        // generalizing the existing unit-level test (which only proves
+        // N=2) across several real N values in one real HTTP/DB-backed
+        // run -- no prior test in this codebase exercised N > 2. If this
+        // property were ever falsified for some N, the plan's id would
+        // change on a later submission (a new row created) instead of
+        // staying exactly the same real database identity throughout.
+        for (int n : new int[]{2, 3, 5, 10}) {
+            Long id = createCustomer();
+            ContractPlanEnrollRequest request = new ContractPlanEnrollRequest(
+                    "Standard 12mo", new BigDecimal("0.14"), LocalDate.of(2026, 1, 1));
+
+            Long firstPlanId = null;
+            for (int i = 0; i < n; i++) {
+                ResponseEntity<Map> response = restTemplate.postForEntity(url("/customers/" + id + "/plan"), request, Map.class);
+                assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+                Long planId = ((Number) response.getBody().get("id")).longValue();
+                if (firstPlanId == null) {
+                    firstPlanId = planId;
+                } else {
+                    assertThat(planId)
+                            .as("submission %d of %d identical requests must return the SAME plan identity, not create a new row", i + 1, n)
+                            .isEqualTo(firstPlanId);
+                }
+            }
+
+            ResponseEntity<Map> activePlan = restTemplate.getForEntity(url("/customers/" + id + "/plan"), Map.class);
+            Long activePlanId = ((Number) activePlan.getBody().get("id")).longValue();
+            assertThat(activePlanId)
+                    .as("after %d identical submissions, exactly one active plan (the original) must exist", n)
+                    .isEqualTo(firstPlanId);
+            assertThat(activePlan.getBody().get("status")).isEqualTo("ACTIVE");
+        }
+    }
+
+    @Test
     void enroll_withZeroRate_returns400() {
         Long id = createCustomer();
         ContractPlanEnrollRequest request = new ContractPlanEnrollRequest("Free?", BigDecimal.ZERO, LocalDate.now());
