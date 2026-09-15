@@ -54,7 +54,7 @@ secondary_evidence:
   - name: "Learn (AI/Agentic-AI interview knowledge base, built from this project's own real bugs)"
     url: "https://agentic-platform-backend-production.up.railway.app/learn"
   - name: "AI Engineering Quality Ledger (structured defect/root-cause/fix records)"
-    url: "docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml"
+    url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml"
   - name: "Public source repository"
     url: "https://github.com/karthikdevadoss/agentic-software-delivery"
 

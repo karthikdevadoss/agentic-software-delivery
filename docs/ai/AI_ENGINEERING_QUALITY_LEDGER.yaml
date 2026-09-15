@@ -711,3 +711,34 @@ defects:
     commit: "see next platform-backend deploy after this ledger entry"
     production_evidence: "Live browser walkthrough before the fix showed the literal Maven 'release version 21 not supported' error in the Verification panel"
     recurrence_status: NOT_RECURRED
+
+  - defect_id: AEQ-022
+    title: "Showcase's 'AI Engineering Quality Ledger' link used a bare repo-relative path as a rendered <a href>, resolving to /showcase/docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml (404) instead of a real destination"
+    requirement_run_id: "Deterministic-First Reusable Intelligence Platform, Base Architecture V3 -- Phase 0 calibration defect"
+    original_prompt: "EXACT: 'The Showcase's AI Engineering Quality Ledger link resolves to a path such as /showcase/docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml and returns Not Found.'"
+    analysis_confidence: EXACT
+    model_provider_version: "N/A -- static data/config defect, not a model reasoning gap"
+    tools_context_used: "Direct source inspection: showcases/senior-java-ai-transformation/showcase.yaml, agent/web/showcase.js's renderEvidence(), agent/web_server.py's route table"
+    model_interpreted_as: "N/A"
+    expected_behavior: "Clicking 'AI Engineering Quality Ledger' under Further Evidence on /showcase/<slug> opens the real structured defect ledger"
+    actual_behavior: "404 Not Found -- the href was the bare string 'docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml' with no leading slash and no scheme, so the browser resolved it relative to the current page (/showcase/<slug>), producing /showcase/docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml -- a path with no matching server route in any case, since agent/web_server.py never mounts raw repo docs/ files at all"
+    stage_introduced: implementation
+    stage_detected: owner_manual_discovery
+    detection_method: "Owner personally clicked the link on the live public Showcase page"
+    root_cause: "showcases/senior-java-ai-transformation/showcase.yaml's secondary_evidence list mixed genuine absolute https:// URLs (5 of 6 entries) with one bare repo-relative path (1 of 6) -- nothing validated that every rendered link resolves to either a real absolute URL or a real registered app route, and Showcase had zero automated test coverage of any kind (no unit test, no Playwright spec), unlike Learn/Usage/Workbench which each have real browser-level link/navigation coverage (see LEARN-WIKI-P0, SESSION-HISTORY-P0, PLAYWRIGHT-E2E-P0 in docs/ACTION_QUEUE.json)"
+    gaps:
+      prompt_gap: false
+      context_rag_gap: false
+      test_gap: true
+      test_oracle_gap: false
+      harness_gap: true
+      environment_gap: false
+      tool_deployment_gap: false
+    product_fix: "Changed the link to the real, already-public GitHub blob URL for the same file (https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml) -- consistent with the 'Public source repository' link already in the same list, no new server route or infrastructure introduced"
+    new_product_regression_test: "agent/test_showcase_data.py (new file, 6 tests): classify_link() deterministically classifies every rendered showcase URL as ABSOLUTE_EXTERNAL / VALID_INTERNAL_ROUTE (checked against agent/web_server.py's real route table via Starlette's own Route.matches(), not string comparison) / BROKEN_INTERNAL_ROUTE / BARE_RELATIVE_PATH; test_every_rendered_showcase_link_resolves_to_a_real_destination fails the build on the latter two. Proven live to catch the original defect: reverting the showcase.yaml fix and re-running the suite reproduces the exact original failure (BARE_RELATIVE_PATH on the AI Engineering Quality Ledger entry) before the fix is re-applied."
+    new_harness_process_regression: "Generalized rule recorded: any public/recruiter-facing navigation target (top nav, Further Evidence lists, bottom CTAs) must resolve to a genuine absolute URL or a real registered app route, and every showcase manifest is now covered by an automated link-integrity check -- closing the specific coverage gap (Showcase had none) that let this escape while sibling public surfaces already had it"
+    future_prompt_clause_learned: "A manifest-driven list of external links (docs/showcase/nav data) needs the same link-integrity test coverage as hardcoded HTML links -- content-as-data does not exempt it from the same navigation-correctness bar."
+    deterministic_rule_or_tooling: "agent/test_showcase_data.py's classify_link()/_internal_path_is_routable() -- a pure static/routing check, zero LLM involvement, using Starlette's real Route.matches() as the authority for internal-path validity"
+    commit: "see the commit introducing this ledger entry"
+    production_evidence: "Owner's own live click-through discovery; root cause independently confirmed via direct source inspection of the manifest, renderer, and route table"
+    recurrence_status: NOT_RECURRED
