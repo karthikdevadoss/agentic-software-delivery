@@ -19,6 +19,15 @@ knowledge source, so Karthik never has to hand-pick dozens of files.
   canonical source ever disagree, **the canonical source wins** — this
   file may simply be stale (see `agent/validate_claude_context_bundle.py`,
   which fails loudly when that happens).
+- **Bundle generation time is not fact observation time.** `CONTEXT_SNAPSHOT.md`'s
+  header states the exact source state (repository HEAD SHA + that
+  commit's own timestamp) the snapshot was built from — never a
+  regeneration wall-clock time — and its "Freshness contract" section
+  spells out exactly how a prompt architect must treat `(canonical)` vs
+  `(current)`/`(historical)` sections, and when a task requires inspecting
+  the real live source instead of trusting this snapshot. Read that
+  section before acting on any fast-changing fact (Git HEAD, CI status,
+  production status, blockers, action queue, test/eval results).
 - **Model memory is not authoritative.** A fact only counts as durable
   project truth if it's in one of the canonical files this snapshot was
   built from (or their live originals), never from a model's own

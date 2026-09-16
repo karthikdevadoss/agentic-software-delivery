@@ -1010,3 +1010,26 @@ surprising verified behavior would otherwise get rediscovered later.
   `completed_capabilities` list) actually current, not just present.**
   A session that adds real capability should end by asking both
   questions, not just "did my new commit compile and pass tests."
+
+- **A generated artifact's own `generated_at = datetime.now()` stamp
+  makes every regeneration dirty the working tree even when nothing
+  substantive changed, and worse, invites a reader to treat "when this
+  file was built" as "when its facts were last true."** Found in
+  `agent/generate_claude_context_bundle.py` (and the private
+  `karthik-ai-context` repo's identical-pattern generator): both wrote
+  wall-clock `generated_at` into the committed snapshot and manifest on
+  every run, so re-running the generator with zero source changes still
+  produced a diff, and nothing distinguished "bundle regenerated today"
+  from "these fast-changing facts (Git HEAD, blockers, action queue) were
+  actually re-verified today." Fixed by deriving provenance entirely from
+  the source repository's own git state instead of wall-clock time:
+  `source_repository_head_sha` + that commit's own `%cI` timestamp +
+  a `source_working_tree_clean_at_generation` flag. Two regenerations
+  against the same committed HEAD with a clean tree are now
+  byte-identical, and every fast-changing (`current`/`historical`
+  classified) section is explicitly captioned "last recorded as of
+  source state HEAD `<sha>`," never presented as re-verified just because
+  the bundle was rebuilt. General rule: **when a generator's timestamp
+  exists only to prove reproducibility/provenance, derive it from the
+  source's own version-control identity, not `datetime.now()`** —
+  wall-clock "now" is almost never the fact you actually want to assert.
