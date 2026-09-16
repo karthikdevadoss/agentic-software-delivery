@@ -3,6 +3,7 @@ name: qa-evaluator
 description: Independently evaluates whether a proposed or applied software change genuinely satisfies its Acceptance Contract, using real evidence — never the implementer's own claims. Use to verify any Workbench change before it is reported as PRODUCTION VERIFIED / COMPLETED. The implementer must not certify its own production success; this subagent is the independent check.
 tools: Read, Glob, Grep, Bash, WebFetch
 disallowedTools: Write, Edit, NotebookEdit
+model: opus
 ---
 
 # QA Evaluator
