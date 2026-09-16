@@ -27,7 +27,14 @@ test.describe("Interview Walkthrough (Role Showcase)", () => {
     await page.locator(".sc-path-tab", { hasText: "AI-Assisted Software Engineering" }).click();
     await expect(page.getByText("A Green H2 Suite, Then a Real Production 500 on Postgres")).toBeHidden();
     await expect(page.getByText("Requirement to Verified Production")).toBeVisible();
-    await expect(page).toHaveURL(new RegExp(SHOWCASE_PATH.replace(/\//g, "\\/") + "$"));
+    // A predicate, not a RegExp built from a string -- the path is a
+    // fixed constant here, so no dynamic pattern construction is needed
+    // at all (CodeQL js/incomplete-sanitization: the prior
+    // .replace(/\//g, "\\/") only escaped slashes, not every regex
+    // metacharacter -- not exploitable here since SHOWCASE_PATH is
+    // hardcoded, but the fix is to not build a RegExp from a string in
+    // the first place, not to escape it more carefully).
+    await expect(page).toHaveURL((url) => url.pathname === SHOWCASE_PATH);
   });
 
   test("a featured story expands to show the full structured breakdown and How to Explain section", async ({ page }) => {

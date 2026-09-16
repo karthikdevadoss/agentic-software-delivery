@@ -19,16 +19,25 @@ function el(tag, className, html) {
   return e;
 }
 
-function renderCaveat(main, unresolvedIds) {
-  if (!unresolvedIds || unresolvedIds.length === 0) return;
-  const div = el(
-    "div",
-    "sc-caveat",
-    "Note: this showcase references capability id(s) not currently found in " +
-    "docs/PORTFOLIO_CAPABILITIES.yaml — shown honestly rather than silently " +
-    "dropped: <strong>" + unresolvedIds.join(", ") + "</strong>"
-  );
-  main.appendChild(div);
+function renderCaveat(main, unresolvedIds, unresolvedReqs) {
+  if (unresolvedIds && unresolvedIds.length) {
+    main.appendChild(el(
+      "div",
+      "sc-caveat",
+      "Note: this showcase references capability id(s) not currently found in " +
+      "docs/PORTFOLIO_CAPABILITIES.yaml — shown honestly rather than silently " +
+      "dropped: <strong>" + unresolvedIds.join(", ") + "</strong>"
+    ));
+  }
+  if (unresolvedReqs && unresolvedReqs.length) {
+    main.appendChild(el(
+      "div",
+      "sc-caveat",
+      "Note: a capability's addresses_requirement text doesn't exactly match any " +
+      "entry in job_requirements_addressed (likely drift/typo) — shown honestly " +
+      "rather than silently mismatched: <strong>" + unresolvedReqs.join("; ") + "</strong>"
+    ));
+  }
 }
 
 function renderPrimaryDemo(main, showcase) {
@@ -49,22 +58,25 @@ function renderPrimaryDemo(main, showcase) {
 }
 
 function renderRequirementMap(main, showcase) {
-  const reqs = showcase.job_requirements_addressed || [];
   const caps = showcase.capabilities || [];
-  if (reqs.length === 0 || caps.length === 0) return;
+  if (caps.length === 0) return;
 
   const panel = el("section", "panel");
   panel.appendChild(el("h2", null, "Their Requirement -> Our Live/Tested Evidence"));
   const grid = el("div", "sc-req-map");
 
-  // Pair requirements with capabilities positionally where counts allow a
-  // clean 1:1 story; otherwise fall back to listing each capability against
-  // its own engineering_problem_solved, which is honest either way.
-  caps.forEach((cap, i) => {
+  // AEQ-026: each capability names EXACTLY which requirement it addresses
+  // (showcase_data.py's addresses_requirement, resolved server-side) --
+  // never paired by array position. A capability with no matching named
+  // requirement (addresses_requirement: null) is real additional evidence,
+  // shown honestly as such rather than force-matched to the nearest
+  // requirement just to fill a row.
+  caps.forEach((cap) => {
     const row = el("div", "sc-req-row");
     const left = el("div");
-    left.appendChild(el("div", "sc-req-arrow", "REQUIREMENT"));
-    left.appendChild(el("div", "sc-req-text", reqs[i] || reqs[reqs.length - 1] || ""));
+    const hasRequirement = !!cap.addresses_requirement;
+    left.appendChild(el("div", "sc-req-arrow", hasRequirement ? "REQUIREMENT" : "ADDITIONAL EVIDENCE"));
+    left.appendChild(el("div", "sc-req-text", hasRequirement ? cap.addresses_requirement : "Not tied to a single named requirement above -- real, tested capability shown as additional strength."));
     const right = el("div");
     right.appendChild(el("div", "sc-req-arrow", "EVIDENCE"));
     const capName = el("span", "sc-cap-name", cap.display_name);
@@ -354,7 +366,7 @@ async function main() {
     (showcase.last_verified ? `  ·  Last verified ${showcase.last_verified}` : "");
 
   main_el.innerHTML = "";
-  renderCaveat(main_el, showcase.unresolved_capability_ids);
+  renderCaveat(main_el, showcase.unresolved_capability_ids, showcase.unresolved_requirement_texts);
   renderPrimaryDemo(main_el, showcase);
   renderInterviewWalkthrough(main_el, walkthrough);
   renderDeterministicVsLlm(main_el, walkthrough && walkthrough.deterministic_vs_llm);

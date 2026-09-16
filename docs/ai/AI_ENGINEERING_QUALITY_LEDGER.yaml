@@ -832,3 +832,34 @@ defects:
     commit: "see the commit introducing this ledger entry"
     production_evidence: "Baseline restored and independently re-verified live: a fresh cache-busted curl of the real production URL now returns 'Energy Customer Platform' in the login view's <h1 id=\"app-heading\">, matching the canonical demo_baseline/index.html; the real /api/trainer/reset run reported {\"status\":\"completed\",...\"verified live in production\"} for deployment f052ab08-af7c-4eff-8c78-c8d219d778d7}, independently cross-checked rather than trusted from that self-report alone."
     recurrence_status: MONITORING
+
+  - defect_id: AEQ-026
+    title: "Role Showcase paired job_requirements_addressed with selected_capabilities by ARRAY POSITION -- silently wrong once the two lists' lengths/order diverged (13 capabilities vs. 8 requirements)"
+    requirement_run_id: "Overnight owner-authorized engineering pass, Priority 1 (PR #7 correctness follow-up)"
+    original_prompt: "EXACT: Owner-observed/suspected -- \"Testing discipline: unit, integration (Testcontainers), CI\" appeared to map to \"Redis cache-aside,\" and \"Ability to root-cause real production incidents from evidence, not guesses\" appeared repeatedly for several unrelated capabilities (RAG/MCP, builder/evaluator separation, durable event ledger, deployment verification, Workbench lifecycle UI); the LLM/agentic-AI requirement appeared to map to deterministic Test Impact Analysis."
+    analysis_confidence: EXACT
+    model_provider_version: "N/A -- static rendering-logic defect, not a model reasoning gap"
+    tools_context_used: "Direct source inspection of agent/web/showcase.js's renderRequirementMap() and showcases/senior-java-ai-transformation/showcase.yaml's real content"
+    model_interpreted_as: "N/A"
+    expected_behavior: "Each capability's rendered 'Their Requirement -> Our Live/Tested Evidence' row shows the requirement that capability actually addresses"
+    actual_behavior: "renderRequirementMap() zipped capabilities[i] with jobRequirementsAddressed[i] by shared array index, with an overflow fallback (reqs[i] || reqs[reqs.length-1]) that silently reused the LAST requirement's text for every capability beyond the requirements list's length. Verified exactly: index 5 (redis-cache) paired with index 5 (\"Testing discipline...\"), index 6 (test-impact-analysis) paired with index 6 (the LLM/agentic-AI requirement), and indices 8-12 (rag-mcp-embeddings, independent-qa-evaluator, durable-event-ledger, production-deployment-verification, workbench-live-delivery-ui) all fell back to reusing index 7's text (\"root-cause real production incidents\") regardless of real fit. The code's own comment claimed the fallback was 'listing each capability against its own engineering_problem_solved' -- the actual code never did that; the comment described unimplemented behavior."
+    stage_introduced: implementation
+    stage_detected: owner_requested_audit
+    detection_method: "Owner named the exact suspected symptom; independently verified from source (not taken on faith) by reading renderRequirementMap()'s real code and computing the real index alignment against showcase.yaml's real 8-requirement/13-capability lists"
+    root_cause: "Two independently-maintained parallel lists (job_requirements_addressed, selected_capabilities) related only by matching array position, with no explicit link between a given capability and the requirement it was meant to address -- classic positional-coupling defect, worsened by an overflow fallback that made the wrong pairing look like real content (a requirement's text does appear, it's just the wrong one) rather than failing visibly."
+    gaps:
+      prompt_gap: false
+      context_rag_gap: false
+      test_gap: true
+      test_oracle_gap: false
+      harness_gap: true
+      environment_gap: false
+      tool_deployment_gap: false
+    product_fix: "showcase.yaml's selected_capabilities is now a list of {id, addresses_requirement} entries -- each capability names the EXACT requirement text it addresses, or null for real additional evidence not tied to any single named requirement (redis-cache, workbench-live-delivery-ui). agent/showcase_data.py resolves and validates each addresses_requirement against the real job_requirements_addressed list, reporting any typo/drift as unresolved_requirement_texts rather than silently mismatching. agent/web/showcase.js's renderRequirementMap() now renders cap.addresses_requirement directly -- zero positional coupling remains."
+    new_product_regression_test: "agent/test_showcase_data.py::AEQ026RequirementMappingTestCase (5 new tests): the exact original mispairings are fixed (redis-cache has no requirement, test-impact-analysis maps to the testing requirement not the LLM one); no capability silently inherits the last requirement (only durable-event-ledger and production-deployment-verification, which genuinely fit, are paired with the root-cause requirement); an isolated fixture test proves the mapping MECHANISM is position-independent (capability list order deliberately reversed relative to requirement order, still resolves correctly) -- the actual regression coverage against future reordering/additions the Owner asked for; a typo in addresses_requirement is reported, not silently mismatched. Reintroduced the original code (git stash) and confirmed 5 real test failures (2 assertion mismatches, 3 KeyErrors since the old schema had no addresses_requirement field at all) before restoring the fix and confirming all tests green."
+    new_harness_process_regression: "Generalized rule: two lists that must stay semantically paired must never be related by array position alone -- either merge them into one list of explicit pairs, or store an explicit id/key linking each entry, with the pairing's validity checked at load time (unresolved_requirement_texts), not assumed."
+    future_prompt_clause_learned: "A code comment describing a fallback behavior is not evidence the fallback actually works that way -- this defect's own comment described a graceful degradation the code never implemented; always verify behavior from the code path actually executed, not its adjacent prose."
+    deterministic_rule_or_tooling: "showcase_data.py's addresses_requirement validation against job_requirements_addressed, enforced at load time on every request -- a future drift is a visible unresolved_requirement_texts caveat on the live page, never silent"
+    commit: "see the commit introducing this ledger entry"
+    production_evidence: "Real rendered page re-verified via Playwright after the fix (e2e spec updated in the same change); the exact originally-reported mispairings independently re-confirmed absent"
+    recurrence_status: MONITORING

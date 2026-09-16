@@ -71,10 +71,11 @@ paths:
     label: "AI-Assisted Software Engineering"
     summary: >-
       Not "AI wrote code fast" -- a measurable, auditable delivery process
-      built on top of a probabilistic model: deterministic approval/write
-      boundaries the model cannot cross, independent QA evaluation,
-      RAG/MCP context retrieval with measured evals, and real bugs the
-      first genuine end-to-end run surfaced.
+      built on top of a probabilistic model: approval/write tools the
+      model is never given (verified by exact set-membership tests, not a
+      policy instruction), independent QA evaluation, RAG/MCP context
+      retrieval with measured evals, and real bugs the first genuine
+      end-to-end run surfaced.
     start_link: "/workbench"
     capability_ids: [agentic-ai-delivery-pipeline, rag-mcp-embeddings, independent-qa-evaluator, test-impact-analysis]
     story_ids: [agentic-delivery-pipeline, testing-tia-verification]
@@ -264,5 +265,5 @@ stories:
     path_id: ai-assisted-delivery
     featured: false
     title: "Test Impact Analysis & Selective Regression -- Explainable, Fail-Closed"
-    one_line: "Run the minimum correct set of tests for a given change -- never the whole suite blindly, never too little -- with a fail-closed default (full regression) for anything unrecognized."
+    one_line: "A deliberately risk-classified subset of tests per change, with a fail-closed default (full regression) for anything unrecognized -- an explicit design intent, with its own open gaps honestly tracked, not a claim of perfect coverage."
     doc_path: "docs/interview-scenarios/10-testing-tia-verification.md"
