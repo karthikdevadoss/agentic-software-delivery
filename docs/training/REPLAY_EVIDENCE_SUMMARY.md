@@ -17,7 +17,7 @@ point documented in that module's own source as existing "for automated
 tests and for a future non-CLI trusted host," not invented for this
 replay).
 
-## Real runs performed (3 completed, 1 blocked by billing)
+## Real runs performed (4 completed — Run 4 reached a real candidate)
 
 **Run 1** (`run1_real_tool_trace.log`) — `MAX_TOOL_CALLS=8` (the real,
 unmodified historical default). Real result: all 8 calls consumed by
@@ -61,31 +61,83 @@ own terminal output, not re-transcribed here to avoid embellishing what
 was actually preserved) survive for Run 3. This gap is disclosed, not
 hidden.
 
-**Run 4** — added one explicit instruction to the ticket ("after forming
-your plan, proceed directly to `propose_source_change`... rather than
-waiting for a separate confirmation") to close the real behavioral gap
-Runs 1-3 exposed (the base `SYSTEM_PROMPT`, shared from V2/V3, literally
-asks for "a numbered implementation plan" with no instruction to
-implement afterward — a real, disclosed prompt-design gap, not a
-scripted trick). **Failed before any tool use**: a direct minimal test
-call independently confirmed `anthropic.BadRequestError: Your credit
-balance is too low to access the Anthropic API` — a genuine, persistent
-billing block, not transient (re-tested once, same error).
+**Run 4, attempt 1 (2026-09-15)** — added one explicit instruction to the
+ticket ("after forming your plan, proceed directly to
+`propose_source_change`... rather than waiting for a separate
+confirmation") to close the real behavioral gap Runs 1-3 exposed (the
+base `SYSTEM_PROMPT`, shared from V2/V3, literally asks for "a numbered
+implementation plan" with no instruction to implement afterward — a
+real, disclosed prompt-design gap, not a scripted trick). **Failed
+before any tool use**: a direct minimal test call independently
+confirmed `anthropic.BadRequestError: Your credit balance is too low to
+access the Anthropic API` — a genuine, persistent billing block, not
+transient (re-tested once, same error).
+
+**Run 4, attempt 2 (2026-09-16, `run4_real_tool_trace.log`,
+`run4_evidence.json`)** — re-run of the exact same corrected ticket/prompt
+after Karthik confirmed (live in the Anthropic Console, not assumed)
+organization credits restored ($19.89, no unpaid balance). Real result:
+`run_id=trainer-replay-update-email-1789551491`,
+`base_sha=febc26cdecc0e650da247a8cdab528f19e1146db`, 29 real read-only
+tool calls (broader investigation than Runs 1-3: also inspected
+`SecurityIntegrationTest.java`, `CustomerPreferenceResponse.java`,
+`docs/PROJECT_STATE.json`, `docs/ACTION_QUEUE.json`'s
+`PHASE-3-UPDATE-EMAIL-BACKEND-DEMO` entry, and `app/pom.xml`), then **two
+real `propose_source_change` calls** — the fix-forward instruction
+worked. Both proposals add one method to `CustomerService.java`:
+
+```java
+public Customer updateEmail(Long id, String newEmail) {
+    Customer customer = getById(id);
+    customer.setEmail(newEmail);
+    return customerRepository.save(customer);
+}
+```
+
+(attempt 1, `edit_id=d085a363`, `candidate_hash=6f06eb1e...`, included an
+explanatory Javadoc comment; attempt 2, `edit_id=70bc47ab`,
+`candidate_hash=239ddd43...`, the bare version after the first was
+rejected). Both were **genuinely rejected** by `replay_driver.py`'s
+`_capture_and_reject` (no real human approver present in this automated
+replay — fail-closed by design, exactly as the real architecture
+requires), never approved on the Owner's behalf. The agent's own final
+text after both rejections asked clarifying questions rather than
+resubmitting blindly (HTTP verb/path choice, raw-`String` vs. DTO
+parameter, whether the workspace-authorization gap must be resolved
+first) — a real instance of the agent recognizing repeated rejection as
+a signal to ask, not just retry.
+
+**This proposal is a partial slice, not the full ticket** — it adds only
+the service-layer method. No controller/endpoint, no DTO, no validation,
+no authorization check, and no test were proposed in this run (the
+9-line diff was small enough that reaching a full working feature would
+need further turns/proposals this run did not take, since the agent
+stopped to ask for design confirmation after two rejections instead of
+continuing). The known workspace/tenant-isolation gap (Run 2's finding,
+reconfirmed in Run 3's plan) remains real and unresolved by this diff.
 
 ## What this means for the trainer exercise
 
 The real V3/V4.1 agent's requirement-interpretation and repository-
-investigation phases are fully, genuinely demonstrated (3 real runs, 55
-real tool calls total across them, real findings including the
-workspace-authorization gap). **The propose→approval boundary was never
-reached** — not because of a human-approval stop (the intended, designed
-boundary this exercise wanted to demonstrate), but because of a real
-Anthropic billing exhaustion discovered while trying to get the agent
-past its own planning-first default behavior.
+investigation phases are fully, genuinely demonstrated across all 4 runs
+(84 real tool calls total: 55 from Runs 1-3 + 29 from Run 4 attempt 2),
+including real findings (the workspace-authorization gap) that persisted
+correctly across runs. **The propose→approval boundary was reached for
+the first time in Run 4 attempt 2** — two real candidates were proposed
+and both were genuinely, correctly rejected by the fail-closed replay
+harness (no human present), exactly demonstrating the designed boundary:
+the agent cannot approve its own proposal, and no code was written to
+disk anywhere in this worktree as a result of this run (verified: `git
+status --short` on this branch is clean after the run).
 
-**No candidate hash, diff hash, or pending-approval artifact exists to
-approve** — there is nothing to approve yet. The next real step (once
-billing is restored) is: re-run `agent/replay_driver.py` from this exact
-worktree/branch, let it reach a real `propose_source_change` call, and
-THEN the Owner has a real candidate to review and approve or reject —
-not before.
+**A real candidate now exists for a human to review** — see the diff and
+both candidate/diff hashes above, or `run4_evidence.json` for the full
+machine-readable record (including the complete final agent text). If
+the Owner wants this specific candidate applied, that requires a fresh
+run of `agent/execution_agent.py` (the real interactive CLI, not this
+automated replay driver) so a real terminal-attached human can type a
+real "y" — `replay_driver.py`'s automated rejection is intentional and
+cannot itself apply anything. This candidate is also, by the Owner's own
+review above, incomplete relative to the full ticket (service method
+only) — a fuller candidate would need controller/DTO/validation/
+authorization/test additions the agent did not reach in this run.
