@@ -66,7 +66,20 @@ class Operation:
 OPERATIONS = (
     Operation(
         id="heading_text",
-        human_name="the main heading text",
+        # AEQ-025 (2026-09-17): "the main heading text" was a real, honest
+        # description in 2026-09-14, when the login view genuinely was the
+        # only thing any visitor saw. It stopped being honest the moment
+        # this app grew persistent authenticated USER/ADMIN sessions with
+        # their OWN separate, hardcoded heading text (app view: line ~322
+        # admin / ~412 user in index.html) that this operation's anchor
+        # was never retargeted to reach. A returning/logged-in visitor
+        # (the common case, not the rare one) never sees this element at
+        # all -- "the main heading" overclaimed a scope this operation
+        # never actually covered. Named precisely now so every user-facing
+        # claim built from human_name (web_server.py's final_result/
+        # no-change/error messages) is honest about what was actually
+        # verified. See docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml AEQ-025.
+        human_name="the login screen's heading text",
         synonyms=("heading", "main title", "page heading", "page title"),
         # PORTFOLIO COMPLETION PUSH (2026-09-14): retargeted to the login
         # view's own id'd heading -- the real first thing any visitor
@@ -82,7 +95,9 @@ OPERATIONS = (
     ),
     Operation(
         id="subtitle_text",
-        human_name="the subtitle text",
+        # Same AEQ-025 scope-honesty fix as heading_text above -- this
+        # anchor only ever reached the login view's subtitle.
+        human_name="the login screen's subtitle text",
         synonyms=("subtitle", "sub-title", "sub title", "tagline"),
         # Same retargeting reason as heading_text above -- the page now
         # has two <p class="subtitle"> elements (login view + the

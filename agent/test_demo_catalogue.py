@@ -232,5 +232,63 @@ class Layer3ChangeDiffTestCase(unittest.TestCase):
             dc.apply_operation(stripped, "footer_text", "New Value")
 
 
+class AEQ025HonestScopeTestCase(unittest.TestCase):
+    """AEQ-025 (2026-09-17): a real production contradiction -- the
+    Workbench reported "PRODUCTION CHANGE VERIFIED... the main heading
+    text is now X" and it genuinely was, in the raw deployed HTML, in the
+    ONE element this operation's anchor targets. What broke trust is that
+    a logged-in USER/ADMIN session (the common case once this app grew
+    persistent auth) never renders that element at all -- it has its own
+    separate, un-anchored, hardcoded heading text elsewhere in the same
+    file. The extraction/verification mechanism was never wrong about
+    WHAT it checked; `human_name` was wrong about how it described that
+    scope to a human reading the claim. These tests make that gap
+    mechanically checkable instead of only discoverable by a confused
+    Owner looking at two different pages."""
+
+    def test_baseline_has_more_than_one_hardcoded_occurrence_of_the_app_name_text(self):
+        # The real, current fact this whole defect class depends on --
+        # if the app is ever refactored to a single templated source of
+        # truth, this test should start failing loudly (a real, welcome
+        # change), not silently stop mattering.
+        occurrences = BASELINE.count("Energy Customer Platform")
+        self.assertGreaterEqual(
+            occurrences, 3,
+            "Expected the app name to still be hardcoded in multiple places "
+            "(login view + user view + admin view) -- if this is now 1, the "
+            "single-source-of-truth fix has landed and this test (and "
+            "heading_text/subtitle_text's scope caveat) should be revisited.",
+        )
+
+    def test_heading_and_subtitle_operations_honestly_name_their_real_scope(self):
+        """The exact class of claim that misled the Owner: human_name is
+        what every user-facing Workbench message (final_result/no-change/
+        error, see web_server.py) is built from. An operation whose real
+        anchor only reaches the login view must say so in its own name,
+        never imply site-wide/"main" scope it cannot actually verify."""
+        scoped_ops = {"heading_text", "subtitle_text"}
+        for op in dc.OPERATIONS:
+            if op.id not in scoped_ops:
+                continue
+            with self.subTest(op=op.id):
+                self.assertIn(
+                    "login screen", op.human_name.lower(),
+                    f"{op.id}'s human_name {op.human_name!r} must name its real "
+                    "scope (the login screen) -- it cannot verify or change the "
+                    "separate, un-anchored heading/subtitle a logged-in USER/ADMIN "
+                    "session actually sees.",
+                )
+
+    def test_applying_heading_text_leaves_the_other_hardcoded_occurrences_untouched(self):
+        """Proves the actual mechanical fact a reader of human_name must be
+        able to trust: this operation changes exactly the login view's
+        heading and nothing else calling itself "Energy Customer Platform"
+        elsewhere in the same file -- so a claim scoped to "the login
+        screen" is truthful, not merely convenient wording."""
+        new_content = dc.apply_operation(BASELINE, "heading_text", "New Login Heading")
+        self.assertEqual(new_content.count("Energy Customer Platform"), BASELINE.count("Energy Customer Platform") - 1)
+        self.assertIn('<h1 id="app-heading">New Login Heading</h1>', new_content)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

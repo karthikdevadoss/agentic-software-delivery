@@ -1,7 +1,18 @@
 {
-  "_purpose": "Current actionable work discovered during verified sessions — not project history. Resolved items are removed here (their resolution is recorded via the commit that removes them + PROJECT_STATUS.md/LESSONS.md if reusable), not accumulated forever. This is separate from PROJECT_STATE.json's next_phase/next_action, which tracks the one current phase-level priority, not the backlog of smaller items surfaced along the way.",
-  "_status_values": ["open", "in_progress", "blocked", "verified", "deferred"],
-  "_priority_values": ["critical", "high", "medium", "low"],
+  "_purpose": "Current actionable work discovered during verified sessions \u2014 not project history. Resolved items are removed here (their resolution is recorded via the commit that removes them + PROJECT_STATUS.md/LESSONS.md if reusable), not accumulated forever. This is separate from PROJECT_STATE.json's next_phase/next_action, which tracks the one current phase-level priority, not the backlog of smaller items surfaced along the way.",
+  "_status_values": [
+    "open",
+    "in_progress",
+    "blocked",
+    "verified",
+    "deferred"
+  ],
+  "_priority_values": [
+    "critical",
+    "high",
+    "medium",
+    "low"
+  ],
   "items": [
     {
       "id": "ACT-001",
@@ -251,7 +262,7 @@
       "reason": "Built a real, dogfooded Testing Architecture V1 (risk/blast-radius classification, Test Impact Analysis, a selective regression engine with a real fail-closed fallback, an always-on smoke tier, an extended Verification Contract schema) this session, per explicit instruction to make testing non-ad-hoc for this AI-developed platform. Per that same instruction's own anti-overengineering constraint, several named sub-capabilities were deliberately left designed-only rather than built in the same sitting.",
       "evidence": "docs/TESTING_ARCHITECTURE_V1.md is the full write-up. Five concrete open items: (1) no dedicated Playwright spec exists for the Customer App's own frontend (app/src/main/resources/static/index.html) -- verify_change.py already surfaces this honestly as a skip reason rather than silently passing, and this is the single most valuable next addition; (2) Test Impact Analysis is Java-only -- a Python agent/*.py change is flagged in the skip list, not auto-mapped to specific test modules; (3) verify_change.py is not wired into .github/workflows/ci.yml -- CI's full mvnw test/python/node suites remain the sole authoritative gate, deliberately not changed without separate explicit approval; (4) no mutation/property/fuzz/performance/chaos tooling exists (no PIT dependency in app/pom.xml) -- deliberately deferred, not mandatory per-change per the task's own instruction; (5) verify_change.py's per-run evidence JSON (agent/.verify_change_evidence/*.json) is real but not yet aggregated across runs into first-pass-yield/rework/cost metrics.",
       "safe_to_auto_execute": false,
-      "verification_required": "Each item, if picked up: (1) needs a real Playwright spec against the deployed Customer App plus a verify_change.py mapping-table update, independently re-run; (2) needs a Python file/module-to-test mapping mirroring agent/test_impact_analysis.py's Java table, with its own dogfooding test; (3) needs an explicit decision on authoritative-gate wiring (additive annotation first, per docs/TESTING_ARCHITECTURE_V1.md §R, not a silent gate swap) before any CI file edit; (4)/(5) need their own scoped tasks, not opportunistic partial builds.",
+      "verification_required": "Each item, if picked up: (1) needs a real Playwright spec against the deployed Customer App plus a verify_change.py mapping-table update, independently re-run; (2) needs a Python file/module-to-test mapping mirroring agent/test_impact_analysis.py's Java table, with its own dogfooding test; (3) needs an explicit decision on authoritative-gate wiring (additive annotation first, per docs/TESTING_ARCHITECTURE_V1.md \u00a7R, not a silent gate swap) before any CI file edit; (4)/(5) need their own scoped tasks, not opportunistic partial builds.",
       "created_at_commit": "0767e06",
       "resolved_at_commit": null
     },
@@ -323,6 +334,20 @@
       "safe_to_auto_execute": false,
       "verification_required": "Each phase's own deliverables must be independently verified per this project's existing discipline (focused regression + full regression where feasible + live verification for anything user-facing) before being marked complete here. This item stays open/in_progress until the directive's own Success Criteria (18 numbered items) are genuinely met with evidence, not just documents written.",
       "created_at_commit": "b5369b5",
+      "resolved_at_commit": null
+    },
+    {
+      "id": "AEQ-025-SINGLE-SOURCE-APP-NAME",
+      "source": "product",
+      "title": "OPEN: the Customer App hardcodes its display name/heading in 3+ separate places (anonymous login view, USER dashboard, ADMIN dashboard) with no single source of truth",
+      "priority": "low",
+      "status": "open",
+      "scope": "app/src/main/resources/static/index.html (and/or a small server-side templating change) -- touches real, live, authenticated-dashboard UI copy, not just the login screen",
+      "reason": "Found while root-causing AEQ-025 (a real Owner-observed production-verification contradiction): the demo heading_text/subtitle_text operations were scoped and re-labeled to be honest about only reaching the login view, but the deeper product question -- should the app name/heading be one templated value instead of 3 independently-hardcoded copies -- was deliberately NOT resolved unilaterally tonight, since it touches live authenticated USER/ADMIN dashboard markup that was never part of the reported defect and carries real blast radius for a change made without Owner review.",
+      "evidence": "docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml AEQ-025; grep of agent/demo_baseline/index.html shows \"Energy Customer Platform\" hardcoded at minimum in the login view (id=app-heading), the USER dashboard header, and the ADMIN dashboard header",
+      "safe_to_auto_execute": false,
+      "verification_required": "Owner decision: (a) leave as-is (3 independently-maintained copies, each demo operation explicitly scoped to just the login view, as fixed tonight), or (b) refactor to one templated/JS-driven source of truth for the app name so a future heading change is atomic across every view-state -- a real architecture change to a live, working page, not a bug fix.",
+      "created_at_commit": null,
       "resolved_at_commit": null
     }
   ]
