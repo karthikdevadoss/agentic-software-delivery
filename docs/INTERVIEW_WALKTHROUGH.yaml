@@ -1,0 +1,264 @@
+# Interview Walkthrough Index
+#
+# Deterministic, project-derived index over REAL evidence this project
+# already has -- NOT a new content system. Every "story" here indexes an
+# already-existing, already-real docs/interview-scenarios/<n>.md write-up
+# (10 files, written 2026-09-15/16, previously unlinked from any public
+# page -- this file's whole job is to surface them, not duplicate or
+# replace them). Every doc/commit/defect_id/URL referenced below must be
+# real and independently checkable; nothing here is invented, estimated,
+# or written as first-person employment experience.
+#
+# Rendered by agent/interview_walkthrough_data.py -> GET
+# /api/interview-walkthrough -> agent/web/showcase.js (additive section on
+# the existing Role Showcase page, not a new page).
+
+walkthrough_version: 1
+last_updated: "2026-09-16"
+
+intro: >-
+  Three ways to walk through this project depending on what a conversation
+  needs to cover. Each path links to real capabilities, real evidence, and
+  a live surface where the concept can actually be shown, not just
+  described. This is a personal/portfolio project -- these are engineering
+  stories to learn and explain, not first-person employment claims.
+
+deterministic_vs_llm:
+  title: "What's deliberately deterministic vs. LLM-driven"
+  summary: >-
+    The LLM only investigates and proposes. Everything that decides whether
+    a change is safe, whether it actually happened, and whether it's
+    correct is deterministic code, not a model's self-report.
+  points:
+    - claim: "Eligibility / risk classification (Workbench)"
+      mechanism: "Deterministic catalogue-pattern match + agent/risk_policy.py classify() -- defense-in-depth, two independent checks -- before any LLM call happens at all."
+    - claim: "Human approval boundary"
+      mechanism: "approve_edit/reject_edit are never exposed as an LLM-callable tool schema and never reachable via the dispatch table by any name -- verified by exact set-membership tests (agent/execution_tools.py), not a system-prompt instruction (see AEQ-003: a substring check here was a real bug, fixed)."
+      evidence: "docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml AEQ-003"
+    - claim: "Whether the AI's own claim is grounded"
+      mechanism: "A deterministic groundedness checker flags any file/fact the model claims but never actually retrieved through a real tool call -- the model is never trusted to self-report what it looked at."
+    - claim: "Whether a change actually reached production"
+      mechanism: "Independent, bounded-retry production content assertion against the real deployed app -- not the pipeline's own PASS/FAIL banner, not an HTTP 200 alone."
+      evidence: "docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml AEQ-009, AEQ-013"
+    - claim: "Independent quality evaluation"
+      mechanism: "A structurally separate qa-evaluator subagent re-verifies a change against real evidence -- the implementer is never allowed to certify its own work."
+    - claim: "What test suite runs for a given change"
+      mechanism: "Deterministic risk/blast-radius classification (agent/change_risk.py, agent/test_impact_analysis.py) with a fail-closed default for anything unrecognized -- never an LLM guessing what to test."
+
+paths:
+  - id: senior-java-backend
+    label: "Senior Java / Backend Engineering"
+    summary: >-
+      Java 17/21, Spring Boot 4, JPA/Hibernate, Postgres, REST API design,
+      RBAC/workspace isolation, and the kind of framework-internals
+      debugging that separates "it compiles" from "I know why it broke."
+    start_link: "/dashboard"
+    capability_ids: [java-spring-rest-api, postgres-jpa-flyway, security-jwt-rbac]
+    story_ids: [postgres-bytea-incident, plan-enrollment-idempotency, rbac-workspace-isolation, kafka-outbox, redis-cache-aside]
+
+  - id: system-design-production
+    label: "System Design / Production Engineering"
+    summary: >-
+      Resilience patterns against an unreliable downstream, root-causing a
+      real production incident from direct evidence (not guesses), and the
+      security/observability posture across two structurally different
+      systems (the Customer App and the agentic delivery pipeline itself).
+    start_link: "/triage"
+    capability_ids: [downstream-resilience, kafka-outbox, redis-cache, durable-event-ledger, production-deployment-verification]
+    story_ids: [appointment-resilience, observability-production-debugging, security-attack-matrix]
+
+  - id: ai-assisted-delivery
+    label: "AI-Assisted Software Engineering"
+    summary: >-
+      Not "AI wrote code fast" -- a measurable, auditable delivery process
+      built on top of a probabilistic model: deterministic approval/write
+      boundaries the model cannot cross, independent QA evaluation,
+      RAG/MCP context retrieval with measured evals, and real bugs the
+      first genuine end-to-end run surfaced.
+    start_link: "/workbench"
+    capability_ids: [agentic-ai-delivery-pipeline, rag-mcp-embeddings, independent-qa-evaluator, test-impact-analysis]
+    story_ids: [agentic-delivery-pipeline, testing-tia-verification]
+
+# Featured stories (featured: true) get the full structured breakdown.
+# All others are real too -- indexed with a one-line summary and a link to
+# their own full docs/interview-scenarios/<n>.md write-up, not duplicated
+# here in full (per "do not mechanically include everything").
+stories:
+
+  - id: postgres-bytea-incident
+    path_id: senior-java-backend
+    featured: true
+    title: "A Green H2 Suite, Then a Real Production 500 on Postgres"
+    doc_path: "docs/interview-scenarios/02-postgres-search-pagination.md"
+    live_demo:
+      label: "Reproduce this exact historical defect live (Incident Triage Lab, Scenario C)"
+      url: "https://agentic-platform-backend-production.up.railway.app/triage/scenario-c"
+    business_problem: "An ADMIN needs to find a specific customer among potentially many, by partial name or email, without downloading the whole customer table client-side."
+    engineering_requirement: "GET /admin/customers?name=... must return a real filtered, paginated result set safely in production, not only against local H2."
+    design_decision: "Spring Data JPQL with LOWER()/CONCAT() around the search parameter for case-insensitive partial matching -- the idiomatic Spring Data approach."
+    implementation: "A JPQL query wrapping a nullable String bind parameter inside LOWER(CONCAT('%', :name, '%'))."
+    runtime_details: "PostgreSQL's JDBC driver could not infer a concrete type for the nullable bind parameter through Hibernate's JPQL CONCAT translation and silently defaulted it to `bytea` -- a gap H2's SQL dialect has no equivalent for, so the full local suite stayed green."
+    testing: "Full local H2 integration suite passed cleanly before deploy -- the exact reason this bug reached production."
+    failure_mode: "Real production 500: org.postgresql.util.PSQLException: function lower(bytea) does not exist -- found via direct Railway logs, not guessed."
+    verification: "Pre-built the full lowercased LIKE pattern in Java and bound it as a plain String (never wrapping the bind parameter itself in CONCAT/LOWER); added a real Testcontainers-Postgres regression test so CI proves this on the real target database going forward, not just H2."
+    real_evidence:
+      - {label: "Quality Ledger entry AEQ-012", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml"}
+      - {label: "Fix commit", value: "9f35f27"}
+      - {label: "Full write-up", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/interview-scenarios/02-postgres-search-pagination.md"}
+    how_to_explain:
+      why: "A green test suite on one database engine is not proof of correctness on another -- H2 and Postgres genuinely diverge on type inference for string functions around nullable parameters."
+      what: "A JPQL LOWER/CONCAT query around a nullable bind parameter worked on H2 and threw a real Postgres 500 in production."
+      how: "Root-caused from real Railway logs, not guessed; fixed by pre-building the LIKE pattern in Java instead of relying on Postgres to infer the parameter's type through CONCAT."
+      tradeoff: "Slightly less 'idiomatic' JPQL in exchange for a query whose parameter typing is unambiguous on the real database."
+      failure: "A real production 500 reached a live ADMIN search endpoint before being caught."
+      verification: "A real Testcontainers-backed Postgres regression test now runs in CI, so this exact class of bug can't silently return."
+
+  - id: plan-enrollment-idempotency
+    path_id: senior-java-backend
+    featured: true
+    title: "Duplicate Plan Enrollment Creates a Phantom Churn Event"
+    doc_path: "docs/interview-scenarios/04-plan-enrollment-idempotency.md"
+    live_demo:
+      label: "Reproduce this exact defect live (Incident Triage Lab, Scenario A)"
+      url: "https://agentic-platform-backend-production.up.railway.app/triage"
+    business_problem: "An energy customer enrolls in exactly one plan at a time -- enrolling in a new plan must supersede (not delete) the old one and keep plan history queryable."
+    engineering_requirement: "A repeat submission of an identical enrollment request must be a safe no-op, not a second state transition."
+    design_decision: "ContractPlanService.enroll() had no duplicate-request protection at all -- a real gap found by code inspection, not a reported bug."
+    implementation: "A repeat of an identical enrollment cancelled the plan the first call had just activated and created a duplicate one -- two real transitions from one logical request."
+    runtime_details: "Concurrency/idempotency at the service layer: a no-op check comparing the requested plan against the customer's current active plan before performing any write."
+    testing: "104 Java tests green after the fix; a real duplicate-POST sequence independently re-verified against production."
+    failure_mode: "A double-submit (double-click, retry, network blip) would generate a phantom cancel+enroll pair -- a real, business-visible churn event that never actually happened."
+    verification: "Redeployed to the Customer App and independently re-verified live: exactly one plan row after two identical submissions, not two."
+    real_evidence:
+      - {label: "Fix commit", value: "2155a8a"}
+      - {label: "Full write-up", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/interview-scenarios/04-plan-enrollment-idempotency.md"}
+    how_to_explain:
+      why: "Any state-changing endpoint reachable by a retry or double-click needs an explicit idempotency answer -- 'it probably won't happen' is not a design."
+      what: "A repeat identical enrollment request silently cancelled and re-created the same plan instead of being a safe no-op."
+      how: "Found by direct code inspection (not a bug report), fixed with a no-op check comparing requested vs. current active plan before any write."
+      tradeoff: "One extra read before the write, in exchange for eliminating a whole class of duplicate-submission bugs."
+      failure: "A phantom cancel+enroll pair would show up as a real (but false) churn event in any downstream analytics."
+      verification: "A real duplicate-POST sequence against live production, independently confirmed to produce exactly one row."
+
+  - id: appointment-resilience
+    path_id: system-design-production
+    featured: true
+    title: "A Downstream Service That Doesn't Own You: Retry, Circuit Breaker, Error Classification"
+    doc_path: "docs/interview-scenarios/07-appointment-resilience.md"
+    live_demo:
+      label: "Watch a deliberately-seeded bad retry policy fixed live (Incident Triage Lab, Scenario B)"
+      url: "https://agentic-platform-backend-production.up.railway.app/triage/scenario-b"
+    business_problem: "Checking technician appointment availability means calling a real downstream scheduling service over HTTP -- a dependency this application does not own or control."
+    engineering_requirement: "A slow, erroring, or down downstream service must degrade this service gracefully, never hang or crash it."
+    design_decision: "Resilience4j CORE (circuit breaker + retry composed programmatically over Spring's RestClient), not the resilience4j-spring-boot starter -- a real, documented Spring Boot 4 BOM gap made the starter unusable as-is."
+    implementation: "Explicit error classification distinguishes a genuine 4xx (never retried) from a 5xx/timeout (retried, then circuit-broken on sustained failure)."
+    runtime_details: "7 real WireMock tests: success, 5xx retried 3x, 4xx never retried, connect timeout, read timeout, malformed body, sustained-failure circuit-open."
+    testing: "TriageScenarioBIntegrationTest (4/4 passing) proves a deliberately-seeded bad retry policy makes exactly 3 real HTTP attempts against a genuine 400, and the fixed path makes exactly 1."
+    failure_mode: "A naive retry-everything policy would retry a real 400 (a client error that will never succeed) three times, adding latency for no benefit and masking the real error class."
+    verification: "Live in the Incident Triage Lab: reproduce the seeded bad policy, diagnose it, generate a real AI candidate patch, verify it against the real integration test, and approve it to switch to the real production retry bean."
+    real_evidence:
+      - {label: "Full write-up", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/interview-scenarios/07-appointment-resilience.md"}
+      - {label: "Source", value: "app/src/main/java/com/example/customer/integration/appointment/"}
+    how_to_explain:
+      why: "Any call to a service you don't control needs an explicit answer for slow/erroring/down -- silence there means an outage in someone else's system becomes an outage in yours."
+      what: "Circuit breaker + retry, composed manually because the Spring Boot 4 starter had a real BOM gap, with explicit 4xx-vs-5xx error classification."
+      how: "7 WireMock tests exercise every real failure mode (timeout, 5xx retry, 4xx no-retry, circuit-open) against a fake HTTP server, not a live dependency."
+      tradeoff: "More manual composition code in exchange for not depending on a starter that doesn't actually resolve on this Spring Boot version."
+      failure: "A naive always-retry policy would triple the latency cost of a real client error and blur it with a transient server error."
+      verification: "A real, isolated, admin-gated live demo reproduces a seeded bad policy and proves the fix with a real integration test, not a slide."
+
+  - id: observability-production-debugging
+    path_id: system-design-production
+    featured: true
+    title: "Root-Causing From Evidence, Not Guesses"
+    doc_path: "docs/interview-scenarios/09-observability-production-debugging.md"
+    live_demo:
+      label: "Related evidence: Engineering Dashboard"
+      url: "/dashboard"
+    business_problem: "A production incident is only debuggable if the system already emits real, correlated evidence before the incident happens."
+    engineering_requirement: "Structured logs, metrics, and tracing must exist BEFORE an incident, not be bolted on while firefighting."
+    design_decision: "Spring Actuator + Micrometer + a real `security.rejections` counter, plus this project's own durable event ledger for the AI delivery pipeline's own operations."
+    implementation: "A real production incident (AEQ-010: one idle-in-transaction Postgres connection froze the entire async service) was root-caused via a direct pg_stat_activity query -- not restarted-and-hoped-it-goes-away."
+    runtime_details: "4 sync DB-call handlers were running directly on the asyncio event loop; one stuck query blocked every concurrent request through a shared connection pool."
+    testing: "4 real ObservabilityIntegrationTest cases; the fix (run_in_threadpool + statement/idle timeouts) independently re-confirmed live under concurrent load."
+    failure_mode: "A clean startup log gave zero indication anything was wrong -- the service looked healthy by every static signal while being fully frozen under load."
+    verification: "ensure_schema() dropped back to ~1.2s from a 12-17s timeout; concurrent requests independently confirmed no longer blocking each other."
+    real_evidence:
+      - {label: "Quality Ledger entry AEQ-010", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml"}
+      - {label: "Fix commit", value: "4e15656"}
+      - {label: "Full write-up", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/interview-scenarios/09-observability-production-debugging.md"}
+    how_to_explain:
+      why: "A clean startup log is not proof of a healthy service under load -- you need a way to directly query the actual stuck resource."
+      what: "One idle-in-transaction Postgres connection blocked schema-check DDL that nearly every request path calls first, and 4 handlers ran sync DB calls directly on the event loop."
+      how: "Root-caused with a direct pg_stat_activity query against the real database, not guessed from symptoms."
+      tradeoff: "run_in_threadpool for those 4 handlers costs a thread-pool hop, in exchange for never blocking the whole event loop on one slow query again."
+      failure: "Every route on the service became simultaneously unreachable after a routine deploy, with clean logs the whole time."
+      verification: "Independently re-confirmed live: schema-check latency back to ~1.2s, concurrent requests no longer serialize behind one stuck connection."
+
+  - id: agentic-delivery-pipeline
+    path_id: ai-assisted-delivery
+    featured: true
+    title: "Requirement to Verified Production -- With a Boundary the AI Can't Cross"
+    doc_path: "docs/interview-scenarios/03-agentic-ai-software-delivery.md"
+    live_demo:
+      label: "Submit a real, safe requirement and watch it live"
+      url: "https://agentic-platform-backend-production.up.railway.app/workbench"
+    business_problem: "Demonstrate a measurable, auditable software-delivery process built ON TOP of a probabilistic LLM -- not just 'an AI wrote code.'"
+    engineering_requirement: "A natural-language requirement must never execute an unauthorized action (even under adversarial phrasing), must reach real, independently-verified production if eligible, and must fail closed for anything out of scope."
+    design_decision: "Deterministic eligibility gate BEFORE any LLM call (catalogue match + risk_policy.classify(), defense-in-depth); the model only investigates and proposes; approval/write/build/deploy stay deterministic and gated."
+    implementation: "RAG-backed context retrieval (curated corpus, not the whole repo) -> LLM impact analysis (checked by a deterministic groundedness checker) -> isolated workspace clone -> real mvnw compile/test -> real git commit -> real deploy -> bounded-retry production content assertion."
+    runtime_details: "approve_edit/reject_edit are never exposed as an LLM-callable tool and never reachable via the dispatch table by any name -- verified by exact set-membership tests, not a prompt instruction."
+    testing: "Deterministic-policy unit tests, a real local-git-repo-as-origin integration suite (not mocks), and Playwright E2E gated behind a real-acceptance flag."
+    failure_mode: "The first genuine end-to-end run surfaced 3 real bugs at 3 different boundaries every prior mocked test had hidden by construction: a missing bearer token, local clock skew producing false TIMEOUTs, and no cutover-retry window producing a false FAILED for an already-correct deploy."
+    verification: "Every stage/tool/proposal/build/test/deployment event is write-through persisted to a durable Postgres event ledger the moment it happens -- a crash mid-run loses nothing."
+    real_evidence:
+      - {label: "Quality Ledger entries AEQ-003, AEQ-008, AEQ-009, AEQ-013", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml"}
+      - {label: "Full write-up", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/interview-scenarios/03-agentic-ai-software-delivery.md"}
+      - {label: "Source", value: "agent/web_server.py, agent/demo_execution.py, agent/backend_execution.py, agent/risk_policy.py"}
+    how_to_explain:
+      why: "'An AI wrote code fast' is not a trustworthy production story by itself -- the differentiator is a process where a human never has to trust the AI's own self-report."
+      what: "A bounded, deterministic gate decides eligibility before any LLM call; the LLM only investigates/proposes; a structurally separate boundary owns approval, writes, build, deploy, and verification."
+      how: "Exact set-membership tests prove approve/reject are never model-callable; a deterministic groundedness checker catches any file the model claims but never actually retrieved; independent production content assertion (not just HTTP 200) confirms the real outcome."
+      tradeoff: "The safe public path only supports a small, pre-approved set of operations (zero LLM calls, zero prompt-injection surface) -- broader requirements need the LLM-mediated path with its own tighter gates."
+      failure: "The first real end-to-end run (not a simulation) surfaced 3 bugs no mocked test could have caught, each at a boundary every prior test had stubbed out."
+      verification: "Independent, bounded-retry production content assertion against the real deployed app, plus a durable, write-through event ledger so nothing about the run is ever lost to a crash."
+
+  # --- Compact index: real, evidenced, not duplicated here in full. ---
+
+  - id: rbac-workspace-isolation
+    path_id: senior-java-backend
+    featured: false
+    title: "USER/ADMIN RBAC + Workspace Isolation"
+    one_line: "A regular USER can never read or modify another customer's data -- a real server-side guarantee (a real 403, not a filtered 200), not a UI-only restriction."
+    doc_path: "docs/interview-scenarios/01-rbac-and-workspace-isolation.md"
+    live_demo:
+      label: "Live Customer App"
+      url: "https://agentic-delivery-customer-app-production.up.railway.app"
+
+  - id: kafka-outbox
+    path_id: senior-java-backend
+    featured: false
+    title: "Kafka -- Transactional Outbox, At-Least-Once, Idempotent Consumer"
+    one_line: "A preference write must never fail or block on a downstream event publish -- transactional outbox pattern, implemented and integration-tested, honestly labeled NOT_PRODUCTION_PROVISIONED (gated off after a real log-flood incident from an unreachable broker)."
+    doc_path: "docs/interview-scenarios/05-kafka-transactional-outbox.md"
+
+  - id: redis-cache-aside
+    path_id: senior-java-backend
+    featured: false
+    title: "Active-Plan Cache -- Cache-Aside, Fail-Open Design"
+    one_line: "A customer's active plan is read far more often than it changes -- cache-aside with explicit invalidation on write, implemented and integration-tested, honestly labeled NOT_PRODUCTION_PROVISIONED."
+    doc_path: "docs/interview-scenarios/06-redis-cache-aside.md"
+
+  - id: security-attack-matrix
+    path_id: system-design-production
+    featured: false
+    title: "Security Attack Matrix -- JWT, RBAC, Workspace Isolation, Defense-in-Depth"
+    one_line: "Two structurally different threat models in one codebase: the Customer App's multi-tenant REST API, and the agentic delivery pipeline's own separate write-boundary/risk-policy defense-in-depth layer."
+    doc_path: "docs/interview-scenarios/08-security-attack-matrix.md"
+
+  - id: testing-tia-verification
+    path_id: ai-assisted-delivery
+    featured: false
+    title: "Test Impact Analysis & Selective Regression -- Explainable, Fail-Closed"
+    one_line: "Run the minimum correct set of tests for a given change -- never the whole suite blindly, never too little -- with a fail-closed default (full regression) for anything unrecognized."
+    doc_path: "docs/interview-scenarios/10-testing-tia-verification.md"

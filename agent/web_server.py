@@ -55,6 +55,7 @@ from execution_agent import EXECUTION_SYSTEM_PROMPT_SUFFIX
 import dashboard_data
 import demo_catalogue
 import showcase_data
+import interview_walkthrough_data
 import demo_execution
 import estimation
 import triage_execution
@@ -1607,6 +1608,14 @@ async def get_showcase_data(request: Request):
     return JSONResponse(showcase)
 
 
+async def get_interview_walkthrough_data(request: Request):
+    """Additive to the Showcase page (docs/INTERVIEW_WALKTHROUGH.yaml) --
+    same file-I/O-off-the-event-loop discipline as get_showcase_data,
+    see AEQ-010."""
+    walkthrough = await run_in_threadpool(interview_walkthrough_data.load_interview_walkthrough)
+    return JSONResponse(walkthrough)
+
+
 # --- Incident Triage & Repair Lab, Scenario A -------------------------------
 #
 # Every handler below is a thin, honest pass-through to agent/
@@ -1965,6 +1974,7 @@ routes = [
     Route("/api/sessions/history", get_session_history, methods=["GET"]),
     Route("/api/sessions/history/{session_id}", get_session_detail, methods=["GET"]),
     Route("/api/showcase/{slug}", get_showcase_data, methods=["GET"]),
+    Route("/api/interview-walkthrough", get_interview_walkthrough_data, methods=["GET"]),
     Route("/api/triage/scenario-a/reset", triage_reset, methods=["POST"]),
     Route("/api/triage/scenario-a/reproduce", triage_reproduce, methods=["POST"]),
     Route("/api/triage/scenario-a/diagnose", triage_diagnose, methods=["POST"]),
