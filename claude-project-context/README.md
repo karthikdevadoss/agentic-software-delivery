@@ -20,14 +20,18 @@ knowledge source, so Karthik never has to hand-pick dozens of files.
   file may simply be stale (see `agent/validate_claude_context_bundle.py`,
   which fails loudly when that happens).
 - **Bundle generation time is not fact observation time.** `CONTEXT_SNAPSHOT.md`'s
-  header states the exact source state (repository HEAD SHA + that
-  commit's own timestamp) the snapshot was built from — never a
-  regeneration wall-clock time — and its "Freshness contract" section
-  spells out exactly how a prompt architect must treat `(canonical)` vs
-  `(current)`/`(historical)` sections, and when a task requires inspecting
-  the real live source instead of trusting this snapshot. Read that
-  section before acting on any fast-changing fact (Git HEAD, CI status,
-  production status, blockers, action queue, test/eval results).
+  header states both the source state (repository HEAD SHA + that
+  commit's own timestamp — stable, changes only when a new commit lands)
+  and `generated_at` (a real wall-clock regeneration timestamp — by
+  design, differs on every run even with zero source changes; treat it as
+  "when this copy was produced," never as evidence anything was
+  re-verified). Its "Freshness contract" section spells out exactly how a
+  prompt architect must treat `(canonical)` vs `(current)`/`(historical)`
+  sections — each `(current)`/`(historical)` section carries its own
+  `as of:` marker — and when a task requires inspecting the real live
+  source instead of trusting this snapshot. Read that section before
+  acting on any fast-changing fact (Git HEAD, CI status, production
+  status, blockers, action queue, test/eval results).
 - **Model memory is not authoritative.** A fact only counts as durable
   project truth if it's in one of the canonical files this snapshot was
   built from (or their live originals), never from a model's own
@@ -49,6 +53,7 @@ knowledge source, so Karthik never has to hand-pick dozens of files.
 ```
 python agent/generate_claude_context_bundle.py
 python agent/validate_claude_context_bundle.py
+python agent/check_bundle_idempotency.py
 ```
 
 Deterministic concatenation + hashing only — no LLM involved in
@@ -56,4 +61,8 @@ generating or validating this bundle. Re-run the generator whenever a
 listed canonical source changes; the validator will refuse (exit 1) if a
 source has drifted since the bundle was last generated, if a required
 source has disappeared, or if it detects a phrase that belongs only in
-the private repository.
+the private repository. `check_bundle_idempotency.py` regenerates the
+bundle again and confirms nothing except the known `generated_at`-bearing
+lines changed — a real content difference (a source edited between the
+two runs, or a generator bug) fails it and shows exactly which line
+diverged.

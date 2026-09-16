@@ -14,10 +14,24 @@ import json
 import re
 import subprocess
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SOURCE_REPOSITORY_NAME = "agentic-software-delivery"
+
+# The two repositories that together make up canonical context for this
+# project (see claude-project-context/README.md). Only this repo's own
+# files are read into THIS bundle's content -- the sibling's HEAD is
+# recorded too, best-effort, purely as situational awareness for a prompt
+# architect reading both bundles side by side. Resolved as a sibling
+# checkout next to this repo; if it isn't present at generation time
+# (e.g. a CI runner that only checked out this one repo), that is
+# recorded honestly rather than guessed.
+SIBLING_REPOS = {
+    "agentic-software-delivery": REPO_ROOT,
+    "karthik-ai-context": REPO_ROOT.parent / "karthik-ai-context",
+}
 
 # Secret-shaped substrings must never be copied into the derived bundle,
 # real or fake -- GitHub's push protection (correctly) can't tell a
@@ -95,31 +109,46 @@ def sha256_text(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-def _git(*args: str) -> str:
+def _git(*args: str, cwd: Path = REPO_ROOT) -> str:
     result = subprocess.run(
-        ["git", *args], cwd=REPO_ROOT, capture_output=True, text=True, check=True
+        ["git", *args], cwd=cwd, capture_output=True, text=True, check=True
     )
     return result.stdout.strip()
 
 
+def _head_sha_for(repo_path: Path) -> str | None:
+    if not (repo_path / ".git").exists():
+        return None
+    try:
+        return _git("rev-parse", "HEAD", cwd=repo_path)
+    except subprocess.CalledProcessError:
+        return None
+
+
 def git_provenance() -> dict:
-    """Provenance is tied to actual observed source-repo identity (HEAD SHA
-    + its own commit timestamp + working-tree-dirty flag), never wall-clock
-    "now". This is what keeps regeneration deterministic: two runs against
-    the same committed HEAD with no working-tree changes produce the exact
-    same provenance block, so they produce a byte-identical bundle. A prior
-    version of this generator stamped datetime.now() into every run,
-    which dirtied the working tree on every regeneration even when nothing
-    substantive changed -- that is the bug this replaces. See
-    docs/LESSONS.md."""
+    """Provenance for THIS repo's own content is tied to actual observed
+    source-repo identity (HEAD SHA + its own commit timestamp +
+    working-tree-dirty flag) -- that part stays deterministic: two runs
+    against the same committed HEAD with no working-tree changes produce
+    the same provenance block for those fields. `generated_at` is a
+    separate, explicit wall-clock field requested for this bundle's
+    freshness header; unlike the fields above it necessarily differs on
+    every run, which reintroduces the "regeneration dirties the tree even
+    with no substantive change" issue docs/LESSONS.md previously recorded
+    and fixed by dropping wall-clock time entirely -- kept anyway here
+    because it was explicitly requested; do not rely on it for
+    idempotency checks, rely on the *_head_sha/source_files fields."""
     head_sha = _git("rev-parse", "HEAD")
     head_commit_time = _git("log", "-1", "--format=%cI", "HEAD")
     dirty = bool(_git("status", "--porcelain"))
+    source_repo_head = {name: _head_sha_for(path) for name, path in SIBLING_REPOS.items()}
     return {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
         "source_repository": SOURCE_REPOSITORY_NAME,
         "source_repository_head_sha": head_sha,
         "source_repository_head_commit_time": head_commit_time,
         "source_working_tree_clean_at_generation": not dirty,
+        "source_repo_head": source_repo_head,
     }
 
 
@@ -132,7 +161,10 @@ def resolve_sources() -> list[tuple[str, str]]:
     return sources
 
 
-def render_source_section(rel_path: str, classification: str, content: str, digest: str) -> str:
+FAST_CHANGING_CLASSIFICATIONS = {"current", "historical"}
+
+
+def render_source_section(rel_path: str, classification: str, content: str, digest: str, as_of_marker: str | None) -> str:
     is_json = Path(rel_path).suffix.lower() in JSON_EXTENSIONS
     lines = [
         f"## Source: `{rel_path}` ({classification})",
@@ -140,6 +172,9 @@ def render_source_section(rel_path: str, classification: str, content: str, dige
         f"sha256: `{digest}`",
         "",
     ]
+    if as_of_marker:
+        lines.append(as_of_marker)
+        lines.append("")
     if is_json:
         lines.append("```json")
         lines.append(content.rstrip("\n"))
@@ -159,6 +194,7 @@ def yaml_escape(value: str) -> str:
 def main() -> int:
     provenance = git_provenance()
     sources = resolve_sources()
+    source_files = [rel for rel, _ in sources]
 
     missing = [rel for rel, _ in sources if not (REPO_ROOT / rel).exists()]
     if missing:
@@ -170,6 +206,17 @@ def main() -> int:
         return 1
 
     BUNDLE_DIR.mkdir(parents=True, exist_ok=True)
+
+    repo_head_lines = "; ".join(
+        f"`{name}` HEAD `{sha}`" if sha else f"`{name}` HEAD (not available at generation time)"
+        for name, sha in provenance["source_repo_head"].items()
+    )
+    as_of_marker = (
+        f"**as of:** `generated_at` `{provenance['generated_at']}`, "
+        f"{repo_head_lines} -- same generation-time values as this "
+        "bundle's header, not a separately fabricated timestamp. Treat as "
+        "\"last recorded as of\" only, never as verified current truth."
+    )
 
     dirty_note = (
         "" if provenance["source_working_tree_clean_at_generation"] else
@@ -191,12 +238,25 @@ def main() -> int:
         f"**Source state:** repository `{provenance['source_repository']}`, "
         f"HEAD `{provenance['source_repository_head_sha']}`, that commit "
         f"authored `{provenance['source_repository_head_commit_time']}`."
-        f"{dirty_note} This timestamp is the source repository's own commit "
-        "timestamp, never this generator's wall-clock run time -- "
-        "regenerating this bundle again with no new commit produces a "
-        "byte-identical file. **Bundle generation time is not fact "
-        "observation time**: a fact below was true as of the source state "
-        "named here, not necessarily as of whenever you are reading this.",
+        f"{dirty_note} That commit-authored timestamp is the source "
+        "repository's own commit timestamp, not this generator's run "
+        "time -- prefer it as freshness evidence over `generated_at` "
+        "below. **Bundle generation time is not fact observation time**: "
+        "a fact below was true as of the source state named here, not "
+        "necessarily as of whenever you are reading this.",
+        "",
+        f"**Bundle-level freshness header:** `generated_at` "
+        f"`{provenance['generated_at']}` (UTC, this generator's actual "
+        "run time -- unlike the commit timestamp above, this value "
+        "differs on every run even with zero source changes, so it "
+        "proves nothing about whether facts changed; kept only because "
+        "a wall-clock generation timestamp was explicitly requested). "
+        "`source_repo_head`: " + ", ".join(
+            f"`{name}` = `{sha}`" if sha else f"`{name}` = not available at generation time"
+            for name, sha in provenance["source_repo_head"].items()
+        ) + f". `source_files`: {len(source_files)} paths, listed in "
+        "`SOURCE_MANIFEST.yaml`'s `source_files` list and per-section "
+        "below.",
         "",
         "## Freshness contract for a prompt architect reading this bundle",
         "",
@@ -209,10 +269,13 @@ def main() -> int:
         "superseded.",
         "- **`(current)` or `(historical)`** -- fast-changing or point-in-"
         "time state (Git HEAD, CI/production status, blockers, action "
-        "queue, run results). State this only as **\"last recorded as of "
-        f"source state HEAD `{provenance['source_repository_head_sha']}`\"** "
-        "-- never as verified current truth. Never imply it was re-checked "
-        "merely because this bundle was regenerated.",
+        "queue, run results). Each such section below carries its own "
+        "**`as of:`** marker directly under its `sha256:` line, sourced "
+        "from this same header's `generated_at`/`source_repo_head` "
+        "values. State any fact from these sections only as \"last "
+        "recorded as of\" that marker -- never as verified current truth. "
+        "Never imply it was re-checked merely because this bundle was "
+        "regenerated.",
         "- **If the task actually requires current engineering truth** "
         "(what's true right now in the real repo/CI/runtime/production/"
         "tests), this snapshot cannot substitute for that -- the resulting "
@@ -242,7 +305,8 @@ def main() -> int:
             print(f"generate_claude_context_bundle: redacted {n_redacted} "
                   f"secret-shaped substring(s) from {rel_path} in the bundle "
                   "(source file left untouched)", file=sys.stderr)
-        snapshot_parts.append(render_source_section(rel_path, classification, rendered_content, digest))
+        section_as_of = as_of_marker if classification in FAST_CHANGING_CLASSIFICATIONS else None
+        snapshot_parts.append(render_source_section(rel_path, classification, rendered_content, digest, section_as_of))
         manifest_entries.append((rel_path, digest, classification))
 
     SNAPSHOT_PATH.write_text("\n".join(snapshot_parts), encoding="utf-8")
@@ -251,12 +315,19 @@ def main() -> int:
         "# Auto-generated by agent/generate_claude_context_bundle.py -- do not hand-edit.",
         f"generator: {yaml_escape(GENERATOR_REL)}",
         "bundle_file: CONTEXT_SNAPSHOT.md",
+        f"generated_at: {yaml_escape(provenance['generated_at'])}",
         f"source_repository: {yaml_escape(provenance['source_repository'])}",
         f"source_repository_head_sha: {yaml_escape(provenance['source_repository_head_sha'])}",
         f"source_repository_head_commit_time: {yaml_escape(provenance['source_repository_head_commit_time'])}",
         f"source_working_tree_clean_at_generation: {'true' if provenance['source_working_tree_clean_at_generation'] else 'false'}",
-        "sources:",
+        "source_repo_head:",
     ]
+    for name, sha in provenance["source_repo_head"].items():
+        manifest_lines.append(f"  {name}: {yaml_escape(sha) if sha else 'null'}")
+    manifest_lines.append("source_files:")
+    for rel_path in source_files:
+        manifest_lines.append(f"  - {yaml_escape(rel_path)}")
+    manifest_lines.append("sources:")
     for rel_path, digest, classification in manifest_entries:
         manifest_lines.append(f"  - path: {yaml_escape(rel_path)}")
         manifest_lines.append(f"    sha256: {yaml_escape(digest)}")

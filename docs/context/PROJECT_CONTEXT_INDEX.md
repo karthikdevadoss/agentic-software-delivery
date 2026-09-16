@@ -34,6 +34,12 @@ are a prompt architect with access to it, start there at
 for public engineering-project context. See that repository's
 `CONTEXT_PRECEDENCE.md` for how the two interact.
 
+**Standing cross-model write-back rule:** that repository's
+`AGENT_PROTOCOL.md` is the single binding statement of "no agent may end a
+session holding durable knowledge that isn't committed to canonical repo
+files" — applies to any agent, any model, across both repositories. Not
+duplicated here; read it there.
+
 ## Note on scope
 
 This entry layer intentionally does not restate engineering detail already
