@@ -101,9 +101,10 @@ stories:
     testing: "Full local H2 integration suite passed cleanly before deploy -- the exact reason this bug reached production."
     failure_mode: "Real production 500: org.postgresql.util.PSQLException: function lower(bytea) does not exist -- found via direct Railway logs, not guessed."
     verification: "Pre-built the full lowercased LIKE pattern in Java and bound it as a plain String (never wrapping the bind parameter itself in CONCAT/LOWER); added a real Testcontainers-Postgres regression test so CI proves this on the real target database going forward, not just H2."
+    at_scale: "A leading-wildcard LIKE query can't use a B-tree index -- at real scale this needs Postgres full-text search (GIN + tsvector), a trigram index (pg_trgm), or an external search service (Elasticsearch/OpenSearch). The workspace-scoping subquery would also want its own index, verified via EXPLAIN ANALYZE before it actually matters."
     real_evidence:
       - {label: "Quality Ledger entry AEQ-012", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml"}
-      - {label: "Fix commit", value: "9f35f27"}
+      - {label: "Fix commit 9f35f27", commit: "9f35f27"}
       - {label: "Full write-up", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/interview-scenarios/02-postgres-search-pagination.md"}
     how_to_explain:
       why: "A green test suite on one database engine is not proof of correctness on another -- H2 and Postgres genuinely diverge on type inference for string functions around nullable parameters."
@@ -129,8 +130,9 @@ stories:
     testing: "104 Java tests green after the fix; a real duplicate-POST sequence independently re-verified against production."
     failure_mode: "A double-submit (double-click, retry, network blip) would generate a phantom cancel+enroll pair -- a real, business-visible churn event that never actually happened."
     verification: "Redeployed to the Customer App and independently re-verified live: exactly one plan row after two identical submissions, not two."
+    at_scale: "The idempotency check is a point-in-time read-then-decide inside one transaction, correct today only because a partial unique index is the real concurrency safety net for truly simultaneous requests -- at higher concurrency that constraint-violation path isn't yet mapped to a clean HTTP response (needs @Retryable or a row lock). At high volume, a client-supplied idempotency-key cache (Redis, short TTL) would generalize this beyond same-terms duplicates to any recently-seen duplicate request."
     real_evidence:
-      - {label: "Fix commit", value: "2155a8a"}
+      - {label: "Fix commit 2155a8a", commit: "2155a8a"}
       - {label: "Full write-up", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/interview-scenarios/04-plan-enrollment-idempotency.md"}
     how_to_explain:
       why: "Any state-changing endpoint reachable by a retry or double-click needs an explicit idempotency answer -- 'it probably won't happen' is not a design."
@@ -156,9 +158,10 @@ stories:
     testing: "TriageScenarioBIntegrationTest (4/4 passing) proves a deliberately-seeded bad retry policy makes exactly 3 real HTTP attempts against a genuine 400, and the fixed path makes exactly 1."
     failure_mode: "A naive retry-everything policy would retry a real 400 (a client error that will never succeed) three times, adding latency for no benefit and masking the real error class."
     verification: "Live in the Incident Triage Lab: reproduce the seeded bad policy, diagnose it, generate a real AI candidate patch, verify it against the real integration test, and approve it to switch to the real production retry bean."
+    at_scale: "Circuit breaker tuning (sliding window, failure-rate threshold, open-state wait) is set for today's traffic -- at much higher volume it would need re-tuning against real observed failure patterns, not left at defaults. The client/service/config separation already supports a real downstream's own latency/error SLOs feeding back into that tuning without a rewrite."
     real_evidence:
       - {label: "Full write-up", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/interview-scenarios/07-appointment-resilience.md"}
-      - {label: "Source", value: "app/src/main/java/com/example/customer/integration/appointment/"}
+      - {label: "Source", source_paths: ["app/src/main/java/com/example/customer/integration/appointment/"]}
     how_to_explain:
       why: "Any call to a service you don't control needs an explicit answer for slow/erroring/down -- silence there means an outage in someone else's system becomes an outage in yours."
       what: "Circuit breaker + retry, composed manually because the Spring Boot 4 starter had a real BOM gap, with explicit 4xx-vs-5xx error classification."
@@ -185,7 +188,7 @@ stories:
     verification: "ensure_schema() dropped back to ~1.2s from a 12-17s timeout; concurrent requests independently confirmed no longer blocking each other."
     real_evidence:
       - {label: "Quality Ledger entry AEQ-010", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml"}
-      - {label: "Fix commit", value: "4e15656"}
+      - {label: "Fix commit 4e15656", commit: "4e15656"}
       - {label: "Full write-up", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/interview-scenarios/09-observability-production-debugging.md"}
     how_to_explain:
       why: "A clean startup log is not proof of a healthy service under load -- you need a way to directly query the actual stuck resource."
@@ -211,10 +214,11 @@ stories:
     testing: "Deterministic-policy unit tests, a real local-git-repo-as-origin integration suite (not mocks), and Playwright E2E gated behind a real-acceptance flag."
     failure_mode: "The first genuine end-to-end run surfaced 3 real bugs at 3 different boundaries every prior mocked test had hidden by construction: a missing bearer token, local clock skew producing false TIMEOUTs, and no cutover-retry window producing a false FAILED for an already-correct deploy."
     verification: "Every stage/tool/proposal/build/test/deployment event is write-through persisted to a durable Postgres event ledger the moment it happens -- a crash mid-run loses nothing."
+    at_scale: "The single in-process run registry would need to become a real persisted job queue for durability across restarts, and a single-operator approval registry would need a real multi-tenant approval queue. Isolated per-run workspace cloning is fine at low volume but would need a workspace pool or a more aggressive shallow-clone/cache strategy to keep latency down at high concurrent volume."
     real_evidence:
       - {label: "Quality Ledger entries AEQ-003, AEQ-008, AEQ-009, AEQ-013", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml"}
       - {label: "Full write-up", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/interview-scenarios/03-agentic-ai-software-delivery.md"}
-      - {label: "Source", value: "agent/web_server.py, agent/demo_execution.py, agent/backend_execution.py, agent/risk_policy.py"}
+      - {label: "Source", source_paths: ["agent/web_server.py", "agent/demo_execution.py", "agent/backend_execution.py", "agent/risk_policy.py"]}
     how_to_explain:
       why: "'An AI wrote code fast' is not a trustworthy production story by itself -- the differentiator is a process where a human never has to trust the AI's own self-report."
       what: "A bounded, deterministic gate decides eligibility before any LLM call; the LLM only investigates/proposes; a structurally separate boundary owns approval, writes, build, deploy, and verification."

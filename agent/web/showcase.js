@@ -161,6 +161,7 @@ function renderFeaturedStory(story) {
     ["Testing", story.testing],
     ["Failure mode", story.failure_mode],
     ["Verification", story.verification],
+    ["At 10x scale", story.at_scale],
   ];
   fields.forEach(([label, value]) => {
     if (!value) return;

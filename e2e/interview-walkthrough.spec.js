@@ -44,6 +44,25 @@ test.describe("Interview Walkthrough (Role Showcase)", () => {
     await expect(howToTerms).toContainText(["WHY", "WHAT", "HOW", "TRADEOFF", "FAILURE", "VERIFICATION"]);
   });
 
+  test("a featured story shows real 'At 10x scale' system-design content", async ({ page }) => {
+    await page.goto(SHOWCASE_PATH);
+    const story = page.locator(".sc-story-featured", { hasText: "A Green H2 Suite" });
+    await story.locator("summary").click();
+    await expect(story.getByText("At 10x scale")).toBeVisible();
+    await expect(story.getByText(/full-text search|GIN|trigram/)).toBeVisible();
+  });
+
+  test("a Fix commit evidence item is a real, clickable GitHub commit link", async ({ page }) => {
+    await page.goto(SHOWCASE_PATH);
+    const story = page.locator(".sc-story-featured", { hasText: "A Green H2 Suite" });
+    await story.locator("summary").click();
+    const commitLink = story.getByRole("link", { name: "Fix commit 9f35f27" });
+    await expect(commitLink).toHaveAttribute(
+      "href",
+      "https://github.com/karthikdevadoss/agentic-software-delivery/commit/9f35f27"
+    );
+  });
+
   test("a featured story with a live demo shows a LIVE DEMO badge and a working link", async ({ page }) => {
     await page.goto(SHOWCASE_PATH);
     const story = page.locator(".sc-story-featured", { hasText: "A Green H2 Suite" });
