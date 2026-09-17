@@ -43,29 +43,45 @@ def load_showcase(slug: str) -> dict:
     """Resolves one showcase manifest against the live capability registry.
 
     Returns a single JSON-ready dict: the manifest's own fields plus a
-    resolved `capabilities` list (full capability records, in the
-    manifest's selected order) and `unresolved_capability_ids` for any
-    referenced id that no longer exists in the registry (reported
-    honestly, never hidden)."""
+    resolved `capabilities` list (full capability records, each carrying
+    its own `addresses_requirement` -- the EXACT requirement text this
+    specific capability is evidence for, or None for real additional
+    evidence that isn't itself a named requirement -- in the manifest's
+    selected order), `unresolved_capability_ids` for any referenced id no
+    longer in the registry, and `unresolved_requirement_texts` for any
+    `addresses_requirement` value that doesn't exactly match an entry in
+    `job_requirements_addressed` (a typo/drift here would otherwise be a
+    silent, undetectable data error). AEQ-026: `selected_capabilities`
+    used to be a flat id list paired with `job_requirements_addressed` by
+    ARRAY POSITION in showcase.js -- this explicit per-capability mapping
+    replaces that positional coupling entirely; every requirement pairing
+    a capability claims is asserted once, here, not implied by list order."""
     manifest_path = SHOWCASES_DIR / slug / "showcase.yaml"
     if not manifest_path.exists():
         raise ShowcaseNotFoundError(slug)
 
     manifest = _load_yaml(manifest_path)
     registry = load_capability_registry()
+    known_requirements = set(manifest.get("job_requirements_addressed", []))
 
-    selected_ids = manifest.get("selected_capabilities", [])
+    selected = manifest.get("selected_capabilities", [])
     resolved = []
-    unresolved = []
-    for cap_id in selected_ids:
+    unresolved_caps = []
+    unresolved_reqs = []
+    for entry in selected:
+        cap_id = entry["id"]
+        addresses = entry.get("addresses_requirement")
         cap = registry.get(cap_id)
         if cap is None:
-            unresolved.append(cap_id)
-        else:
-            resolved.append(cap)
+            unresolved_caps.append(cap_id)
+            continue
+        if addresses is not None and addresses not in known_requirements:
+            unresolved_reqs.append(f"{cap_id} -> {addresses!r}")
+        resolved.append({**cap, "addresses_requirement": addresses})
 
     manifest["capabilities"] = resolved
-    manifest["unresolved_capability_ids"] = unresolved
+    manifest["unresolved_capability_ids"] = unresolved_caps
+    manifest["unresolved_requirement_texts"] = unresolved_reqs
     return manifest
 
 

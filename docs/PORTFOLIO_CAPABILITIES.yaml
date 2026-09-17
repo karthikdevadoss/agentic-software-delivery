@@ -104,7 +104,7 @@ capabilities:
 
   - id: agentic-ai-delivery-pipeline
     display_name: "Agentic AI software delivery pipeline (requirement -> context -> LLM -> implementation -> test -> QA -> Git -> deploy -> production verification)"
-    engineering_problem_solved: "Turn a natural-language requirement into a verified, deployed, production-confirmed change with a human-approval boundary the AI itself cannot bypass"
+    engineering_problem_solved: "Turn a natural-language requirement into a verified, deployed, production-confirmed change, with approve_edit/reject_edit never exposed as an LLM-callable tool -- the model has no path to invoke them itself, verified by exact set-membership tests, not a policy instruction"
     technology: [Claude Sonnet 5 Anthropic API, MCP (Model Context Protocol), local RAG (fastembed), deterministic risk/acceptance-contract layer, Railway deploy automation]
     business_scenario: "Demonstrates the exact emerging discipline of building reliable software delivery ON TOP of a probabilistic LLM, not just calling an LLM"
     implementation_state: IMPLEMENTED
@@ -147,7 +147,7 @@ capabilities:
 
   - id: test-impact-analysis
     display_name: "Deterministic risk classification + Test Impact Analysis + selective regression"
-    engineering_problem_solved: "Run the minimum correct set of tests for a given change (never the whole suite blindly, never too little), with a fail-closed default for anything unrecognized"
+    engineering_problem_solved: "Run a deliberately risk-classified subset of tests for a given change, with a fail-closed default (full regression) for anything unrecognized -- an explicit design intent, not a claim of perfect coverage; see docs/TESTING_ARCHITECTURE_V1.md for honestly-tracked open gaps"
     technology: [agent/change_risk.py, agent/test_impact_analysis.py, agent/verify_change.py]
     business_scenario: "Any codebase large enough that running the full test suite on every change is too slow to be a real gate"
     implementation_state: IMPLEMENTED

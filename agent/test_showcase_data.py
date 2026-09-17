@@ -22,16 +22,25 @@ relative path (the exact defect class above) always fails this check.
 Run: python agent/test_showcase_data.py
 """
 
+import subprocess
 import sys
+import tempfile
 import unittest
+from datetime import date
 from pathlib import Path
+from unittest import mock
 from urllib.parse import urlparse
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import yaml
+
 import showcase_data
 import web_server as ws
 from starlette.routing import Match, Route
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+REAL_SHOWCASE_SLUG = "senior-java-ai-transformation"
 
 
 def _registered_get_routes():
@@ -117,6 +126,163 @@ class ShowcaseLinkIntegrityTestCase(unittest.TestCase):
 
     def test_classify_link_rejects_an_unregistered_internal_route(self):
         self.assertEqual(classify_link("/this-route-does-not-exist"), "BROKEN_INTERNAL_ROUTE")
+
+
+class AEQ026RequirementMappingTestCase(unittest.TestCase):
+    """AEQ-026: job_requirements_addressed and selected_capabilities used
+    to be two parallel flat lists paired by ARRAY POSITION in
+    showcase.js's renderRequirementMap() -- silently wrong the moment the
+    two lists' lengths/order diverged (13 capabilities vs. 8 requirements
+    in the real manifest: Redis paired with "Testing discipline," and 5
+    capabilities all incorrectly inherited the last requirement's text).
+    selected_capabilities is now a list of {id, addresses_requirement}
+    entries -- each capability names its own real requirement explicitly,
+    so position can no longer matter. These tests prove that mechanically,
+    not just for today's specific real content."""
+
+    def test_every_addresses_requirement_value_matches_a_real_named_requirement_or_is_none(self):
+        showcase = showcase_data.load_showcase(REAL_SHOWCASE_SLUG)
+        self.assertEqual(
+            showcase["unresolved_requirement_texts"], [],
+            "A capability's addresses_requirement doesn't exactly match any "
+            "entry in job_requirements_addressed -- real drift, not a typo test.",
+        )
+
+    def test_the_exact_original_mispairings_are_fixed(self):
+        """The literal, real defect the Owner observed: redis-cache was
+        rendered against "Testing discipline," and test-impact-analysis
+        against the LLM/agentic-AI requirement -- pure positional
+        coincidence, not an intentional editorial choice."""
+        showcase = showcase_data.load_showcase(REAL_SHOWCASE_SLUG)
+        by_id = {c["id"]: c for c in showcase["capabilities"]}
+        self.assertIsNone(
+            by_id["redis-cache"]["addresses_requirement"],
+            "redis-cache must not be paired with any named requirement -- "
+            "it's real additional evidence, not evidence for \"Testing discipline\".",
+        )
+        self.assertIn(
+            "Testing discipline", by_id["test-impact-analysis"]["addresses_requirement"] or "",
+            "test-impact-analysis is a testing capability -- it must map to the "
+            "testing requirement, not the LLM/agentic-AI requirement.",
+        )
+
+    def test_no_capability_silently_inherits_the_last_requirement(self):
+        """The other half of the original defect: capabilities beyond the
+        requirement list's length used to all fall back to reqs[-1]
+        ("root-cause real production incidents"). Only capabilities that
+        genuinely, individually address that requirement may still show
+        it -- and never as an accidental side effect of list length."""
+        showcase = showcase_data.load_showcase(REAL_SHOWCASE_SLUG)
+        root_cause_req = "Ability to root-cause real production incidents from evidence, not guesses"
+        paired_with_root_cause = {
+            c["id"] for c in showcase["capabilities"] if c["addresses_requirement"] == root_cause_req
+        }
+        # Real, deliberate pairings only -- not every capability the old
+        # positional bug incorrectly roped in (rag-mcp-embeddings,
+        # independent-qa-evaluator, workbench-live-delivery-ui must NOT
+        # appear here; they never genuinely addressed this requirement).
+        self.assertEqual(paired_with_root_cause, {"durable-event-ledger", "production-deployment-verification"})
+
+    def test_mapping_mechanism_is_position_independent_not_just_todays_content(self):
+        """Isolated fixture, decoupled from the real manifest's specific
+        content: builds a manifest whose capability order is the REVERSE
+        of its requirement order, and proves each capability still
+        resolves to the exact requirement it names -- not the requirement
+        at its matching list index. This is the actual regression
+        coverage the Owner asked for: reordering or adding to either list
+        can never again silently desynchronize the pairing."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            showcases_dir = tmp_path / "showcases"
+            slug_dir = showcases_dir / "fixture-slug"
+            slug_dir.mkdir(parents=True)
+            capabilities_path = tmp_path / "capabilities.yaml"
+
+            capabilities_path.write_text(yaml.dump({
+                "capabilities": [
+                    {"id": "cap-a", "display_name": "Capability A", "production_state": "PRODUCTION_ACTIVE", "engineering_problem_solved": "A"},
+                    {"id": "cap-b", "display_name": "Capability B", "production_state": "PRODUCTION_ACTIVE", "engineering_problem_solved": "B"},
+                    {"id": "cap-c", "display_name": "Capability C", "production_state": "PRODUCTION_ACTIVE", "engineering_problem_solved": "C"},
+                ]
+            }), encoding="utf-8")
+
+            # Capability order is deliberately the REVERSE of requirement
+            # order -- if anything still zipped by position, cap-c (index 0
+            # here) would wrongly resolve to req-1 (index 0 in the
+            # requirement list) instead of its actually-declared req-3.
+            (slug_dir / "showcase.yaml").write_text(yaml.dump({
+                "slug": "fixture-slug",
+                "job_requirements_addressed": ["req-1", "req-2", "req-3"],
+                "selected_capabilities": [
+                    {"id": "cap-c", "addresses_requirement": "req-3"},
+                    {"id": "cap-b", "addresses_requirement": "req-2"},
+                    {"id": "cap-a", "addresses_requirement": "req-1"},
+                ],
+            }), encoding="utf-8")
+
+            with mock.patch.object(showcase_data, "SHOWCASES_DIR", showcases_dir), \
+                 mock.patch.object(showcase_data, "CAPABILITIES_PATH", capabilities_path):
+                showcase = showcase_data.load_showcase("fixture-slug")
+
+            by_id = {c["id"]: c["addresses_requirement"] for c in showcase["capabilities"]}
+            self.assertEqual(by_id, {"cap-c": "req-3", "cap-b": "req-2", "cap-a": "req-1"})
+            self.assertEqual(showcase["unresolved_requirement_texts"], [])
+
+    def test_a_typo_in_addresses_requirement_is_reported_not_silently_mismatched(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            showcases_dir = tmp_path / "showcases"
+            slug_dir = showcases_dir / "fixture-slug"
+            slug_dir.mkdir(parents=True)
+            capabilities_path = tmp_path / "capabilities.yaml"
+            capabilities_path.write_text(yaml.dump({
+                "capabilities": [{"id": "cap-a", "display_name": "A", "production_state": "PRODUCTION_ACTIVE", "engineering_problem_solved": "A"}]
+            }), encoding="utf-8")
+            (slug_dir / "showcase.yaml").write_text(yaml.dump({
+                "slug": "fixture-slug",
+                "job_requirements_addressed": ["The real requirement text"],
+                "selected_capabilities": [{"id": "cap-a", "addresses_requirement": "The real requirement txet"}],  # typo
+            }), encoding="utf-8")
+
+            with mock.patch.object(showcase_data, "SHOWCASES_DIR", showcases_dir), \
+                 mock.patch.object(showcase_data, "CAPABILITIES_PATH", capabilities_path):
+                showcase = showcase_data.load_showcase("fixture-slug")
+
+            self.assertEqual(len(showcase["unresolved_requirement_texts"]), 1)
+            self.assertIn("cap-a", showcase["unresolved_requirement_texts"][0])
+
+
+class ShowcaseFreshnessTestCase(unittest.TestCase):
+    """D: `last_verified` must not silently go stale relative to real
+    content changes -- no rule enforced this before (checked directly:
+    docs/DECISIONS.md's "Standards freshness" table only covers external
+    technology choices, not this field). This makes it a real, checkable
+    invariant instead of a field nobody re-visits."""
+
+    def test_last_verified_is_not_older_than_the_latest_commit_touching_showcase_content(self):
+        showcase = showcase_data.load_showcase(REAL_SHOWCASE_SLUG)
+        last_verified = date.fromisoformat(showcase["last_verified"])
+
+        relevant_paths = [
+            "showcases/senior-java-ai-transformation/showcase.yaml",
+            "docs/PORTFOLIO_CAPABILITIES.yaml",
+            "docs/INTERVIEW_WALKTHROUGH.yaml",
+        ]
+        result = subprocess.run(
+            ["git", "log", "-1", "--format=%cs", "--"] + relevant_paths,
+            cwd=REPO_ROOT, capture_output=True, text=True,
+        )
+        committed_date_str = result.stdout.strip()
+        if not committed_date_str:
+            self.skipTest("No git history for showcase-relevant files in this checkout (e.g. a shallow clone).")
+        latest_relevant_commit_date = date.fromisoformat(committed_date_str)
+
+        self.assertGreaterEqual(
+            last_verified, latest_relevant_commit_date,
+            f"last_verified ({last_verified}) is older than the latest real commit "
+            f"touching showcase-relevant content ({latest_relevant_commit_date}) -- "
+            "bump last_verified in showcases/senior-java-ai-transformation/showcase.yaml.",
+        )
 
 
 if __name__ == "__main__":

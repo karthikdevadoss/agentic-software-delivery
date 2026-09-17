@@ -24,20 +24,45 @@ job_requirements_addressed:
   - "Practical, hands-on experience with LLM-based tooling / agentic AI software delivery — not just API calls, but a measurable, auditable delivery process"
   - "Ability to root-cause real production incidents from evidence, not guesses"
 
+# Each capability names EXACTLY which job_requirements_addressed entry it
+# is evidence for (addresses_requirement: null when a capability is real,
+# strong additional evidence but doesn't map to any single JD requirement
+# above -- shown honestly as "Additional evidence," never force-matched to
+# the nearest requirement just to fill a slot). Fixes a real defect (AEQ-026):
+# these used to be two parallel lists paired by ARRAY POSITION in
+# agent/web/showcase.js, which silently desynchronized the moment the two
+# lists' lengths/order diverged (13 capabilities vs. 8 requirements) --
+# e.g. Redis paired with "Testing discipline," and 5 capabilities all
+# incorrectly reused the last requirement's text. This explicit mapping
+# cannot desynchronize the same way: adding/reordering either list no
+# longer silently breaks the pairing for anything else.
 selected_capabilities:
-  - java-spring-rest-api
-  - postgres-jpa-flyway
-  - security-jwt-rbac
-  - downstream-resilience
-  - kafka-outbox
-  - redis-cache
-  - test-impact-analysis
-  - agentic-ai-delivery-pipeline
-  - rag-mcp-embeddings
-  - independent-qa-evaluator
-  - durable-event-ledger
-  - production-deployment-verification
-  - workbench-live-delivery-ui
+  - id: java-spring-rest-api
+    addresses_requirement: "Java 17/21, Spring Boot — production REST API design"
+  - id: postgres-jpa-flyway
+    addresses_requirement: "PostgreSQL, JPA/Hibernate, schema migrations (Flyway)"
+  - id: security-jwt-rbac
+    addresses_requirement: "Authentication/authorization (JWT, RBAC), multi-tenant data isolation"
+  - id: downstream-resilience
+    addresses_requirement: "Resilient integration with downstream services (timeouts, retries, circuit breakers)"
+  - id: kafka-outbox
+    addresses_requirement: "Event-driven architecture (Kafka, transactional outbox) — implemented, honestly labeled where not production-provisioned"
+  - id: redis-cache
+    addresses_requirement: null  # real, tested capability; not itself a named JD requirement above
+  - id: test-impact-analysis
+    addresses_requirement: "Testing discipline: unit, integration (Testcontainers), CI"
+  - id: agentic-ai-delivery-pipeline
+    addresses_requirement: "Practical, hands-on experience with LLM-based tooling / agentic AI software delivery — not just API calls, but a measurable, auditable delivery process"
+  - id: rag-mcp-embeddings
+    addresses_requirement: "Practical, hands-on experience with LLM-based tooling / agentic AI software delivery — not just API calls, but a measurable, auditable delivery process"
+  - id: independent-qa-evaluator
+    addresses_requirement: "Practical, hands-on experience with LLM-based tooling / agentic AI software delivery — not just API calls, but a measurable, auditable delivery process"
+  - id: durable-event-ledger
+    addresses_requirement: "Ability to root-cause real production incidents from evidence, not guesses"
+  - id: production-deployment-verification
+    addresses_requirement: "Ability to root-cause real production incidents from evidence, not guesses"
+  - id: workbench-live-delivery-ui
+    addresses_requirement: null  # real, tested capability; not itself a named JD requirement above
 
 primary_demo:
   name: "Watch a real requirement travel through the full agentic delivery pipeline"
@@ -72,4 +97,4 @@ production_urls:
   platform_backend: "https://agentic-platform-backend-production.up.railway.app"
   custom_domain: "https://agentic.karthikdevadoss.com"
 
-last_verified: "2026-09-14"
+last_verified: "2026-09-17"

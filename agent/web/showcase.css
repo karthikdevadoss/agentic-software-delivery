@@ -73,3 +73,133 @@
   color: var(--amber);
   margin-bottom: 1.5rem;
 }
+
+/* --- Interview Walkthrough --- */
+
+.sc-path-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 0 1.25rem;
+}
+.sc-path-tab {
+  background: #1a1d27;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.45rem 0.95rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin: 0;
+}
+.sc-path-tab:hover { color: var(--text); }
+.sc-path-tab.active { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+
+.sc-path-summary { color: var(--muted); font-size: 0.9rem; margin: 0 0 1.1rem; line-height: 1.6; }
+
+.sc-story {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 0.9rem;
+  background: #10131b;
+  overflow: hidden;
+}
+.sc-story summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 0.85rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+.sc-story summary::-webkit-details-marker { display: none; }
+.sc-story summary::before {
+  content: "▸";
+  color: var(--accent);
+  transition: transform .15s;
+  flex-shrink: 0;
+}
+.sc-story[open] summary::before { transform: rotate(90deg); }
+.sc-story-title { flex: 1; }
+.sc-live-badge {
+  background: #124a35;
+  color: var(--green);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+}
+
+.sc-story-body { padding: 0 1rem 1.1rem; border-top: 1px solid var(--border); }
+.sc-story-field { padding: 0.65rem 0; border-bottom: 1px solid var(--border); }
+.sc-story-field:last-of-type { border-bottom: none; }
+.sc-story-field-label {
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+.sc-story-field-value { font-size: 0.9rem; line-height: 1.6; color: var(--text); }
+
+.sc-story-evidence { margin-top: 0.75rem; }
+.sc-story-evidence .sc-evidence-list { margin-top: 0.4rem; }
+
+.sc-how-to-explain {
+  margin-top: 1rem;
+  background: var(--accent-soft);
+  border: 1px solid #2a3a5a;
+  border-radius: 6px;
+  padding: 0.85rem 1rem;
+}
+.sc-how-to-title {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.6rem;
+}
+.sc-how-to-grid { margin: 0; }
+.sc-how-to-grid dt {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  margin-top: 0.55rem;
+}
+.sc-how-to-grid dt:first-child { margin-top: 0; }
+.sc-how-to-grid dd { margin: 0.2rem 0 0; font-size: 0.87rem; line-height: 1.55; color: var(--text); }
+
+.sc-story-compact-list { margin-top: 0.5rem; }
+.sc-story-compact {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.sc-story-compact:last-child { border-bottom: none; }
+.sc-story-compact-title { font-weight: 700; font-size: 0.87rem; }
+.sc-story-compact-line { color: var(--muted); font-size: 0.82rem; margin-top: 0.2rem; line-height: 1.5; max-width: 60ch; }
+.sc-story-compact-links { display: flex; flex-direction: column; gap: 0.3rem; flex-shrink: 0; text-align: right; }
+.sc-story-compact-links a { color: var(--accent); text-decoration: none; font-size: 0.78rem; font-weight: 600; white-space: nowrap; }
+.sc-story-compact-links a:hover { text-decoration: underline; }
+
+.sc-det-list { list-style: none; padding: 0; margin: 0; }
+.sc-det-list li { padding: 0.7rem 0; border-bottom: 1px solid var(--border); }
+.sc-det-list li:last-child { border-bottom: none; }
+.sc-det-claim { font-weight: 700; font-size: 0.88rem; color: var(--text); }
+.sc-det-mechanism { font-size: 0.85rem; color: var(--muted); margin-top: 0.25rem; line-height: 1.55; }
+.sc-det-evidence { font-size: 0.76rem; color: var(--accent); margin-top: 0.3rem; }
+
+@media (max-width: 640px) {
+  .sc-story-compact { flex-direction: column; }
+  .sc-story-compact-links { flex-direction: row; text-align: left; }
+}
