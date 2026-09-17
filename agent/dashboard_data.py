@@ -35,14 +35,14 @@ LEDGER_PATH = REPO_ROOT / "docs" / "ai" / "AI_ENGINEERING_QUALITY_LEDGER.yaml"
 # entries). Re-run and update these constants (do not guess) the next time
 # a full regression pass is performed.
 TEST_EVIDENCE = {
-    "python": {"total": 597, "passed": 596, "skipped": 1, "failed": 0,
-               "skip_reason": "Windows lacks the privilege to create symlinks in this test environment (platform limitation, not a bug). 1 additional test (thinking-budget-exhaustion regression) was added and independently verified via a targeted run at commit ab30555, after this full-suite pass -- not yet re-included in a fresh full-suite count because this session's later full-suite attempts were killed twice by local machine memory pressure (an environment limitation, not a code issue -- see docs/ACTION_QUEUE.json's LOCAL-MEMORY-PRESSURE-FULL-SUITE). GitHub Actions CI is the authoritative full-suite lane going forward.",
-               "as_of_commit": "8c064b9"},
-    "java": {"total": 119, "passed": 105, "skipped": 14, "failed": 0,
+    "python": {"total": 724, "passed": 723, "skipped": 1, "failed": 0,
+               "skip_reason": "Windows lacks the privilege to create symlinks in this test environment (platform limitation, not a bug). GitHub Actions CI is the authoritative full-suite lane going forward.",
+               "as_of_commit": "b814723"},
+    "java": {"total": 120, "passed": 106, "skipped": 14, "failed": 0,
              "skip_reason": "Testcontainers-backed Postgres tests skip on this dev machine (no local Docker daemon) but run for real in GitHub Actions CI",
-             "as_of_commit": "742cb0f"},
-    "node_frontend": {"total": 92, "passed": 92, "skipped": 0, "failed": 0,
-                       "as_of_commit": "8c064b9"},
+             "as_of_commit": "b814723"},
+    "node_frontend": {"total": 146, "passed": 146, "skipped": 0, "failed": 0,
+                       "as_of_commit": "b814723"},
     "command": "python -m unittest discover  (agent/)   |   mvnw test  (app/)   |   node --test (agent/test_*_frontend.js)",
     "ci": "GitHub Actions (.github/workflows/ci.yml) runs the real Testcontainers-backed Postgres suite on every push — this dev machine has no local Docker daemon, so those tests can only be genuinely exercised in CI.",
 }
