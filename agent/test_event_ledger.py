@@ -28,6 +28,7 @@ Run: python agent/test_event_ledger.py
 """
 
 import json
+import threading
 import time
 import unittest
 import uuid
@@ -84,6 +85,61 @@ class ConnectionResilienceTestCase(unittest.TestCase):
         el.ensure_schema()
         elapsed = time.monotonic() - start
         self.assertLess(elapsed, 15.0, f"ensure_schema() took {elapsed:.1f}s — dangerously close to or over the 15s statement_timeout")
+
+    def test_concurrent_ensure_schema_calls_run_the_ddl_exactly_once(self):
+        """RELIABILITY (2026-09-17): PR #10 observed apparent Postgres
+        "deadlock" contention when many concurrent Playwright workers each
+        triggered their own first request against a fresh process (every
+        one racing the unsynchronized `if _schema_ready: return` check).
+        Root cause: no lock guarded the check-then-act window, so N
+        concurrent callers could all pass the check and all run schema.sql's
+        DDL at once, contending for the same Postgres lock. Proven here
+        without a live DB: _connect() is mocked and counted directly —
+        with the fix (module-level _lock around the DDL), exactly one of
+        20 concurrent threads may actually reach _connect(); all others
+        must simply observe _schema_ready already True and return."""
+        el._schema_ready = False
+        call_count = 0
+        count_lock = threading.Lock()
+
+        class _FakeCursor:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+            def execute(self, *a, **kw):
+                time.sleep(0.05)  # simulate real DDL taking non-zero time
+
+        class _FakeConn:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+            def cursor(self):
+                return _FakeCursor()
+
+            def close(self):
+                pass
+
+        def _fake_connect():
+            nonlocal call_count
+            with count_lock:
+                call_count += 1
+            return _FakeConn()
+
+        with mock.patch.object(el, "_connect", side_effect=_fake_connect):
+            threads = [threading.Thread(target=el.ensure_schema) for _ in range(20)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+
+        self.assertEqual(call_count, 1, f"expected exactly 1 real DDL connection across 20 concurrent callers, got {call_count}")
+        self.assertTrue(el._schema_ready)
 
 
 class RealRemoteInsertTestCase(unittest.TestCase):
