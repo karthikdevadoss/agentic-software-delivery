@@ -35,7 +35,7 @@ const EXPECTED_DESTINATIONS = [
   { href: "/triage", label: "Triage" },
   { href: "/dashboard", label: "Dashboard" },
   { href: "/usage", label: "Usage" },
-  { href: "/learn", label: "Learn" },
+  { href: "/learn", label: "Learn", hiddenOn: ["/workbench", "/dashboard", "/usage"] },
   { href: "/showcase/senior-java-ai-transformation", label: "Role Showcase" },
 ];
 assertDeepEqual(nav.CANONICAL_NAV_DESTINATIONS, EXPECTED_DESTINATIONS,
@@ -64,6 +64,22 @@ assert(
   "Role Showcase is current on its own real page"
 );
 assert(nav._isCurrentPage("/dashboard", "/workbench") === false, "/dashboard is NOT current on /workbench");
+
+// ---- 2b. AEQ-027: Learn is hidden on Workbench/Dashboard/Usage only,
+//          honoring the real Owner instruction (2026-09-13) that
+//          predates and was never reconciled with AEQ-024's nav
+//          unification -- present everywhere else (Triage, Role
+//          Showcase, Learn's own page). ------------------------------
+
+for (const hiddenPath of ["/workbench", "/dashboard", "/usage", "/"]) {
+  assert(nav._isHiddenOnPage(["/workbench", "/dashboard", "/usage"], hiddenPath) === true,
+    `Learn must be hidden on ${hiddenPath} (Owner instruction 2026-09-13)`);
+}
+for (const visiblePath of ["/triage", "/triage/scenario-b", "/learn", "/showcase/senior-java-ai-transformation"]) {
+  assert(nav._isHiddenOnPage(["/workbench", "/dashboard", "/usage"], visiblePath) === false,
+    `Learn must remain visible on ${visiblePath}`);
+}
+assert(nav._isHiddenOnPage(undefined, "/workbench") === false, "a destination with no hiddenOn is never hidden");
 
 // ---- 3. Every real public HTML page includes the shared nav.js and an
 //         empty #top-nav placeholder, never its own hardcoded <nav> list
