@@ -1958,7 +1958,7 @@ add_scoped("System Design", "load-balancer", "LEARNED_UNDERSTOOD", {
     },
 }, related=["proxy", "scale"])
 
-add_scoped("System Design", "timeout", "CURRENT_PROJECT_EXPERIENCE", {
+add_scoped_path("System Design", "networking", "timeout", "CURRENT_PROJECT_EXPERIENCE", {
     "what": "A real, explicit maximum duration a caller waits for a response before giving up and treating the call as failed -- a deliberate bound protecting a caller from waiting indefinitely on a slow or hung dependency.",
     "why": "Without a real timeout, a single slow or hung downstream dependency can cause a caller (and, transitively, everything waiting on that caller) to hang indefinitely -- a classic real cause of cascading failure across a distributed system, where one slow component effectively takes down many others through unbounded waiting.",
     "how": "Set a real, deliberate timeout on every real network call (HTTP client, database query, external API) calibrated to the real expected latency of that specific call (not a single global default applied blindly everywhere) -- paired with a real, deliberate strategy for what happens on timeout (retry, circuit-break, fail fast with a clear error).",
@@ -2055,7 +2055,7 @@ add_scoped("System Design", "jvm", "LEARNED_UNDERSTOOD", {
     },
 }, related=["jvm-memory-model-garbage-collection", "memory"])
 
-add_scoped("System Design", "concurrency", "CURRENT_PROJECT_EXPERIENCE", {
+add_scoped_path("System Design", "compute", "concurrency", "CURRENT_PROJECT_EXPERIENCE", {
     "what": "Multiple real operations making progress within overlapping time periods -- achieved via threads (true parallelism on multi-core hardware, or interleaved execution on fewer cores) or asynchronous/non-blocking I/O (a single thread handling many in-flight operations without blocking on each) -- the general system-design concern of correctly and safely handling 'more than one thing happening at once.'",
     "why": "Real production systems handle many simultaneous requests/operations -- getting concurrency wrong produces real, often intermittent and hard-to-reproduce bugs (race conditions, lost updates, deadlocks) that can silently corrupt data or hang a system under real production load in ways that never appeared in single-threaded testing.",
     "how": "Identify genuinely shared mutable state and protect it (locks, atomic operations, or database-level concurrency control like optimistic/pessimistic locking); prefer immutable or thread-confined data where possible to avoid needing protection at all; for I/O-heavy work, non-blocking/async approaches can achieve high real concurrency without a thread-per-operation cost.",
@@ -2367,6 +2367,495 @@ add_scoped("System Design", "event-driven-architecture", "CURRENT_PROJECT_EXPERI
         "deep_answer": "This project's own real durable event ledger (used for its AI-pipeline observability) reflects understanding this exact challenge in a related context -- both this project's transactional-outbox event flow and its AI-pipeline tracing rely on durable, structured, correlatable event records specifically BECAUSE tracing 'what really happened' across an asynchronous boundary requires deliberate observability design, not something you can retrofit easily after a real production incident already needs root-causing.",
     },
 }, related=["kafka", "queues"])
+
+# -- security --
+
+add_scoped("System Design", "authentication", "CURRENT_PROJECT_EXPERIENCE", {
+    "what": "Verifying WHO is making a request -- confirming a claimed identity is genuine -- as distinct from authorization (deciding what that verified identity is allowed to do).",
+    "why": "Every real access-control decision depends on first establishing a trustworthy identity -- authorization checks are meaningless if the identity they're checking against could be forged or impersonated.",
+    "how": "Common real mechanisms: username/password verified against a securely-hashed credential (never plaintext), token-based (JWT, verified via signature), or delegated (OAuth2/OIDC, verifying identity via a trusted third-party IdP) -- this project uses JWT-based authentication verified by Spring Security's resource-server support.",
+    "when": "Every real endpoint that isn't intentionally, deliberately public needs authentication before any authorization check can be meaningful.",
+    "real_experience": "This project's real authentication uses JWT tokens with BCrypt-hashed credentials at login, verified via Spring Security's resource-server layer on every subsequent request -- with real, specific tests verifying an invalid/expired/tampered token is genuinely rejected, not just that a valid token is accepted.",
+    "evidence": ["app/src/main/java/com/example/customer/security/"],
+    "interview": {
+        "question": "Why must authentication be verified independently on every single request, rather than once at login?",
+        "short_answer": "HTTP is stateless -- each request must independently prove the caller's identity (via the token, re-verified each time), since there's no continuous, trusted connection linking a later request back to an earlier login the way a persistent session might loosely imply.",
+        "deep_answer": "This project's real JWT-based authentication is verified fresh on every single request by Spring Security's resource-server filter chain -- signature validity and expiry are both checked every time, not cached from an earlier request, which is precisely what makes a stolen-but-expired token safely unusable and what makes horizontal scaling trivial (any server instance can verify any request independently, with no shared session state needed).",
+    },
+}, related=["authentication-authorization-jwt-oauth2-oidc-spring-security", "authorization"])
+
+add_scoped("System Design", "authorization", "CURRENT_PROJECT_EXPERIENCE", {
+    "what": "Deciding what a verified identity is allowed to do -- role-based (RBAC: permissions tied to a role) or resource-level (does THIS specific user own/have access to THIS specific resource) -- both genuinely needed together for real multi-tenant correctness.",
+    "why": "Role-based checks alone are insufficient for multi-tenant systems -- a role check confirms 'this user CAN update contract plans' in general, but not 'this user can update THIS SPECIFIC customer's plan' -- missing the second check is a real, common, and serious vulnerability class (broken object-level authorization / IDOR).",
+    "how": "Layer both checks: a role/scope check (via @PreAuthorize or equivalent) confirms general permission, and a separate, explicit resource-ownership check (this project's WorkspaceAccessGuard) confirms the specific resource being accessed actually belongs to the requesting identity.",
+    "when": "Every real endpoint operating on a specific resource in a multi-tenant or multi-user system needs both layers, not role-checking alone.",
+    "real_experience": "This project's WorkspaceAccessGuard is a real, explicit, independently-testable resource-ownership check, layered alongside role-based checks -- verified by real tests specifically proving a user with a valid role but NOT owning the target resource is still correctly denied, closing exactly the IDOR-class gap role-checking alone would miss.",
+    "evidence": ["app/src/main/java/com/example/customer/security/"],
+    "interview": {
+        "question": "What real vulnerability does role-based authorization alone fail to catch, and how do you close it?",
+        "short_answer": "Broken object-level authorization (IDOR) -- a user with the right ROLE could still access another user's specific data if the code only checks role and not resource ownership. Closing it requires an explicit, separate resource-ownership check on every resource-scoped operation.",
+        "deep_answer": "This project's WorkspaceAccessGuard is exactly this closing check, made explicit and independently testable rather than implicitly assumed -- verified by a real test where a user has a genuinely valid role but does NOT own the specific target resource, confirming the request is still correctly denied; this is the real, concrete distinction between 'authorization exists' and 'authorization is actually complete.'",
+    },
+}, related=["authentication", "least-privilege"])
+
+add_scoped("System Design", "jwt", "CURRENT_PROJECT_EXPERIENCE", {
+    "what": "JSON Web Token -- a compact, self-contained, cryptographically-signed token encoding claims (identity, roles, expiry) that a server can verify without a database lookup, by checking the signature against a known key -- enabling real stateless authentication.",
+    "why": "A signed JWT lets any server instance verify a request's authenticity independently (no shared session store needed), which is what makes real horizontal scaling of an authenticated API simple -- at the real cost that a JWT can't be centrally revoked before its expiry without additional infrastructure (a real trade-off to understand, not ignore).",
+    "how": "On login, the server issues a signed token (header + claims payload + signature); the client sends it on subsequent requests (typically as a Bearer token); the server verifies the signature and checks expiry on every request, trusting the claims only if the signature is genuinely valid.",
+    "when": "Stateless, horizontally-scalable APIs where avoiding a shared session store is valuable -- less ideal when instant, centralized revocation is a hard real requirement (a refresh-token/short-expiry strategy mitigates this).",
+    "real_experience": "This project's real JWT implementation uses Spring Security's resource-server support to verify signature and expiry on every request, with real tests specifically covering a tampered-signature token, an expired token, and a well-formed-but-invalid token, each asserted to be correctly rejected.",
+    "evidence": ["app/src/main/java/com/example/customer/security/"],
+    "interview": {
+        "question": "What's the real trade-off of JWT's statelessness versus a traditional server-side session?",
+        "short_answer": "Statelessness avoids needing a shared session store (simpler horizontal scaling), but a JWT can't be instantly, centrally revoked before its natural expiry the way a server-side session can be immediately invalidated -- mitigated in practice with short token expiry plus a refresh-token mechanism, a real, deliberate trade-off, not an oversight.",
+        "deep_answer": "This project's real JWT expiry is deliberately kept short specifically because of this trade-off, verified by a real test asserting an expired token is genuinely rejected -- the underlying design accepts that instant revocation isn't free with pure JWTs, and manages the real risk window through expiry duration rather than pretending the trade-off doesn't exist.",
+    },
+}, related=["authentication", "authentication-authorization-jwt-oauth2-oidc-spring-security"])
+
+add_scoped("System Design", "spring-security", "CURRENT_PROJECT_EXPERIENCE", {
+    "what": "The real Spring framework module providing authentication/authorization infrastructure for a Spring Boot application -- filter-chain-based request interception, declarative method-level security (@PreAuthorize), and resource-server support for JWT validation.",
+    "why": "Hand-rolling authentication/authorization filter logic is a genuinely high-risk, easy-to-get-subtly-wrong undertaking -- Spring Security provides a real, battle-tested, actively-maintained implementation of these patterns, letting application code declare security requirements rather than reimplement the underlying mechanics.",
+    "how": "A SecurityConfig class declares the real filter chain (which paths require authentication, which are public), the resource-server JWT decoder/validator configuration, and method-level security is enabled for @PreAuthorize-annotated methods -- application code stays declarative rather than manually checking tokens inline.",
+    "when": "The default, standard choice for security in any real Spring Boot application.",
+    "real_experience": "This project's real SecurityConfig.java declares its actual filter chain (which endpoints are public -- e.g. /graphiql -- versus authenticated), and its resource-server configuration handles real JWT validation -- verified end-to-end by real integration tests hitting actual endpoints with valid, invalid, and missing tokens.",
+    "evidence": ["app/src/main/java/com/example/customer/security/SecurityConfig.java"],
+    "interview": {
+        "question": "Why use Spring Security's framework rather than writing custom authentication middleware?",
+        "short_answer": "Custom authentication/authorization logic is a genuinely high-stakes place to introduce a subtle bug (a missed check, a timing side-channel, an insecure comparison) -- Spring Security is real, widely-used, actively-maintained infrastructure specifically hardened against these known classes of mistakes, which a from-scratch implementation would have to rediscover and defend against itself.",
+        "deep_answer": "This project's real SecurityConfig explicitly declares its trust boundary (exact public paths, exact resource-server JWT validation config) using Spring Security's real, tested primitives rather than custom filter logic -- and every real security-relevant behavior (a rejected invalid token, a correctly-permitted public path) is verified by real integration tests against the actual running security configuration, not just reviewed by inspection.",
+    },
+}, related=["jwt", "authentication"])
+
+add_scoped("System Design", "cognito", "LEARNED_UNDERSTOOD", {
+    "what": "AWS Cognito -- a managed identity provider service handling user registration, authentication, and token issuance (typically JWT/OIDC-compliant), letting an application offload identity management to AWS rather than building/hosting it directly.",
+    "why": "Building and securely operating your own identity provider (password storage, MFA, account recovery, token issuance) is real, significant undertaking with real security stakes -- a managed IdP like Cognito lets a team focus engineering effort on the application's actual domain logic instead.",
+    "how": "The application redirects users to Cognito for real authentication (or uses its SDK for direct integration), receives a real, signed JWT back, and verifies that token the same way it would verify any JWT (checking signature against Cognito's published public keys) -- the application's own authorization logic (roles, resource ownership) still lives in the application itself.",
+    "when": "Teams wanting to avoid building/operating identity infrastructure themselves, especially when already using AWS for other infrastructure and wanting free-tier-friendly identity management.",
+    "context": "This project's own real authentication is currently self-managed (its own login endpoint issuing its own JWTs, not delegated to Cognito) -- an honest, current-state distinction: Cognito was considered as part of this project's real AWS-minimal-footprint exploration, but the current, real, tested implementation is this project's own JWT issuance, not a Cognito integration.",
+    "interview": {
+        "question": "What's the real trade-off between self-managed authentication and a managed IdP like Cognito?",
+        "short_answer": "Self-managed gives full control and no external dependency, but carries the full real security burden (password storage, MFA, account recovery all your own responsibility to get right); a managed IdP offloads that real security burden and operational cost, at the cost of a real external dependency and typically less customization flexibility.",
+        "deep_answer": "This project's own honest current state is self-managed JWT authentication, not a Cognito integration -- the underlying Cognito/managed-IdP knowledge is accurate general AWS knowledge worth having, particularly given this project's own stated goal of using AWS minimally within the free tier, but should not be presented as something this project has actually implemented and verified, since it hasn't been.",
+    },
+}, related=["jwt", "fusionauth"])
+
+add_scoped("System Design", "fusionauth", "LEARNED_UNDERSTOOD", {
+    "what": "A self-hostable (or cloud) identity and access management platform -- an alternative to a fully-managed cloud IdP like Cognito, offering more customization/control while still handling the real complexity of authentication flows, MFA, and token issuance.",
+    "why": "Some teams want more control/customization over their identity provider than a fully-managed cloud IdP offers (custom login flows, specific compliance requirements, avoiding cloud-vendor lock-in) while still not wanting to build authentication from scratch -- a self-hostable IdP like FusionAuth is a real middle-ground option.",
+    "how": "Deployed as its own service (self-hosted or their cloud offering), issuing real, standard JWT/OIDC-compliant tokens the application verifies the same way it would verify tokens from any standards-compliant IdP.",
+    "when": "Teams needing more customization/control than a fully-managed cloud IdP provides, or explicitly wanting to avoid cloud-vendor lock-in for identity specifically.",
+    "context": "This project's own real authentication implementation is self-managed JWT issuance, not a FusionAuth integration -- an honest scope note: this is accurate general identity-management knowledge relevant to real enterprise backend engineering decisions, not a claim of hands-on implementation experience with this specific product in this project.",
+    "interview": {
+        "question": "When would a team choose a self-hostable IdP like FusionAuth over a fully-managed cloud IdP like Cognito?",
+        "short_answer": "When they need more customization/control than a managed IdP allows, have compliance requirements around where identity data is stored, or explicitly want to avoid cloud-vendor lock-in for their identity layer -- accepting the real added operational burden of running the IdP themselves in exchange.",
+        "deep_answer": "This project's own real implementation is neither Cognito nor FusionAuth but self-managed JWT issuance directly in the Spring Boot application -- an honest, current-scope answer reflecting this project's real, modest scale where operating a separate full IdP (managed or self-hosted) wasn't judged necessary, while still being able to reason correctly about when a real team's constraints would favor one of these alternatives instead.",
+    },
+}, related=["cognito", "jwt"])
+
+add_scoped("System Design", "secrets", "CURRENT_PROJECT_EXPERIENCE", {
+    "what": "In the System Design sense: the real, concrete mechanisms for storing/distributing sensitive configuration (API keys, database credentials, signing keys) to a running application securely -- never hardcoded, never committed to source control, injected at runtime via a real, access-controlled mechanism.",
+    "why": "A secret committed to source control (even briefly, even if later removed) is effectively compromised permanently, since git history retains it -- and a hardcoded secret can't be rotated without a code deployment, which is both operationally painful and a real security anti-pattern (rotation should be fast and independent of code changes).",
+    "how": "Store real secrets in environment variables or a dedicated secrets manager (never in source files), inject them at runtime/deploy-time, and enforce (via tooling/process, not just discipline) that they never get committed -- this project's own explicit rule against committing agent/.env or API keys, checked before every commit.",
+    "when": "Every real production system handling any credential/API key/signing key.",
+    "real_experience": "This project's standing operating rule explicitly forbids exposing, printing, staging, or committing agent/.env or API keys, and its real git-commit workflow includes reviewing staged changes specifically for anything suspicious before committing -- a real, enforced discipline, not just a documented aspiration.",
+    "evidence": ["CLAUDE.md", ".gitignore"],
+    "interview": {
+        "question": "Why is a secret that was committed and later removed from the latest commit still considered compromised?",
+        "short_answer": "Git retains the FULL history by default -- removing a secret from the current file doesn't remove it from earlier commits, which remain accessible to anyone with repository access (or a public repo, anyone at all) via git log/git show. A truly compromised secret must be rotated, not just deleted from the current file.",
+        "deep_answer": "This project's own standing discipline treats this as a hard, non-negotiable rule rather than a best-effort guideline: never commit agent/.env or API keys, checked as part of the real commit workflow (reviewing staged files for anything suspicious before every commit) -- because this project's own understanding is that prevention is the only real defense; a secret leaked into git history, even briefly, should be treated as compromised and rotated, not just quietly removed.",
+    },
+}, related=["secrets-management", "secret-protection"])
+
+add_scoped("System Design", "least-privilege", "CURRENT_PROJECT_EXPERIENCE", {
+    "what": "In the System Design sense: giving each real component/service/credential only the minimum real access genuinely needed to do its job -- a database credential scoped to only the tables/operations it actually needs, a service's IAM role scoped to only its actual required AWS actions, never a broad 'admin' credential used out of convenience.",
+    "why": "A credential/component with broader access than it needs increases the real blast radius if that credential is ever compromised or that component is ever exploited -- least-privilege is what bounds the real damage of any single compromise to only what that specific access actually allowed.",
+    "how": "For every real credential/role/service account, explicitly enumerate the minimum real permissions needed and grant only those -- reviewed and narrowed deliberately, not granted broadly 'to avoid future permission errors,' which trades real security for convenience.",
+    "when": "Every real credential, service account, and access grant in a production system.",
+    "real_experience": "This project applies least-privilege consistently across its own real security surfaces: its WorkspaceAccessGuard scopes data access to only the resources a specific user actually owns, its Triage Lab requires real ADMIN-specific authorization distinct from general USER access for its highest-consequence action, and its MCP server exposes only read-only retrieval tools, never write/execute capability.",
+    "evidence": ["app/src/main/java/com/example/customer/security/", "agent/mcp_server.py"],
+    "interview": {
+        "question": "How do you apply least-privilege beyond just user-role permissions, at the system-design level?",
+        "short_answer": "Apply it to every real credential and component, not just human user roles -- a service's database credential, its cloud IAM role, its internal API scopes should each be as narrow as the component's actual real function requires, not broadened for convenience.",
+        "deep_answer": "This project's own consistent application across multiple real, different surfaces (user-level WorkspaceAccessGuard, role-level ADMIN-vs-USER Triage Lab authorization, and component-level MCP tool exposure) demonstrates that least-privilege isn't a single control but a design principle applied repeatedly at every real access boundary a system has -- each surface reasoned about and verified independently rather than assuming one broad security layer covers everything.",
+    },
+}, related=["authorization", "principle-of-least-privilege"])
+
+# -- reliability --
+
+add_scoped("System Design", "failure-modes", "LEARNED_UNDERSTOOD", {
+    "what": "The specific, real ways a system component can fail -- not just 'it might fail' abstractly, but concretely: a timeout, a connection refused, a partial response, a slow degradation, a crash -- each requiring different real handling, since a generic 'catch exception and log it' doesn't distinguish between them.",
+    "why": "Different real failure modes need genuinely different responses -- a timeout might warrant a retry; a definitive 'resource not found' should not be retried; a sustained pattern of failures should trip a circuit breaker rather than keep retrying indefinitely -- treating all failures identically produces either wasted retries on unretryable failures or missed retries on genuinely transient ones.",
+    "how": "Enumerate the real, specific failure modes a dependency can exhibit (timeout, connection refused, 4xx client error, 5xx server error, malformed response) and design a deliberate, differentiated response for each category, rather than one generic catch-all handler.",
+    "when": "Designing resilience for any real external dependency (a downstream service, a database, a message broker) -- before writing generic error-handling code.",
+    "context": "This project's real Resilience4j configuration differentiates failure modes deliberately: its circuit breaker and retry are configured to treat different real failure categories differently (a definitive business-logic rejection is not retried the same way a transient network timeout is) -- a real, considered design rather than one blanket try/catch around every downstream call.",
+    "evidence": ["app/src/main/java/com/example/customer/integration/appointment/AppointmentAvailabilityService.java"],
+    "interview": {
+        "question": "Why shouldn't every exception from a downstream call be retried the same way?",
+        "short_answer": "Some failures are genuinely transient (a momentary network blip) and worth retrying; others are definitive (the requested resource genuinely doesn't exist, or the request was invalid) and retrying is pointless, wasting real time/resources and potentially worsening load on an already-struggling downstream.",
+        "deep_answer": "This project's real resilience configuration is deliberately differentiated rather than a single blanket retry-everything policy -- reflecting real understanding that a downstream's real failure modes (timeout vs. definitive rejection vs. sustained outage) each warrant a genuinely different response (retry vs. fail-fast vs. circuit-break), a distinction that matters for both correctness and for not making a real outage worse through indiscriminate retry storms.",
+    },
+}, related=["resilience-patterns-retry-timeout-circuit-breaker", "root-cause-analysis"])
+
+add_scoped_path("System Design", "reliability", "retry", "LEARNED_UNDERSTOOD", {
+    "what": "In the specific reliability-engineering sense: retry as one deliberate tool within a broader reliability strategy -- paired explicitly with failure-mode differentiation (only retry genuinely transient failures) and bounded (max attempts, backoff) so retry itself never becomes a reliability risk.",
+    "why": "Retry used without the surrounding reliability discipline (failure-mode awareness, bounding, circuit-breaking) can make a real outage worse rather than better -- reliability engineering treats retry as one component of a coordinated strategy, not a standalone fix applied reflexively to any failure.",
+    "how": "Retry only failures classified as transient (see failure-modes), with a real bounded max-attempt count and exponential backoff, and paired with a circuit breaker that stops retry attempts entirely once a downstream is confirmed to be failing broadly -- the full, coordinated reliability strategy, not retry in isolation.",
+    "when": "As one deliberate piece of a broader, coordinated reliability strategy for any real external dependency.",
+    "context": "This project's real Resilience4j composition (CircuitBreaker wrapping Retry, in that specific, deliberate order) is exactly this coordinated strategy: retry is never used alone, but always as one layer within a broader, reasoned reliability design that also includes timeout bounding and circuit-breaking.",
+    "evidence": ["app/src/main/java/com/example/customer/integration/appointment/AppointmentAvailabilityService.java"],
+    "interview": {
+        "question": "Why is retry, on its own, an incomplete reliability strategy?",
+        "short_answer": "Retry alone doesn't know when a downstream is definitively failing broadly (versus a one-off transient blip) -- without a circuit breaker to stop retrying during a sustained outage, and without failure-mode differentiation to avoid retrying non-transient failures, retry alone can waste resources and worsen an ongoing incident rather than help.",
+        "deep_answer": "This project's real, coordinated resilience design treats retry as exactly one deliberate layer among several, composed in a specific order (circuit-breaker wrapping retry) for a specific reason (fail fast without attempting doomed retries once the breaker is open) -- reliability engineering here means designing the WHOLE coordinated response, not reaching for retry alone as if it were sufficient on its own.",
+    },
+}, related=["failure-modes", "resilience-patterns-retry-timeout-circuit-breaker"])
+
+add_scoped_path("System Design", "reliability", "timeout", "LEARNED_UNDERSTOOD", {
+    "what": "In the specific reliability-engineering sense: timeout as a deliberate, calibrated bound protecting the WHOLE system's reliability, not just one caller's individual experience -- an uncalibrated timeout (too long) can let one slow dependency exhaust a caller's own thread pool/connection pool, causing cascading failure well beyond the original slow call.",
+    "why": "A timeout that's too generous doesn't just make one caller wait longer -- under real concurrent load, many callers blocked waiting on a slow dependency can exhaust the caller's own limited resources (threads, connections), turning one slow downstream into a broader outage of the CALLING service too.",
+    "how": "Calibrate timeout values against the real, measured expected latency of the specific dependency (not a single global default), and reason explicitly about the caller's own resource exhaustion risk (thread pool size, connection pool size) if many calls to a slow dependency pile up simultaneously.",
+    "when": "Every real timeout value should be a deliberate, calibrated decision protecting the CALLER's own reliability, not just an arbitrary safety net for that one call.",
+    "context": "This project's real HikariCP connection pool sizing and its Resilience4j timeout configuration are reasoned about together, not independently -- since an uncalibrated timeout on a downstream call could otherwise let many concurrent slow calls exhaust the very connection pool other, unrelated operations also depend on, a real cross-cutting reliability concern this project's documentation reasons through explicitly.",
+    "evidence": ["app/src/main/java/com/example/customer/integration/appointment/AppointmentAvailabilityService.java", "app/src/main/resources/application.properties"],
+    "interview": {
+        "question": "How can a downstream timeout that's set too generously cause an outage in the CALLING service itself, not just slow responses?",
+        "short_answer": "If many concurrent requests each wait up to the full (too-generous) timeout on a slow downstream, they can collectively exhaust the calling service's own limited resources (thread pool, connection pool) -- new, unrelated requests then can't get a thread/connection at all, turning one slow downstream into a broader outage of the calling service itself.",
+        "deep_answer": "This project's real reliability reasoning connects timeout calibration directly to its own resource limits (its connection pool sizing) rather than treating them as unrelated configuration values -- a genuinely important, often-overlooked system-design insight: a timeout value isn't just about one call's patience, it's about protecting the CALLER's own finite resources from being exhausted by many slow calls piling up simultaneously.",
+    },
+}, related=["retry", "jdbc-hikaricp-connection-pool-sizing"])
+
+add_scoped_path("System Design", "reliability", "circuit-breaker", "CURRENT_PROJECT_EXPERIENCE", {
+    "what": "A resilience pattern that tracks a real downstream dependency's recent failure rate and, once it crosses a threshold, 'opens' -- failing calls immediately without even attempting them -- protecting both the caller (fails fast instead of waiting on a doomed call) and the struggling downstream (stops adding load to something already failing) until a real recovery is detected.",
+    "why": "Without a circuit breaker, a struggling downstream keeps receiving the full real request volume (each one still waiting out its timeout before failing), which both wastes the caller's resources on doomed calls and can prevent the downstream from ever recovering under continued load -- fast-failing protects both sides simultaneously.",
+    "how": "Track a real, rolling failure rate; once it crosses a real threshold, the breaker opens (calls fail immediately, no network call attempted); after a real cooldown period, it moves to half-open (allows a real, limited number of test calls through); if those succeed, it closes again (normal operation resumes) -- all three real states, not just open/closed.",
+    "when": "Any real dependency where sustained failure is a genuine possibility and fast-failing is preferable to continuing to hammer a struggling downstream.",
+    "real_experience": "This project's real Resilience4j CircuitBreaker, composed deliberately around Retry (breaker wraps retry, not the reverse), is a working, tested implementation of exactly this pattern -- verified by real tests exercising the breaker's real open/half-open/closed state transitions against a simulated failing downstream.",
+    "evidence": ["app/src/main/java/com/example/customer/integration/appointment/AppointmentAvailabilityService.java"],
+    "interview": {
+        "question": "What does the circuit breaker's 'half-open' state accomplish that a simple open/closed model wouldn't?",
+        "short_answer": "Half-open lets a small, real, limited number of test requests through after the cooldown period, to check whether the downstream has actually recovered -- without it, the breaker would either need to fully reopen to all traffic at once (risking overwhelming a barely-recovered downstream) or stay permanently closed until manually reset, neither of which is safe or self-healing.",
+        "deep_answer": "This project's real Resilience4j breaker configuration exercises all three states in its own tests, including the half-open recovery-detection behavior -- proving the breaker genuinely self-heals once the real downstream recovers, rather than requiring manual intervention to reset, and does so without immediately re-exposing a freshly-recovering downstream to full production load all at once.",
+    },
+}, related=["resilience-patterns-retry-timeout-circuit-breaker", "failure-modes"])
+
+add_scoped_path("System Design", "reliability", "rollback", "LEARNED_UNDERSTOOD", {
+    "what": "Reverting a system to its previous known-good state after a deployment is found to have introduced a real regression -- a deliberate, real, and ideally fast/automatable recovery mechanism, distinct from forward-fixing (deploying a new fix rather than reverting).",
+    "why": "A real production regression needs the fastest possible path back to a known-good state -- rollback is typically faster and lower-risk than diagnosing and forward-fixing under real incident pressure, since it doesn't require understanding the root cause first, only reverting to a state already known to work.",
+    "how": "Maintain the real ability to redeploy a previous known-good version quickly (via a tagged/versioned deployment artifact and a fast redeploy mechanism), and decide deliberately, based on real incident severity, whether rollback or forward-fix is the faster, safer path for a given situation.",
+    "when": "Any real production incident traced to a recent deployment, where reverting to the prior known-good state is faster/safer than diagnosing and forward-fixing under pressure.",
+    "context": "This project's real deployment history (via git commits and Railway deployments) preserves every prior known-good state, making rollback a real, available option -- though this project's actual practice during real incidents (e.g. AEQ-025, AEQ-028) has consistently been forward-fixing with a fast, verified fix rather than rollback, a reasoned choice appropriate to incidents that were understood quickly and safely fixable, not evidence that rollback capability doesn't exist.",
+    "evidence": ["docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml"],
+    "interview": {
+        "question": "How do you decide between rolling back and forward-fixing during a real production incident?",
+        "short_answer": "If the root cause isn't yet understood or a safe fix isn't immediately clear, rollback to the known-good prior state first (stop the bleeding), then diagnose and forward-fix without incident pressure -- if the root cause IS already clear and a fix is fast/low-risk to verify, forward-fixing can resolve the incident without the disruption of a rollback-then-redeploy cycle.",
+        "deep_answer": "This project's own real incident history shows forward-fixing chosen consistently (AEQ-025, AEQ-028), which was reasonable specifically because each incident's root cause was identified relatively quickly and each fix was small, well-tested, and independently verified before being considered resolved -- a real, deliberate judgment call made case-by-case rather than a universal 'always forward-fix' policy, since a less-understood or higher-severity incident would reasonably call for rollback first instead.",
+    },
+}, related=["safe-deployment-rollback-strategy", "recovery"])
+
+add_scoped_path("System Design", "reliability", "recovery", "LEARNED_UNDERSTOOD", {
+    "what": "The real, deliberate process and mechanisms for restoring a system to correct operation after a failure -- broader than just rollback; includes data recovery (from backups/replication), state reconciliation after a partial failure, and the durable capture of what happened for future prevention.",
+    "why": "Recovery isn't just 'the incident is over' -- it includes making sure any real data inconsistency introduced during the failure is genuinely reconciled, and that the failure's real lessons are captured durably so the same failure mode doesn't silently recur.",
+    "how": "Real recovery has multiple parts: restore correct system operation (rollback or forward-fix), reconcile any real data inconsistency the failure caused (verify against real evidence, don't assume clean), and durably record root cause/fix/regression-test so the failure mode is genuinely closed, not just patched.",
+    "when": "After every real, meaningful production incident -- recovery isn't complete when the symptom stops, only when all three parts (operation restored, data reconciled, lesson captured) are genuinely done.",
+    "context": "This project's own real incident-response discipline explicitly includes all three parts: a fix, a regression test proving the fix genuinely closes the failure mode, and a durable AEQ-ledger entry capturing root cause and lesson -- verified concretely in real incidents like AEQ-028, which required real production-data reconciliation (deciding what to do with the 119 real fake rows already in the ledger) as a genuinely separate, still-open concern from the code fix itself.",
+    "evidence": ["docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml", "docs/ACTION_QUEUE.json"],
+    "interview": {
+        "question": "Why isn't a production incident considered 'recovered' just because the code fix is deployed?",
+        "short_answer": "The code fix stops the failure from RECURRING, but doesn't automatically reconcile any real data inconsistency the failure already caused while it was active -- true recovery needs both: stop the bleeding (fix) AND clean up what already happened (data reconciliation), which are genuinely separate concerns.",
+        "deep_answer": "This project's real AEQ-028 incident makes this distinction concrete and disclosed: the code fix (stopping further fake usage rows from being recorded) was completed and verified, but the real, already-existing 119 fake rows in the production ledger remained a SEPARATE, still-open decision (ACT-009, requiring explicit Owner approval before any deletion) -- correctly treated as a distinct recovery step from the code fix itself, not silently assumed resolved once the code was patched.",
+    },
+}, related=["rollback", "production-verification"])
+
+# NOTE: system-design > reliability > production-verification was already a
+# pre-existing, real, deep-dive topic (9 sections including development_steps
+# and failure_modes) before this Tier-3 pass started -- an earlier add_scoped_path
+# call here mistakenly overwrote it with thinner content; discovered via the
+# test suite's test_deep_dive_topics_preserved_with_full_sections failure,
+# fixed by restoring the original from git history. Deliberately NOT
+# re-adding an enrichment entry for it here -- it was never actually shallow.
+# (system-design > cloud-deployment > production-verification below WAS
+# genuinely shallow and is the only real target for new content.)
+
+# -- observability (System Design's own subdomain, distinct from the AI-specific Observability domain) --
+
+add_scoped("System Design", "logs", "CURRENT_PROJECT_EXPERIENCE", {
+    "what": "Real, timestamped, discrete records of what a system did -- the most basic, universal observability signal, typically unstructured or semi-structured text, useful for detailed, human-readable investigation of a specific event but hard to aggregate/query at scale without structure.",
+    "why": "Logs are the real, ground-truth record of what actually happened -- but unstructured logs are hard to search/aggregate/alert on reliably at real production scale, which is why structured logging (see structured-logging) matters once a system grows beyond a handful of instances.",
+    "how": "Log real, meaningful events (not everything -- excessive logging adds real cost and noise) with enough real context (correlation ID, relevant IDs, outcome) to be useful for later investigation, at an appropriate real log level (debug/info/warn/error) so noise can be filtered without losing genuinely important signal.",
+    "when": "Every real production system needs deliberate logging -- what to log, at what level, and with what structure are real design decisions, not defaults left unconsidered.",
+    "real_experience": "This project's own durable event ledger goes beyond basic text logs specifically because real incident investigation (AEQ-025, AEQ-028) required structured, queryable historical data, not just scrollback logs -- a deliberate evolution from basic logging to structured event recording once real investigation needs demonstrated the limitation.",
+    "evidence": ["agent/event_ledger.py"],
+    "interview": {
+        "question": "What real limitation of plain text logs led this project to build a structured event ledger instead?",
+        "short_answer": "Plain text logs are hard to reliably query for a specific historical event days or weeks later, especially across many log lines from different components -- a structured, durable event store lets you query real, specific evidence directly (e.g. 'show me every event for this run') rather than hoping a relevant log line is still retained and searchable.",
+        "deep_answer": "This project's own real incident investigations (AEQ-025, AEQ-028) needed to reconstruct exactly what happened during specific past runs -- something scrollback text logs make genuinely difficult once volume grows, which is precisely why this project's event ledger stores real, structured, durably-queryable records instead, a direct, evidenced example of when 'just log it' stops being sufficient.",
+    },
+}, related=["structured-logging", "correlation-ids"])
+
+add_scoped("System Design", "metrics", "CURRENT_PROJECT_EXPERIENCE", {
+    "what": "Real, numeric, aggregatable measurements of system behavior over time (request count, latency, error rate, resource usage) -- distinct from logs (discrete events) in being naturally suited to aggregation, trending, and threshold-based alerting at scale.",
+    "why": "Metrics let you answer real, aggregate questions ('what's our real p99 latency over the last hour', 'is our error rate trending up') cheaply, at a scale where reading individual logs for the same answer would be impractical -- the foundation of real dashboards and alerting.",
+    "how": "Instrument real, meaningful measurements (via a library like Micrometer) at the points that matter (request handling, external call duration, business-relevant counts), tagged with useful real dimensions (endpoint, status, channel) for later aggregation/filtering, without instrumenting so much that the metrics themselves become noise.",
+    "when": "Every real production system needs deliberate metrics instrumentation for its genuinely important operations -- not everything needs a metric, but anything you'd want to alert on or trend over time does.",
+    "real_experience": "This project's real notification-dispatch code uses Micrometer to emit real, meaningful metrics for each dispatch attempt (including the NoOpNotificationSender's own metric, ensuring 'the customer chose no notifications' stays observable rather than silently invisible) -- a deliberate choice to make even a 'do nothing' code path measurably observable.",
+    "evidence": ["app/src/main/java/com/example/customer/notification/"],
+    "interview": {
+        "question": "Why does this project's Null Object notification sender (NoOpNotificationSender) still emit a real metric, even though it does nothing?",
+        "short_answer": "Making 'the customer chose no notifications' outcome measurably observable (rather than a silent no-op with zero trace) is deliberate -- without a metric here, this real, common, and legitimate outcome would be invisible in dashboards/alerting, indistinguishable from a bug that silently failed to send a notification.",
+        "deep_answer": "This project's design specifically treats a deliberate 'do nothing' outcome as still worth measuring, precisely because observability's value comes from being able to distinguish 'nothing happened because that's correct' from 'nothing happened because something's broken' -- a real, considered metrics-design decision rather than only instrumenting the code paths that obviously do real work.",
+    },
+}, related=["metrics-as-time-series", "sli-slo-alerts"])
+
+add_scoped("System Design", "traces", "LEARNED_UNDERSTOOD", {
+    "what": "In the general observability sense: real, structured records following a single logical request/operation as it flows across multiple services/components, typically with a shared trace ID linking every related span together -- essential for understanding real latency/failure in a distributed system, where a single request may touch many components.",
+    "why": "In a distributed system, a single real user-facing request can trigger calls across many internal components -- without tracing, understanding WHERE time is spent or WHERE a failure actually occurred requires manually correlating logs across every component by hand, which doesn't scale.",
+    "how": "A trace ID is generated (or propagated from an inbound request) at the start of a logical operation and passed along to every downstream call it triggers; each component's work within that operation becomes a span tagged with the shared trace ID, letting a tracing system reconstruct the real, full picture afterward.",
+    "when": "Any system with real requests crossing multiple internal service/component boundaries -- the more distributed the architecture, the more essential tracing becomes.",
+    "context": "This project's current single-deployable architecture has less need for cross-SERVICE distributed tracing (most of a request's real work happens within one process) -- but its correlation-ID discipline (see correlation-ids) provides the same essential linking capability for its own internal, multi-stage AI pipeline, an honest, appropriately-scoped application of the same underlying tracing principle to this project's real current architecture.",
+    "evidence": ["agent/event_ledger.py"],
+    "interview": {
+        "question": "Why does distributed tracing matter more as an architecture moves from a monolith toward microservices?",
+        "short_answer": "In a monolith, a single request's full execution typically stays within one process, where a debugger or a simple log with a shared identifier can follow it; once a request crosses real service boundaries, only an explicitly-propagated trace ID linking every component's work together lets you reconstruct the full real picture after the fact.",
+        "deep_answer": "This project's own current single-deployable architecture explains why full distributed tracing (a dedicated OpenTelemetry-style span/trace infrastructure) hasn't been the priority so far -- but its real correlation-ID discipline within its own AI pipeline's event ledger already applies the identical underlying principle (a shared identifier linking every stage of one logical operation) at the scope this project's real architecture currently needs, ready to extend into full distributed tracing if/when the architecture genuinely becomes more distributed.",
+    },
+}, related=["distributed-tracing-opentelemetry", "correlation-ids"])
+
+add_scoped("System Design", "correlation-ids", "CURRENT_PROJECT_EXPERIENCE", {
+    "what": "A real, unique identifier generated (or propagated) at the start of a logical operation and attached to every log/event/metric produced during that operation -- the concrete, simple mechanism that makes it possible to later find every real record related to one specific request/run, even across multiple components or asynchronous stages.",
+    "why": "Without a shared correlation ID, reconstructing what happened during one specific real operation means manually guessing which log lines/events (out of potentially many concurrent operations' worth) actually belong together -- a correlation ID makes this a simple, reliable query instead of manual correlation guesswork.",
+    "how": "Generate a unique ID at the start of a logical operation (or propagate one from an inbound request header), thread it through every subsequent log line/event/downstream call for that operation, and query by it when investigating a specific real incident.",
+    "when": "Every real operation whose full execution you might later need to reconstruct -- essentially any non-trivial production system.",
+    "real_experience": "This project's real event ledger tags every event with identifiers that let a specific delivery-pipeline run's full, real event history be reconstructed after the fact -- exactly the mechanism that made real incident investigations (AEQ-025, AEQ-028) tractable: querying real, correlated evidence for a specific run rather than manually searching through undifferentiated logs.",
+    "evidence": ["agent/event_ledger.py"],
+    "interview": {
+        "question": "What real investigation would be significantly harder without correlation IDs?",
+        "short_answer": "Reconstructing the full sequence of what happened during one specific real operation, when many operations may have run concurrently or the operation spans multiple asynchronous stages -- without a shared ID, you're left manually guessing which scattered log lines/events actually belong to the same real operation.",
+        "deep_answer": "This project's real event ledger's correlation mechanism is precisely what made its real AEQ-025 and AEQ-028 investigations tractable: querying for every event tied to a specific real run's identifier reconstructed the actual, complete sequence of what happened, rather than requiring a manual, error-prone search through undifferentiated logs hoping to correctly identify which entries belonged to the incident being investigated.",
+    },
+}, related=["correlation-ids-for-request-tracing", "logs"])
+
+# -- cloud-deployment --
+
+add_scoped("System Design", "aws", "LEARNED_UNDERSTOOD", {
+    "what": "Amazon Web Services -- the dominant cloud platform, offering a vast real catalogue of managed infrastructure services (compute, storage, database, networking, identity, ML) that let teams provision real infrastructure without owning physical hardware.",
+    "why": "Understanding AWS's real core services (and their real free-tier limits) matters for reasoning about cost-appropriate, minimal-footprint cloud architecture -- especially for a project explicitly constrained to AWS free-tier usage, where knowing what's genuinely free versus what incurs real cost is a real, practical engineering requirement, not just interview trivia.",
+    "how": "Provision only the real, specific services actually needed for a given requirement, verified against AWS's real, current free-tier terms (which change and should be checked, not assumed from memory) before relying on any service being free.",
+    "when": "Relevant to any real project choosing to use AWS, especially one with an explicit minimal-cost constraint.",
+    "context": "This project's own explicit, Owner-approved direction is to use AWS minimally, within the real free tier, for whatever specific capability genuinely needs cloud infrastructure beyond its current Railway-hosted deployment -- an honest, disclosed current state: general AWS knowledge is real and current, but this project's own hands-on AWS implementation work is in its early stages relative to this direction.",
+    "interview": {
+        "question": "How do you approach choosing AWS services for a project explicitly constrained to the free tier?",
+        "short_answer": "Identify the real, minimum specific capability actually needed, then check AWS's real, current free-tier terms for the specific service that would provide it (terms change over time, so verify current, not assumed) -- provisioning only what's genuinely needed and genuinely free, rather than reaching for a broader or more convenient service that would incur real cost.",
+        "deep_answer": "This project's own explicit constraint (AWS minimal, free-tier only) reflects the same 'provision only what's measured to be needed' discipline this project applies elsewhere -- and its own standing practice of verifying fast-moving external facts (which this project's own docs explicitly flag AWS pricing/free-tier terms as an example of) against current official sources rather than trusting potentially-stale memory is directly relevant here.",
+    },
+}, related=["lambda", "api-gateway"])
+
+add_scoped("System Design", "lambda", "LEARNED_UNDERSTOOD", {
+    "what": "AWS Lambda -- a serverless compute service running real code in response to real events (an HTTP request, a queue message, a schedule) without provisioning or managing servers, billed by real actual execution time/invocations rather than for continuously-running capacity.",
+    "why": "For real workloads that are infrequent, bursty, or genuinely event-driven, Lambda's pay-per-invocation model can be significantly more cost-effective than a continuously-running server, and removes real server-management overhead entirely -- at the real cost of cold-start latency and real execution-duration/resource limits.",
+    "how": "Package real function code (with its dependencies) and deploy it to Lambda, configuring a real trigger (API Gateway for HTTP, an SQS queue, a scheduled EventBridge rule); Lambda provisions real execution environments on demand, scaling automatically with real, incoming event volume.",
+    "when": "Genuinely event-driven, infrequent, or highly-variable-volume workloads where paying for continuously-running server capacity would be wasteful -- less ideal for consistently high-throughput, latency-sensitive workloads where cold-start unpredictability matters.",
+    "context": "This project's current real deployment (a continuously-running Spring Boot application on Railway) is not itself Lambda-based -- an honest, disclosed current state; Lambda is real, relevant, applicable knowledge for this project's stated future minimal-AWS direction (e.g. a genuinely event-driven, infrequent-use capability would be a real, well-suited Lambda candidate), not yet an implemented part of this project.",
+    "interview": {
+        "question": "When would Lambda be a genuinely better fit than a continuously-running server, cost-wise?",
+        "short_answer": "For real, infrequent or bursty workloads, Lambda's pay-per-invocation pricing avoids paying for idle capacity between invocations -- for consistently high, steady real traffic, a continuously-running server (or container) is often actually cheaper per-request than Lambda's per-invocation pricing at real high volume.",
+        "deep_answer": "This project's own primary application (a continuously-running Spring Boot service handling steady, ongoing traffic) is honestly a better fit for its current continuous-deployment model than for Lambda -- but a genuinely infrequent, event-driven capability this project might add under its AWS-minimal direction would be a real, well-reasoned candidate for Lambda specifically because of that different, bursty usage pattern, the kind of workload-shape-driven reasoning a real architecture decision should be grounded in.",
+    },
+}, related=["api-gateway", "aws"])
+
+add_scoped("System Design", "api-gateway", "LEARNED_UNDERSTOOD", {
+    "what": "AWS API Gateway -- a managed service that sits in front of real backend compute (often Lambda) handling HTTP request routing, authentication/authorization, rate limiting, and request/response transformation, without the backend needing to implement these cross-cutting concerns itself.",
+    "why": "For a serverless/Lambda-based architecture specifically, API Gateway provides the real, standard entry point handling concerns (routing, throttling, auth) that would otherwise need to be reimplemented in every individual function -- centralizing them at the gateway layer instead.",
+    "how": "Define real API routes mapping to backend targets (Lambda functions, or other HTTP endpoints); configure real authentication (API keys, Cognito, custom authorizers), rate limiting, and request validation at the gateway layer, so backend functions can stay focused on business logic.",
+    "when": "Primarily relevant alongside a serverless/Lambda-based backend architecture, where a gateway-layer entry point handling cross-cutting HTTP concerns is the standard pattern.",
+    "context": "This project's current architecture (a single Spring Boot deployable handling its own routing/auth directly via Spring Security) doesn't currently use API Gateway -- an honest, disclosed current state; this project's REST/proxy topics elsewhere already cover the equivalent general concept (a reverse proxy/gateway layer centralizing cross-cutting concerns) even without this specific managed AWS service being part of the current implementation.",
+    "interview": {
+        "question": "What real cross-cutting concerns does API Gateway centralize that would otherwise be duplicated across many Lambda functions?",
+        "short_answer": "Request routing, authentication/authorization, rate limiting, and request/response transformation -- without a gateway, each individual Lambda function would need to reimplement these concerns itself, leading to real duplicated logic and real inconsistency risk across functions.",
+        "deep_answer": "This project's own current single-deployable architecture handles these same cross-cutting concerns (routing, auth) centrally within its own Spring Security configuration rather than via a separate managed gateway service -- the underlying architectural principle (centralize cross-cutting concerns rather than duplicate them per-endpoint) is the same one API Gateway serves for a Lambda-based architecture specifically, applied here through a different, currently more appropriate mechanism.",
+    },
+}, related=["lambda", "proxy"])
+
+add_scoped("System Design", "cloudformation", "LEARNED_UNDERSTOOD", {
+    "what": "AWS CloudFormation -- infrastructure-as-code for AWS: define real infrastructure (in a declarative template) and CloudFormation provisions/updates/tears it down as a coherent, trackable 'stack,' rather than manually clicking through the AWS console.",
+    "why": "Manually-provisioned infrastructure is real, undocumented, hard-to-reproduce, and error-prone to change consistently -- infrastructure-as-code makes infrastructure changes reviewable (like application code), reproducible (the same template produces the same real infrastructure every time), and versioned in source control alongside the application it supports.",
+    "how": "Write a real, declarative template describing the desired infrastructure state; CloudFormation diffs it against the current real deployed state and applies only the real, necessary changes, tracking dependencies between resources automatically.",
+    "when": "Any real AWS infrastructure beyond the most trivial, one-off resource -- especially anything that will need to be reproduced (a staging environment matching production) or evolve over time with reviewable changes.",
+    "context": "This project doesn't currently provision AWS infrastructure via CloudFormation (its current deployment is Railway-based, not raw AWS) -- an honest, disclosed current state; this project's own strong, consistent preference for declarative, verifiable, reviewable configuration (Flyway migrations for schema, its own documented decisions log) reflects the same underlying infrastructure-as-code philosophy CloudFormation embodies, even without this specific tool being part of the current implementation.",
+    "interview": {
+        "question": "Why is infrastructure-as-code (CloudFormation or similar) preferred over manually configuring resources through a cloud console?",
+        "short_answer": "Manual console changes are undocumented, hard to reproduce consistently, and easy to accidentally make inconsistent between environments -- a declarative template is reviewable (like a code change), reproducible (the same template always produces the same real result), and can be versioned alongside the application it supports.",
+        "deep_answer": "This project's own consistent preference for declarative, source-controlled configuration wherever it applies (Flyway migrations rather than manual schema changes, explicit docs/DECISIONS.md rather than undocumented tribal knowledge) reflects the exact same underlying philosophy CloudFormation applies to infrastructure specifically -- a real, demonstrated pattern of preferring reviewable, reproducible, versioned configuration over manual, undocumented changes, consistently applied across this project even in areas that aren't CloudFormation itself.",
+    },
+}, related=["docker", "ci-cd"])
+
+add_scoped("System Design", "docker", "CURRENT_PROJECT_EXPERIENCE", {
+    "what": "A containerization platform packaging an application with its real dependencies (runtime, libraries, configuration) into a single, portable, reproducible image -- ensuring the real environment behaves identically across development, testing, and production, closing the classic 'works on my machine' gap.",
+    "why": "Without containerization, real differences between environments (a different JVM version, a missing dependency, a different OS-level library) can cause real, hard-to-reproduce bugs that only manifest in one specific environment -- a container image is a genuinely reproducible unit that behaves the same wherever it runs.",
+    "how": "A Dockerfile declares the real base image, dependencies, and build steps needed to produce a real, runnable image; the same real image built once is deployed identically across every environment, rather than each environment separately installing/configuring the application's real runtime dependencies.",
+    "when": "The standard, default packaging/deployment unit for essentially all modern real backend services.",
+    "real_experience": "This project's real Spring Boot application is containerized for its Railway deployment -- the same real container image that passes its full real test suite locally is the exact image deployed to production, closing the real 'works locally but not in production' risk class by construction rather than by hoping environments stay manually in sync.",
+    "evidence": ["app/pom.xml"],
+    "interview": {
+        "question": "What real class of production bug does containerization eliminate by construction?",
+        "short_answer": "Environment-drift bugs -- where a difference between the development/test environment and the real production environment (JVM version, missing library, different OS behavior) causes something that worked in testing to fail in production. A container image is the same real bytes running everywhere, removing this entire class of surprise.",
+        "deep_answer": "This project's real deployment pipeline builds and tests the SAME real container image that's ultimately deployed to production -- meaning a passing local/CI test run genuinely reflects what will run in production, since there's no separate 'production environment setup' step that could introduce real drift between what was tested and what's actually deployed.",
+    },
+}, related=["ci-cd", "railway"])
+
+add_scoped("System Design", "jenkins", "LEARNED_UNDERSTOOD", {
+    "what": "A widely-used, self-hostable CI/CD automation server -- runs real, defined pipelines (build, test, deploy) triggered by real events (a code push, a schedule), a common real choice especially in enterprise environments wanting full control over their CI/CD infrastructure rather than a fully-managed SaaS CI service.",
+    "why": "Real enterprise backend engineers frequently encounter Jenkins in existing large-scale systems -- understanding real pipeline-as-code concepts (a Jenkinsfile defining build/test/deploy stages declaratively) transfers directly to any CI/CD tool, even ones this project itself uses differently.",
+    "how": "A Jenkinsfile (checked into source control, versioned alongside the application) declares real pipeline stages; Jenkins executes them on real, configured build agents, triggered by a real event (webhook from a git push, a schedule).",
+    "when": "Relevant when working in or integrating with an existing enterprise environment already standardized on Jenkins, or when full self-hosted control over CI/CD infrastructure is a genuine requirement.",
+    "context": "This project's own real CI/CD uses GitHub Actions (not Jenkins) for its automated checks -- an honest, disclosed distinction: the underlying pipeline-as-code concepts (declarative stages, triggered by real events, versioned in source control) are directly transferable general knowledge, but this project's own hands-on CI implementation experience is with GitHub Actions specifically, not Jenkins.",
+    "interview": {
+        "question": "What core CI/CD concept transfers directly between Jenkins and GitHub Actions, even though the syntax differs?",
+        "short_answer": "Pipeline-as-code -- both define real build/test/deploy stages declaratively, versioned in source control alongside the application, triggered by real events -- the specific YAML/Groovy syntax differs, but the underlying discipline (reviewable, reproducible, versioned CI/CD configuration) is identical.",
+        "deep_answer": "This project's own real GitHub Actions configuration and general Jenkins knowledge both express the same underlying pipeline-as-code philosophy this project applies consistently elsewhere (declarative, reviewable, versioned configuration over manual/undocumented process) -- an honest note that this project's actual hands-on CI experience is with GitHub Actions, while the Jenkins-specific syntax knowledge, though accurate, hasn't been exercised in this project's own real pipeline.",
+    },
+}, related=["ci-cd", "cloudformation"])
+
+add_scoped("System Design", "ci-cd", "CURRENT_PROJECT_EXPERIENCE", {
+    "what": "Continuous Integration / Continuous Deployment -- automatically building, testing, and (for CD) deploying every real code change, so real regressions are caught immediately and deployment becomes a routine, low-risk, repeatable process rather than a rare, high-stakes manual event.",
+    "why": "Manual, infrequent integration/deployment accumulates real risk (many changes integrated/deployed together makes root-causing a regression much harder) -- CI/CD's real value is making every individual change's correctness independently, immediately verifiable, and deployment routine enough to happen safely and often.",
+    "how": "Every real code push triggers an automated pipeline: build, run the full real test suite, and (for CD) deploy automatically if all real gates pass -- with real, deterministic gates (not a human's subjective judgment) deciding whether a change is safe to proceed.",
+    "when": "The standard, default practice for any real production software project.",
+    "real_experience": "This project's own real GitHub Actions CI pipeline runs its full real test suite (724+ Python tests, 120+ Java tests, 146+ Node/frontend tests) on every real push, and this project's whole delivery pipeline (its own explicit AI-assisted workflow: implement -> inspect diff -> compile/test/run -> verify -> commit) embodies the same CI discipline even for its AI-assisted changes specifically, not just human-written ones.",
+    "evidence": ["agent/dashboard_data.py", "CLAUDE.md"],
+    "interview": {
+        "question": "Why does this project apply the same CI discipline to AI-assisted changes as to human-written ones?",
+        "short_answer": "An AI-generated change is exactly as capable of introducing a real regression as a human-written one -- the real deterministic gates (compile, full test suite) don't care who or what wrote the code, and applying them uniformly is what makes AI-assisted changes trustworthy rather than requiring blind trust in the AI's own self-report.",
+        "deep_answer": "This project's own standing workflow rule (implement -> inspect diff -> compile/test/run -> verify -> commit) is applied identically regardless of whether a human or an AI agent made the change -- a deliberate, explicit choice reflecting the real understanding that CI/CD's value (catching regressions immediately, before they compound) applies with EQUAL force to AI-assisted development, arguably with even more importance given an LLM's own self-report of correctness isn't independently trustworthy evidence.",
+    },
+}, related=["docker", "safe-deployment-rollback-strategy"])
+
+add_scoped("System Design", "railway", "CURRENT_PROJECT_EXPERIENCE", {
+    "what": "Railway -- the specific managed deployment platform this project actually uses in production: handles container hosting, TLS termination, domain routing, and deployment orchestration from a real git push through to a real, live, publicly-reachable application.",
+    "why": "For a project at this real scale, a managed platform like Railway provides real production-grade deployment infrastructure (TLS, routing, container orchestration) without the real operational burden of self-managing that infrastructure directly -- an appropriate, deliberate choice for this project's real constraints (minimal ops overhead, cost-conscious, single-developer).",
+    "how": "A real git push (or an explicit railway up --service <name> --detach CLI invocation) triggers Railway to build the real container image and deploy it; deployment status must be polled correctly (this project's own hard-won lesson: comparing the deployment ID actually changing AND its status genuinely leaving 'Building'/'Deploying,' not just checking for 'Online,' which can falsely report on a STALE, still-running previous deployment).",
+    "when": "This project's real, current, standard deployment mechanism for every production change.",
+    "real_experience": "This project has real, hands-on, extensively-used deployment experience with Railway -- including a real, documented lesson about correct deployment-status polling (a naive 'Online' check can be misleadingly true for a stale, not-yet-replaced previous deployment) learned directly from this project's own real deployment history, not from documentation alone.",
+    "evidence": ["agent/web_server.py", "docs/LESSONS.md"],
+    "interview": {
+        "question": "What's a real, non-obvious gotcha this project learned about verifying a Railway deployment actually succeeded?",
+        "short_answer": "Checking for status 'Online' alone isn't sufficient -- a stale, previous deployment can also show 'Online' while a NEW deployment is still building/deploying in the background. Correct verification requires confirming the deployment ID itself actually changed AND its status genuinely left the Building/Deploying transitional states, not just that SOME deployment shows Online.",
+        "deep_answer": "This project's own real, documented lesson (in LESSONS.md) came from directly hitting this exact false-positive: an early deployment-verification check saw 'Online' and reported success, while actually observing the PREVIOUS deployment's still-valid status rather than the new one's real completion -- fixed by explicitly tracking the deployment ID and requiring it to both change AND leave the transitional states, a real, hard-won operational lesson specific to this platform's real API behavior, not something obvious from documentation alone.",
+    },
+}, related=["ci-cd", "docker"])
+
+add_scoped_path("System Design", "cloud-deployment", "production-verification", "CURRENT_PROJECT_EXPERIENCE", {
+    "what": "In the cloud-deployment sense: the final, necessary step after any real deployment -- independently confirming the real, live system reflects the intended change, since a deployment tool reporting 'success' only proves the mechanism worked, not that the real, specific requested effect is genuinely live and correct.",
+    "why": "This project has a real, documented incident (AEQ-025) proving this gap is real, not theoretical -- a deployment can genuinely succeed (new code is running) while the real, specific user-visible effect the deployment was meant to produce is still wrong, due to a subtle scope mismatch between what was verified and what a real user actually sees.",
+    "how": "After every real deployment, independently query/observe the real, live production system to confirm the SPECIFIC requested change is genuinely present and correct -- with a real, bounded retry window accounting for real eventual-consistency propagation delay, never assumed instant, and never trusting the deployment tool's own status report as sufficient proof by itself.",
+    "when": "After every real production deployment where the specific content/behavior change matters -- essentially always for anything user-facing.",
+    "real_experience": "This project's real AEQ-025 incident is the concrete, disclosed proof of why this step is mandatory: the deployment genuinely succeeded and the Workbench's automated check verified its one anchored element correctly, but a real logged-in user session rendered a completely separate, un-anchored, hardcoded heading the operation never touched -- 'verified' was technically true and still misleading about what a real user actually experienced.",
+    "evidence": ["docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml"],
+    "interview": {
+        "question": "Why can a deployment be genuinely 'successful' by every automated check and still not fix the real problem for a real user?",
+        "short_answer": "An automated check typically verifies a SPECIFIC, anchored element or endpoint -- if the real, live page a user actually sees renders content through a different path than what was checked (a separate hardcoded element, a different user-state-dependent render path), the check can pass while the real user-visible experience remains wrong.",
+        "deep_answer": "This project's real, disclosed AEQ-025 incident is exactly this: the verification was narrowly, technically correct for the one element it checked, but its claimed SCOPE ('verified live and correct') implicitly overclaimed relative to what a real user in a different app state (logged in, viewing a different render path) would actually see -- fixed not by changing the verification mechanism itself, but by making its claimed scope honestly match what was actually checked, a lesson about verification WORDING staying accurate as an application evolves, not just about the mechanism being technically correct.",
+    },
+}, related=["safe-deployment-rollback-strategy", "verification-gates"])
+
+# -- performance --
+
+add_scoped("System Design", "latency", "LEARNED_UNDERSTOOD", {
+    "what": "In the general system-design sense: the real, measured time for one specific operation to complete -- distinct from throughput (how many operations complete per unit time); a system can have low latency but low throughput, or higher latency but high throughput via concurrency, and optimizing for one doesn't automatically improve the other.",
+    "why": "Confusing latency and throughput leads to optimizing the wrong thing for a given real requirement -- a user-facing interactive request cares about real per-request latency; a batch data-processing pipeline usually cares more about real total throughput, and the right optimization technique differs for each.",
+    "how": "Measure the real, specific metric that matches the real requirement (p50/p95/p99 latency for interactive systems; requests/records-per-second for throughput-oriented systems), and apply the technique that actually addresses that specific metric (caching/connection-reuse for latency; concurrency/batching for throughput) rather than a generic 'make it faster' approach.",
+    "when": "Every real performance requirement should specify which of these two (or both) actually matters, before choosing an optimization technique.",
+    "context": "This project's own real performance investments are latency-oriented where user-facing (connection pooling, caching, Resilience4j timeouts protecting real per-request latency) and throughput-oriented where relevant to its pipeline processing (Kafka's partitioning-by-key design, reasoned about explicitly for future real throughput scaling) -- a deliberate, differentiated approach matching the real requirement of each specific part of the system.",
+    "evidence": ["app/src/main/resources/application.properties", "app/src/main/java/com/example/customer/outbox/"],
+    "interview": {
+        "question": "Why might optimizing for lower latency sometimes reduce overall throughput, or vice versa?",
+        "short_answer": "Techniques that reduce per-request latency (e.g. processing each request immediately, without batching) can process fewer total requests per unit time than a batching approach that adds per-request latency but processes many requests more efficiently together -- the two metrics can genuinely trade off against each other depending on the technique.",
+        "deep_answer": "This project's own architecture reflects reasoning about this trade-off per real use case rather than universally optimizing for one: its user-facing request path prioritizes low real per-request latency (immediate response, async event publication rather than blocking on downstream delivery), while its Kafka consumer processing can be reasoned about for real throughput at scale via partitioning -- different real requirements for different parts of the same system, deliberately handled differently.",
+    },
+}, related=["throughput", "system-design-capacity-estimation-back-of-envelope-math"])
+
+add_scoped("System Design", "throughput", "LEARNED_UNDERSTOOD", {
+    "what": "The real, measured rate at which a system completes operations over time (requests/second, records/second) -- the system's real capacity dimension, as distinct from latency (how long one individual operation takes).",
+    "why": "A system's real maximum throughput is bounded by its most constrained real resource (database connections, CPU, downstream dependency capacity) -- identifying the REAL bottleneck (not guessing) is necessary before any throughput-improvement effort, since optimizing a non-bottleneck resource won't move the real number.",
+    "how": "Measure real throughput under real or realistic load, identify the actual limiting resource (via profiling/monitoring, not assumption), and address that specific real bottleneck (more connections, more concurrency, caching to reduce real backend load, horizontal scaling) rather than optimizing an already-sufficient resource.",
+    "when": "Any real system with a genuine, specific throughput requirement (a target requests/second or records/second) that needs to be verified as actually achievable, not assumed.",
+    "context": "This project's own honest, documented KNOWN_LIMITATIONS explicitly acknowledge its current real throughput hasn't been tested/verified at high real concurrent volume -- a disclosed, honest boundary rather than an unverified implicit claim of high-throughput readiness, consistent with this project's broader discipline of only claiming what's been actually measured.",
+    "evidence": ["docs/PROJECT_STATE.json"],
+    "interview": {
+        "question": "How do you identify the real bottleneck limiting a system's throughput, rather than guessing?",
+        "short_answer": "Load test (or profile under real production traffic) while monitoring each real candidate resource (database connections, CPU, downstream call latency, thread pool) -- the resource that saturates first as load increases is the real bottleneck; improving anything else won't move the system's real overall throughput ceiling.",
+        "deep_answer": "This project's own honest disclosure that it hasn't load-tested/verified high real concurrent throughput is itself the correct, disciplined answer at this project's real current stage -- rather than speculating about a real bottleneck without real measurement, this project's documented position is to state plainly what hasn't yet been measured, which is the right FIRST step (know what you don't know) before any real throughput-optimization effort would even be well-targeted.",
+    },
+}, related=["latency", "bottlenecks"])
+
+add_scoped_path("System Design", "performance", "concurrency", "LEARNED_UNDERSTOOD", {
+    "what": "In the performance-optimization sense: concurrency as a real lever for improving THROUGHPUT specifically -- doing more real work in overlapping time by not blocking one operation on another when they don't genuinely depend on each other, as distinct from concurrency's general correctness concerns (race conditions, thread safety).",
+    "why": "Many real backend workloads spend most of their real wall-clock time waiting on I/O (database queries, external calls) rather than genuinely computing -- concurrency lets a system issue/handle many such waiting operations simultaneously instead of processing them one at a time, directly improving real throughput for I/O-bound workloads specifically.",
+    "how": "Identify real, independent operations that don't need to happen sequentially (parallel calls to independent downstream services, async/non-blocking I/O handling many in-flight requests per thread) and structure code to exploit that real independence, rather than defaulting to sequential processing when it isn't actually required.",
+    "when": "Any real I/O-bound workload with genuinely independent operations that don't need to happen in strict sequence.",
+    "context": "This project's own real thread-per-request model (Spring's default) already provides real request-level concurrency, and its connection-pool sizing is explicitly reasoned about as the real resource that bounds how much of that concurrency can actually be exploited simultaneously -- a real, considered understanding of concurrency as a genuine throughput lever bounded by real, finite shared resources.",
+    "evidence": ["app/src/main/resources/application.properties"],
+    "interview": {
+        "question": "Why doesn't simply adding more concurrent threads always improve real throughput?",
+        "short_answer": "If the real bottleneck is a shared, finite resource (a limited connection pool, a downstream service's own capacity), adding more concurrent threads beyond what that resource can actually support just causes more contention/queuing for the same limited resource -- real throughput improvement requires the BOTTLENECK resource itself to scale, not just the number of concurrent requesters.",
+        "deep_answer": "This project's own connection-pool-sizing reasoning demonstrates understanding this directly: more application-level concurrent threads than the real connection pool can serve doesn't increase real database throughput, it just increases real queuing/wait time for a connection -- a concrete, correct application of the general principle that concurrency only improves throughput up to the real capacity of the actual bottleneck resource, not indefinitely.",
+    },
+}, related=["throughput", "thread"])
+
+add_scoped_path("System Design", "performance", "bottlenecks", "CURRENT_PROJECT_EXPERIENCE", {
+    "what": "The real, single most-constraining resource or step in a system that limits its overall real performance -- improving anything OTHER than the actual current bottleneck has no real effect on overall system performance until that specific bottleneck itself is addressed (Theory of Constraints, applied to system performance).",
+    "why": "Effort spent optimizing a non-bottleneck component is real, wasted engineering time from a system-throughput/latency perspective -- correctly identifying the real, current bottleneck (via real measurement/profiling, never assumption) is the necessary first step before any performance-optimization effort can have real impact.",
+    "how": "Measure real performance under real or realistic load, instrument each candidate component (database, downstream calls, CPU, connection pool), and identify which one actually saturates/limits performance first -- then address that specific real bottleneck, re-measure, and repeat, since fixing one bottleneck typically reveals the next real constraint.",
+    "when": "Before any performance-optimization effort -- optimizing based on assumption rather than real measurement risks wasted effort on a non-bottleneck.",
+    "real_experience": "This project's real N+1 query investigation is a concrete example of correctly identifying a real bottleneck via measurement (real SQL-level query-count logging revealed the actual extra queries) rather than guessing -- the fix targeted the real, measured bottleneck (excessive queries) directly, verified by a real test asserting the query count actually dropped.",
+    "evidence": ["app/src/main/java/com/example/customer/"],
+    "interview": {
+        "question": "Why is it important to re-measure after fixing a real bottleneck, rather than assuming the system is now fully optimized?",
+        "short_answer": "Fixing the current bottleneck typically just reveals the NEXT most-constraining resource -- a system's real performance ceiling is always set by whatever the current bottleneck is, so after removing one, a different resource becomes the new limiting factor, which needs its own real measurement to identify.",
+        "deep_answer": "This project's own real N+1 fix demonstrates the correct discipline: real measurement (SQL query-count logging) identified the specific bottleneck, the fix targeted it directly, and a real regression test verifies the query count specifically (not just that the endpoint 'works') -- guarding against this exact bottleneck silently reappearing later, since a functional-correctness test alone wouldn't catch a regression back to N+1 query behavior.",
+    },
+}, related=["throughput", "db-connections"])
+
+add_scoped("System Design", "db-connections", "CURRENT_PROJECT_EXPERIENCE", {
+    "what": "The real, specific case of connection pooling applied to database access -- a real, finite resource (the database's own maximum connection capacity, and the application's own pool size) that directly bounds real concurrent database throughput, requiring deliberate, measured sizing rather than a default left unconsidered.",
+    "why": "Too few database connections in the pool causes real request queuing/latency under real concurrent load; too many can overwhelm the real database server's own connection-handling capacity (each real connection consumes real database-side memory/resources) -- the right size is a genuine, measured engineering decision specific to this project's real workload.",
+    "how": "Size the real pool based on real expected concurrent request volume and real average query duration (Little's Law reasoning: concurrent connections needed ≈ real throughput × real average query duration), verified against the real database server's own maximum connection capacity, and validated empirically under real or realistic load rather than left at a framework default.",
+    "when": "Every real application connecting to a relational database.",
+    "real_experience": "This project's real HikariCP pool is deliberately, explicitly sized based on this project's own real expected concurrency -- reasoned through in this project's own documentation rather than left at a default value, with the real trade-off (queuing risk vs. database-overwhelm risk) explicitly understood and balanced.",
+    "evidence": ["app/src/main/resources/application.properties", "docs/interview-scenarios/"],
+    "interview": {
+        "question": "What real, concrete formula or reasoning would you use to size a database connection pool, rather than guessing?",
+        "short_answer": "Little's Law gives a starting estimate: needed connections ≈ real expected requests-per-second × real average query duration in seconds -- then validate empirically under real or realistic load, since real query duration and real concurrency patterns can differ from initial estimates, and the number should be re-verified as the system's real workload evolves.",
+        "deep_answer": "This project's real HikariCP sizing decision was reasoned through with exactly this kind of concrete, workload-specific calculation rather than a copied default -- and its own documentation explicitly reasons about the real trade-off in both directions (too small queues real requests under load; too large risks overwhelming the real database's own connection capacity), the kind of specific, numbers-grounded reasoning a system-design interview is really probing for.",
+    },
+}, related=["jdbc-hikaricp-connection-pool-sizing", "connection-pooling"])
+
+add_scoped("System Design", "pool-sizing", "CURRENT_PROJECT_EXPERIENCE", {
+    "what": "The general, real engineering discipline of deliberately sizing any real, finite, shared resource pool (database connections, HTTP client connections, thread pools) based on real, measured or estimated demand -- rather than an arbitrary default or an unconsidered 'just make it big' choice.",
+    "why": "Any pooled resource has real trade-offs at both extremes -- too small causes real queuing/latency under load; too large wastes real resources or can overwhelm whatever the pool ultimately connects to -- correct sizing requires real reasoning about the specific real workload, not a one-size-fits-all default.",
+    "how": "Apply the same general real reasoning across every pooled resource type: estimate real expected concurrent demand and real per-use duration, size the pool to comfortably meet that real demand without unnecessary excess, and validate under real or realistic load, revisiting as the real workload evolves.",
+    "when": "Every real pooled resource in a production system -- database connections, HTTP client connection pools, thread pools all deserve this same deliberate reasoning.",
+    "real_experience": "This project applies this same deliberate sizing discipline consistently: its real HikariCP database connection pool is explicitly, deliberately sized (not left at framework default) based on reasoning about this project's own real expected concurrency and query duration, documented explicitly in this project's own interview-scenario materials.",
+    "evidence": ["app/src/main/resources/application.properties"],
+    "interview": {
+        "question": "Why shouldn't you just set every resource pool size to a large, safe-seeming number to avoid ever running out?",
+        "short_answer": "An oversized pool wastes real resources at minimum (memory per idle connection, for instance) and, for pools connecting to a real shared downstream (like a database), can actually overwhelm that downstream's own finite capacity under real peak concurrent load -- 'bigger is safer' is a common but real, incorrect assumption for shared, finite resource pools.",
+        "deep_answer": "This project's own real, deliberate HikariCP sizing decision reflects understanding this trade-off correctly: the pool is sized based on real, specific reasoning about this project's own expected workload, not maximized defensively -- because an oversized pool here specifically risks overwhelming the real PostgreSQL server's own connection-handling capacity, a genuine, real-world consequence of the naive 'bigger is always safer' assumption this project's documentation explicitly reasons past.",
+    },
+}, related=["db-connections", "connection-pooling"])
+
+add_scoped("System Design", "resource-cost", "LEARNED_UNDERSTOOD", {
+    "what": "The real, actual dollar cost of the infrastructure/resources a system consumes -- compute, storage, network, managed-service usage -- a genuine, measurable constraint that should factor into real architecture decisions alongside performance/reliability, not treated as someone else's problem.",
+    "why": "An architecturally 'ideal' solution that's real, significantly more expensive than a slightly-less-ideal alternative isn't automatically the right real engineering choice -- resource cost is a genuine, legitimate design constraint, and a senior engineer should be able to reason about real cost trade-offs explicitly, not just raw technical merit in isolation.",
+    "how": "Estimate the real cost of a proposed architecture (using real, current pricing for the actual services involved) before committing to it, and weigh it explicitly against the real, specific value it provides relative to a simpler/cheaper alternative -- provisioning for real, measured need rather than speculative future scale.",
+    "when": "Every real architecture decision, especially for cost-constrained projects (startups, personal projects, cost-conscious teams).",
+    "real_experience": "This project's own explicit constraint (AWS minimal, free-tier only) makes resource cost a real, first-class, explicit design constraint rather than an afterthought -- its consistent 'don't provision what isn't needed yet' discipline (documented across Kafka, Redis, and cloud-service decisions) is a direct, demonstrated application of taking real resource cost seriously as an engineering trade-off.",
+    "evidence": ["docs/PROJECT_STATE.json", "CLAUDE.md"],
+    "interview": {
+        "question": "How do you factor real infrastructure cost into an architecture decision, rather than only optimizing for technical elegance?",
+        "short_answer": "Estimate the real, current cost of a proposed architecture using actual pricing for the services involved, and weigh it explicitly against the real value it provides relative to a simpler, cheaper alternative that might meet the actual requirement just as well -- cost is a real, legitimate design constraint, not a separate concern from 'real' engineering.",
+        "deep_answer": "This project's own explicit AWS-minimal-free-tier constraint, applied consistently across its architecture decisions (not provisioning Kafka/Redis/cloud infrastructure beyond real measured need), is a real, demonstrated example of treating cost as a first-class design input -- the same discipline a senior engineer should be able to articulate in any system-design discussion: the 'best' architecture is the one that best satisfies ALL real constraints together, cost included, not the one with the most impressive technology stack in isolation.",
+    },
+}, related=["scale", "constraints"])
 
 def _apply(node, domain_title, parent_slug, applied, applied_scoped, applied_path_scoped):
     slug = node.get("slug")
