@@ -56,6 +56,7 @@ import dashboard_data
 import demo_catalogue
 import showcase_data
 import interview_walkthrough_data
+import ask_codebase
 import demo_execution
 import estimation
 import triage_execution
@@ -1616,6 +1617,26 @@ async def get_interview_walkthrough_data(request: Request):
     return JSONResponse(walkthrough)
 
 
+async def ask_codebase_page(request: Request):
+    """Public, read-only 'Ask the Codebase' page. See agent/ask_codebase.py
+    for the full design rationale (zero LLM calls, fixed curated corpus,
+    structural security boundary)."""
+    return FileResponse(str(WEB_DIR / "ask-codebase.html"))
+
+
+async def ask_codebase_api(request: Request):
+    """GET-only, idempotent, no request body -- the query is the only
+    input, already bounded (agent/ask_codebase.MAX_QUERY_LEN) before any
+    retrieval work happens. embed_query() does real local CPU work
+    (~seconds, not milliseconds -- confirmed by direct measurement), so
+    this runs off the event loop exactly like every other CPU-bound
+    handler in this file (see AEQ-010 -- a sync call left on the loop
+    froze the entire service under real load)."""
+    query = request.query_params.get("q", "")
+    result = await run_in_threadpool(ask_codebase.ask, query)
+    return JSONResponse(result)
+
+
 # --- Incident Triage & Repair Lab, Scenario A -------------------------------
 #
 # Every handler below is a thin, honest pass-through to agent/
@@ -1975,6 +1996,7 @@ routes = [
     Route("/api/sessions/history/{session_id}", get_session_detail, methods=["GET"]),
     Route("/api/showcase/{slug}", get_showcase_data, methods=["GET"]),
     Route("/api/interview-walkthrough", get_interview_walkthrough_data, methods=["GET"]),
+    Route("/api/ask-codebase", ask_codebase_api, methods=["GET"]),
     Route("/api/triage/scenario-a/reset", triage_reset, methods=["POST"]),
     Route("/api/triage/scenario-a/reproduce", triage_reproduce, methods=["POST"]),
     Route("/api/triage/scenario-a/diagnose", triage_diagnose, methods=["POST"]),
@@ -2011,6 +2033,7 @@ routes = [
     Route("/usage", usage_page, methods=["GET"]),
     Route("/usage/session/{session_id}", usage_page, methods=["GET"]),
     Route("/showcase/{slug}", showcase_page, methods=["GET"]),
+    Route("/ask-codebase", ask_codebase_page, methods=["GET"]),
     Route("/triage", triage_page, methods=["GET"]),
     Route("/triage/scenario-b", triage_page_b, methods=["GET"]),
     Route("/triage/scenario-c", triage_page_c, methods=["GET"]),

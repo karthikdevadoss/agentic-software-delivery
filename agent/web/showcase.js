@@ -315,6 +315,7 @@ function renderNav(main, showcase) {
   const links = [
     ["OPEN CUSTOMER APP", (showcase.production_urls || {}).customer_app],
     ["OPEN WORKBENCH", (showcase.primary_demo || {}).url],
+    ["ASK THE CODEBASE", "/ask-codebase"],
     ["VIEW DASHBOARD", "/dashboard"],
     ["VIEW USAGE", "/usage"],
     ["VIEW LEARN", "/learn"],

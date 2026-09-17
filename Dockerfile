@@ -74,6 +74,18 @@ RUN pip install --no-cache-dir -r agent/requirements.txt
 COPY . .
 RUN chmod +x app/mvnw
 
+# agent/.backend_rag_index/ is gitignored (derived/build data, same
+# convention as the sibling whole-repo RAG index) -- nothing previously
+# built it automatically, because until the "Ask the Codebase" public
+# route (2026-09-17), this index was only ever built manually by a
+# developer running agent/backend_acceptance.py, never at live-request
+# time. Built into the IMAGE here (not lazily at request time or
+# container startup) so the very first real visitor to /ask-codebase
+# after a fresh deploy gets a real, already-built index -- not a slow
+# multi-minute cold build blocking their request, and not a startup delay
+# risking Railway's health check.
+RUN cd agent && python backend_rag_index.py
+
 # git_commit provenance (agent/web_server.py's Run.git_commit_before) and
 # the trainer's real `git commit` step both need a usable repo identity —
 # this image runs as a fresh checkout with no prior local commits, so

@@ -1,0 +1,109 @@
+/* Ask the Codebase -- additive to style.css's shared design tokens. */
+
+#ac-form textarea {
+  font-family: inherit;
+  font-size: 0.95rem;
+}
+
+.ac-form-row {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin-top: 0.6rem;
+}
+.ac-form-row .hint { margin: 0; }
+
+.ac-examples {
+  margin-top: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+.ac-example-btn {
+  background: #1a1d27;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  margin: 0;
+}
+.ac-example-btn:hover { color: var(--text); border-color: var(--accent); }
+
+.ac-status-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.ac-status-pill {
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+.ac-status-strong { background: #124a35; color: var(--green); }
+.ac-status-weak { background: #4a3a12; color: var(--amber); }
+.ac-status-none { background: #4a1616; color: var(--red); }
+.ac-status-message { color: var(--muted); font-size: 0.88rem; }
+
+.ac-evidence-list { display: grid; gap: 0.9rem; }
+.ac-evidence-card {
+  background: #10131b;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.9rem 1rem;
+}
+.ac-evidence-head {
+  display: flex;
+  gap: 0.7rem;
+  align-items: center;
+  margin-bottom: 0.4rem;
+  font-size: 0.75rem;
+}
+.ac-evidence-rank { color: var(--accent); font-weight: 700; }
+.ac-evidence-score { color: var(--muted); font-family: "SF Mono", Consolas, monospace; }
+.ac-evidence-type {
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: #1a1d27;
+  border-radius: 4px;
+  padding: 0.1rem 0.45rem;
+}
+
+.ac-evidence-path { font-size: 0.88rem; margin-bottom: 0.55rem; }
+.ac-evidence-path a { color: var(--accent); text-decoration: none; font-weight: 600; }
+.ac-evidence-path a:hover { text-decoration: underline; }
+.ac-evidence-lines { color: var(--muted); }
+
+.ac-evidence-excerpt {
+  background: #0d0f14;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.7rem 0.85rem;
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-x: auto;
+  max-height: 280px;
+  overflow-y: auto;
+  margin: 0;
+  color: var(--text);
+}
+
+.ac-how-grid { margin: 0; }
+.ac-how-grid dt {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.85rem;
+  margin-top: 0.85rem;
+}
+.ac-how-grid dt:first-child { margin-top: 0; }
+.ac-how-grid dd { margin: 0.25rem 0 0; color: var(--muted); font-size: 0.87rem; line-height: 1.55; }
