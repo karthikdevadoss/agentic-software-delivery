@@ -107,6 +107,21 @@ def call(
             "denial_reason": "LLM_MODE=DISABLED -- zero-LLM mode active, no network call made",
         }
 
+    # AEQ-028: whether THIS call goes through the real Anthropic client is
+    # decided here, before create_fn is reassigned below -- an injected
+    # create_fn is, by this gateway's own documented contract ("Never
+    # omitted in a real automated test"), always a test double standing in
+    # for a real network call. Usage must only ever be recorded for the
+    # former: metrics.record_model_usage() bridges into the real, shared,
+    # durable production event ledger (see web_server.py's
+    # metrics.set_usage_sink(_on_model_usage)) whenever web_server has been
+    # imported anywhere in the current process -- which a full
+    # `python -m unittest discover` run does incidentally, via
+    # test_web_server.py's own import, regardless of which test file
+    # actually calls this function. Recording a test double's fake .usage
+    # here previously wrote real rows (fake 10/20 token counts, no run_id)
+    # into real production Usage/Dashboard economics on every such run.
+    real_client_call = create_fn is None
     if create_fn is None:
         api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
         if not api_key:
@@ -127,7 +142,7 @@ def call(
     )
 
     usage = getattr(response, "usage", None)
-    if usage is not None:
+    if usage is not None and real_client_call:
         import metrics
         metrics.record_model_usage(
             provider="anthropic", model=model,
