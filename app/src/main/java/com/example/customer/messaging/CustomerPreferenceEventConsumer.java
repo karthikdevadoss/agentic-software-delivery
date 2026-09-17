@@ -1,6 +1,7 @@
 package com.example.customer.messaging;
 
 import com.example.customer.event.CustomerPreferenceUpdatedEvent;
+import com.example.customer.notification.NotificationSenderFactory;
 import com.example.customer.outbox.ProcessedEvent;
 import com.example.customer.outbox.ProcessedEventRepository;
 import io.micrometer.core.instrument.Counter;
@@ -39,15 +40,18 @@ public class CustomerPreferenceEventConsumer {
 
     private final ProcessedEventRepository processedEventRepository;
     private final JsonMapper jsonMapper;
+    private final NotificationSenderFactory notificationSenderFactory;
     private final Counter processed;
     private final Counter duplicatesSkipped;
 
     public CustomerPreferenceEventConsumer(
             ProcessedEventRepository processedEventRepository,
             JsonMapper jsonMapper,
+            NotificationSenderFactory notificationSenderFactory,
             MeterRegistry meterRegistry) {
         this.processedEventRepository = processedEventRepository;
         this.jsonMapper = jsonMapper;
+        this.notificationSenderFactory = notificationSenderFactory;
         this.processed = Counter.builder("customer_preference_events.consumed").tag("result", "processed").register(meterRegistry);
         this.duplicatesSkipped = Counter.builder("customer_preference_events.consumed").tag("result", "duplicate-skipped").register(meterRegistry);
     }
@@ -66,6 +70,9 @@ public class CustomerPreferenceEventConsumer {
         CustomerPreferenceUpdatedEvent event = jsonMapper.readValue(envelope.payload(), CustomerPreferenceUpdatedEvent.class);
         log.info("Processed CustomerPreferenceUpdated: customerId={}, paperlessBilling={}, notificationChannel={}",
                 event.customerId(), event.paperlessBilling(), event.notificationChannel());
+
+        notificationSenderFactory.getSender(event.notificationChannel())
+                .send(event.customerId(), "Your account preferences were updated.");
 
         processedEventRepository.save(new ProcessedEvent(envelope.eventId()));
         processed.increment();
