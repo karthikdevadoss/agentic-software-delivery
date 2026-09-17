@@ -23,6 +23,7 @@ Before modifying anything:
 9. If a documentation/state claim actually matters for the task, verify it against the real source/Git rather than trusting it — actual repository state wins on conflict; correct the stale doc after verifying.
 10. Report current version, current ticket, verified state and exact next action.
 11. Do not modify code until explicitly asked.
+12. Before ever reporting previously-described work (from PROJECT_STATE.json, a prior session's summary, or the user's own recollection) as missing/lost: git status --short and git log alone are NOT a complete picture. Also check git stash list, git branch -a, and git reflog -20 — real, uncommitted work is routinely (and correctly) stashed or left on an unmerged branch when a higher-priority task interrupts it, and none of that shows up in a plain status/log check. Only report something as genuinely lost after checking all of these and finding no trace.
 
 ## Proactive action policy
 Within an explicitly approved task/phase, don't just report a small fixable
@@ -81,6 +82,7 @@ trivial observations.
 - Never expose, print, stage or commit agent/.env or API keys.
 - Never weaken tests/verification just to make something pass.
 - Before stopping or when context is becoming constrained: finish or safely halt the current coherent unit, verify it, update PROJECT_STATE.json and docs/ACTION_QUEUE.json (if it exists), commit, and leave one explicit next_action — a fresh session must be able to resume from repository state alone.
+- If a higher-priority task interrupts substantial uncommitted work, stashing it (git stash -u, to also capture new untracked files) to switch cleanly is correct — but the stash itself is not durable/findable on its own. Immediately record a one-line pointer to it (the stash message, the branch it was on, what it contains) in docs/ACTION_QUEUE.json or PROJECT_STATE.json's next_action, before starting the interrupting task. A fresh session after a context-compaction boundary has no memory of having stashed anything; only a durable, indexed pointer — not the stash existing somewhere findable via git archaeology — makes it resumable.
 - A local `git commit` is not durably saved — durability requires a verified
   remote push (see docs/RECOVERY.md, docs/RESOURCE_REGISTRY.md's Git entry).
   Do not describe work as "saved" or "backed up" from local commits alone.

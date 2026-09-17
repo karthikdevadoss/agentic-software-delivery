@@ -1126,3 +1126,42 @@ surprising verified behavior would otherwise get rediscovered later.
   write, and a regression test with unusually literal assertions (here,
   "does this specific field exist") is what actually caught the
   second, subtler instance of this same mistake.
+
+- **`git stash`ing real, tested, uncommitted work to switch to a
+  higher-priority task is the correct move — but the stash itself is
+  not a durable record, and nothing else pointed to it.** A prior
+  session had a real, working, fully-tested GraphQL feature (schema,
+  controller, exception resolver, 6 passing integration tests) on
+  branch `feature/graphql-api`, uncommitted. A higher-priority
+  production incident (AEQ-028) came in; the session correctly ran
+  `git stash -u` (capturing the untracked new files too, not just
+  modified tracked ones) rather than losing the work or blocking the
+  urgent fix, switched branches, and fixed the incident. The stash was
+  never popped afterward, and — critically — no durable artifact
+  (`docs/ACTION_QUEUE.json`, `PROJECT_STATE.json`'s `next_action`, even
+  a one-line note) recorded that it existed. When the next session
+  resumed after a context compaction, its only source of truth about
+  the GraphQL work was the compacted conversation summary's own
+  narration — which was accurate about *what* had been built, but the
+  actual proof of *where it currently lived* (a specific stash entry,
+  on a specific branch, findable only via `git stash list` /
+  `git reflog`) was never durably written anywhere a fresh session
+  would naturally check. The next session initially reported the work
+  as **lost** — wrong, and only caught because the user pushed back
+  ("so strange") — because it checked `git log`/the working tree on
+  `master` and stopped there, never running `git stash list`. **General
+  rule:** `git status --short` and `git log` are NOT a complete picture
+  of repository state — before ever reporting real, previously-described
+  work as missing, also check `git stash list`, `git branch -a`, and
+  `git reflog` (see the Session-startup checklist above, which only
+  names `git status --short` and `git log -5 --oneline` — read as the
+  *minimum*, not the complete forensic checklist, whenever something
+  described earlier appears to be missing). And going forward: any time
+  substantial uncommitted work is stashed to context-switch to a more
+  urgent task, immediately record a one-line pointer to it (the stash
+  message, the branch, what's in it) in `docs/ACTION_QUEUE.json` or
+  `PROJECT_STATE.json`'s `next_action` — the stash preserves the bytes,
+  but only a durable, indexed pointer makes it findable without manual
+  git archaeology, especially across a context-compaction boundary
+  where the next session has no memory of having stashed anything at
+  all.
