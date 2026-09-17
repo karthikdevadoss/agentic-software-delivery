@@ -50,6 +50,22 @@ def add_scoped(domain_title, slug, classification, sections, related=None):
     }
 
 
+# (domain_title, parent_slug, slug) -> enrichment dict, for slugs that
+# recur even WITHIN one domain under different subdomains (e.g. System
+# Design has both apis > idempotency and distributed-systems > idempotency
+# as genuinely different, both-real angles on the same word) -- checked
+# with the highest priority in _apply, ahead of SCOPED_CONTENT and CONTENT.
+PATH_SCOPED_CONTENT: dict[tuple[str, str, str], dict] = {}
+
+
+def add_scoped_path(domain_title, parent_slug, slug, classification, sections, related=None):
+    PATH_SCOPED_CONTENT[(domain_title, parent_slug, slug)] = {
+        "experience_classification": classification,
+        "sections": sections,
+        "related": related or [],
+    }
+
+
 # ============================================================
 # AI FOUNDATIONS
 # ============================================================
@@ -1666,46 +1682,743 @@ add_scoped("AI Economics", "caching", "CURRENT_PROJECT_EXPERIENCE", {
 }, related=["model-efficiency", "token-cost"])
 
 
-def _apply(node, domain_title, applied, applied_scoped):
+# ============================================================
+# SYSTEM DESIGN -- Tier 3 (all entries domain-scoped: many slugs here are
+# generic terms that legitimately recur across AI-knowledge domains too,
+# so every System Design entry uses add_scoped to avoid ever touching
+# another domain's node, learned from the real "indexing" collision found
+# and fixed during Tier 1.)
+# ============================================================
+
+# -- requirements --
+
+add_scoped("System Design", "functional-requirements", "LEARNED_UNDERSTOOD", {
+    "what": "The specific, concrete behaviors a system must exhibit -- what it does, from a user or client's perspective -- as opposed to non-functional requirements (how well it does it).",
+    "why": "A system-design interview or a real project kickoff that skips explicitly naming functional requirements risks building the wrong thing efficiently -- clarifying scope up front is cheaper than discovering a scope mismatch after implementation.",
+    "how": "Enumerate the concrete use cases/operations the system must support (e.g. 'a customer can enroll in a plan,' 'a customer can update notification preferences') before any architecture discussion -- each should be specific enough to derive a test case from.",
+    "when": "The very first step of any real system-design exercise or project scoping session, before any technology or architecture decision.",
+    "context": "This project's own Customer App has a real, concrete functional-requirements set directly derivable from its actual REST endpoints (enroll in a plan, update preferences, view contract status) -- each backed by a real controller method and a real integration test, not an abstract requirements document disconnected from the implementation.",
+    "evidence": ["app/src/main/java/com/example/customer/controller/"],
+    "interview": {
+        "question": "How do you extract functional requirements from an ambiguous prompt like 'design a customer management system'?",
+        "short_answer": "Ask clarifying questions to enumerate the concrete operations a user needs (create/read/update a customer, enroll in a plan, manage preferences) before any architecture discussion -- treat each as something you could write a test case for.",
+        "deep_answer": "This project's own real controller surface is a concrete example of functional requirements made testable: each endpoint (CustomerController, ContractPlanController, CustomerPreferenceController) corresponds to one real, specific functional requirement, each with its own integration test proving that requirement is actually met -- the requirement and its verification are never separated.",
+    },
+}, related=["non-functional-requirements", "acceptance-criteria"])
+
+add_scoped("System Design", "non-functional-requirements", "LEARNED_UNDERSTOOD", {
+    "what": "The quality attributes a system must have while performing its functional requirements -- latency, availability, scalability, security, consistency -- the 'how well' rather than the 'what' of a system.",
+    "why": "Two systems can have identical functional requirements but wildly different appropriate architectures depending on their non-functional requirements (a system needing 99.99% availability at 10k req/s needs a very different design than one needing 99% at 10 req/s) -- skipping this in a design discussion produces an architecture calibrated to the wrong scale.",
+    "how": "Explicitly state or ask for real numbers where possible (expected QPS, acceptable p99 latency, availability target, consistency requirements) -- vague terms like 'fast' and 'reliable' aren't actionable; a real number is.",
+    "when": "Immediately after functional requirements are scoped, before any architecture/technology decision, in both interviews and real project planning.",
+    "context": "This project's own documented KNOWN_LIMITATIONS in docs/PROJECT_STATE.json is a real, honest non-functional-requirements statement in reverse: it explicitly says what scale this system is NOT currently built/tested for (real concurrent user load, high-throughput Kafka partitioning) rather than silently implying production-grade non-functional guarantees it hasn't actually verified.",
+    "evidence": ["docs/PROJECT_STATE.json"],
+    "interview": {
+        "question": "Why is 'the system should be fast and reliable' not a usable non-functional requirement?",
+        "short_answer": "It's not actionable -- 'fast' and 'reliable' don't tell you what architecture decisions to make. A real number (p99 < 200ms, 99.9% availability, 10k QPS) is what lets you reason about trade-offs like caching, replication, or async processing.",
+        "deep_answer": "This project's own documented approach to this is instructive precisely because it's honest about NOT having certain non-functional guarantees at its current stage -- rather than vaguely claiming production-scale reliability, it explicitly states its real, current scale and what would need to change (e.g. connection pool sizing, Kafka partitioning) to genuinely support a higher one, the same discipline a real system-design answer should apply: state the current real numbers, then state what changes at 10x.",
+    },
+}, related=["functional-requirements", "scale", "slo-sla-concepts"])
+
+add_scoped("System Design", "scale", "LEARNED_UNDERSTOOD", {
+    "what": "The real, concrete expected load a system must handle -- users, requests per second, data volume, growth rate -- the number that should drive every subsequent architecture decision in a system-design exercise.",
+    "why": "Architecture decisions that are correct at one scale are often wrong (over-engineered or under-engineered) at another -- a single Postgres instance is correct at modest scale and wrong at massive scale; a full microservices split is often wrong at modest scale and can become necessary at massive scale.",
+    "how": "Get or estimate real numbers early (daily active users, requests/second, data growth rate) using back-of-envelope math, and revisit architecture decisions explicitly against those numbers rather than defaulting to 'best practice' architecture regardless of actual scale.",
+    "when": "Immediately after non-functional requirements are scoped -- scale numbers directly determine which non-functional targets are even realistic.",
+    "context": "This project explicitly practices 'don't provision what isn't needed yet, only what's measured to be needed' -- documented honestly in PROJECT_STATE.json's KNOWN_LIMITATIONS rather than silently over-architecting for a scale this project doesn't actually operate at, and each interview-scenario doc's 'What Changes at 10x Scale' section reasons explicitly about what would need to change if real scale grew.",
+    "evidence": ["docs/PROJECT_STATE.json", "docs/interview-scenarios/"],
+    "interview": {
+        "question": "How do you avoid over-engineering a system for a scale it doesn't actually need?",
+        "short_answer": "Get or estimate the real expected numbers first, and explicitly justify every architecture decision against those numbers -- provision for measured or clearly-anticipated need, not speculative future scale that may never materialize.",
+        "deep_answer": "This project's own documented discipline is a real example: Kafka and Redis are used deliberately, but the project's docs explicitly state it does NOT provision for scale beyond what's currently measured or clearly needed, and each interview-scenario doc's 'What Changes at 10x Scale' section reasons honestly about what would need to change rather than building that complexity in now on speculation -- the same 'smallest correct answer to a real constraint' discipline applied to scale decisions specifically.",
+    },
+}, related=["non-functional-requirements", "system-design-capacity-estimation-back-of-envelope-math"])
+
+add_scoped("System Design", "constraints", "LEARNED_UNDERSTOOD", {
+    "what": "The real, fixed limitations a system-design solution must operate within -- team size, budget, existing technology commitments, timeline, regulatory requirements -- as distinct from requirements (what the system must do) or scale (how much load it handles).",
+    "why": "The 'best' architecture in the abstract is often wrong for a specific real situation once genuine constraints are accounted for -- a technically superior microservices architecture is the wrong answer for a two-person team with a six-week deadline.",
+    "how": "Explicitly surface real constraints (team size, budget, deadline, must-use-existing-infra, compliance requirements) before finalizing an architecture recommendation, and let them genuinely shape the trade-offs chosen, not just get mentioned and ignored.",
+    "when": "Alongside requirements/scale gathering, early in any real design process or interview.",
+    "context": "This project's own real constraint (a single-developer AI-assisted portfolio project, minimal AWS free-tier budget) genuinely and honestly shapes its architecture decisions -- documented explicitly rather than pretending an enterprise-scale team's architecture choices would be equally appropriate here.",
+    "evidence": ["docs/PROJECT_STATE.json", "CLAUDE.md"],
+    "interview": {
+        "question": "How do real-world constraints change a system-design answer versus a textbook-ideal design?",
+        "short_answer": "Constraints (team size, budget, timeline, existing infra) should genuinely change the recommended architecture, not just be acknowledged and then ignored -- the right answer accounts for what's actually achievable given the real situation, not the theoretically optimal design in a vacuum.",
+        "deep_answer": "This project's own real constraint set (single-developer, AWS-free-tier-only, AI-assisted delivery) genuinely shapes its architecture: a single Spring Boot deployable with clean internal package seams rather than a premature microservices split, minimal/free-tier cloud usage rather than a full enterprise cloud footprint -- a real, working demonstration of constraint-appropriate design rather than reaching for the textbook-ideal architecture regardless of fit.",
+    },
+}, related=["scale", "non-functional-requirements"])
+
+add_scoped("System Design", "slo-sla-concepts", "LEARNED_UNDERSTOOD", {
+    "what": "SLO (Service Level Objective): an internal, real target for a service's reliability/performance (e.g. 'p99 latency under 300ms', '99.9% availability'). SLA (Service Level Agreement): an external, often contractual commitment to a customer, typically with real consequences for missing it -- SLOs are usually set stricter than SLAs to leave a real safety margin.",
+    "why": "Without a real, specific SLO, 'reliable' has no checkable meaning -- an SLO gives an engineering team a concrete, measurable target to design and alert against, and an SLA gives the business a real, honest commitment they can make to customers.",
+    "how": "Define a specific, measurable target (e.g. 99.9% of requests succeed within 500ms, measured over a rolling 30-day window) with clear measurement methodology, then instrument the real system to measure against it continuously, alerting before the SLO is actually breached (an 'error budget' framing).",
+    "when": "Any production system with real reliability commitments -- SLOs should be defined and measured before an SLA is externally promised, never assumed to already be met.",
+    "context": "This project doesn't currently operate at a scale or with external customer commitments that would warrant a formal SLA, but its own honest, disclosed limitations (documented in PROJECT_STATE.json rather than an implied but unverified reliability claim) reflect the same underlying discipline an SLO/SLA distinction is meant to enforce: never claim a reliability target you haven't actually measured and verified.",
+    "evidence": ["docs/PROJECT_STATE.json"],
+    "interview": {
+        "question": "What's the practical difference between an SLO and an SLA, and why does the distinction matter?",
+        "short_answer": "An SLO is your internal engineering target; an SLA is what you've externally, often contractually, promised a customer -- SLOs are set stricter than SLAs specifically so you have a real margin to catch and fix a degradation before it becomes an SLA breach with real business consequences.",
+        "deep_answer": "This project's own honest limitation-disclosure practice reflects the same spirit even without a formal SLA: rather than implying a reliability guarantee it hasn't verified, it states plainly in PROJECT_STATE.json what it does and doesn't currently support at scale -- the same discipline of never promising (even implicitly) more than what's been actually measured, which is precisely the discipline that keeps a real SLA honest relative to a real, measured SLO.",
+    },
+}, related=["non-functional-requirements", "sli-slo-alerts"])
+
+add_scoped("System Design", "acceptance-criteria", "LEARNED_UNDERSTOOD", {
+    "what": "The specific, checkable conditions that must be true for a requirement to be considered genuinely done -- the concrete, testable definition of 'finished,' as distinct from a general functional-requirement description.",
+    "why": "A requirement stated only in prose ('customers can enroll in a plan') leaves real ambiguity about edge cases (what happens if they're already enrolled? what if the plan doesn't exist?) -- explicit acceptance criteria close that ambiguity before implementation begins, not after a bug is found.",
+    "how": "For each requirement, enumerate the specific scenarios (happy path plus real edge cases) that must behave correctly, phrased so each can become a real test case -- 'given X, when Y, then Z' is a common, effective structure.",
+    "when": "Before implementation begins on any non-trivial requirement -- writing acceptance criteria after the fact tends to just describe whatever was built, rather than genuinely constraining it.",
+    "context": "This project's own real Acceptance Contract discipline (used for its Workbench's AI-generated changes) is a concrete, working example: a change is only considered genuinely complete when its explicit, pre-stated acceptance criteria are independently verified true against real evidence by a separate qa-evaluator, not when the implementer simply reports it as done.",
+    "evidence": [".claude/agents/qa-evaluator.md"],
+    "interview": {
+        "question": "Why write acceptance criteria before implementation rather than deriving them from the finished code?",
+        "short_answer": "Criteria derived after the fact just describe what was built, which can't catch a case where the implementation itself is wrong or incomplete -- criteria written BEFORE implementation genuinely constrain and can be used to independently verify the result.",
+        "deep_answer": "This project's Acceptance Contract discipline makes this concrete: a real qa-evaluator subagent checks the FINISHED work against pre-stated criteria it did not write itself and has no stake in confirming -- proving the criteria were genuinely decided in advance and used as real, independent verification, not reverse-engineered from whatever got implemented to make it look complete.",
+    },
+}, related=["functional-requirements", "verification-gates"])
+
+# -- apis --
+
+add_scoped("System Design", "rest", "CURRENT_PROJECT_EXPERIENCE", {
+    "what": "REST (Representational State Transfer): an architectural style for designing networked APIs around resources (nouns, addressed by URIs) manipulated via a small, standard set of HTTP verbs (GET/POST/PUT/PATCH/DELETE) with standard status codes conveying outcome.",
+    "why": "REST's resource-oriented, standard-verb design gives API consumers a predictable, learnable mental model (any REST API's shape is guessable from HTTP semantics alone) and lets standard HTTP infrastructure (caching, proxies, load balancers) work correctly without custom logic.",
+    "how": "Model each real business entity as a resource with its own URI (/customers/{id}), use the standard verb matching the real operation's semantics (GET for read, POST for create, PATCH for partial update), and return the standard status code matching the real outcome (201 for created, 404 for not found, 409 for conflict).",
+    "when": "The default choice for most real backend APIs, especially ones with broad, varied consumers where a predictable, standard shape has real value.",
+    "real_experience": "This project's Customer App implements a real, working REST API (CustomerController, ContractPlanController, CustomerPreferenceController) with real resource-oriented URIs and correct HTTP semantics -- verified by real integration tests asserting the correct status code for each real outcome, not just the happy path.",
+    "evidence": ["app/src/main/java/com/example/customer/controller/"],
+    "interview": {
+        "question": "What makes an API 'RESTful' versus just 'an HTTP API'?",
+        "short_answer": "Genuine REST models real business entities as resources with their own URIs, uses HTTP verbs according to their real semantics (not just POST for everything), and returns status codes that genuinely reflect outcome -- an HTTP API that ignores these conventions (e.g. POST /doSomething for everything) is not really RESTful even though it uses HTTP.",
+        "deep_answer": "This project's real controllers demonstrate this distinction concretely: PATCH is used specifically for partial updates (matching its real HTTP semantics, distinct from PUT's full-replace semantics), and real tests assert specific status codes (201 vs 200 vs 409) for specific real outcomes -- the API's shape genuinely reflects REST's resource/verb/status-code conventions rather than treating HTTP as a generic transport for arbitrary RPC calls.",
+    },
+}, related=["contracts", "error-handling", "idempotency"])
+
+add_scoped("System Design", "graphql", "LEARNED_UNDERSTOOD", {
+    "what": "A query language and runtime for APIs where the client specifies exactly which fields it needs in a single request (against a server-defined schema), as opposed to REST's fixed-shape-per-endpoint response -- solving REST's real over-fetching/under-fetching and multiple-round-trip problems for complex, nested data needs.",
+    "why": "For clients with varying, complex data needs (a mobile app needing a small subset of fields versus a dashboard needing a large nested graph), REST often forces a choice between over-fetching (wasted bandwidth) or many round trips (added latency) -- GraphQL's client-specified query shape addresses both.",
+    "how": "Define a schema (types, queries, mutations) describing what's available; the server resolves each requested field via resolver functions, often nested (a query for a customer can request its active plan and preferences in one round trip); a single POST /graphql endpoint handles all queries, unlike REST's per-resource endpoints.",
+    "when": "APIs with complex, varying client data needs (multiple client types with different needs from the same underlying data) benefit most; for simple, uniform-shape APIs, REST's simplicity and standard HTTP tooling support are often the better trade-off.",
+    "context": "This project explored a real GraphQL implementation (schema, resolvers, a working exception-mapping layer, passing integration tests) during an earlier session, but that work was not committed and is no longer present in the current repository -- an honest, disclosed gap: the underlying GraphQL knowledge and design reasoning are real, but the specific implementation currently does not exist in this repo and would need to be rebuilt, not claimed as present.",
+    "interview": {
+        "question": "What real architectural problem does GraphQL solve that a well-designed REST API doesn't?",
+        "short_answer": "Over-fetching/under-fetching and multiple round trips for clients with complex, varying, nested data needs -- a client asks for exactly the fields it needs, in one request, regardless of how deeply nested across resources those fields are.",
+        "deep_answer": "GraphQL's real trade-off versus REST is that it moves query-shape flexibility to the client at the cost of losing some of REST's built-in HTTP infrastructure benefits (standard caching semantics per-URI, simple standard status codes per operation) since everything goes through one POST /graphql endpoint -- the right choice depends on whether the real client diversity/complexity genuinely justifies that trade-off, which is exactly the kind of judgment call that should be made explicitly, not defaulted to either technology.",
+    },
+}, related=["rest", "contracts"])
+
+add_scoped("System Design", "contracts", "LEARNED_UNDERSTOOD", {
+    "what": "The explicit, agreed-upon shape of an API's requests and responses -- field names, types, required-vs-optional, error shapes -- that both a provider and its consumers rely on staying stable (or changing only through a controlled process).",
+    "why": "Without an explicit contract, a provider's internal change can silently break a consumer that made a reasonable assumption about the API's shape -- a contract is what makes 'breaking change' a checkable concept rather than a surprise discovered in production.",
+    "how": "Define the contract explicitly (a schema: OpenAPI/Swagger for REST, a .graphqls schema for GraphQL, or strongly-typed DTOs/records serving as the contract's real implementation), and treat any change to it as requiring explicit versioning or a compatibility check, not an unreviewed side effect of an unrelated change.",
+    "when": "Any API with real, independent consumers (a separate frontend, a separate service, a third party) needs an explicit, respected contract.",
+    "real_experience": "This project's Java 21 records (CustomerPreferenceUpdatedEvent, ContractPlanResponse, etc.) ARE the real, compiler-enforced contract for each API/event shape -- immutable, validated construction the compiler itself checks, catching a contract violation at compile time rather than only at runtime or in production.",
+    "evidence": ["app/src/main/java/com/example/customer/"],
+    "interview": {
+        "question": "How do you prevent an internal refactor from silently breaking an API's real consumers?",
+        "short_answer": "Make the contract explicit and enforced (a schema, or in a typed language, the DTO/record types themselves) so the compiler or a schema-validation step catches a breaking change immediately, rather than relying on remembering not to break it.",
+        "deep_answer": "This project's use of Java records for every DTO/event is a real, compiler-enforced contract mechanism: a field removed or retyped is a compile error across every real caller, not a silent runtime surprise discovered by a consumer later -- the strongest, earliest-possible form of contract enforcement a statically-typed language can give you, applied deliberately here rather than using loosely-typed maps that would defer the same error to runtime.",
+    },
+}, related=["rest", "versioning"])
+
+add_scoped("System Design", "validation", "CURRENT_PROJECT_EXPERIENCE", {
+    "what": "Checking that incoming API data meets real, required constraints (format, range, required fields, business rules) before it's processed, rejecting genuinely invalid input early with a clear, actionable error rather than letting it propagate into business logic or storage.",
+    "why": "Validating at the API boundary is the cheapest, clearest point to reject bad data -- it protects every downstream layer (service, repository, database) from having to defensively re-check the same constraints, and gives the caller an immediate, specific, actionable error instead of a confusing downstream failure.",
+    "how": "Declarative validation (Bean Validation annotations like @NotNull/@Size/@Email on request DTOs) for straightforward field-level constraints, explicit code for business-rule validation that can't be expressed declaratively (e.g. 'customer must not already be enrolled') -- both real, distinct layers.",
+    "when": "Every API endpoint accepting external input -- validation at the boundary should be the default, not an afterthought added after a bad-input incident.",
+    "real_experience": "This project's real DTOs use Bean Validation annotations enforced automatically by Spring's request-handling pipeline, and its service layer performs additional real business-rule validation (e.g. plan-enrollment idempotency checks) that can't be expressed as a simple annotation -- both layers verified by real tests asserting the specific rejection behavior for specific invalid inputs.",
+    "evidence": ["app/src/main/java/com/example/customer/controller/", "app/src/main/java/com/example/customer/service/"],
+    "interview": {
+        "question": "Why validate at the API boundary instead of relying on database constraints to catch bad data?",
+        "short_answer": "Database constraints catch bad data far too late (after a request has already been processed and often after a confusing failure), and can't express most business-rule validation at all -- boundary validation gives the caller an immediate, specific, actionable rejection before any processing happens.",
+        "deep_answer": "This project's real plan-enrollment idempotency validation is a concrete example of business-rule validation a database constraint alone couldn't express or explain clearly: the service layer explicitly checks and rejects a duplicate-enrollment attempt with a clear, specific error, rather than relying on a database unique-constraint violation to surface as an opaque 500 error the caller would have to reverse-engineer.",
+    },
+}, related=["error-handling", "functional-requirements"])
+
+add_scoped("System Design", "versioning", "LEARNED_UNDERSTOOD", {
+    "what": "The strategy for evolving an API's contract over time without breaking existing consumers -- URI versioning (/v1/, /v2/), header-based versioning, or additive-only evolution (never removing/retyping a field, only adding optional ones) are the common real approaches.",
+    "why": "An API with real, independent consumers can't simply change shape whenever the provider wants -- a deliberate versioning strategy is what lets the provider evolve the API while giving consumers a real, predictable migration path instead of an unannounced break.",
+    "how": "Decide the strategy deliberately (URI-path versioning is simplest and most visible; additive-only evolution avoids versioning overhead entirely for compatible changes) and apply it consistently -- a genuinely breaking change (removing/retyping a field) always needs a real new version or a real deprecation period, never a silent in-place change.",
+    "when": "Any API expected to evolve after real consumers depend on it -- deciding the strategy before the first breaking change is needed is far cheaper than retrofitting one under pressure.",
+    "context": "This project's own real API surface has stayed within additive-only evolution so far (new optional fields, new endpoints) without yet needing a breaking change requiring formal versioning -- an honest reflection of this project's current real scope rather than a claim of having exercised a formal versioning scheme it hasn't actually needed yet.",
+    "interview": {
+        "question": "When do you actually need formal API versioning versus just being careful to make additive-only changes?",
+        "short_answer": "Additive-only evolution (new optional fields/endpoints, never removing or retyping existing ones) avoids needing formal versioning for a long time -- formal versioning becomes necessary only when a genuinely breaking change (removing a field, changing its type/meaning) is unavoidable.",
+        "deep_answer": "This project's own real evolution so far has stayed additive (new fields, new endpoints) without requiring a breaking change -- an honest, current-state answer rather than an inflated claim of exercised versioning infrastructure; the real engineering judgment call is recognizing EARLY when a change is genuinely breaking (not just 'feels like a big change') and reaching for real versioning or a deprecation period only then, not defaulting to versioning overhead for every change.",
+    },
+}, related=["contracts", "rest"])
+
+add_scoped_path("System Design", "apis", "idempotency", "CURRENT_PROJECT_EXPERIENCE", {
+    "what": "A property of an operation where performing it multiple times with the same input produces the same real end state as performing it once -- critical for any operation that might be retried (due to a timeout, a network failure, a client double-submit) without risking a duplicated real effect.",
+    "why": "In a distributed system, a caller often can't tell whether a request that appeared to fail (timeout, connection drop) actually succeeded server-side before failing -- if retrying isn't safe (not idempotent), a retry risks a duplicate real effect (double-charging, double-enrolling); idempotency is what makes 'just retry on failure' a safe default strategy.",
+    "how": "Design the operation so a repeated call with the same input either has no additional effect (a duplicate enrollment attempt is detected and rejected/no-op'd) or converges to the same state (a PUT that fully replaces a resource is naturally idempotent) -- verified by a real test that calls the operation twice and asserts the second call doesn't double the effect.",
+    "when": "Any operation a client might retry -- which in a real distributed system is effectively every operation, since network failures and timeouts are a real, ongoing possibility, not a rare edge case.",
+    "real_experience": "This project has a real, documented plan-enrollment idempotency fix (a real production incident where a retry could double-enroll a customer) -- fixed and verified with a real regression test proving a second identical enrollment attempt is correctly detected and rejected rather than creating a duplicate.",
+    "evidence": ["docs/interview-scenarios/", "docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml"],
+    "interview": {
+        "question": "Why can't a client always safely retry a failed request?",
+        "short_answer": "If the operation isn't idempotent, a retry after an ambiguous failure (timeout, dropped connection where the server might have actually succeeded) risks performing the real effect twice -- idempotency is precisely the property that removes this risk, making blind retry safe.",
+        "deep_answer": "This project's real plan-enrollment idempotency incident is a concrete, disclosed example of exactly this risk materializing: a retry (whether from a real network issue or a client double-submit) could have resulted in a real duplicate enrollment before the fix -- root-caused and fixed with an explicit idempotency check, then proven with a regression test that specifically retries the same request and asserts no duplicate effect occurs.",
+    },
+}, related=["rest-api-idempotency-safe-retries", "retry"])
+
+add_scoped("System Design", "error-handling", "CURRENT_PROJECT_EXPERIENCE", {
+    "what": "How an API communicates a real failure back to its caller -- the right HTTP status code, a clear and specific error body, and consistent shape across all failure types -- as distinct from how the server internally handles/logs the underlying exception.",
+    "why": "A caller (human or another service) needs to be able to tell, reliably and specifically, what went wrong and whether retrying makes sense -- a generic 500 for every failure (validation error, not-found, conflict, real server bug) gives the caller no actionable information.",
+    "how": "Map each real failure category to its correct HTTP status (400 for bad input, 404 for not found, 409 for conflict, 422 for semantically-invalid-but-well-formed input, 500 only for genuine unexpected server errors) with a consistent, structured error body -- centralized via a mechanism like @RestControllerAdvice so every controller gets consistent behavior without repeating logic.",
+    "when": "Every real API needs a deliberate, consistent error-handling strategy -- an afterthought error strategy tends to produce inconsistent status codes across endpoints, confusing callers.",
+    "real_experience": "This project's centralized exception-handling mechanism maps real domain exceptions to correct, specific HTTP status codes consistently across every controller -- verified by real tests asserting the exact status code for each specific real failure scenario (not-found, validation failure, conflict), and its GraphQL work (explored, though not currently present in this repo) additionally surfaced the real architectural point that @RestControllerAdvice doesn't reach GraphQL's separate execution engine, requiring its own DataFetcherExceptionResolverAdapter-based mapping.",
+    "evidence": ["app/src/main/java/com/example/customer/"],
+    "interview": {
+        "question": "Why centralize error-handling instead of handling exceptions in each controller method individually?",
+        "short_answer": "Per-method exception handling tends to drift inconsistent over time (different endpoints handling the same real failure type differently) -- a centralized handler (like @RestControllerAdvice) guarantees the same real failure category always produces the same status code and error shape, everywhere.",
+        "deep_answer": "This project's real centralized exception mapping is verified by tests checking the EXACT status code for each real failure scenario, catching the class of bug where one endpoint correctly returns 409 for a conflict while another endpoint's equivalent case leaks through as a generic 500 -- and the GraphQL exploration surfaced a real, subtle architectural gotcha worth knowing even without that code currently in the repo: REST's centralized exception-advice mechanism genuinely does not apply to GraphQL's separately-engineered execution path, requiring its own explicit exception-resolver wiring.",
+    },
+}, related=["rest", "validation"])
+
+# -- networking --
+
+add_scoped("System Design", "dns", "LEARNED_UNDERSTOOD", {
+    "what": "The Domain Name System -- translates a human-readable hostname (api.example.com) into the real IP address a client actually connects to, via a hierarchical, cached lookup across resolvers/root/TLD/authoritative servers.",
+    "why": "DNS is both a real point of latency (an uncached lookup adds a real round trip before any actual request can even begin) and a real point of failure/attack (DNS outages or hijacking can take down an otherwise-healthy service) -- understanding it matters for both performance and reliability reasoning.",
+    "how": "A client's resolver checks its cache, then queries up the hierarchy (root -> TLD -> authoritative) if uncached, caching the result for the record's TTL; lowering TTL trades faster failover/change-propagation for more frequent (slower) lookups.",
+    "when": "Relevant whenever reasoning about real client-perceived latency (first-request DNS cost), deployment/failover strategy (DNS-based traffic routing, blue-green cutover via DNS), or CDN/multi-region architecture.",
+    "context": "This project's own production deployment (Railway) relies on DNS for its real public domain resolution -- a standard, correctly-functioning dependency this project doesn't need to manage directly, since Railway's platform handles it, a reasonable and honest scope boundary for a project at this stage rather than a claim of hand-rolled DNS infrastructure.",
+    "interview": {
+        "question": "How does DNS TTL affect a deployment or failover strategy?",
+        "short_answer": "A lower TTL means clients re-resolve more often, so a DNS-based failover (pointing traffic at a new IP) propagates faster -- at the cost of more frequent lookups (slightly more latency/load) under normal operation; the trade-off should be set deliberately based on how fast failover needs to be.",
+        "deep_answer": "This project doesn't manage its own DNS infrastructure directly (Railway's platform handles domain resolution for its production deployment) -- an honest scope statement: the underlying DNS/TTL trade-off knowledge is real and general system-design knowledge, but this project's own real experience is with a managed platform abstracting it away, not with hand-configuring DNS records/TTLs itself.",
+    },
+}, related=["http", "load-balancer"])
+
+add_scoped("System Design", "tcp", "LEARNED_UNDERSTOOD", {
+    "what": "Transmission Control Protocol -- the reliable, ordered, connection-oriented transport protocol underlying HTTP -- guarantees delivery and ordering via acknowledgments/retransmission, at the cost of connection-setup overhead (the TCP three-way handshake) before any data flows.",
+    "why": "TCP's reliability guarantees are what make HTTP's request/response model work without the application itself needing to handle packet loss/reordering -- but its connection-setup cost is real and matters for latency-sensitive systems, which is why connection reuse (keep-alive, connection pooling) exists.",
+    "how": "A TCP connection requires a three-way handshake (SYN, SYN-ACK, ACK) before any data transfer -- for HTTPS, an additional TLS handshake follows on top; reusing an existing connection (HTTP keep-alive, connection pools) avoids repeating this cost for every request.",
+    "when": "Relevant when reasoning about real connection-related latency (cold-start cost of a new connection versus a reused one) and why connection pooling (e.g. a database connection pool, an HTTP client's connection pool) is a real, valuable optimization.",
+    "context": "This project's real HikariCP connection pool for its database connections is a direct, practical application of avoiding TCP (plus database-protocol) handshake cost on every query -- reusing real, already-established connections rather than paying real connection-setup latency per request.",
+    "evidence": ["app/src/main/resources/application.properties"],
+    "interview": {
+        "question": "Why does connection pooling matter, in terms of what it's actually avoiding at the TCP level?",
+        "short_answer": "Establishing a new TCP connection (and, for a database, the subsequent protocol handshake/authentication) has real, non-trivial latency cost -- a connection pool reuses already-established connections, avoiding this cost on every single request/query instead of paying it repeatedly.",
+        "deep_answer": "This project's HikariCP configuration is a real, concrete example: without pooling, every database query would pay a real TCP-handshake-plus-Postgres-authentication cost; pooling keeps a set of real, already-authenticated connections ready for reuse, which is why connection pool SIZING itself becomes its own real system-design question (too few connections queue requests, too many can overwhelm the database) rather than an unlimited pool being obviously better.",
+    },
+}, related=["tls", "jdbc-hikaricp-connection-pool-sizing"])
+
+add_scoped("System Design", "tls", "LEARNED_UNDERSTOOD", {
+    "what": "Transport Layer Security -- encrypts and authenticates a real network connection (typically on top of TCP) so data in transit can't be read or tampered with by an intermediary, and so a client can verify it's genuinely talking to the server it intended.",
+    "why": "Without TLS, any data sent over a network (credentials, tokens, PII) is readable by anyone positioned on the network path -- TLS is the baseline, non-negotiable requirement for any real production system handling sensitive data, not an optional hardening step.",
+    "how": "A TLS handshake (negotiating a cipher suite, exchanging/verifying certificates, establishing a shared session key) happens after the TCP handshake and before any application data flows -- adding real, one-time-per-connection latency, which is why TLS session resumption and connection reuse both matter for performance.",
+    "when": "Every real production system transmitting anything over a network that isn't fully physically isolated -- effectively always.",
+    "context": "This project's production deployment (Railway) terminates TLS for all real traffic to the live application, and its JWT-based authentication explicitly depends on TLS as its real transport-security foundation -- a JWT's signature protects against tampering, but TLS is what prevents the token itself from being read in transit by an intermediary.",
+    "evidence": ["app/src/main/java/com/example/customer/security/SecurityConfig.java"],
+    "interview": {
+        "question": "If a JWT is already signed, why does the connection still need TLS?",
+        "short_answer": "A JWT's signature proves the token wasn't tampered with, but doesn't prevent it from being READ by anyone intercepting the connection -- without TLS, a token in transit could be captured and replayed by an attacker; TLS and JWT signing solve two different, both-necessary problems.",
+        "deep_answer": "This project's real security design relies on both layers together: TLS (handled at the platform/transport level for its production deployment) protects the token and all other data in transit from interception, while the JWT's own signature (verified by Spring Security's resource-server layer) protects against a tampered or forged token -- removing either layer would leave a real, exploitable gap the other layer was specifically covering.",
+    },
+}, related=["tcp", "authentication-authorization-jwt-oauth2-oidc-spring-security"])
+
+add_scoped("System Design", "http", "LEARNED_UNDERSTOOD", {
+    "what": "HyperText Transfer Protocol -- the real, standard application-layer protocol nearly all web/API traffic runs over, defining request/response structure, methods (verbs), headers, status codes, and (in HTTP/2+) multiplexing over a single connection.",
+    "why": "HTTP's standard semantics (verb meaning, status code meaning, header conventions) are what let generic infrastructure (proxies, load balancers, caches, browsers) correctly handle traffic without understanding the specific application -- deviating from these conventions loses that free interoperability.",
+    "how": "A request (method, URI, headers, optional body) gets a response (status code, headers, optional body); HTTP/1.1 typically uses persistent connections with pipelining limitations, while HTTP/2 multiplexes many real requests over one connection, removing head-of-line blocking at the HTTP layer.",
+    "when": "The default transport for essentially all real web/API traffic; version choice (1.1 vs 2) matters more at higher real request-concurrency-per-connection scenarios.",
+    "context": "This project's real REST API is a standard HTTP/1.1-and-up service (Spring Boot's embedded server) using correct HTTP verb/status-code semantics throughout -- a deliberate, verified design choice (see the rest topic's real evidence) rather than treating HTTP as a generic byte-transport ignoring its actual conventions.",
+    "evidence": ["app/src/main/java/com/example/customer/controller/"],
+    "interview": {
+        "question": "What real, practical problem does HTTP/2's multiplexing solve compared to HTTP/1.1?",
+        "short_answer": "HTTP/1.1 effectively needs multiple connections (or careful pipelining) to issue several real requests to the same host concurrently without one blocking the others; HTTP/2 multiplexes many real concurrent requests/responses over a single connection, removing that head-of-line-blocking limitation at the application-protocol layer.",
+        "deep_answer": "This project's own real HTTP surface is handled by Spring Boot's embedded server (Tomcat by default), which supports modern HTTP semantics -- the project's own real focus has been on correct HTTP semantics (verb/status-code meaning) at the API-design layer rather than on protocol-version-specific performance tuning, an honest scope statement about where this project's real engineering effort has actually gone versus general HTTP protocol knowledge.",
+    },
+}, related=["rest", "tcp"])
+
+add_scoped("System Design", "proxy", "LEARNED_UNDERSTOOD", {
+    "what": "An intermediary server that sits between a client and a real backend server, forwarding requests/responses -- a forward proxy acts on behalf of clients (e.g. corporate egress filtering); a reverse proxy acts on behalf of servers (e.g. routing, TLS termination, load balancing in front of real application instances).",
+    "why": "A reverse proxy centralizes cross-cutting concerns (TLS termination, routing, rate limiting, load balancing) outside individual application instances, so each real backend instance can stay focused on business logic rather than reimplementing these concerns itself.",
+    "how": "Client traffic hits the reverse proxy first; the proxy makes a real routing decision (which backend instance, which service) and forwards the request, often adding/rewriting headers (e.g. X-Forwarded-For to preserve the real original client IP for the backend to see).",
+    "when": "Any production deployment with more than a single, directly-exposed backend instance -- a reverse proxy/load balancer in front is the standard pattern.",
+    "context": "This project's Railway deployment platform provides real reverse-proxy/routing infrastructure in front of the application (TLS termination, routing to the real running instance) -- a managed capability this project relies on rather than hand-building, an honest scope boundary appropriate to this project's real deployment platform choice.",
+    "interview": {
+        "question": "What real problem does a reverse proxy solve that you'd otherwise have to handle in application code?",
+        "short_answer": "Centralizing TLS termination, routing/load balancing, and often rate limiting outside the application means each backend instance stays simple and focused on business logic, and these cross-cutting concerns can be changed/scaled independently of the application code.",
+        "deep_answer": "This project's real deployment relies on its platform's (Railway's) managed reverse-proxy layer for exactly these concerns, rather than the Spring Boot application itself handling TLS termination or multi-instance routing -- an honest, appropriate architectural boundary: application code focuses on business logic, infrastructure-layer concerns are handled by infrastructure, which is the same separation a hand-built reverse proxy (e.g. nginx) would provide in a self-managed deployment.",
+    },
+}, related=["load-balancer", "tls"])
+
+add_scoped("System Design", "load-balancer", "LEARNED_UNDERSTOOD", {
+    "what": "A component that distributes real incoming traffic across multiple backend instances of a service, so no single instance is overwhelmed and the service can scale horizontally and tolerate an individual instance failing.",
+    "why": "A single backend instance has a real, hard capacity ceiling and is a single point of failure -- load balancing is what turns a fleet of instances into one apparently-unified, higher-capacity, more available service from the client's perspective.",
+    "how": "A real algorithm (round-robin, least-connections, consistent hashing for session affinity) decides which backend instance handles each request; health checks continuously verify each instance is actually healthy, routing away from a real failing instance automatically.",
+    "when": "Any service running more than one real backend instance -- which real horizontal scaling and real high-availability both require.",
+    "context": "This project currently runs as a single real deployed instance (appropriate to its current real scale, per its documented KNOWN_LIMITATIONS), so it doesn't currently need or operate its own load-balancing layer -- an honest, disclosed current-scale boundary; its interview-scenario docs' 'What Changes at 10x Scale' sections explicitly reason about what would need to change (including horizontal scaling behind a load balancer) at real higher scale, rather than silently implying that capability already exists.",
+    "evidence": ["docs/PROJECT_STATE.json"],
+    "interview": {
+        "question": "What real property must a service have before it can be safely load-balanced across multiple instances?",
+        "short_answer": "Statelessness (or externalized state) -- if a service keeps request-relevant state only in one instance's memory, load-balancing traffic across instances breaks unless the balancer maintains sticky sessions, which itself limits real scaling/failover benefits; externalizing state (to a database, Redis) is what makes true stateless load-balancing possible.",
+        "deep_answer": "This project's JWT-based authentication (stateless, no server-side session store required) and its real database-backed persistence are both deliberate choices that would make this application genuinely load-balancer-ready if it needed to scale to multiple instances -- an honest, forward-looking design property, even though this project doesn't currently run multiple instances or operate a load balancer itself.",
+    },
+}, related=["proxy", "scale"])
+
+add_scoped("System Design", "timeout", "CURRENT_PROJECT_EXPERIENCE", {
+    "what": "A real, explicit maximum duration a caller waits for a response before giving up and treating the call as failed -- a deliberate bound protecting a caller from waiting indefinitely on a slow or hung dependency.",
+    "why": "Without a real timeout, a single slow or hung downstream dependency can cause a caller (and, transitively, everything waiting on that caller) to hang indefinitely -- a classic real cause of cascading failure across a distributed system, where one slow component effectively takes down many others through unbounded waiting.",
+    "how": "Set a real, deliberate timeout on every real network call (HTTP client, database query, external API) calibrated to the real expected latency of that specific call (not a single global default applied blindly everywhere) -- paired with a real, deliberate strategy for what happens on timeout (retry, circuit-break, fail fast with a clear error).",
+    "when": "Every real network-dependent call in a production system.",
+    "real_experience": "This project's Resilience4j-wrapped downstream integration (AppointmentAvailabilityService) has a real, explicit, calibrated timeout as part of its resilience configuration -- composed deliberately with retry and circuit-breaking (in a specific, reasoned order: circuit-breaker wraps retry, so an open circuit fails fast without even attempting a doomed retry).",
+    "evidence": ["app/src/main/java/com/example/customer/integration/appointment/AppointmentAvailabilityService.java"],
+    "interview": {
+        "question": "Why does timeout ORDER matter when composing it with retry and circuit-breaking?",
+        "short_answer": "If a circuit breaker wraps a retry (breaker outside, retry inside), an open circuit fails fast immediately without even attempting the doomed retries -- if the order were reversed, every call would still attempt its full retry sequence even when the breaker already knows the downstream is failing, wasting real time and resources on calls known to be doomed.",
+        "deep_answer": "This project's real Resilience4j composition (CircuitBreaker.decorateSupplier(circuitBreaker, Retry.decorateSupplier(retry, raw))) makes this ordering decision explicit and deliberate -- documented as a real design decision, not an accident of whichever order was easiest to write, precisely because the wrong order would mean an already-known-to-be-failing downstream still gets hit with full retry attempts on every single call instead of failing fast.",
+    },
+}, related=["retry", "resilience-patterns-retry-timeout-circuit-breaker"])
+
+add_scoped_path("System Design", "networking", "retry", "CURRENT_PROJECT_EXPERIENCE", {
+    "what": "Automatically re-attempting a failed operation, typically with backoff (increasing delay between attempts) -- a real reliability mechanism for transient failures (a momentary network blip, a brief downstream overload), but dangerous if applied blindly to a non-idempotent operation or without a real bound on total attempts.",
+    "why": "Many real failures are transient and would succeed on a second attempt -- but a retry strategy without real limits (max attempts, backoff, and idempotency-awareness) can itself worsen an outage (a retry storm overwhelming an already-struggling downstream) rather than helping recover from it.",
+    "how": "Retry only operations known to be safe to retry (idempotent, or made idempotent), with a real bounded max-attempt count and exponential backoff (to avoid synchronized retry storms across many callers), paired with a circuit breaker to stop retrying entirely once a downstream is confirmed to be failing broadly.",
+    "when": "Any operation with a real chance of transient failure and a real, verified safety property (idempotency) that makes retrying safe.",
+    "real_experience": "This project's real Resilience4j Retry configuration (composed with a circuit breaker, in a specific deliberate order) is applied to a real downstream HTTP integration known to be occasionally flaky -- and separately, this project's production-verification logic uses its own real, bounded retry window specifically for eventual-consistency delays after deployment, a different but related application of the same underlying bounded-retry principle.",
+    "evidence": ["app/src/main/java/com/example/customer/integration/appointment/AppointmentAvailabilityService.java", "agent/web_server.py"],
+    "interview": {
+        "question": "Why is retrying a non-idempotent operation dangerous, and how do you decide what's safe to retry?",
+        "short_answer": "If the operation isn't idempotent, a retry after an ambiguous failure (where the first attempt might have actually succeeded before the response was lost) risks performing the real effect twice -- only retry operations you've verified are genuinely idempotent, or make them idempotent first.",
+        "deep_answer": "This project's real plan-enrollment idempotency fix exists precisely because this risk is real, not theoretical: only after that fix was the operation genuinely safe to retry without risking a duplicate enrollment -- the retry mechanism and the idempotency property are two separate, both-necessary pieces, and retrying before the idempotency property was verified would have been actively unsafe.",
+    },
+}, related=["idempotency", "timeout"])
+
+# -- compute --
+
+add_scoped("System Design", "process", "LEARNED_UNDERSTOOD", {
+    "what": "An operating-system-level unit of execution with its own isolated memory space -- the real boundary a container/deployment typically maps to; distinct from a thread (which shares memory within a process).",
+    "why": "Process-level isolation is what makes containerization/deployment units meaningful -- a crash or memory issue inside one process doesn't directly corrupt another process's memory, which is the real isolation guarantee containers rely on.",
+    "how": "The OS allocates a real, separate address space and resource handles per process; inter-process communication (when needed) must go through explicit OS-provided mechanisms (sockets, pipes, shared memory) rather than direct memory access, unlike threads within the same process.",
+    "when": "Relevant when reasoning about container/deployment boundaries, process-level resource limits (memory/CPU caps per container), and why a crashed process doesn't take down unrelated processes.",
+    "context": "This project's real deployment unit (a single Spring Boot application, containerized for Railway deployment) runs as one real process -- its internal concurrency (handling many simultaneous requests) happens via threads WITHIN that one process, not via multiple separate processes, a standard and appropriate real deployment shape for this project's scale.",
+    "interview": {
+        "question": "Why does a container crash typically not affect other containers on the same host?",
+        "short_answer": "Each container maps to its own process(es) with OS-enforced memory isolation -- a crash corrupts only that process's own memory space, and container orchestration further isolates resource limits (CPU/memory caps) so one container's resource exhaustion doesn't necessarily starve others.",
+        "deep_answer": "This project's real containerized deployment (one Spring Boot process per container instance) relies on exactly this real OS-level isolation guarantee -- a real, practical reason process-level isolation matters even for a project not yet running multiple instances: understanding this boundary is what makes reasoning about future horizontal scaling (multiple container instances) safe and predictable.",
+    },
+}, related=["thread", "cpu"])
+
+add_scoped("System Design", "thread", "CURRENT_PROJECT_EXPERIENCE", {
+    "what": "A unit of execution within a process that shares the process's memory with other threads in the same process -- enables real concurrency (multiple things happening 'at once') within a single process, at the cost of needing explicit coordination (synchronization) to avoid real data races on shared memory.",
+    "why": "Threads let a single process handle multiple real concurrent operations (e.g. many simultaneous HTTP requests) without the overhead of separate processes, but shared-memory access means concurrent modification of the same data without proper synchronization causes real, hard-to-reproduce bugs (race conditions).",
+    "how": "The JVM/OS schedules threads onto real CPU cores; shared mutable state accessed by multiple threads needs explicit synchronization (locks, atomic operations, or immutable/thread-confined data to avoid needing synchronization at all) -- Spring's default request-handling model uses one thread per request (or, with virtual threads, a much cheaper thread-per-request model).",
+    "when": "Every real backend service handling concurrent requests deals with this, whether or not the application code explicitly manages threads itself (Spring's container handles most of the low-level thread management).",
+    "real_experience": "This project's real database connection pool (HikariCP) is explicitly sized with real concurrency in mind -- its pool size determines how many real concurrent database operations the application can sustain simultaneously, a direct, practical consequence of the thread-per-request model meeting a real, bounded shared resource (database connections).",
+    "evidence": ["app/src/main/resources/application.properties"],
+    "interview": {
+        "question": "How does connection pool sizing relate to real thread-level concurrency?",
+        "short_answer": "If more concurrent request-handling threads need a database connection than the pool has available, additional threads queue and wait -- pool size should be calibrated against real, expected concurrent request volume and the real duration of each database operation, not set arbitrarily large or small.",
+        "deep_answer": "This project's real HikariCP sizing decision reflects understanding this trade-off directly: too small a pool causes real request queuing/latency under real concurrent load; too large a pool can overwhelm the real database's own connection-handling capacity -- the correct size is a function of real expected concurrent thread count and real per-query duration, not a default value applied without reasoning about this project's own actual concurrency profile.",
+    },
+}, related=["process", "jdbc-hikaricp-connection-pool-sizing", "concurrency"])
+
+add_scoped("System Design", "cpu", "LEARNED_UNDERSTOOD", {
+    "what": "The real, physical compute resource that actually executes instructions -- a genuinely finite, shareable resource across all processes/threads on a host, allocated by the OS scheduler and, in a container, further bounded by real CPU limits/requests.",
+    "why": "CPU is a real, hard constraint on how much real concurrent work a system can actually perform -- understanding whether a system is CPU-bound (limited by real compute) versus I/O-bound (limited by waiting on network/disk) determines whether adding more threads or more CPU cores would actually help.",
+    "how": "A CPU-bound workload benefits from more real cores/vertical scaling or algorithmic optimization; an I/O-bound workload (waiting on network calls, database queries) benefits more from higher real concurrency (more threads/async processing) than from more CPU, since the bottleneck isn't compute at all.",
+    "when": "Relevant when diagnosing a real performance bottleneck -- profiling to determine whether a system is actually CPU-bound or I/O-bound should precede any optimization effort, since the right fix differs completely depending on which it is.",
+    "context": "This project's own backend workload is predominantly I/O-bound (waiting on database queries, external HTTP calls, LLM API calls) rather than CPU-bound -- a real, honest characterization matching its own architecture (a typical CRUD/orchestration backend, not a compute-heavy workload like video encoding or ML training), which is why its own performance work has focused on connection pooling and resilience patterns rather than CPU optimization.",
+    "interview": {
+        "question": "How do you determine whether a slow endpoint is CPU-bound or I/O-bound before trying to fix it?",
+        "short_answer": "Profile it -- if the thread spends most of its time actually executing instructions (high real CPU utilization during the slow request), it's CPU-bound; if it spends most of its time blocked waiting on a network call or database query (low CPU utilization despite the slow wall-clock time), it's I/O-bound. The right fix is completely different for each.",
+        "deep_answer": "This project's own real backend workload is honestly I/O-bound -- its slow operations (a downstream appointment-availability call, a database query, an LLM call) are all genuinely waiting on external I/O, not burning real CPU cycles -- which is exactly why this project's real performance investments (connection pooling, Resilience4j timeouts/retries, caching) target I/O-bound bottlenecks specifically, rather than CPU-bound optimizations this project's actual workload profile wouldn't benefit from.",
+    },
+}, related=["thread", "concurrency"])
+
+add_scoped("System Design", "memory", "LEARNED_UNDERSTOOD", {
+    "what": "The real, finite RAM resource a process uses for its data (heap, stack, off-heap buffers) -- a genuinely bounded resource whose exhaustion (an OutOfMemoryError, or a container hitting its real memory limit and being killed) is a real, common cause of production incidents.",
+    "why": "Understanding real memory usage patterns (what grows unbounded, what's properly garbage-collected, what's held longer than necessary) is essential for both avoiding real production incidents and for correctly sizing container memory limits/requests.",
+    "how": "In the JVM specifically, the heap holds real object data (garbage-collected automatically), while off-heap/native memory (used by some libraries, thread stacks) must be accounted for separately when setting a real container memory limit -- setting the limit too low causes real OOM kills; too high wastes real resources or masks a real leak.",
+    "when": "Relevant whenever sizing container/deployment memory limits, or diagnosing a real memory-related production incident (OOM, GC pressure, a slow memory leak).",
+    "context": "This project's real containerized deployment has real, bounded memory allocated by its platform (Railway) -- appropriately sized for this project's current real, modest workload rather than over-provisioned defensively, consistent with the project's stated discipline of provisioning only for real, measured need.",
+    "interview": {
+        "question": "Why can a JVM application still get OOM-killed by its container even if the JVM's own heap never hits OutOfMemoryError?",
+        "short_answer": "The container's memory limit bounds the process's TOTAL real memory usage (heap plus off-heap: thread stacks, native buffers, metaspace, JIT-compiled code cache) -- if the container limit is set assuming only heap size, real off-heap usage can push total memory past the container limit and get the process killed even though the JVM heap itself never reported an OutOfMemoryError.",
+        "deep_answer": "This is a real, important system-design gotcha this project's own deployment configuration has to account for honestly: the JVM's -Xmx flag bounds HEAP only, not total process memory, so a container memory limit needs real headroom above -Xmx for off-heap usage -- getting this wrong is a genuinely common real production incident class (a container repeatedly OOM-killed despite the JVM's own heap metrics looking fine), which is exactly the kind of subtle cross-layer understanding (JVM memory model plus container resource limits together) a senior engineer needs.",
+    },
+}, related=["jvm-memory-model-garbage-collection", "cpu"])
+
+add_scoped("System Design", "jvm", "LEARNED_UNDERSTOOD", {
+    "what": "The Java Virtual Machine -- the real runtime that executes compiled Java bytecode, providing memory management (garbage collection), JIT compilation (optimizing hot code paths at runtime), and platform independence (the same bytecode runs on any JVM-supporting OS/architecture).",
+    "why": "Understanding the JVM as a real, distinct execution layer (not just 'Java the language') explains real production behaviors that pure language knowledge can't -- GC pauses, JIT warm-up time affecting cold-start latency, and why JVM tuning flags matter independently of application code changes.",
+    "how": "Source code compiles to platform-independent bytecode; the JVM interprets it initially, then JIT-compiles genuinely hot code paths to real native machine code for performance, while its garbage collector reclaims memory from objects no longer reachable, running as a real, distinct background process consuming its own real CPU cycles.",
+    "when": "Relevant for any real Java/Spring Boot production system -- especially when diagnosing latency spikes (possible GC pauses), cold-start latency (JIT warm-up), or memory issues.",
+    "context": "This project's real Spring Boot application runs on a real JVM, and its documented understanding of JVM behavior (e.g. the memory topic above's heap-vs-off-heap distinction) directly informs this project's real deployment configuration decisions, even though this project hasn't needed extensive JVM-flag tuning at its current, modest real scale.",
+    "evidence": ["app/pom.xml"],
+    "interview": {
+        "question": "Why might a Java service's first few real requests after startup be noticeably slower than requests after it's been running a while?",
+        "short_answer": "JIT compilation optimizes hot code paths progressively at runtime, not all at once at startup -- early requests run on the JVM's slower interpreted (or lightly-optimized) bytecode execution before the JIT has identified and compiled the genuinely hot paths to fast native code, a real, measurable 'warm-up' effect distinct from any application-level caching.",
+        "deep_answer": "This project's real Spring Boot startup involves both Spring's own bean-initialization cost AND this real JVM JIT warm-up effect as two distinct, stacking causes of elevated early-request latency -- understanding they're separate is what lets you reason correctly about which one a specific optimization (e.g. Spring AOT/native-image compilation, versus JVM tuning flags) would actually address, rather than treating 'slow startup' as one undifferentiated problem.",
+    },
+}, related=["jvm-memory-model-garbage-collection", "memory"])
+
+add_scoped("System Design", "concurrency", "CURRENT_PROJECT_EXPERIENCE", {
+    "what": "Multiple real operations making progress within overlapping time periods -- achieved via threads (true parallelism on multi-core hardware, or interleaved execution on fewer cores) or asynchronous/non-blocking I/O (a single thread handling many in-flight operations without blocking on each) -- the general system-design concern of correctly and safely handling 'more than one thing happening at once.'",
+    "why": "Real production systems handle many simultaneous requests/operations -- getting concurrency wrong produces real, often intermittent and hard-to-reproduce bugs (race conditions, lost updates, deadlocks) that can silently corrupt data or hang a system under real production load in ways that never appeared in single-threaded testing.",
+    "how": "Identify genuinely shared mutable state and protect it (locks, atomic operations, or database-level concurrency control like optimistic/pessimistic locking); prefer immutable or thread-confined data where possible to avoid needing protection at all; for I/O-heavy work, non-blocking/async approaches can achieve high real concurrency without a thread-per-operation cost.",
+    "when": "Every real production backend service handling concurrent requests deals with this at some layer, whether explicitly (application-level locking) or implicitly (relying on the database's own concurrency control).",
+    "real_experience": "This project has a real, documented, fixed concurrency defect: ensure_schema() in agent/event_ledger.py had a real race condition where concurrent calls could run the real DDL more than once -- fixed with double-checked locking, and verified by a real, genuine concurrency test spawning 20 real threads and asserting the DDL runs exactly once.",
+    "evidence": ["agent/event_ledger.py", "agent/test_event_ledger.py"],
+    "interview": {
+        "question": "How do you verify a concurrency fix actually works, rather than just looking correct?",
+        "short_answer": "A real, multi-threaded test that genuinely exercises the race condition (many real concurrent calls, not a single-threaded simulation) and asserts the specific guarantee holds (e.g. exactly-once execution of a critical section) -- a fix that 'looks right' by inspection can still have a subtle timing window a single-threaded test would never expose.",
+        "deep_answer": "This project's real ensure_schema() fix is verified by exactly this kind of test: 20 real threads calling concurrently, asserting the underlying DDL mock was called exactly once -- not a code-review judgment that the double-checked-locking pattern 'looks correct,' but genuine concurrent execution proving the specific race condition (multiple threads passing the first unlocked check before any of them acquires the lock) is actually closed.",
+    },
+}, related=["thread", "java-concurrency-the-java-memory-model"])
+
+# -- databases --
+
+add_scoped("System Design", "relational-db", "CURRENT_PROJECT_EXPERIENCE", {
+    "what": "A database organizing data into tables with rows/columns and enforced relationships (foreign keys), providing real ACID transaction guarantees and a declarative query language (SQL) -- the default, mature choice for data with real structure, relationships, and consistency requirements.",
+    "why": "For genuinely structured, relational data with real consistency requirements (a customer's plan enrollment must never be in a partially-committed state), relational databases' ACID guarantees and mature tooling remain the right default -- reaching for a NoSQL alternative should be a deliberate trade-off decision, not a default assumption that 'NoSQL scales better.'",
+    "how": "Model real entities as tables with explicit relationships (foreign keys enforcing referential integrity), wrap multi-step operations that must succeed or fail together in a real transaction, and let the database's query planner and indexes handle efficient real data access.",
+    "when": "The default choice for backend systems with genuinely structured, relational data and real consistency requirements -- which describes most business/transactional backend systems.",
+    "real_experience": "This project's Customer App uses PostgreSQL as its real, primary datastore for customer/plan/preference data, with real foreign-key relationships enforced at the schema level (via Flyway migrations) and real transactional guarantees relied upon for its transactional-outbox pattern (a business write and its outbox event committing atomically in one real transaction).",
+    "evidence": ["app/src/main/resources/db/migration/"],
+    "interview": {
+        "question": "When would you actually choose a NoSQL database over a relational one, rather than defaulting to relational?",
+        "short_answer": "When the data is genuinely non-relational/schema-flexible at real scale (a document store for varied, evolving document shapes) or when you need horizontal write-scaling beyond what a single relational instance can provide and can genuinely tolerate relaxed consistency for that data -- not as a default assumption that NoSQL is simply 'more scalable.'",
+        "deep_answer": "This project's own real choice (PostgreSQL) reflects a deliberate trade-off given its real data shape (genuinely relational: customers, plans, preferences with real foreign-key relationships) and real consistency requirement (an outbox write must be atomic with its business write) -- a NoSQL store would have made this specific atomicity guarantee (the transactional outbox pattern) significantly harder to achieve correctly, which is exactly the kind of concrete, checkable reason a database choice should be justified by.",
+    },
+}, related=["transactions", "database-transactions-isolation-levels-mvcc"])
+
+add_scoped("System Design", "oracle", "LEARNED_UNDERSTOOD", {
+    "what": "A widely-used, mature, commercial relational database, common in large enterprise environments -- functionally similar in core relational/ACID/SQL concepts to PostgreSQL, but with its own dialect (PL/SQL), licensing model, and enterprise tooling ecosystem.",
+    "why": "Enterprise backend engineers frequently encounter Oracle in existing large-scale systems (it remains extremely common in banking, insurance, and other large regulated industries) -- understanding its real differences from Postgres (dialect, licensing cost, specific enterprise features) matters for working in or migrating from such environments.",
+    "how": "Core relational concepts (tables, transactions, indexes, foreign keys) transfer directly from Postgres knowledge; real practical differences include PL/SQL vs Postgres's PL/pgSQL, Oracle's real licensing cost model (a genuine factor in vendor/database-choice decisions at scale), and some real SQL-dialect differences in syntax/functions.",
+    "when": "Relevant when working in or migrating from an existing Oracle-based enterprise system, or when a real licensing-cost/vendor-lock-in trade-off needs to be reasoned about explicitly.",
+    "context": "This project's own real database is PostgreSQL, not Oracle -- an honest scope note: the underlying relational-database knowledge (transactions, indexing, query planning) is directly transferable, but this project has no real, hands-on Oracle-specific implementation experience to cite as project evidence.",
+    "interview": {
+        "question": "What's a real, practical reason a team might migrate off Oracle to Postgres, beyond just 'Postgres is open source'?",
+        "short_answer": "Real licensing cost at scale is often the dominant driver (Oracle's per-core licensing can be substantial for large deployments), alongside wanting to avoid vendor lock-in and gain access to Postgres's more actively evolving open ecosystem of extensions -- though a real migration also has real, non-trivial cost (PL/SQL to PL/pgSQL rewrite, dialect differences, extensive testing).",
+        "deep_answer": "This project's own choice of Postgres from the start (rather than migrating from Oracle) sidesteps the real migration cost/risk that many enterprise teams do face -- an honest note that this project's real experience is with a Postgres-native system, while the comparative Oracle-migration knowledge above is accurate general industry knowledge rather than something demonstrated by this project's own code.",
+    },
+}, related=["relational-db"])
+
+add_scoped("System Design", "jdbc", "LEARNED_UNDERSTOOD", {
+    "what": "Java Database Connectivity -- the standard, low-level Java API for connecting to and interacting with a relational database via raw SQL, providing the real foundation ORMs like Hibernate/JPA are built on top of.",
+    "why": "Understanding JDBC (even when using an ORM day-to-day) matters because ORM behavior/performance issues ultimately manifest as real JDBC-level operations (real SQL statements, real connections) -- being able to drop down to this level (e.g. inspecting the actual generated SQL, understanding connection lifecycle) is often necessary for real debugging.",
+    "how": "A JDBC Connection wraps a real database connection; a Statement/PreparedStatement executes real SQL against it, returning a ResultSet the application code reads row by row -- JPA/Hibernate generate and execute this same real JDBC machinery underneath their higher-level object-mapping API.",
+    "when": "Relevant whenever debugging a real ORM-generated query's actual performance (dropping to SQL-level logging), or for the relatively rare cases where raw JDBC/native queries are genuinely the right tool over JPA's object-mapping abstraction.",
+    "context": "This project's real HikariCP connection pool operates at exactly this JDBC layer -- pooling real JDBC Connection objects for reuse by the JPA/Hibernate layer above it, and this project's real N+1-query investigations required understanding the actual JDBC-level SQL statements JPA was generating, not just the higher-level entity-mapping code.",
+    "evidence": ["app/src/main/resources/application.properties"],
+    "interview": {
+        "question": "Why would you ever need to look at JDBC-level behavior when your code only ever calls JPA repository methods?",
+        "short_answer": "JPA/Hibernate's convenience can hide real, costly SQL patterns (like N+1 queries) behind innocent-looking Java method calls -- enabling real SQL logging at the JDBC level is often the only way to see what's ACTUALLY being executed against the database, since the JPA-level code gives no hint of the real query count/shape.",
+        "deep_answer": "This project's real N+1-query investigations required exactly this: enabling real SQL logging to see the actual JDBC-level statements JPA was generating, which revealed real, otherwise-invisible extra queries a purely JPA-level code review would have missed entirely -- a concrete demonstration of why understanding the layer beneath your abstraction matters for real debugging, not just as trivia.",
+    },
+}, related=["jpa", "connection-pooling"])
+
+add_scoped("System Design", "jpa", "CURRENT_PROJECT_EXPERIENCE", {
+    "what": "Java Persistence API -- the standard Java specification for object-relational mapping, implemented by Hibernate (this project's real implementation), letting application code work with real Java objects/entities while the framework generates and executes the underlying real SQL.",
+    "why": "JPA's object-mapping convenience significantly reduces real boilerplate versus hand-written JDBC, but its abstraction can hide real, costly SQL patterns (the N+1 query problem being the most common) if entity relationships/fetch strategies aren't deliberately reasoned about.",
+    "how": "Entities map to real tables via annotations; Spring Data JPA repository interfaces auto-generate real query implementations from method names or explicit @Query annotations; fetch strategy (EAGER vs LAZY) and explicit join-fetch queries determine whether related data comes back in one efficient query or triggers real additional per-row queries.",
+    "when": "The default choice for relational persistence in a Spring Boot application with genuinely object-oriented domain modeling needs.",
+    "real_experience": "This project's real service layer uses Spring Data JPA repositories throughout, and this project has real, documented experience fixing an actual N+1 query problem discovered via real SQL-level investigation -- fixed with an explicit join-fetch strategy, verified by asserting the real query count dropped from N+1 to a real, fixed small number.",
+    "evidence": ["app/src/main/java/com/example/customer/"],
+    "interview": {
+        "question": "How do you detect and fix a real N+1 query problem in a JPA-based application?",
+        "short_answer": "Enable real SQL logging (or a query-count-asserting test) to see the actual number of queries a given operation generates -- an N+1 pattern shows one query for the parent entities plus one additional query per related entity, fixed with an explicit JOIN FETCH or a batch-fetch strategy that retrieves the related data in one query instead of N additional ones.",
+        "deep_answer": "This project's real N+1 fix followed exactly this process: real SQL logging revealed the actual extra queries, a test was written asserting the real query count (not just correctness of the returned data, which an N+1 bug doesn't break -- only its efficiency), and the fix used an explicit join-fetch strategy -- the regression test specifically guards against the query count silently regressing back to N+1 in the future, which a purely functional/data-correctness test would never catch.",
+    },
+}, related=["jdbc", "relational-db"])
+
+add_scoped("System Design", "transactions", "CURRENT_PROJECT_EXPERIENCE", {
+    "what": "A real, atomic unit of database work -- either all its operations commit together, or (on any failure) all roll back together, leaving no partial/inconsistent state -- the 'A' (atomicity) and 'C' (consistency) in ACID.",
+    "why": "Without real transactional boundaries, a multi-step operation (e.g. debit one account, credit another; or write a business row and its outbox event) could partially fail, leaving the database in a real, inconsistent state that's often very difficult to detect or repair after the fact.",
+    "how": "Wrap a real logical unit of work in a transaction boundary (Spring's @Transactional, correctly scoped to the real business operation's actual boundary, not too broad or too narrow); the database guarantees all writes within it commit together or none do.",
+    "when": "Any operation involving more than one real write that must succeed or fail together as a single logical unit.",
+    "real_experience": "This project's transactional outbox pattern relies directly on real transaction atomicity: a business-entity write and its corresponding outbox-event row are written in the SAME real database transaction, guaranteeing they commit or roll back together -- this atomicity is precisely what avoids the real dual-write problem a naive 'write to DB, then separately publish to Kafka' approach would suffer from.",
+    "evidence": ["app/src/main/java/com/example/customer/outbox/"],
+    "interview": {
+        "question": "What real problem does wrapping a business write and its outbox event in the same transaction actually solve?",
+        "short_answer": "Without this, a service could write the business row successfully but then fail to publish the event (or vice versa) -- leaving the business state and the event stream genuinely inconsistent with no automatic way to reconcile them. Same-transaction atomicity guarantees both happen together or neither does.",
+        "deep_answer": "This project's outbox pattern is the concrete, working proof of this: the business write and the outbox-event insert are both part of the SAME real database transaction, so a rollback of one is automatically a rollback of the other -- the separate, asynchronous OutboxPublisher then reliably delivers the durably-committed event to Kafka afterward, decoupling 'commit atomically' (a real transaction's job) from 'publish reliably to an external broker' (a separate, retryable concern) rather than conflating the two into one fragile synchronous operation.",
+    },
+}, related=["database-transactions-isolation-levels-mvcc", "relational-db"])
+
+add_scoped("System Design", "indexing", "CURRENT_PROJECT_EXPERIENCE", {
+    "what": "A real, separate on-disk data structure (commonly a B-tree) that lets the database find rows matching a query condition without scanning every row in a table -- the primary lever for real query performance at any non-trivial table size.",
+    "why": "Without an appropriate index, a query filtering on a column requires a full table scan -- correct at small scale, but real, measurable performance degrades as the table grows; understanding which queries need which index (and the real trade-off of write-performance cost per additional index) is core relational-database performance reasoning.",
+    "how": "Create an index on columns genuinely used in WHERE/JOIN/ORDER BY clauses for real, frequently-run queries; a B-tree index supports equality and range queries efficiently but cannot help a leading-wildcard LIKE query (needing full-text search or a trigram index instead) -- verify with the database's real query-execution-plan tool (EXPLAIN ANALYZE) rather than assuming an index helped.",
+    "when": "Any real query pattern that will run frequently against a table expected to grow -- added deliberately based on real, observed query patterns, not speculatively on every column.",
+    "real_experience": "This project has a real, documented case where a leading-wildcard LIKE query couldn't use a standard B-tree index at all -- reasoned through explicitly in its own interview-scenario documentation, concluding that real scale would need Postgres full-text search (GIN + tsvector), a trigram index (pg_trgm), or an external search service, rather than assuming a standard index would simply handle it.",
+    "evidence": ["docs/interview-scenarios/"],
+    "interview": {
+        "question": "Why can't a standard B-tree index speed up a query like WHERE name LIKE '%smith%'?",
+        "short_answer": "A B-tree index is ordered and efficient for prefix matches (LIKE 'smith%') or equality/range queries, but a leading wildcard (LIKE '%smith%') can match anywhere in the string, which a B-tree's ordered structure can't narrow down -- it still requires scanning every indexed entry, defeating the index's purpose.",
+        "deep_answer": "This project's own real, documented reasoning about exactly this limitation concludes that genuine substring search at real scale needs a fundamentally different mechanism than a B-tree index -- either Postgres's built-in full-text search (GIN index over a tsvector), a trigram index (pg_trgm, which indexes substrings rather than whole-value prefixes), or delegating to an external search service like Elasticsearch, each a real, different trade-off in complexity versus query flexibility this project reasoned through explicitly rather than assuming a generic 'add an index' fix would work.",
+    },
+}, related=["database-indexes-b-trees-query-execution-plans", "relational-db"])
+
+add_scoped("System Design", "connection-pooling", "CURRENT_PROJECT_EXPERIENCE", {
+    "what": "Maintaining a real, reusable set of already-established database connections rather than opening/closing a new real connection for every query -- avoiding the real, non-trivial cost (TCP handshake, authentication) of connection establishment on every single database operation.",
+    "why": "Opening a fresh database connection per query would add real, significant latency to every single operation and could exhaust the database's own real, finite connection-handling capacity under real concurrent load -- pooling is what makes high-throughput database access practical.",
+    "how": "A pool (HikariCP, the modern standard for Java/Spring) maintains a real set of open connections, handing one to a thread needing to query and returning it to the pool (not closing it) when done; sizing the pool correctly (real max connections, matched against real expected concurrency and real per-query duration) is itself a genuine engineering decision, not a default to leave unconsidered.",
+    "when": "Every real production application accessing a relational database.",
+    "real_experience": "This project uses HikariCP with a real, deliberately-sized connection pool -- sized based on reasoning about this project's own real expected concurrency, not left at an arbitrary default, and this project's interview-scenario documentation reasons explicitly about the real trade-off (too small a pool causes real request queuing under load; too large can overwhelm the real database's own connection capacity).",
+    "evidence": ["app/src/main/resources/application.properties", "docs/interview-scenarios/"],
+    "interview": {
+        "question": "How do you actually determine the right connection pool size, rather than guessing?",
+        "short_answer": "A common starting formula (connections = ((core_count * 2) + effective_spindle_count) for the DATABASE server's own capacity) combined with real, measured application-side concurrency and real average query duration -- then verify empirically under real or realistic load, since the right number depends on real, specific workload characteristics, not a universal constant.",
+        "deep_answer": "This project's real HikariCP sizing decision was reasoned through explicitly rather than left at a framework default -- accounting for this project's real expected concurrent request volume and the real database's own connection-handling capacity, with the explicit trade-off documented (too small queues requests under real load; too large risks overwhelming the database) -- the kind of concrete, reasoned sizing decision an interviewer specifically wants to hear justified with real numbers, not 'I used the default.'",
+    },
+}, related=["jdbc-hikaricp-connection-pool-sizing", "thread"])
+
+add_scoped("System Design", "replication", "LEARNED_UNDERSTOOD", {
+    "what": "Maintaining real, synchronized copies of a database across multiple nodes -- for high availability (a replica can take over if the primary fails) and/or read scaling (routing read queries to replicas to offload the primary), at the real cost of replication lag (a replica may briefly lag behind the primary's latest writes).",
+    "why": "A single-node database is a real single point of failure and a real read-throughput ceiling -- replication addresses both, but introduces a genuine new correctness concern (a read from a lagging replica might not reflect the very latest write) that application code must reason about explicitly if it matters for that specific real use case.",
+    "how": "A primary node accepts real writes and streams changes to one or more replicas (synchronously, for stronger consistency at a real latency cost, or asynchronously, for lower latency at the cost of real possible lag); application code routes writes to the primary and can route reads to replicas for scale, accepting real eventual consistency for those reads where it's genuinely acceptable.",
+    "when": "Real production systems needing either higher availability than a single node provides, or real read-throughput beyond a single node's real capacity.",
+    "context": "This project currently runs a single real PostgreSQL instance (appropriate to its current real, modest scale, documented honestly in KNOWN_LIMITATIONS) rather than a replicated setup -- an honest, disclosed current-scale boundary; its own 'What Changes at 10x Scale' reasoning explicitly notes that read-replica promotion would be justified only by a real, measured bottleneck, never provisioned speculatively.",
+    "evidence": ["docs/PROJECT_STATE.json"],
+    "interview": {
+        "question": "What real correctness issue can arise from routing reads to a replica, and how do you handle it?",
+        "short_answer": "Replication lag means a replica might not yet reflect the very latest write -- if an application reads its own just-written data from a lagging replica, it could see stale data. The fix is routing read-your-own-writes-sensitive queries to the primary (or a synchronous replica), while less consistency-sensitive reads can safely go to an async replica.",
+        "deep_answer": "This project's own honest, documented position is that it doesn't currently operate replicas at all -- a single real Postgres instance is the correct, deliberate choice at its current real scale, and its own 'What Changes at 10x Scale' reasoning explicitly states that adding read replicas would only be justified by a real, measured read-throughput bottleneck, never spectulatively provisioned ahead of that real evidence, the same 'don't provision what isn't needed yet' discipline this project applies consistently elsewhere.",
+    },
+}, related=["relational-db", "scale"])
+
+add_scoped("System Design", "partitioning", "LEARNED_UNDERSTOOD", {
+    "what": "Splitting a real, large table's data across multiple physical partitions (often by a key like customer ID or date range) so each partition stays a real, manageable size -- distinct from sharding (splitting across separate database instances/servers) though the two concepts are closely related and often confused.",
+    "why": "A single, unpartitioned table growing without bound eventually has real, degrading query/index performance and real maintenance-operation cost (vacuum, reindex) that scales with total table size -- partitioning keeps each real physical partition at a manageable size, and can let old partitions be dropped/archived cheaply (e.g. time-based partitioning for log/event data).",
+    "how": "Choose a real, deliberate partition key matching the real dominant query pattern (e.g. partition by month for time-series data that's usually queried by recent date range) so most real queries only need to scan relevant partitions, not the whole dataset.",
+    "when": "Tables expected to grow to a real, large size where a single unpartitioned table's maintenance/query performance would genuinely degrade -- premature partitioning of a small table adds real complexity without real benefit.",
+    "context": "This project's real event ledger (agent/event_ledger.py) is a genuine, growing time-series table (a strong real candidate for future time-based partitioning at higher real volume), but this project has not yet implemented partitioning, since its current real event volume doesn't yet justify the added complexity -- an honest, disclosed 'not yet needed' rather than a claimed capability.",
+    "evidence": ["agent/event_ledger.py"],
+    "interview": {
+        "question": "What's the real difference between database partitioning and sharding, and when would you reach for each?",
+        "short_answer": "Partitioning splits a table's data across multiple physical segments WITHIN the same database instance (transparent to most queries, improves maintenance/query performance on a single, still-centrally-managed database); sharding splits data across SEPARATE database instances/servers (needed when a single instance's total capacity, not just one table's size, is the real bottleneck) -- sharding is a much bigger, more invasive architectural change.",
+        "deep_answer": "This project's real event ledger is a concrete, honest example of a genuine future partitioning candidate (a growing, time-series-shaped table) not yet partitioned because current real volume doesn't justify it -- the same discipline this project applies to Kafka topic partitioning and read-replica decisions: reason about the real, natural partition key (here, event timestamp) in advance, but only actually implement partitioning once real, measured growth demonstrates the need.",
+    },
+}, related=["scale", "kafka-event-delivery-semantics"])
+
+# -- caching --
+
+add_scoped("System Design", "redis", "CURRENT_PROJECT_EXPERIENCE", {
+    "what": "An in-memory key-value data store commonly used as a cache (and sometimes as a lightweight message broker or session store) -- real, sub-millisecond read/write latency since data lives in RAM, at the cost of being volatile (data can be lost on restart unless persistence is explicitly configured) and bounded by real available memory.",
+    "why": "For data that's expensive to compute/fetch repeatedly (a database query, an external API call) but tolerant of being briefly stale, caching it in Redis trades a small real staleness window for a large real latency/load reduction on the underlying source of truth.",
+    "how": "Store a real, serialized representation of the data under a deliberate key structure, with an explicit TTL (time-to-live) matching how long staleness is actually acceptable for that specific data; the application must handle a real cache miss (fetch from the real source of truth, populate the cache) and real invalidation (when the underlying source changes before the TTL expires).",
+    "when": "Data that's read far more often than it changes, and where a bounded staleness window (via TTL) is genuinely acceptable for the real use case.",
+    "real_experience": "This project's ContractPlanCacheService uses Redis explicitly, implemented as real, deliberate cache-aside logic (not the @Cacheable annotation) -- with a real, tested fail-open behavior on a Redis outage, meaning the application correctly falls back to the real database rather than failing the request entirely if Redis is temporarily unavailable.",
+    "evidence": ["app/src/main/java/com/example/customer/cache/ContractPlanCacheService.java"],
+    "interview": {
+        "question": "Why did this project choose explicit cache-aside code over Spring's @Cacheable annotation?",
+        "short_answer": "@Cacheable hides the real hit/miss/fallback/invalidation logic behind Spring AOP, making each path individually hard to test and observe -- explicit cache-aside code makes each path (cache hit, cache miss plus populate, and specifically the fail-open behavior on a Redis outage) its own separately-testable method.",
+        "deep_answer": "This project's real, deliberate choice is documented and verified: ContractPlanCacheService's fail-open behavior (falling back to the real database when Redis is down, rather than failing the request) is exactly the kind of behavior an annotation-based cache would make difficult to verify with a real test -- with explicit code, a real test can simulate a Redis outage and assert the specific fallback behavior directly.",
+    },
+}, related=["cache-aside", "redis-caching-strategy-invalidation"])
+
+add_scoped("System Design", "cache-aside", "CURRENT_PROJECT_EXPERIENCE", {
+    "what": "A caching pattern where the APPLICATION code explicitly manages the cache: check the cache first, on a miss fetch from the real source of truth and populate the cache, on a write update/invalidate the cache -- as distinct from a transparent, framework-managed caching layer (like @Cacheable) that hides this logic.",
+    "why": "Explicit application-managed caching gives full, transparent control over exactly when a cache is checked, populated, and invalidated -- including handling failure modes (what happens if the cache itself is down) explicitly and testably, rather than relying on a framework's implicit behavior.",
+    "how": "On read: check cache; if hit, return cached value; if miss, query the real source of truth, populate the cache with a real TTL, then return the value. On write: update the real source of truth, then explicitly invalidate (or update) the corresponding cache entry so subsequent reads don't see stale data.",
+    "when": "Whenever explicit, testable control over cache behavior (including failure-mode behavior) matters more than the convenience of an annotation-based approach.",
+    "real_experience": "This project's ContractPlanCacheService implements real, explicit cache-aside logic -- each path (hit, miss-then-populate, write-then-invalidate, and Redis-outage fallback) is its own real, separately-tested method, verified by real tests including one specifically simulating a Redis outage to prove the fail-open fallback path actually works.",
+    "evidence": ["app/src/main/java/com/example/customer/cache/ContractPlanCacheService.java"],
+    "interview": {
+        "question": "What's the real risk of NOT explicitly invalidating a cache entry on write, when using cache-aside?",
+        "short_answer": "Without explicit invalidation on write, a cached value can remain stale beyond its TTL's intended staleness window -- a subsequent read would return outdated data until the TTL naturally expires, potentially far longer than acceptable for that specific data's real staleness tolerance.",
+        "deep_answer": "This project's real cache-aside implementation explicitly invalidates the relevant cache entry as part of any write path that changes the underlying data -- a deliberate, testable behavior verified by a real test asserting that a write is immediately followed by a cache miss (not a stale hit) on the next read, closing exactly this real staleness-window risk rather than relying solely on TTL expiry to eventually self-correct.",
+    },
+}, related=["redis", "invalidation", "ttl"])
+
+add_scoped("System Design", "ttl", "LEARNED_UNDERSTOOD", {
+    "what": "Time-to-live -- the real, explicit duration a cached (or otherwise temporary) value remains valid before it's automatically considered expired/stale, bounding how long staleness can persist even if explicit invalidation is missed.",
+    "why": "TTL is the real safety net against a cache entry becoming permanently stale (e.g. if an invalidation path has a bug, or an update happens through a code path that doesn't trigger explicit invalidation) -- a deliberately-chosen TTL bounds the real maximum staleness window regardless of whether explicit invalidation logic is perfectly correct.",
+    "how": "Choose a TTL matched to the real acceptable staleness for that specific data (data that changes rarely and isn't consistency-critical can have a long TTL; data needing near-real-time accuracy needs a short TTL or shouldn't be cached at all) -- not a single global default applied uniformly regardless of the real data's actual staleness tolerance.",
+    "when": "Every cached value should have a deliberately-chosen TTL, even when explicit invalidation is also implemented, as defense against invalidation-logic bugs.",
+    "context": "This project's ContractPlanCacheService uses a real, explicit TTL as a deliberate second layer of staleness protection alongside its explicit write-path invalidation -- reasoning about both together (not relying on invalidation alone) reflects a real, considered defense-in-depth approach to cache staleness.",
+    "evidence": ["app/src/main/java/com/example/customer/cache/ContractPlanCacheService.java"],
+    "interview": {
+        "question": "If you already explicitly invalidate a cache entry on every write, why also set a TTL?",
+        "short_answer": "TTL is a real safety net against invalidation-logic bugs or missed code paths (a write path added later that forgets to invalidate) -- even correct invalidation logic today doesn't guarantee every future write path will remember to invalidate, so a TTL bounds the real worst-case staleness regardless.",
+        "deep_answer": "This project's cache design deliberately layers both mechanisms rather than relying on invalidation alone -- explicit invalidation gives the BEST-case immediate consistency on the write paths that correctly call it, while the TTL gives a real, guaranteed worst-case bound even against a future bug in some write path that fails to invalidate, a defense-in-depth reasoning pattern worth citing explicitly in a design discussion rather than presenting either mechanism as sufficient alone.",
+    },
+}, related=["cache-aside", "invalidation"])
+
+add_scoped("System Design", "invalidation", "CURRENT_PROJECT_EXPERIENCE", {
+    "what": "Explicitly removing or updating a cache entry when the underlying real data it represents changes, so subsequent reads don't return stale data before the TTL would naturally expire it -- the real, hard problem colloquially referenced in 'there are only two hard things in computer science: cache invalidation and naming things.'",
+    "why": "Without explicit invalidation, a cache entry remains stale for its full TTL after the underlying data changes -- for data where even brief staleness after a write is unacceptable (e.g. a customer immediately re-reading their own just-updated preference), explicit invalidation on write is necessary, not just TTL expiry.",
+    "how": "On any write path that changes cached data, explicitly evict or update the corresponding cache key as part of that same write operation -- requires correctly identifying every real write path that touches the underlying data, which is the genuinely hard part (a missed write path is a real, easy-to-introduce invalidation bug).",
+    "when": "Any cached data where read-after-write consistency matters for the real use case -- for data where brief staleness is genuinely fine, TTL-only expiry (no explicit invalidation) is a simpler, valid choice.",
+    "real_experience": "This project's ContractPlanCacheService explicitly invalidates the relevant cache entry as part of its real write path, verified by a real test asserting an immediate read-after-write returns fresh (not stale cached) data -- a concrete, tested proof this project's specific invalidation logic correctly covers its real write paths.",
+    "evidence": ["app/src/main/java/com/example/customer/cache/ContractPlanCacheService.java"],
+    "interview": {
+        "question": "Why is cache invalidation considered one of the 'hard problems' in computer science?",
+        "short_answer": "Because correctly invalidating requires identifying and correctly updating EVERY real code path that changes the underlying data -- missing even one path (including ones added later by a future change) silently reintroduces stale reads, and the bug is often only discovered when a user notices incorrect data, not through an obvious test failure.",
+        "deep_answer": "This project's real, tested invalidation logic addresses exactly this risk for its own known write paths, verified by a real read-after-write test -- but the durable, general lesson (worth stating explicitly in an interview) is that a NEW write path added later must remember to invalidate too, which is exactly why this project also layers a TTL as a bounded safety net rather than trusting invalidation logic to stay perfectly complete forever as the codebase evolves.",
+    },
+}, related=["cache-aside", "ttl", "consistency"])
+
+add_scoped_path("System Design", "caching", "consistency", "LEARNED_UNDERSTOOD", {
+    "what": "In a caching/distributed-data context, whether a read reflects the most recent write -- strong consistency guarantees it always does (at a real cost to latency/availability); eventual consistency allows a real, bounded window where a read might return stale data before all replicas/caches converge.",
+    "why": "Different real data has genuinely different consistency requirements -- a bank balance typically needs strong consistency; a 'like count' or a cached product description can usually tolerate eventual consistency -- choosing the right consistency model per real use case (rather than defaulting to the strongest everywhere) is a genuine, necessary trade-off against latency/availability/cost.",
+    "how": "Strong consistency: read from the authoritative source directly, or use synchronous replication/cache-invalidation so every read sees the latest write, at real added latency/coordination cost. Eventual consistency: allow a real, bounded staleness window (via TTL, async replication) in exchange for lower latency and higher availability.",
+    "when": "Every piece of real cached or replicated data needs this trade-off reasoned about explicitly -- assuming strong consistency is 'always better' ignores its real cost; assuming eventual consistency is 'always fine' ignores real correctness requirements some data genuinely has.",
+    "context": "This project's own cache-aside implementation deliberately reasons about this per-data-type: its explicit invalidation-on-write gives near-strong consistency for cached plan data (important since a customer's own recent update should be immediately visible to them), while its TTL provides a bounded eventual-consistency fallback for any path invalidation might miss -- a real, considered position rather than a single default applied uniformly.",
+    "evidence": ["app/src/main/java/com/example/customer/cache/ContractPlanCacheService.java"],
+    "interview": {
+        "question": "How do you decide whether a given piece of data needs strong or eventual consistency?",
+        "short_answer": "Ask what a real user or downstream system would actually experience/do with stale data -- if brief staleness could cause a real, meaningful harm (financial incorrectness, a security-relevant decision made on stale data), lean strong; if brief staleness is genuinely unnoticeable or harmless (a cached display value), eventual consistency's latency/availability benefits are usually worth it.",
+        "deep_answer": "This project's own cache design reflects exactly this reasoning applied concretely: a customer's own preference/plan data uses near-strong consistency (explicit invalidation, since a customer immediately re-reading their own update should see it correctly) while accepting a small eventual-consistency window as a bounded fallback (TTL) for any invalidation-path gap -- a real, deliberate, per-data-type consistency decision rather than a single blanket policy.",
+    },
+}, related=["invalidation", "database-transactions-isolation-levels-mvcc"])
+
+# -- distributed-systems --
+
+add_scoped("System Design", "availability", "LEARNED_UNDERSTOOD", {
+    "what": "The real, measured fraction of time a system is genuinely able to serve requests correctly -- commonly expressed in 'nines' (99.9%, 99.99%) -- a distinct dimension from consistency, and the two are famously in real tension under network partition (the CAP theorem).",
+    "why": "Higher availability targets require real, specific architectural investment (redundancy, failover, no single point of failure) that has real cost -- 99.9% versus 99.99% versus 99.999% each represents an order-of-magnitude-different real engineering and infrastructure investment, not a free upgrade.",
+    "how": "Eliminate real single points of failure (redundant instances behind a load balancer, replicated data stores, multi-AZ/region deployment for the highest tiers), paired with real automated failover/health-checking so a real failure is detected and routed around quickly rather than requiring manual intervention.",
+    "when": "Every real production system has SOME implicit or explicit availability target -- making it explicit (a real SLO) is what lets you reason about whether your architecture actually supports it.",
+    "context": "This project currently runs as a single real deployed instance on its platform (Railway) without multi-instance redundancy, an honest, disclosed limitation appropriate to its current real, non-mission-critical scope -- its own 'What Changes at 10x Scale' reasoning explicitly notes that genuine high-availability architecture (multiple instances, load balancing, redundant data stores) would be the natural next investment at real production scale with real availability requirements.",
+    "evidence": ["docs/PROJECT_STATE.json"],
+    "interview": {
+        "question": "Why does going from 99.9% to 99.99% availability represent a much bigger engineering investment than the numbers alone suggest?",
+        "short_answer": "99.9% allows about 8.7 hours of downtime a year; 99.99% allows only about 52 minutes -- each additional nine requires eliminating an entire additional category of real failure mode (single-instance failure, single-AZ failure, single-region failure, slow-deploy-related downtime) that the previous tier could tolerate, not just 'being more careful.'",
+        "deep_answer": "This project's own honest current-scale answer (single instance, no formal availability SLO) is the right, disclosed answer for its real current scope rather than an inflated claim -- and its documented 'What Changes at 10x Scale' reasoning is exactly the right way to demonstrate understanding the REAL engineering investment (multi-instance redundancy, health-checked failover, replicated data) each additional nine of availability would concretely require, without claiming that investment has already been made.",
+    },
+}, related=["consistency", "load-balancer", "scale"])
+
+add_scoped_path("System Design", "distributed-systems", "consistency", "LEARNED_UNDERSTOOD", {
+    "what": "In the broader distributed-systems (CAP theorem) sense: whether every node/replica in a distributed system agrees on the current state at any given moment -- during a real network partition, a distributed system must choose between remaining available (serving possibly-stale/conflicting data) or remaining consistent (refusing to serve until the partition heals) -- it cannot fully guarantee both simultaneously.",
+    "why": "CAP theorem's real, practical implication is that every distributed-data architecture decision is an implicit or explicit choice on this spectrum -- understanding which choice your real architecture makes (and whether that matches the real business need) is core distributed-systems reasoning, not abstract theory.",
+    "how": "Design deliberately: for data needing strict consistency during a partition, prefer a design that sacrifices availability (fails closed) during the partition; for data where availability matters more, accept a real, bounded eventual-consistency window and reconcile once the partition heals (conflict resolution strategy needed).",
+    "when": "Any distributed system with real data replicated or partitioned across multiple nodes needs this trade-off reasoned about explicitly for each real data type it manages.",
+    "context": "This project's single-instance, single-database current architecture sidesteps the hardest real CAP-theorem trade-offs (no real multi-node data distribution to reconcile) -- an honest, disclosed reflection of its current real scale; its Kafka-based transactional outbox is the one place real distributed-systems consistency reasoning genuinely applies today (eventual consistency between the business write and the downstream consumer, by deliberate, reasoned design).",
+    "evidence": ["app/src/main/java/com/example/customer/outbox/"],
+    "interview": {
+        "question": "How does this project's outbox pattern reflect a real, deliberate CAP-theorem-style trade-off?",
+        "short_answer": "It deliberately chooses eventual consistency between the business write (strongly consistent, in the primary transaction) and the downstream Kafka consumer's view of that event (eventually consistent, delivered asynchronously) -- rather than trying to force synchronous strong consistency across a real network boundary to Kafka, which would require blocking the request on the broker's availability.",
+        "deep_answer": "This project's outbox design is a real, working example of choosing the RIGHT side of this trade-off deliberately for the specific data involved: the business row itself needs strong consistency (handled by a real single-node ACID transaction, no CAP trade-off needed there), while the downstream event delivery explicitly accepts eventual consistency (the outbox publisher retries asynchronously) rather than making the customer's request block on a real network call to a broker that could itself be temporarily unavailable.",
+    },
+}, related=["availability", "consistency"])
+
+add_scoped_path("System Design", "distributed-systems", "retry", "LEARNED_UNDERSTOOD", {
+    "what": "In the broader distributed-systems context (beyond a single client-to-service call): the general pattern of automatically re-attempting a failed operation across any real network boundary in a distributed system, with the same real dangers (non-idempotent operations, retry storms) applying at every such boundary, not just the client-facing API layer.",
+    "why": "A distributed system has MANY real network boundaries where a transient failure can occur (service-to-service calls, message-broker publish, database calls) -- the retry principle (idempotency-aware, bounded, backed-off) needs to be applied consistently at every one of these boundaries, not just the outermost client-facing one.",
+    "how": "Apply the same real discipline (verify idempotency first, bound the attempts, use backoff, pair with circuit-breaking for sustained failures) at every real inter-service or service-to-infrastructure network call, not only the API layer a human client interacts with.",
+    "when": "Every real network call within a distributed system's internal architecture, not just its external-facing API.",
+    "context": "This project applies this same retry discipline at multiple real internal boundaries: its Resilience4j-wrapped downstream HTTP integration, its OutboxPublisher's real retry behavior for delivering events to Kafka, and its production-verification logic's real bounded retry for deployment eventual-consistency -- the same underlying principle applied consistently across genuinely different real network boundaries within this one system.",
+    "evidence": ["app/src/main/java/com/example/customer/outbox/", "app/src/main/java/com/example/customer/integration/appointment/"],
+    "interview": {
+        "question": "Why would a system need retry logic at multiple different internal layers, not just at its external API?",
+        "short_answer": "Every real network hop within a distributed system (service-to-service, service-to-broker, service-to-database) is its own independent point of possible transient failure -- retry logic needs to be applied at EACH boundary where a transient failure is genuinely possible and the operation is genuinely safe to retry, not assumed to be handled once at the outer edge.",
+        "deep_answer": "This project's own architecture demonstrates exactly this: retry appears independently at its downstream-HTTP-integration boundary (Resilience4j), its outbox-to-Kafka boundary (OutboxPublisher's own retry logic), and its deployment-verification boundary (a bounded polling retry) -- each is reasoned about and implemented separately because each boundary has genuinely different real failure characteristics and idempotency properties, not copy-pasted from a single generic retry utility applied blindly everywhere.",
+    },
+}, related=["idempotency", "resilience-patterns-retry-timeout-circuit-breaker"])
+
+add_scoped_path("System Design", "distributed-systems", "idempotency", "LEARNED_UNDERSTOOD", {
+    "what": "In the broader distributed-systems context: idempotency isn't only a client-API concern -- every real internal message/event a distributed system processes (a Kafka consumer handling a message that might be redelivered, a downstream service receiving a duplicate call from an upstream retry) needs the same real idempotency property to be safe under at-least-once delivery semantics, which most real distributed messaging systems provide.",
+    "why": "Most real distributed messaging systems (including Kafka, as this project uses it) provide at-least-once delivery, not exactly-once, as their real, practical default guarantee -- meaning a consumer WILL occasionally see the same real message more than once, and must handle that safely rather than assuming delivery is always exactly-once.",
+    "how": "Make consumers idempotent by design: track already-processed message identifiers (a real deduplication mechanism) or design the consumer's effect itself to be naturally idempotent (an upsert rather than an insert, a set-to-value rather than an increment) so reprocessing the same real message twice has no additional effect.",
+    "when": "Every real consumer of an at-least-once-delivery messaging system -- assuming exactly-once delivery without verifying the real messaging system's actual guarantee is a common, real source of duplicate-processing production bugs.",
+    "context": "This project's real Kafka consumer (CustomerPreferenceEventConsumer) processes events from its transactional outbox under Kafka's real at-least-once delivery semantics -- this project's own interview-scenario documentation on Kafka event-delivery semantics reasons explicitly about this distinction rather than silently assuming exactly-once behavior the underlying messaging technology doesn't actually provide.",
+    "evidence": ["app/src/main/java/com/example/customer/messaging/CustomerPreferenceEventConsumer.java", "docs/interview-scenarios/"],
+    "interview": {
+        "question": "If Kafka only guarantees at-least-once delivery, how do you prevent a redelivered message from causing a duplicate real effect?",
+        "short_answer": "Design the consumer's own processing logic to be idempotent -- either track already-processed message IDs explicitly (deduplication) or make the actual effect naturally idempotent (e.g. 'set the customer's notification channel to X' rather than 'increment a counter'), so reprocessing the same message twice produces the same end state as processing it once.",
+        "deep_answer": "This project's real notification-dispatch consumer is designed around this exact principle: dispatching a notification based on the event's current declared state (idempotent by construction, since redelivery would just redispatch the same notification for the same declared state) rather than an inherently non-idempotent operation like incrementing a counter -- a deliberate design choice reasoned about explicitly in this project's own Kafka documentation rather than an accidental property.",
+    },
+}, related=["retry", "kafka-event-delivery-semantics"])
+
+add_scoped("System Design", "queues", "LEARNED_UNDERSTOOD", {
+    "what": "A real, durable, ordered (or at least deliverable) buffer of messages between a producer and one or more consumers -- decouples the producer's rate of work from the consumer's, letting each scale/fail independently rather than the producer blocking directly on the consumer's real-time availability.",
+    "why": "Without a real queue, a producer calling a consumer directly (synchronously) couples their real availability and throughput together -- if the consumer is slow or briefly down, the producer either blocks or fails; a queue absorbs this real mismatch, letting the producer continue and the consumer catch up asynchronously.",
+    "how": "A producer durably writes a message to the queue; one or more consumers read and process messages (often removing/acknowledging them once processed) -- real queue systems vary in their real delivery/ordering guarantees (at-least-once vs exactly-once, strict ordering vs no ordering guarantee), which must be understood, not assumed.",
+    "when": "Any real scenario needing to decouple a producer's and consumer's real availability/throughput, especially for real background/asynchronous processing.",
+    "context": "This project's Kafka-based transactional outbox is a real, working example of exactly this decoupling: the OutboxPublisher (producer role) doesn't need the eventual Kafka consumer to be immediately available or fast -- the durable outbox table plus Kafka absorb that real timing mismatch, letting the original customer-facing request complete immediately without waiting on downstream consumer availability.",
+    "evidence": ["app/src/main/java/com/example/customer/outbox/"],
+    "interview": {
+        "question": "What real problem does inserting a message queue between two services solve that a direct synchronous call doesn't?",
+        "short_answer": "It decouples the two services' real availability and throughput -- the producer can continue even if the consumer is temporarily slow or down, and the consumer can process at its own real, sustainable rate rather than being forced to match the producer's real, possibly bursty request rate.",
+        "deep_answer": "This project's real transactional-outbox-to-Kafka flow demonstrates this decoupling concretely: a customer's request completes and returns successfully the moment the business write and outbox row commit (a fast, real, synchronous database transaction) -- completely independent of whether the eventual notification-dispatch consumer is available or fast at that exact moment, since the durable queue (Kafka, fed by the outbox) absorbs that real timing gap entirely.",
+    },
+}, related=["kafka", "event-driven-architecture"])
+
+add_scoped("System Design", "kafka", "CURRENT_PROJECT_EXPERIENCE", {
+    "what": "A distributed, durable, high-throughput log-based messaging system -- unlike a traditional queue, Kafka retains messages for a configurable real retention period (not just until consumed), allowing multiple independent consumer groups to each read the full real stream at their own pace, and supports real partitioning for horizontal scale.",
+    "why": "Kafka's durable log model is well-suited for event-driven architectures where multiple, independent downstream systems might each need to react to the same real event stream (not just one consumer 'taking' each message), and its partitioning model supports real high-throughput horizontal consumer scaling while preserving per-key ordering.",
+    "how": "Producers write real messages to a topic (optionally keyed, which determines partition assignment and thus per-key ordering); consumer groups each independently track their own real offset into the topic, allowing multiple groups to consume the same real stream at their own pace without interfering with each other.",
+    "when": "Event-driven architectures needing durable, replayable, potentially-multi-consumer event streams, especially where per-key ordering and high real throughput matter.",
+    "real_experience": "This project's real transactional outbox publishes to Kafka via OutboxPublisher, with CustomerPreferenceEventConsumer as the real consumer -- this project's own documentation reasons explicitly about a real future partitioning strategy (partitioning by customerId, already the message key today) that would preserve per-customer ordering while allowing real horizontal consumer scale-out, with the key insight that the code changes needed for that future scale are zero since the key is already set correctly today.",
+    "evidence": ["app/src/main/java/com/example/customer/outbox/", "docs/interview-scenarios/05-kafka-transactional-outbox.md"],
+    "interview": {
+        "question": "Why does this project's outbox topic use customerId as the message key, and what real benefit does that decision provide for future scale?",
+        "short_answer": "Kafka guarantees ordering only WITHIN a partition, and a message's key determines its partition -- keying by customerId guarantees all of one customer's events are processed in real order (critical for correctness, since preference updates must apply in the order they happened), while still allowing the topic to be partitioned across many partitions for real horizontal throughput.",
+        "deep_answer": "This project's own documented reasoning is a real, concrete example of designing for FUTURE scale without paying present-day complexity cost: the customerId key was chosen from the start for correctness (per-customer ordering), and this project's own docs note that adding real partition-count scaling later requires zero code changes, since the key was already right -- a genuine example of a cheap, forward-looking design decision made deliberately rather than needing a costly retrofit later.",
+    },
+}, related=["queues", "event-driven-architecture", "kafka-event-delivery-semantics"])
+
+add_scoped("System Design", "event-driven-architecture", "CURRENT_PROJECT_EXPERIENCE", {
+    "what": "An architectural style where components communicate primarily by publishing and reacting to real, durable events rather than direct synchronous calls -- decoupling producers and consumers in both time (via a durable queue/log) and in coupling (a producer doesn't need to know who, or how many consumers, will react to its event).",
+    "why": "Event-driven architecture lets new consumers be added later without changing the producer at all (an existing event stream can gain a new subscriber), and decouples real availability/failure between services -- at the real cost of harder end-to-end debugging (tracing a request across an asynchronous event boundary is genuinely harder than following a synchronous call stack) and needing explicit consistency reasoning (see consistency/idempotency).",
+    "how": "A producer commits a real business change and durably publishes a corresponding event (this project's transactional-outbox pattern is one real, correct way to do this atomically); consumers independently subscribe and react, each managing their own real processing state/offset.",
+    "when": "When genuine decoupling between producer and (potentially multiple, evolving) consumers is valuable, and when the real correctness/complexity cost of eventual consistency and harder tracing is acceptable for the specific use case.",
+    "real_experience": "This project's real preference-update flow is genuinely event-driven: a customer's preference change is durably persisted and published as a real event via the transactional outbox, with a real, independent consumer (CustomerPreferenceEventConsumer) reacting to dispatch the appropriate notification -- a real, working, end-to-end event-driven flow, not a theoretical description.",
+    "evidence": ["app/src/main/java/com/example/customer/outbox/", "app/src/main/java/com/example/customer/messaging/"],
+    "interview": {
+        "question": "What real debugging difficulty does event-driven architecture introduce that a synchronous call chain doesn't have?",
+        "short_answer": "Tracing a single logical operation across an asynchronous event boundary is genuinely harder -- there's no single call stack to follow; you need correlation IDs and real, durable observability (tracing/event logging) explicitly designed in, or a real production issue becomes very hard to root-cause across the producer/consumer boundary.",
+        "deep_answer": "This project's own real durable event ledger (used for its AI-pipeline observability) reflects understanding this exact challenge in a related context -- both this project's transactional-outbox event flow and its AI-pipeline tracing rely on durable, structured, correlatable event records specifically BECAUSE tracing 'what really happened' across an asynchronous boundary requires deliberate observability design, not something you can retrofit easily after a real production incident already needs root-causing.",
+    },
+}, related=["kafka", "queues"])
+
+def _apply(node, domain_title, parent_slug, applied, applied_scoped, applied_path_scoped):
     slug = node.get("slug")
+    path_key = (domain_title, parent_slug, slug)
     scoped_key = (domain_title, slug)
-    if scoped_key in SCOPED_CONTENT:
-        entry = SCOPED_CONTENT[scoped_key]
+
+    def _set(entry):
         node["experience_classification"] = entry["experience_classification"]
         node["sections"] = entry["sections"]
         if entry.get("related"):
             existing_related = node.get("related") or []
             node["related"] = list(dict.fromkeys(existing_related + entry["related"]))
+
+    if path_key in PATH_SCOPED_CONTENT:
+        _set(PATH_SCOPED_CONTENT[path_key])
+        applied_path_scoped.append(path_key)
+    elif scoped_key in SCOPED_CONTENT:
+        _set(SCOPED_CONTENT[scoped_key])
         applied_scoped.append(scoped_key)
     elif slug in CONTENT:
-        entry = CONTENT[slug]
-        node["experience_classification"] = entry["experience_classification"]
-        node["sections"] = entry["sections"]
-        if entry.get("related"):
-            existing_related = node.get("related") or []
-            node["related"] = list(dict.fromkeys(existing_related + entry["related"]))
+        _set(CONTENT[slug])
         applied.append(slug)
     for c in node.get("children") or []:
-        _apply(c, domain_title, applied, applied_scoped)
+        _apply(c, domain_title, slug, applied, applied_scoped, applied_path_scoped)
 
 
 def main():
     tree = json.loads(TREE_PATH.read_text(encoding="utf-8"))
     applied = []
     applied_scoped = []
+    applied_path_scoped = []
     for domain in tree["domains"]:
-        _apply(domain, domain.get("title", ""), applied, applied_scoped)
+        _apply(domain, domain.get("title", ""), None, applied, applied_scoped, applied_path_scoped)
 
     found_slugs = set(applied)
     missing = [slug for slug in CONTENT if slug not in found_slugs]
     found_scoped = set(applied_scoped)
     missing_scoped = [k for k in SCOPED_CONTENT if k not in found_scoped]
+    found_path_scoped = set(applied_path_scoped)
+    missing_path_scoped = [k for k in PATH_SCOPED_CONTENT if k not in found_path_scoped]
 
-    print(f"Applied enrichment to {len(applied)} topics (bare slug) + {len(applied_scoped)} topics (domain-scoped).")
+    print(
+        f"Applied enrichment to {len(applied)} topics (bare slug) + "
+        f"{len(applied_scoped)} topics (domain-scoped) + "
+        f"{len(applied_path_scoped)} topics (path-scoped)."
+    )
     if missing:
         print(f"WARNING: {len(missing)} slugs in CONTENT were not found in the tree: {missing}")
     if missing_scoped:
         print(f"WARNING: {len(missing_scoped)} scoped entries were not found in the tree: {missing_scoped}")
+    if missing_path_scoped:
+        print(f"WARNING: {len(missing_path_scoped)} path-scoped entries were not found in the tree: {missing_path_scoped}")
 
     TREE_PATH.write_text(json.dumps(tree, indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"Wrote updated tree to {TREE_PATH}")
