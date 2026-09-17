@@ -1054,3 +1054,40 @@ surprising verified behavior would otherwise get rediscovered later.
   behind it is correct** — when a target app gains new view-states,
   audit not just "does the check still pass" but "does the English
   description of what was checked still match reality."
+
+- **A function that bridges into a real, shared, durable system (a
+  production database, an external API) via a process-global sink/
+  callback must gate on "was this call genuinely real," decided before
+  any test-injection point reassigns the thing under test — not on the
+  mere shape/truthiness of a response object, which a test double can
+  satisfy just as easily as a real one.** Found in
+  `agent/reasoning_gateway.py` (AEQ-028): `call()` recorded token usage
+  from any object with a truthy `.usage` attribute, never checking
+  whether `create_fn` had been injected by a caller (which this
+  function's own docstring already documented as "never omitted in a
+  real automated test"). `web_server.py` wires `metrics.py`'s usage sink
+  to the real production event ledger as a bare module-level import-time
+  side effect — so any process where `web_server` happens to get
+  imported (e.g. `test_web_server.py` loading during a full
+  `python -m unittest discover` run) silently armed that sink for every
+  *other* test file's mocked model call in the same process, for the
+  rest of that process's life — `test_web_server.py`'s own
+  `ActualUsageSummaryTestCase` (hand-written fake `record_model_usage()`
+  calls, testing aggregation logic directly) turned out to be a *second*,
+  independent leak into the same sink, found only by re-querying after
+  the first fix and noticing the fake-row count kept climbing. Result:
+  119 of 314 real production `model_usage` rows (38%) were fake test
+  noise, dating back at least 4 days, discovered only because a human
+  noticed a suspiciously repeated 10/20-token pattern on the live Usage
+  page. **General rule:** when wiring a process-global side effect that
+  reaches a real external system, the thing that decides "is this the
+  real path" must be captured at the point of injection, not inferred
+  later from what the response looks like — fixing one call site's
+  version of this bug does not prove no other call site has the same
+  bug; the real fix here was making the shared *test-reset* function
+  (`metrics.reset()`) also clear the sink, so every test that already
+  calls it (an established, common pattern) is protected regardless of
+  which other test files happened to import first. A vague "the numbers
+  look wrong" report from a human is worth tracing all the way to the
+  data layer, not just the display layer that happens to surface the
+  symptom.

@@ -109,8 +109,23 @@ def get_model_usage_events() -> list:
 
 
 def reset():
-    """Test-only: clear all in-memory events."""
+    """Test-only: clear all in-memory events AND any wired usage sink.
+
+    AEQ-028: a test that calls reset() and then genuinely exercises a real
+    model-usage-recording code path (mocking only the provider client, not
+    create_fn -- indistinguishable from a real call to this module) must
+    never silently forward that fake usage into whatever real, durable
+    sink happens to already be wired in the current process (e.g.
+    web_server.py's bridge into the real production event ledger, wired
+    as an import-time side effect that can be armed incidentally by an
+    unrelated test file's own import earlier in the same
+    `python -m unittest discover` run). A test that genuinely needs the
+    sink wired must set it explicitly, after calling reset() -- an
+    explicit, visible dependency instead of an accidental, order-dependent
+    one."""
     _tool_call_events.clear()
     _rag_index_events.clear()
     _retrieval_events.clear()
     _model_usage_events.clear()
+    global _usage_sink
+    _usage_sink = None

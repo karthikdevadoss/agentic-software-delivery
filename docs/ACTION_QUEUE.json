@@ -15,6 +15,20 @@
   ],
   "items": [
     {
+      "id": "ACT-009",
+      "source": "AEQ-028",
+      "title": "119 of 314 real production model_usage event-ledger rows (38%) are confirmed fake test noise from two AEQ-028 leaks (input_tokens=10/output_tokens=20, or input_tokens=100/output_tokens=50, both run_id NULL), dating back to 2026-09-13",
+      "priority": "medium",
+      "status": "open",
+      "scope": "Railway-hosted production Postgres event ledger only (delivery_events table) -- no application code",
+      "reason": "Both leaks (agent/reasoning_gateway.py and test_web_server.py forwarding test-double/hand-written fake usage into the real production event ledger) are now fixed and regression-tested (AEQ-028), but the historical fake rows they already wrote remain in the live database, understating the honesty of the Usage/Dashboard economics numbers by including 119 real-looking-but-fake rows.",
+      "evidence": "Direct read-only SQL query against the real production Postgres event ledger: SELECT COUNT(*) FROM delivery_events WHERE event_type='model_usage' AND run_id IS NULL AND ((input_tokens=10 AND output_tokens=20) OR (input_tokens=100 AND output_tokens=50)) -> 119 rows, oldest dated 2026-09-13T20:50:52Z, newest 2026-09-17T10:14:01Z; total model_usage rows = 314.",
+      "safe_to_auto_execute": false,
+      "verification_required": "Explicit Owner approval before any DELETE against shared production data (irreversible). If approved: DELETE using the exact same narrow signature used to count them (event_type='model_usage' AND run_id IS NULL AND ((input_tokens=10 AND output_tokens=20) OR (input_tokens=100 AND output_tokens=50))), re-run the same count query afterward to confirm exactly 0 remain and total model_usage row count dropped by exactly 119, and independently re-check the live Usage/Dashboard economics numbers moved accordingly.",
+      "created_at_commit": "ab54e45",
+      "resolved_at_commit": null
+    },
+    {
       "id": "ACT-001",
       "source": "security",
       "title": "_resolve_safe_path() gives a misleading error for foreign-drive-letter paths (e.g. 'D:foo')",

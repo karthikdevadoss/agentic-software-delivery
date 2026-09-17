@@ -148,15 +148,48 @@ class EffortKwargTestCase(unittest.TestCase):
 
 
 class UsageRecordingTestCase(unittest.TestCase):
-    def test_real_usage_is_forwarded_to_metrics(self):
+    def test_a_real_client_call_forwards_usage_to_metrics(self):
+        """The real Anthropic client (create_fn left None, forcing the
+        genuine production code path) is mocked at the anthropic.Anthropic
+        class level, never at create_fn -- proving usage recording still
+        works for a real call, without making a real, billed network
+        request. This test deliberately takes reasoning_gateway's real
+        "real_client_call=True" branch, indistinguishable (from
+        reasoning_gateway's own perspective) from a genuinely real call --
+        metrics.reset() below also clears any wired usage sink (AEQ-028),
+        so this can never reach a real, durable sink even if one happened
+        to already be wired in the current process."""
         import metrics
         metrics.reset()
-        create_fn = mock.Mock(return_value=_FakeResponse("ok"))
-        rg.call("HUMAN_EXPLANATION", "s", "u", 100, create_fn=create_fn)
+        fake_response = _FakeResponse("ok")
+        with mock.patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key-not-real"}), \
+                mock.patch("anthropic.Anthropic") as mock_anthropic_cls:
+            mock_anthropic_cls.return_value.messages.create.return_value = fake_response
+            rg.call("HUMAN_EXPLANATION", "s", "u", 100)
+
         events = metrics.get_model_usage_events()
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0]["input_tokens"], 10)
         self.assertEqual(events[0]["output_tokens"], 20)
+
+    def test_AEQ_028_a_test_injected_create_fn_never_forwards_fake_usage_to_metrics(self):
+        """THE REAL DEFECT THIS CLOSES (AEQ-028): every OTHER test in this
+        file injects create_fn -- by this gateway's own documented
+        contract, that always means "no real call happens." Before this
+        fix, each one's fake _FakeResponse.usage (input_tokens=10,
+        output_tokens=20) was unconditionally forwarded to
+        metrics.record_model_usage(), which bridges into the real, shared,
+        durable production event ledger whenever web_server.py has been
+        imported in the same process (true of any full
+        `python -m unittest discover` run, since test_web_server.py always
+        gets loaded too) -- a real, confirmed production-data-integrity
+        incident (fake rows with real timestamps, run_id=None, polluting
+        the live Usage/Dashboard economics), not a hypothetical one."""
+        import metrics
+        metrics.reset()
+        create_fn = mock.Mock(return_value=_FakeResponse("ok"))
+        rg.call("HUMAN_EXPLANATION", "s", "u", 100, create_fn=create_fn)
+        self.assertEqual(metrics.get_model_usage_events(), [])
 
 
 if __name__ == "__main__":
