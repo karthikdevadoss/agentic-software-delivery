@@ -1,0 +1,41 @@
+"""
+A customer and, in one round trip, their active plan and preferences --
+the actual reason this exists alongside REST: a client that needs all
+three today makes 3 separate REST calls (GET /customers/{id},
+GET /customers/{id}/plan, GET /customers/{id}/preferences); here it is
+one query. activePlan/preferences are nullable because either can
+genuinely be absent (no active plan yet, preferences never set) without
+that being an error for the rest of the query -- real GraphQL partial-
+response semantics, not a REST-style all-or-nothing 404.
+"""
+type Customer {
+    id: ID!
+    name: String!
+    email: String!
+    activePlan: ContractPlan
+    preferences: CustomerPreferences
+}
+
+type ContractPlan {
+    id: ID!
+    planName: String!
+    ratePerKwh: Float!
+    status: String!
+    effectiveStartDate: String!
+    effectiveEndDate: String
+}
+
+type CustomerPreferences {
+    paperlessBilling: Boolean!
+    notificationChannel: String!
+}
+
+type Query {
+    "Same authorization as GET /customers/{id}: workspace-isolated, requires customer:read scope."
+    customer(id: ID!): Customer
+}
+
+type Mutation {
+    "Same authorization as PUT /customers/{id}: workspace-isolated, requires customer:write scope."
+    updateCustomerEmail(id: ID!, email: String!): Customer!
+}
