@@ -1033,3 +1033,24 @@ surprising verified behavior would otherwise get rediscovered later.
   exists only to prove reproducibility/provenance, derive it from the
   source's own version-control identity, not `datetime.now()`** —
   wall-clock "now" is almost never the fact you actually want to assert.
+
+- **A "content verified in production" claim can be genuinely, mechanically
+  true and still mislead the person reading it, if the app has more than
+  one client-side view-state and the claim doesn't name which one it
+  checked.** Found in `agent/demo_catalogue.py`'s `heading_text`/
+  `subtitle_text` operations (AEQ-025): the extraction regex correctly,
+  narrowly targeted one `id`'d element in the login view, and the
+  verification retry loop correctly confirmed that exact element's new
+  value in the real deployed HTML — no bug in the mechanism itself. The
+  gap was that `human_name` ("the main heading text") described a
+  broader scope than the anchor could ever reach, and every Owner-facing
+  claim string in `web_server.py` was templated straight from that one
+  field. Once the app grew persistent authenticated USER/ADMIN sessions
+  with their own separately-hardcoded heading text, "the main heading"
+  quietly stopped being true for the common (logged-in) case, with
+  nothing forcing a re-check of that claim's wording as the app evolved
+  around it. General rule: **a verification claim's own wording is part
+  of the thing that can go stale, independent of whether the mechanism
+  behind it is correct** — when a target app gains new view-states,
+  audit not just "does the check still pass" but "does the English
+  description of what was checked still match reality."
