@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ask the Codebase — Agentic Software Delivery</title>
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/ask-codebase.css">
+</head>
+<body>
+
+<header>
+  <h1>Ask the Codebase <span class="sub">— real, cited retrieval, not a chat bot</span></h1>
+  <p class="tagline">
+    Ask a real technical question about this project. The system retrieves grounded
+    evidence from the real indexed codebase and shows exactly the sources it used —
+    no answer is synthesized, and nothing is invented.
+  </p>
+  <nav class="top-nav" id="top-nav"></nav>
+</header>
+
+<main id="ac-main">
+
+  <section class="panel">
+    <h2>What this demonstrates</h2>
+    <p>
+      Deterministic semantic retrieval over a small, curated, real slice of this
+      repository's own Java source and architecture docs — <strong>zero LLM calls</strong>.
+      Every result is a real excerpt with a real similarity score and a real link into
+      the public source. If nothing relevant is indexed, this says so honestly instead
+      of guessing.
+    </p>
+    <p class="hint">
+      Portfolio/demo scope, not enterprise production: a small curated corpus, not the
+      whole repository — see "How this works" below for exactly what's indexed and why.
+    </p>
+  </section>
+
+  <section class="panel">
+    <h2>Ask a question</h2>
+    <form id="ac-form">
+      <textarea id="ac-query" maxlength="300" rows="2"
+        placeholder="e.g. Where is workspace isolation enforced?"></textarea>
+      <div class="ac-form-row">
+        <button type="submit" id="ac-submit">SEARCH THE CODEBASE</button>
+        <span class="hint" id="ac-charcount">0 / 300</span>
+      </div>
+    </form>
+    <div class="ac-examples">
+      <span class="hint">Try:</span>
+      <button type="button" class="ac-example-btn">Where is workspace isolation enforced?</button>
+      <button type="button" class="ac-example-btn">How does the transactional outbox work?</button>
+      <button type="button" class="ac-example-btn">Why isn't the LLM allowed to approve its own change?</button>
+      <button type="button" class="ac-example-btn">How is Redis cache invalidation handled?</button>
+      <button type="button" class="ac-example-btn">How does appointment-service resilience work?</button>
+      <button type="button" class="ac-example-btn">Why was Testcontainers needed for the Postgres bug?</button>
+    </div>
+  </section>
+
+  <section class="panel" id="ac-result-panel" hidden>
+    <h2>Result</h2>
+    <div id="ac-result"></div>
+  </section>
+
+  <section class="panel">
+    <h2>How this works</h2>
+    <dl class="ac-how-grid">
+      <dt>Retrieval</dt>
+      <dd>Local embedding model (fastembed, no API key/cost) + cosine similarity over pre-computed vectors — a real, deterministic function, not a model guessing.</dd>
+      <dt>Corpus</dt>
+      <dd>~28 curated files: core Customer-app Java source/tests for the topics below, plus this project's own real interview-scenario write-ups. Explicitly curated (a code-reviewed list), never the whole repository, never anything private.</dd>
+      <dt>Security boundary</dt>
+      <dd>Structural, not a promise a model might ignore: there is no code path from any query to any file outside that curated list — no read/write/execute tool is reachable from this page at all.</dd>
+      <dt>Evidence quality</dt>
+      <dd>Real cosine similarity scores shown per result, using the same confidence threshold (0.45) already used elsewhere in this codebase's own internal RAG pipeline.</dd>
+    </dl>
+  </section>
+
+</main>
+
+<script src="/nav.js"></script>
+<script src="/ask-codebase.js"></script>
+</body>
+</html>
