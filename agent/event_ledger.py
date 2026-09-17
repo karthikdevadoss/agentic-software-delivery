@@ -164,17 +164,35 @@ def _connect():
 
 
 def ensure_schema():
+    # RELIABILITY (2026-09-17): the fast-path check above was a classic
+    # unsynchronized check-then-act race -- with no lock, two threads
+    # racing this function immediately after a fresh process start (the
+    # only window where _schema_ready is still False) could both pass
+    # the check and run schema.sql's DDL concurrently. Postgres takes an
+    # ACCESS EXCLUSIVE-adjacent lock for CREATE INDEX/ALTER TABLE, so one
+    # of the two concurrent executions blocks behind the other for up to
+    # statement_timeout (15s) rather than proceeding immediately --
+    # exactly the contention observed as a "deadlock" under concurrent
+    # Playwright workers each triggering their own first request (PR
+    # #10). statement_timeout/idle_in_transaction_session_timeout
+    # (above) already bound the wait so it fails honestly instead of
+    # hanging forever, but the lock below removes the race outright: the
+    # second thread simply finds _schema_ready already True and returns
+    # immediately, never entering the DDL at all.
     global _schema_ready
     if _schema_ready:
         return
-    schema_sql = (REPO_ROOT / "infra" / "event-ledger" / "schema.sql").read_text(encoding="utf-8")
-    conn = _connect()
-    try:
-        with conn, conn.cursor() as cur:
-            cur.execute(schema_sql)
-        _schema_ready = True
-    finally:
-        conn.close()
+    with _lock:
+        if _schema_ready:
+            return
+        schema_sql = (REPO_ROOT / "infra" / "event-ledger" / "schema.sql").read_text(encoding="utf-8")
+        conn = _connect()
+        try:
+            with conn, conn.cursor() as cur:
+                cur.execute(schema_sql)
+            _schema_ready = True
+        finally:
+            conn.close()
 
 
 def _redact_payload(payload):
