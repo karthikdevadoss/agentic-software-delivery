@@ -1091,3 +1091,38 @@ surprising verified behavior would otherwise get rediscovered later.
   look wrong" report from a human is worth tracing all the way to the
   data layer, not just the display layer that happens to surface the
   symptom.
+
+- **A slug/identifier that recurs N times across a tree must be checked
+  N times individually before batch-applying new content to it — a
+  duplicate does not mean "N shallow nodes needing the same treatment";
+  it can mean one real collision needing a fix and one node that's
+  already correctly deep.** Found twice while batch-authoring
+  `agent/web/learn-tree.json` content via a one-time enrichment script
+  (`enrich_learn_tree.py`, since deleted): first, `indexing` existed
+  under both `System Design > Databases` (real B-tree indexing) and
+  `RAG` (corpus indexing) — a slug-keyed (not domain-scoped) merge
+  overwrote the real database-indexing content with RAG content. Fixed
+  by adding a domain-scoped enrichment key (`(domain_title, slug)`).
+  Second, deeper case: `production-verification` appeared twice *within
+  the same domain* (`System Design > Reliability` and `System Design >
+  Cloud-Deployment`) — a later internal-duplicate-slug sweep correctly
+  found both instances but wrongly assumed *both* needed new content;
+  the `Reliability` one was already a real, pre-existing 9-section
+  deep-dive (with `development_steps`/`failure_modes`) that had simply
+  never appeared in the original shallow-topics list, and a
+  domain-scoped (not path-scoped) write clobbered it with thinner
+  content. Caught only by the test suite itself
+  (`test_deep_dive_topics_preserved_with_full_sections` failing,
+  expecting `development_steps`) — not by inspection, since the diff
+  looked like ordinary content addition. **General rule:** before
+  writing new content to ANY node found via a duplicate-slug search,
+  check that specific node's *current* section count/richness first —
+  a slug collision is a signal to investigate each instance
+  individually, never a license to treat every instance as needing the
+  same fix. Domain-scoping (or even finer, path-scoping by parent
+  subdomain) prevents the write from leaking to the WRONG node, but
+  does not by itself prove the RIGHT node was actually shallow to begin
+  with — that still needs a real, current read before every batch
+  write, and a regression test with unusually literal assertions (here,
+  "does this specific field exist") is what actually caught the
+  second, subtler instance of this same mistake.
