@@ -69,6 +69,17 @@ which numbers, which incidents) lives outside this public repository.
   shell/test processes and lightweight independent searches may run in
   parallel freely; expensive reasoning/coding agents normally run
   sequentially unless parallel execution has clear, stated value.
+- **Session length itself is a real cost driver — prefer `/clear` or
+  `/compact` between genuinely distinct tasks.** Real incident (2026-09-18,
+  see docs/interview-scenarios/13-...): a real EUR40 pay-as-you-go credit
+  was exhausted in under 7 minutes once a session already carrying ~5-6
+  hours of accumulated context switched to unsupervised, no-pause
+  autonomous operation — every turn was re-sending ~550-590K cache-read
+  tokens as pure overhead before any new work happened, at 5-15 turns/
+  minute. No single action was expensive; *already-large context* × *high
+  turn frequency* × *zero pause* was. Starting a genuinely new task in a
+  long-running session without compacting first is a cost smell worth
+  noticing, not a neutral convenience.
 - **Cost/usage accounting, honestly labeled.** For every concrete AI-
   assisted task, preserve what's real where observable: model, effort,
   timing, calls, tokens, cost, retries, and verified/not-verified outcome.
