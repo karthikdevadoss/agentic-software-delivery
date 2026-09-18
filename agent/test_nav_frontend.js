@@ -28,7 +28,7 @@ function assertDeepEqual(actual, expected, msg) {
 const NAV_PATH = path.join(__dirname, "web", "nav.js");
 const nav = require(NAV_PATH);
 
-// ---- 1. The canonical set is exactly the 6 intended destinations -----
+// ---- 1. The canonical set is exactly the 7 intended destinations -----
 
 const EXPECTED_DESTINATIONS = [
   { href: "/workbench", label: "Workbench" },
@@ -36,15 +36,26 @@ const EXPECTED_DESTINATIONS = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/usage", label: "Usage" },
   { href: "/learn", label: "Learn", hiddenOn: ["/workbench", "/dashboard", "/usage"] },
+  { href: "/ask-codebase", label: "Ask the Codebase" },
   { href: "/showcase/senior-java-ai-transformation", label: "Role Showcase" },
 ];
 assertDeepEqual(nav.CANONICAL_NAV_DESTINATIONS, EXPECTED_DESTINATIONS,
-  "canonical nav destination set must be exactly the 6 intended public engineering surfaces");
+  "canonical nav destination set must be exactly the 7 intended public engineering surfaces");
 
 // Role Showcase must genuinely be present -- the exact real defect.
 assert(
   nav.CANONICAL_NAV_DESTINATIONS.some((d) => d.href === "/showcase/senior-java-ai-transformation" && d.label === "Role Showcase"),
   "Role Showcase must be a real canonical destination (this is the exact production defect being fixed)"
+);
+
+// Ask the Codebase must genuinely be present -- real production defect
+// found 2026-09-18: the page exists and works at /ask-codebase but was
+// never added to this canonical list, so it was reachable only by typing
+// the URL directly, invisible from every other page's nav (including its
+// own -- ask-codebase.html includes nav.js too).
+assert(
+  nav.CANONICAL_NAV_DESTINATIONS.some((d) => d.href === "/ask-codebase" && d.label === "Ask the Codebase"),
+  "Ask the Codebase must be a real canonical destination (real production defect: existed but was unreachable from any nav)"
 );
 
 // No duplicate Showcase URL (the directive's explicit constraint).

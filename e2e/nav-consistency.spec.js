@@ -14,7 +14,7 @@
 
 const { test, expect } = require("@playwright/test");
 
-const CANONICAL_LABELS = ["Workbench", "Triage", "Dashboard", "Usage", "Learn", "Role Showcase"];
+const CANONICAL_LABELS = ["Workbench", "Triage", "Dashboard", "Usage", "Learn", "Ask the Codebase", "Role Showcase"];
 
 // AEQ-027 (2026-09-17): Learn is deliberately hidden on these 3 pages
 // only, per the real, dated Owner instruction (2026-09-13, see
@@ -30,6 +30,7 @@ const PAGES = [
   "/dashboard",
   "/usage",
   "/learn",
+  "/ask-codebase",
   "/showcase/senior-java-ai-transformation",
 ];
 

@@ -33,6 +33,7 @@ const CANONICAL_NAV_DESTINATIONS = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/usage", label: "Usage" },
   { href: "/learn", label: "Learn", hiddenOn: ["/workbench", "/dashboard", "/usage"] },
+  { href: "/ask-codebase", label: "Ask the Codebase" },
   { href: "/showcase/senior-java-ai-transformation", label: "Role Showcase" },
 ];
 
