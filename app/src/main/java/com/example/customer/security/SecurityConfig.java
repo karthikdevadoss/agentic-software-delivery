@@ -57,6 +57,16 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/index.html", "/static/**", "/h2-console/**",
                                 "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        // GraphiQL is a static in-browser client (HTML/JS), the
+                        // GraphQL-world equivalent of swagger-ui above -- loading
+                        // the page needs no token, exactly like Swagger's UI;
+                        // every actual query/mutation still goes through
+                        // POST /graphql, which falls through to the
+                        // authenticated() catch-all below (per-operation scope
+                        // and workspace-isolation checks live inside
+                        // CustomerGraphQlController itself, since one endpoint
+                        // serves every operation -- see its own Javadoc).
+                        .requestMatchers("/graphiql", "/graphiql/**").permitAll()
                         // Called server-to-server by AppointmentAvailabilityClient over a
                         // real HTTP loopback (see application.properties), which does not
                         // carry a recruiter's JWT -- permitted deliberately, not an

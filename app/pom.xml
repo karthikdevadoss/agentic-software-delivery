@@ -87,6 +87,16 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
         </dependency>
+        <!-- Real GraphQL alongside the existing REST API (not a
+             replacement): a single POST /graphql lets a client fetch a
+             customer's identity, active plan, and preferences in one
+             round trip instead of three separate REST calls, which is
+             the actual problem GraphQL solves here; see
+             docs/interview-scenarios/13-graphql-api.md. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-graphql</artifactId>
+        </dependency>
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
@@ -163,6 +173,19 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.graphql</groupId>
+            <artifactId>spring-graphql-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- HttpGraphQlTester is built on WebTestClient, which needs
+             spring-webflux on the classpath even though this app is a
+             plain Spring MVC (servlet) application, not WebFlux. -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-webflux</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
