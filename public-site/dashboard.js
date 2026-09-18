@@ -100,8 +100,13 @@ function renderSessionMetrics(d) {
     html += kvText("Failed", m.tool_calls_failed);
     html += kvText("Security-blocked", m.security_blocked);
   }
-  html += kv("Token usage", badge("NOT CAPTURED YET"));
-  html += kv("Estimated API cost", badge("NOT CAPTURED YET"));
+  // Same fix as agent/web/dashboard.js — mirrored here since this file is
+  // a separate, unmodified copy served by the static Vercel deployment
+  // (see docs/DECISIONS.md's "Public deployment split into two separate
+  // targets" entry). Real defect: this used to be a hardcoded
+  // "NOT CAPTURED YET" never wired to any real field. Token/cost data is
+  // real and shown correctly in the Economics section on this same page.
+  html += `<p class="hint">Token usage &amp; cost: see the Economics / Consumption section below — this card only tracks tool-call counts.</p>`;
   return section("Session Snapshot", html);
 }
 

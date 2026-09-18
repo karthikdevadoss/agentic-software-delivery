@@ -148,6 +148,7 @@ function renderRunHistory(d) {
   if (!runs.length) {
     html += `<p>${badge("NOT CAPTURED YET")} — no runs recorded in the local run-history log yet.</p>`;
   } else {
+    html += renderRunDurationChart(runs);
     html += '<ul class="run-list">';
     for (const r of runs) {
       const duration = (r.started_ts && r.ended_ts) ? `${(r.ended_ts - r.started_ts).toFixed(1)}s` : "n/a";
@@ -180,8 +181,18 @@ function renderSessionMetrics(d) {
     html += kvText("Failed", m.tool_calls_failed);
     html += kvText("Security-blocked", m.security_blocked);
   }
-  html += kv("Token usage", badge("NOT CAPTURED YET"));
-  html += kv("Estimated API cost", badge("NOT CAPTURED YET"));
+  // Real defect fixed here (found during Phase 0 UX review): this card
+  // used to also show a hardcoded "NOT CAPTURED YET" for token usage/cost
+  // — a literal string never wired to any field of d.session_metrics, so
+  // it could never change no matter what data existed. Token/cost data
+  // IS real and captured (see the Economics section on this same page,
+  // fixed for the identical bug back on 2026-09-11) — this card just
+  // isn't the right place to duplicate it, since d.session_metrics
+  // genuinely has no token/cost fields at all (it's Layer's own separate
+  // tool-call counter). Pointing at the real section instead of repeating
+  // a second, permanently-stale "NOT CAPTURED YET" avoids the exact
+  // failure mode of two cards on one page disagreeing about what's real.
+  html += `<p class="hint">Token usage &amp; cost: see the Economics / Consumption section below — this card only tracks tool-call counts.</p>`;
   return section("Session Snapshot", html);
 }
 
@@ -318,6 +329,79 @@ function fmtUsd(n) {
   return "$" + n.toFixed(n < 0.01 ? 4 : 2);
 }
 
+// ---- Visual charts -------------------------------------------------------
+// Hand-rolled inline SVG, no charting library: this frontend has no build
+// step and pulls in nothing from npm at runtime (everything under agent/web
+// is served as-is), so adding a dependency here means either a second
+// <script src> to a CDN (one more moving part for two small charts) or a
+// bundler this project doesn't otherwise need. SVG built directly from the
+// exact same numbers already rendered as text elsewhere on this page —
+// never a second, independently-computed source.
+
+function svgBarChart(bars, { width = 640, barHeight = 22, gap = 10, valueFmt = (v) => String(v), maxValue = null } = {}) {
+  if (!bars.length) return "";
+  const labelWidth = 150;
+  const trackWidth = width - labelWidth - 70;
+  const max = maxValue != null ? maxValue : Math.max(...bars.map((b) => b.value), 0.0001);
+  const rowHeight = barHeight + gap;
+  const height = bars.length * rowHeight;
+  let svg = `<svg viewBox="0 0 ${width} ${height}" width="100%" height="${height}" role="img" aria-label="chart">`;
+  bars.forEach((b, i) => {
+    const y = i * rowHeight;
+    const w = Math.max((b.value / max) * trackWidth, b.value > 0 ? 2 : 0);
+    svg += `<text x="0" y="${y + barHeight / 2 + 4}" class="chart-label">${esc(b.label)}</text>`;
+    svg += `<rect x="${labelWidth}" y="${y}" width="${trackWidth}" height="${barHeight}" rx="4" class="chart-track"></rect>`;
+    svg += `<rect x="${labelWidth}" y="${y}" width="${w}" height="${barHeight}" rx="4" class="chart-fill ${esc(b.cls || "")}"></rect>`;
+    svg += `<text x="${labelWidth + trackWidth + 8}" y="${y + barHeight / 2 + 4}" class="chart-value">${esc(valueFmt(b.value))}</text>`;
+  });
+  svg += "</svg>";
+  return svg;
+}
+
+// Verified (COMPLETED) rate per time window — real fields already returned
+// by event_ledger.get_usage_economics() (runs_total, runs_completed_verified),
+// the exact same numbers the text cards above show, just as a bar instead
+// of two side-by-side integers. Cumulative windows like "This month" will
+// always contain "Today", so this is a proportion chart (verified rate),
+// not a raw-count trend — raw counts would just monotonically grow with
+// window size and say nothing interesting on their own.
+function renderEconomicsChart(e) {
+  const windows = [
+    ["Last run", e.last_run], ["This hour", e.this_hour], ["Last 24h", e.last_24_hours],
+    ["Today", e.today], ["This week", e.this_week], ["This month", e.this_month],
+  ];
+  const bars = windows
+    .filter(([, w]) => w && w.runs_total > 0)
+    .map(([label, w]) => ({
+      label,
+      value: w.runs_completed_verified / w.runs_total,
+      cls: w.runs_completed_verified === w.runs_total ? "chart-good" : "chart-partial",
+    }));
+  if (!bars.length) return "";
+  const chart = svgBarChart(bars, {
+    valueFmt: (v) => Math.round(v * 100) + "%",
+    maxValue: 1,
+  });
+  return `<div class="chart-block"><p class="chart-title">Verified-change rate by window</p>${chart}</div>`;
+}
+
+// Real per-run durations from THIS container's own run-history log — the
+// exact same rows renderRunHistory() already lists below, shown once more
+// as a bar so a pattern (a slow outlier run, most runs landing in a
+// similar range) is visible at a glance instead of only readable one row
+// at a time.
+function renderRunDurationChart(runs) {
+  const withDuration = runs.filter((r) => r.started_ts && r.ended_ts).slice(0, 8);
+  if (!withDuration.length) return "";
+  const bars = withDuration.map((r) => ({
+    label: r.run_id.length > 18 ? r.run_id.slice(0, 16) + "…" : r.run_id,
+    value: r.ended_ts - r.started_ts,
+    cls: r.final_status === "COMPLETED" ? "chart-good" : "chart-partial",
+  }));
+  const chart = svgBarChart(bars, { valueFmt: (v) => v.toFixed(1) + "s" });
+  return `<div class="chart-block"><p class="chart-title">Recent run duration (most recent ${withDuration.length})</p>${chart}</div>`;
+}
+
 // Real incident (2026-09-11): this section used to show a hardcoded
 // "NOT CAPTURED YET"/"NOT CALCULATED YET" pair that predated real usage
 // capture entirely — the data existed elsewhere in the product the whole
@@ -351,6 +435,7 @@ function renderEconomics(d) {
       ${renderEconWindow(`This month (${tz})`, e.this_month)}
       ${renderEconWindow("Lifetime", e.lifetime)}
     </div>
+    ${renderEconomicsChart(e)}
     <div class="econ-note">
       <strong>Cost per verified (COMPLETED) change:</strong> ${e.cost_per_verified_change_usd != null ? fmtUsd(e.cost_per_verified_change_usd) : "INSUFFICIENT DATA"}<br><br>
       <strong>Source:</strong> ${esc(e.canonical_source)}<br><br>

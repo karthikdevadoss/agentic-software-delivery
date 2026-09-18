@@ -103,6 +103,18 @@ details.raw-state summary:hover { text-decoration: underline; }
 .econ-card .econ-value { font-size: 1.05rem; font-weight: 700; }
 .econ-note { margin-top: 0.9rem; padding-top: 0.9rem; border-top: 1px dashed var(--border); font-size: 0.85rem; color: var(--muted); line-height: 1.6; }
 
+/* Visual charts (hand-rolled SVG, see dashboard.js's svgBarChart) — same
+   numbers already shown as text elsewhere on this page, rendered once
+   more as a bar so a pattern is visible at a glance. */
+.chart-block { margin-top: 1rem; }
+.chart-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); font-weight: 700; margin: 0 0 0.5rem; }
+.chart-label { font-size: 12px; fill: var(--muted); dominant-baseline: middle; }
+.chart-value { font-size: 12px; fill: var(--text); font-variant-numeric: tabular-nums; dominant-baseline: middle; }
+.chart-track { fill: rgba(255,255,255,0.04); }
+.chart-fill { fill: var(--accent); }
+.chart-fill.chart-good { fill: var(--green); }
+.chart-fill.chart-partial { fill: var(--amber); }
+
 .activity-note { border: 1px solid var(--border); border-radius: 8px; padding: 0.9rem 1rem; background: rgba(255,255,255,0.015); font-size: 0.88rem; line-height: 1.6; }
 .activity-note .activity-kicker { color: var(--muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; margin-bottom: 0.5rem; }
 
