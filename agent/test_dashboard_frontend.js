@@ -142,5 +142,42 @@ function loadDashboardJs(sandbox) {
   assert(noDurations === "", "renderRunDurationChart renders nothing when no run has real start/end timestamps, rather than an empty chart shell");
 })();
 
+// ---- renderRunHistory: real gap found 2026-09-18 (the 40 EUR overnight-
+// session incident, Owner directive "if you mention time, mention tokens,
+// mention cost") -- this list already showed Duration but never the real
+// model_usage tokens/cost _persist_run_history() has always captured
+// alongside it. ------------------------------------------------------
+
+(function testRenderRunHistoryShowsTokensAndCostNextToDuration() {
+  const sandbox = buildSandbox();
+  loadDashboardJs(sandbox);
+
+  const realRunWithUsage = {
+    run_id: "trainer-real0001", is_mock: false, final_status: "COMPLETED",
+    requirement_excerpt: "Add a footer", started_ts: 100, ended_ts: 142.5,
+    tool_calls_total: 5, approval_decision: "auto", apply_succeeded: true,
+    compile: null, test: null,
+    model_usage: { input_tokens: 1200, output_tokens: 3400, cost_usd: 0.0456 },
+  };
+  const mockRunNoUsage = {
+    run_id: "mock-000001", is_mock: true, final_status: "COMPLETED",
+    requirement_excerpt: "Mock demo", started_ts: 10, ended_ts: 12,
+    tool_calls_total: 1, approval_decision: "auto", apply_succeeded: true,
+    compile: null, test: null, model_usage: null,
+  };
+  const realRunUsageNotCaptured = {
+    run_id: "trainer-real0002", is_mock: false, final_status: "FAILED",
+    requirement_excerpt: "Something that failed", started_ts: 20, ended_ts: 25,
+    tool_calls_total: 2, approval_decision: null, apply_succeeded: null,
+    compile: null, test: null, model_usage: null,
+  };
+
+  const html = sandbox.renderRunHistory({ run_history: [realRunWithUsage, mockRunNoUsage, realRunUsageNotCaptured] });
+  assertIncludes(html, "1,200 in / 3,400 out tokens", "a real run's actual token counts are shown, not just duration");
+  assertIncludes(html, "$0.05", "a real run's actual cost is shown as a real number next to its duration (fmtUsd rounds to 2dp at this magnitude)");
+  assertIncludes(html, "no API cost (mock run)", "a mock run is labeled honestly, never shown with a fabricated cost");
+  assertIncludes(html, "usage NOT CAPTURED", "a real run with genuinely no captured usage is labeled honestly, never silently blank");
+})();
+
 console.log(`\n${passed} passed, ${failures} failed`);
 process.exit(failures ? 1 : 0);

@@ -152,11 +152,23 @@ function renderRunHistory(d) {
     html += '<ul class="run-list">';
     for (const r of runs) {
       const duration = (r.started_ts && r.ended_ts) ? `${(r.ended_ts - r.started_ts).toFixed(1)}s` : "n/a";
+      // Real gap found 2026-09-18 (the 40 EUR overnight-session incident,
+      // Owner directive: "if you mention time, mention tokens, mention
+      // cost"): this row already showed Duration, but the real per-run
+      // model_usage (tokens/cost) that _persist_run_history() has always
+      // captured alongside it was never rendered here -- fixed to show it
+      // right next to Duration, honestly labeled when genuinely absent
+      // (a mock run never calls the API at all).
+      const usage = r.model_usage;
+      const usageText = usage
+        ? `${(usage.input_tokens ?? 0).toLocaleString()} in / ${(usage.output_tokens ?? 0).toLocaleString()} out tokens · ${usage.cost_usd != null ? fmtUsd(usage.cost_usd) : "cost n/a"}`
+        : (r.is_mock ? "no API cost (mock run)" : "usage NOT CAPTURED");
       html += `<li>
         <div><strong>${esc(r.run_id)}</strong> ${r.is_mock ? '<span class="tag">MOCK — no API cost</span>' : '<span class="tag real">REAL</span>'} ${badge(r.final_status)}</div>
         <div class="hint">${esc(r.requirement_excerpt)}</div>
         <div class="kv-row">
           <span>Duration: ${duration}</span>
+          <span>Tokens/Cost: ${esc(usageText)}</span>
           <span>Tool calls: ${r.tool_calls_total}</span>
           <span>Approval: ${esc(r.approval_decision ?? "n/a")}</span>
           <span>Apply: ${esc(r.apply_succeeded === null ? "n/a" : r.apply_succeeded)}</span>
