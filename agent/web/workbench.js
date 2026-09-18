@@ -100,13 +100,26 @@ function esc(s) {
   return div.innerHTML;
 }
 
+// One click, zero typing: an example button fills the field AND runs it
+// immediately — the same real pipeline a typed requirement goes through
+// (a real isolated-workspace clone, commit, push, deploy, and production
+// verification), just without making a visitor type anything first.
+// Previously these only filled the textarea and still needed a separate
+// "Submit" click; the blocked-request alternatives below already
+// auto-submitted, so this makes the primary path consistent with that.
+// The visible "▶ " marker is pure CSS (.one-click-btn::before in
+// workbench.css) rather than prepended here, so this button's textContent
+// stays exactly equal to the real backend catalogue string — the
+// invariant e2e/workbench-catalogue.spec.js's "supported examples are
+// loaded from the real backend catalogue" test checks.
 function renderExampleButtons() {
   examplesList.innerHTML = "";
   EXAMPLES.forEach(ex => {
     const btn = document.createElement("button");
-    btn.className = "secondary example-btn";
+    btn.className = "secondary example-btn one-click-btn";
     btn.textContent = ex;
-    btn.addEventListener("click", () => { requirementInput.value = ex; });
+    btn.title = "Runs this change through the real pipeline immediately (a real deploy, not a preview)";
+    btn.addEventListener("click", () => { requirementInput.value = ex; submit(); });
     examplesList.appendChild(btn);
   });
 }

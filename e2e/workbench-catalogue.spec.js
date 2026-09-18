@@ -28,12 +28,21 @@ test.describe("Workbench — deterministic catalogue (safe, non-mutating)", () =
     }
   });
 
-  test("clicking an example button fills the requirement field", async ({ page }) => {
+  // UX PASS (Phase 0, cost/HR-visibility work): example buttons now run
+  // the real pipeline immediately on click (a real deploy), not just fill
+  // the field — see workbench.js's renderExampleButtons. That means
+  // actually clicking one here would start a real, mutating deployment,
+  // which does not belong in this "safe, non-mutating" spec file; the
+  // real end-to-end click-through is exercised deliberately in
+  // e2e/workbench-real-acceptance.spec.js instead. This test only checks
+  // the one-click affordance is genuinely discoverable without triggering it.
+  test("example buttons are labeled as one-click, real-pipeline actions", async ({ page }) => {
     await page.goto("/workbench");
     await page.waitForFunction(() => document.querySelectorAll("#examples-list button").length > 0);
-    const firstExampleText = await page.locator("#examples-list button").first().textContent();
-    await page.locator("#examples-list button").first().click();
-    await expect(page.locator("#requirement-input")).toHaveValue(firstExampleText);
+    const firstButton = page.locator("#examples-list button").first();
+    await expect(firstButton).toHaveClass(/one-click-btn/);
+    const title = await firstButton.getAttribute("title");
+    expect(title).toContain("real pipeline");
   });
 
   test("a dangerous requirement is authorization-gated with the exact required message and real examples", async ({ page }) => {

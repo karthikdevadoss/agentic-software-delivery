@@ -29,6 +29,21 @@
 #alt-list { display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.5rem; }
 #alt-list .example-btn { width: 100%; }
 
+/* One-click demo buttons: visually distinct from a plain "fill the
+   field" button, since a click here runs the real pipeline immediately
+   with no second step — worth signaling that at a glance. The "▶" marker
+   is CSS-only (::before) rather than part of the button's textContent,
+   so the visible label still matches the backend catalogue string
+   exactly (see workbench.js's renderExampleButtons and the e2e test
+   that checks this). */
+.one-click-btn {
+  border-color: var(--accent);
+  background: rgba(91,147,255,0.08);
+  font-weight: 600;
+}
+.one-click-btn::before { content: "▶ "; }
+.one-click-btn:hover { background: rgba(91,147,255,0.18); }
+
 .run-status-grid { margin-bottom: 1rem; }
 
 .transport-badge {
