@@ -341,7 +341,18 @@ function berlinTimeLabel(isoUtc) {
 
 function tokenSummary(tokens) {
   if (!tokens) return "NOT CAPTURED";
-  if (tokens.status === "EXACT") return `${tokens.input_tokens} in / ${tokens.output_tokens} out`;
+  if (tokens.status === "EXACT") {
+    const cacheParts = [];
+    // Real gap found 2026-09-18: cache tokens can dominate total cost (a
+    // real overnight session had 1.84 BILLION cache-read tokens driving
+    // most of a real $439.87 bill) yet were entirely invisible here,
+    // since only input/output were ever shown -- fixed to show them
+    // whenever present, never silently dropped.
+    if (tokens.cache_read_tokens) cacheParts.push(`${tokens.cache_read_tokens.toLocaleString()} cache-read`);
+    if (tokens.cache_write_tokens) cacheParts.push(`${tokens.cache_write_tokens.toLocaleString()} cache-write`);
+    const cacheText = cacheParts.length ? ` (+ ${cacheParts.join(", ")})` : "";
+    return `${tokens.input_tokens.toLocaleString()} in / ${tokens.output_tokens.toLocaleString()} out${cacheText}`;
+  }
   if (tokens.status === "AGGREGATE_ONLY") return `${tokens.aggregate_tokens} (aggregate only)`;
   return "NOT CAPTURED";
 }
@@ -350,6 +361,18 @@ function costSummary(cost) {
   if (!cost) return "COST UNAVAILABLE";
   if (cost.status === "ACTUAL") return `$${cost.cost_usd < 0.01 ? cost.cost_usd.toFixed(6) : cost.cost_usd.toFixed(4)}`;
   return `COST UNAVAILABLE (${esc(cost.reason || "unknown reason")})`;
+}
+
+// Real gap found 2026-09-18: session cards/detail showed cost_display_label
+// (a text label like "ACTUAL COST — CALCULATED FROM ACTUAL USAGE") in
+// place of the actual dollar figure whenever a label existed, so the one
+// number a viewer actually wants was never visible even when fully known
+// server-side. Always show the real figure when the cost IS actual/known;
+// the label is now supplementary context, never a substitute for the number.
+function costText(cost, label) {
+  const known = cost && cost.status === "ACTUAL" ? costSummary(cost) : null;
+  if (known) return label ? `${known} — ${esc(label)}` : known;
+  return esc(label || costSummary(cost));
 }
 
 function renderSessionCard(s) {
@@ -364,7 +387,7 @@ function renderSessionCard(s) {
       <span>Status: ${esc(s.status)}</span>
       <span>${s.window_kind === "OBSERVED_EVENT_WINDOW" ? "Observed window" : "Wall time"}: ${wallTimeLabel(s)}</span>
       <span>Tokens: ${tokenSummary(s.tokens)}</span>
-      <span>Cost: ${esc(s.cost_display_label || costSummary(s.cost))}</span>
+      <span>Cost: ${costText(s.cost, s.cost_display_label)}</span>
     </div>
   </a>`;
 }
@@ -542,7 +565,7 @@ function renderTopSummary(d) {
       <div class="summary-stat"><div class="summary-label">Start &rarr; End</div><div class="summary-value">${d.start_utc ? berlinTimeLabel(d.start_utc) : "?"} &rarr; ${d.end_utc ? berlinTimeLabel(d.end_utc) : "?"}</div></div>
       <div class="summary-stat"><div class="summary-label">Wall time</div><div class="summary-value">${wallTimeLabel(d)}</div></div>
       <div class="summary-stat"><div class="summary-label">Tokens</div><div class="summary-value">${tokenSummary(d.tokens)}</div></div>
-      <div class="summary-stat"><div class="summary-label">Cost</div><div class="summary-value">${esc(d.cost_display_label || costSummary(d.cost))}</div></div>
+      <div class="summary-stat"><div class="summary-label">Cost</div><div class="summary-value">${costText(d.cost, d.cost_display_label)}</div></div>
       <div class="summary-stat"><div class="summary-label">Quality</div><div class="summary-value">${esc(qualityDisplay)}</div></div>
       <div class="summary-stat"><div class="summary-label">Evidence Coverage</div><div class="summary-value">${coverageDisplay}</div></div>
       <div class="summary-stat"><div class="summary-label">Value</div><div class="summary-value">${d.value ? d.value.technical_value.verified_changes_completed + " verified" : "N/A"}</div></div>
@@ -640,7 +663,7 @@ async function renderSessionDetail(sessionId) {
     `)}
     ${section("Model Usage, Tokens & Cost", `
       <p><strong>Tokens:</strong> ${tokenSummary(d.tokens)} <span class="value-note ${d.tokens && d.tokens.status === "EXACT" ? "note-exact" : d.tokens && d.tokens.status === "AGGREGATE_ONLY" ? "note-derived" : "note-unknown"}">${esc((d.tokens && d.tokens.status) || "")}</span></p>
-      <p><strong>Cost:</strong> ${esc(d.cost_display_label || costSummary(d.cost))}</p>
+      <p><strong>Cost:</strong> ${costText(d.cost, d.cost_display_label)}</p>
       <p class="hint">Model: ${esc(d.model || "not recorded for this session kind")}</p>
     `)}
     ${section("Value", `

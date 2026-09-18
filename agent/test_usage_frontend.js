@@ -138,6 +138,27 @@ const FIXTURE_DETAIL = {
   assert(!sandbox.costSummary({ status: "COST_UNAVAILABLE", reason: "aggregate token count does not expose input/output/cache split" }).includes("$0"),
     "an aggregate-only session must never render as $0 cost");
 
+  // ---- Real gap found 2026-09-18 (the 40 EUR overnight-session incident):
+  // a session card/detail showed ONLY cost_display_label (a text label)
+  // whenever one existed, silently hiding the actual dollar figure even
+  // when it was fully known server-side -- costText() must always surface
+  // the real number for an ACTUAL cost, with the label as context, not a
+  // replacement. ----------------------------------------------------
+  const actualCost = { status: "ACTUAL", cost_usd: 439.866923, pricing_version: "anthropic-2026-09-10-v1" };
+  const actualLabel = "ACTUAL COST — CALCULATED FROM ACTUAL USAGE";
+  assertIncludes(sandbox.costText(actualCost, actualLabel), "$439.8669", "costText must show the real dollar figure, not just the text label");
+  assertIncludes(sandbox.costText(actualCost, actualLabel), actualLabel, "costText should still include the label as supporting context");
+  assert(sandbox.costText({ status: "COST_UNAVAILABLE", reason: "no usage captured" }, null).includes("COST UNAVAILABLE"),
+    "costText falls back to the unavailable reason when there is no real cost");
+
+  // ---- Real gap found 2026-09-18: cache tokens (the dominant cost driver
+  // in the real incident -- 1.84 BILLION cache-read tokens) were silently
+  // dropped from tokenSummary(), showing only input/output. ----------
+  const cacheHeavyTokens = { status: "EXACT", input_tokens: 7078, output_tokens: 3047211, cache_read_tokens: 1836409236, cache_write_tokens: 16839524 };
+  const cacheSummary = sandbox.tokenSummary(cacheHeavyTokens);
+  assertIncludes(cacheSummary, "cache-read", "tokenSummary must surface cache-read tokens when present, not silently drop the dominant cost driver");
+  assert(cacheSummary.replace(/[^0-9]/g, "").includes("1836409236"), `the real cache-read token count must be shown in full, not truncated/rounded away — got: ${cacheSummary}`);
+
   // ---- Quality block distinguishes real evidence-availability from
   // substantive session facts, and never implies fake 100% confidence
   // for a thin-evidence session (real incident, 2026-09-11) -----------
