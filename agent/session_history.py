@@ -119,19 +119,26 @@ WITH sessions AS (
            (ARRAY_AGG(status ORDER BY timestamp_utc DESC))[1] AS last_status
     FROM delivery_events
     WHERE source = 'claude_code' AND session_id IS NOT NULL
-      -- Excludes this project's own unit-test fixture session_ids (this
-      -- project's tests deliberately run against the real DB, not a mock
-      -- -- see agent/test_event_ledger.py's own docstring -- so synthetic
-      -- ids like 'sess-distinct-...'/'sess-spoolonly-sync-...' genuinely
-      -- exist in the ledger). A real dev session's Claude Code-assigned
-      -- session_id is either a real session UUID or this project's one
-      -- documented historical-backfill id
+      -- Real gap found 2026-09-18 (during the same cost-observability pass
+      -- as the 40 EUR incident): this used to be a hand-maintained
+      -- BLOCKLIST of known test-fixture prefixes -- every time a new test
+      -- was written with a new prefix (e.g. this same night's
+      -- 'test-devcost-session-...', added for get_dev_session_cost_summary
+      -- coverage), it silently slipped through and showed up as a real-
+      -- looking "Claude Code Dev Session" card on the live production
+      -- Usage page, confirmed via the Owner's own screenshot (166 distinct
+      -- polluted session_ids had accumulated this way). Inverted to a
+      -- positive ALLOWLIST instead: a real dev session's Claude Code-
+      -- assigned session_id is always either a real session UUID or this
+      -- project's one documented historical-backfill id
       -- ('claude-code-session-...-p0-eventledger-task', see
-      -- docs/PROJECT_STATE.json) -- never one of these known test-only
-      -- prefixes. Excluding by known test pattern (not by requiring a
-      -- specific event type) avoids hiding genuine partial/reconstructed
-      -- history that a stricter filter would incorrectly drop.
-      AND session_id !~ '^(sess-distinct-|sess-spoolonly-sync-|sess-speed-test|sess-correlated|test-hook-|test-session-|post-fix-smoke-test)'
+      -- docs/PROJECT_STATE.json) -- never anything else. This can never be
+      -- silently bypassed by a new test prefix nobody thought to add to a
+      -- blocklist -- verified against the real ledger to still match every
+      -- genuinely real session_id while excluding all 165 known
+      -- test-fixture ones (old and new).
+      AND (session_id ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+           OR session_id ~ '^claude-code-session-[0-9a-f-]+-p0-eventledger-task$')
     GROUP BY session_id
 
     UNION ALL

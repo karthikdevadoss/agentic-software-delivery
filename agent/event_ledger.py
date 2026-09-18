@@ -699,6 +699,29 @@ def get_recent_events(limit=20, include_test_data: bool = False):
         conn.close()
 
 
+def delete_event_for_test_cleanup(event_id):
+    """TEST-SUPPORT ONLY -- never called by any production code path. Real
+    incident (2026-09-18): this project's own tests deliberately write to
+    the REAL production ledger to prove real-database behavior (see this
+    file's test suite's own docstring), which is the right call for
+    proving connectivity/correctness -- but several of those tests never
+    cleaned up afterward, and one (this same night) inflated a real,
+    Owner-facing cost total on live production. session_history.py's and
+    get_dev_session_cost_summary()'s allowlist filters now hide any
+    non-conforming session_id from view regardless, but a test should
+    still not leave permanent, meaningless rows sitting in a shared
+    production database just because they happen to be invisible --
+    delete what you insert. Deletes by the exact real event_id
+    record_event()/spool_only() returns, never a broader match, so a test
+    cleanup can never accidentally delete a real, unrelated row."""
+    conn = _connect()
+    try:
+        with conn, conn.cursor() as cur:
+            cur.execute("DELETE FROM delivery_events WHERE event_id = %s", (event_id,))
+    finally:
+        conn.close()
+
+
 def get_run_events(run_id):
     ensure_schema()
     conn = _connect()
@@ -895,6 +918,18 @@ def get_dev_session_cost_summary() -> dict:
                        input_tokens, output_tokens, cache_read_tokens, cache_write_tokens
                 FROM delivery_events
                 WHERE event_type = 'model_usage' AND source = 'claude_code'
+                  -- Real gap found 2026-09-18, same night this function was
+                  -- written: this query had NO test-fixture exclusion at
+                  -- all, so a test run (e.g. test_event_ledger.py's own
+                  -- DevSessionCostSummaryTestCase, which deliberately
+                  -- inserts a real model_usage row to prove cost
+                  -- calculation against the real ledger) silently inflated
+                  -- this exact lifetime total on live production. Same
+                  -- positive allowlist as session_history.py's
+                  -- _SESSIONS_CTE -- one real session_id shape, kept in
+                  -- sync deliberately rather than duplicated ad hoc.
+                  AND (session_id ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+                       OR session_id ~ '^claude-code-session-[0-9a-f-]+-p0-eventledger-task$')
                 ORDER BY timestamp_utc DESC
             """)
             cols = [d[0] for d in cur.description]

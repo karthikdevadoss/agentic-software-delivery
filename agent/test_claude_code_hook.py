@@ -157,6 +157,16 @@ class RealLedgerDistinctnessTestCase(unittest.TestCase):
     real live database — not just in the spool file."""
 
     def test_dev_event_is_queryable_and_distinct_from_workbench_source(self):
+        """Real incident (2026-09-18): this and the sibling test below used
+        a 'sess-distinct-...'/'sess-spoolonly-sync-...' session_id and
+        never cleaned up their real inserted row afterward -- 165+ such
+        rows had silently accumulated in the shared production ledger
+        across many prior sessions by the time this was found (via the
+        Owner's own screenshot showing unrelated test pollution). Session-
+        history/dev-cost-summary's allowlist filters now hide these from
+        view regardless of prefix, but a test still should not leave a
+        permanent, meaningless row in a shared production database just
+        because it happens to be invisible -- delete what you insert."""
         session_id = f"sess-distinct-{uuid.uuid4().hex[:8]}"
         result = el.record_event(
             "user_prompt_submitted", session_id=session_id, source="claude_code",
@@ -164,18 +174,20 @@ class RealLedgerDistinctnessTestCase(unittest.TestCase):
             payload={"prompt_excerpt": "real dev-telemetry distinctness test"},
         )
         self.assertTrue(result["remote_persisted"], msg=result)
-
-        conn = el._connect()
         try:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "SELECT source, activity_class FROM delivery_events WHERE session_id = %s",
-                    (session_id,),
-                )
-                row = cur.fetchone()
+            conn = el._connect()
+            try:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT source, activity_class FROM delivery_events WHERE session_id = %s",
+                        (session_id,),
+                    )
+                    row = cur.fetchone()
+            finally:
+                conn.close()
+            self.assertEqual(row, ("claude_code", "PRODUCT_DEVELOPMENT"))
         finally:
-            conn.close()
-        self.assertEqual(row, ("claude_code", "PRODUCT_DEVELOPMENT"))
+            el.delete_event_for_test_cleanup(result["event_id"])
 
     def test_spool_only_then_real_sync_lands_in_database(self):
         run_marker = f"sess-spoolonly-sync-{uuid.uuid4().hex[:8]}"
@@ -191,14 +203,19 @@ class RealLedgerDistinctnessTestCase(unittest.TestCase):
         if spool_path.exists():
             spool_path.unlink()
 
-        conn = el._connect()
+        fetched = None
         try:
-            with conn.cursor() as cur:
-                cur.execute("SELECT source FROM delivery_events WHERE session_id = %s", (run_marker,))
-                row = cur.fetchone()
+            conn = el._connect()
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT event_id, source FROM delivery_events WHERE session_id = %s", (run_marker,))
+                    fetched = cur.fetchone()
+            finally:
+                conn.close()
+            self.assertEqual(fetched[1] if fetched else None, "claude_code")
         finally:
-            conn.close()
-        self.assertEqual(row, ("claude_code",))
+            if fetched:
+                el.delete_event_for_test_cleanup(fetched[0])
 
 
 class PermissionConfigTestCase(unittest.TestCase):

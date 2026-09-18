@@ -785,23 +785,40 @@ class DevSessionCostSummaryTestCase(unittest.TestCase):
         self.assertIn("this_week", result)
 
     def test_a_real_inserted_row_is_costed_via_pricing_config_not_a_second_formula(self):
+        """Real incident (2026-09-18, same night this test was first
+        written): using a 'test-devcost-session-...' session_id inserted a
+        real row that inflated get_dev_session_cost_summary()'s real
+        lifetime total on live production, and (before the allowlist fix)
+        showed up as a fake 'Claude Code Dev Session' card on the Owner's
+        own Usage page -- confirmed via his own screenshot. Fixed two ways
+        at once: (1) uses a REAL UUID-shaped session_id, exercising the
+        exact code path/allowlist a genuine session goes through, and (2)
+        deletes its own row via delete_event_for_test_cleanup() in a
+        finally block, so it never persists in the shared production
+        ledger even transiently-visible, regardless of test outcome."""
         import pricing_config
-        run_marker = _unique("test-devcost-session")
-        el.record_event(
-            "model_usage", session_id=run_marker, source="claude_code",
-            activity_class=el.ACTIVITY_CLASS_PRODUCT_DEVELOPMENT,
-            provider="anthropic", model="claude-sonnet-5",
-            input_tokens=1000, output_tokens=2000, cache_read_tokens=3000, cache_write_tokens=4000,
-        )
-        expected = pricing_config.calculate_cost(
-            "anthropic", "claude-sonnet-5", input_tokens=1000, output_tokens=2000,
-            cache_read_tokens=3000, cache_write_tokens=4000,
-        )
-        result = el.get_dev_session_cost_summary()
-        # The real inserted row must be reflected in the real lifetime total
-        # (>= since other real/test rows already exist in the shared ledger).
-        self.assertGreaterEqual(result["lifetime"]["cost_usd"], expected["total_usd"] - 0.000001)
-        self.assertGreaterEqual(result["lifetime"]["input_tokens"], 1000)
+        session_id = str(uuid.uuid4())
+        event_id = None
+        try:
+            result_insert = el.record_event(
+                "model_usage", session_id=session_id, source="claude_code",
+                activity_class=el.ACTIVITY_CLASS_PRODUCT_DEVELOPMENT,
+                provider="anthropic", model="claude-sonnet-5",
+                input_tokens=1000, output_tokens=2000, cache_read_tokens=3000, cache_write_tokens=4000,
+            )
+            event_id = result_insert["event_id"]
+            expected = pricing_config.calculate_cost(
+                "anthropic", "claude-sonnet-5", input_tokens=1000, output_tokens=2000,
+                cache_read_tokens=3000, cache_write_tokens=4000,
+            )
+            result = el.get_dev_session_cost_summary()
+            # The real inserted row must be reflected in the real lifetime total
+            # (>= since other real/test rows already exist in the shared ledger).
+            self.assertGreaterEqual(result["lifetime"]["cost_usd"], expected["total_usd"] - 0.000001)
+            self.assertGreaterEqual(result["lifetime"]["input_tokens"], 1000)
+        finally:
+            if event_id:
+                el.delete_event_for_test_cleanup(event_id)
 
 
 if __name__ == "__main__":

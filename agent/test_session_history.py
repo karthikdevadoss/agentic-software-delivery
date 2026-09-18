@@ -142,7 +142,23 @@ class ListSessionsTestCase(unittest.TestCase):
     def test_test_fixture_session_ids_are_excluded(self):
         """Unit-test fixture session_ids (this project's OWN test suite
         writes directly to the real ledger -- see test_claude_code_hook.py)
-        must never appear as fabricated 'sessions' in the real history."""
+        must never appear as fabricated 'sessions' in the real history.
+
+        Real incident (2026-09-18): this filter used to be a hand-
+        maintained BLOCKLIST of known test prefixes -- a brand-new test
+        prefix (this same night's own 'test-devcost-session-...') silently
+        slipped through it and showed up as a real session card on the
+        live production Usage page, confirmed via the Owner's own
+        screenshot. Now a positive ALLOWLIST (real UUID or the one
+        documented historical-backfill id) -- this test asserts the
+        allowlist shape directly so a *future* test prefix nobody thinks
+        to update a blocklist for is excluded automatically, not just the
+        specific prefixes known at the time this test was written."""
+        import re
+        real_session_id_pattern = re.compile(
+            r"^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+            r"|claude-code-session-[0-9a-f-]+-p0-eventledger-task)$"
+        )
         cursor = None
         all_ids = []
         for _ in range(15):
@@ -151,9 +167,14 @@ class ListSessionsTestCase(unittest.TestCase):
             if not data["has_more"]:
                 break
             cursor = data["next_cursor"]
+        self.assertTrue(all_ids, "this test needs at least one real claude_code_dev_session to be meaningful")
         for sid in all_ids:
+            self.assertRegex(sid, real_session_id_pattern, f"non-allowlisted session_id leaked into the real history: {sid!r}")
+            # Also guard the specific known test prefixes directly, so a
+            # regression in the allowlist regex itself still fails loudly.
             self.assertFalse(sid.startswith("sess-distinct-"), sid)
             self.assertFalse(sid.startswith("sess-spoolonly-sync-"), sid)
+            self.assertFalse(sid.startswith("test-devcost-session-"), sid)
             self.assertNotEqual(sid, "sess-speed-test")
 
     def test_workbench_run_has_exact_tokens_and_actual_cost_when_captured(self):
