@@ -351,9 +351,68 @@ function renderLanding() {
       <a id="learn-pdf-download" class="pdf-download-btn" href="/api/learn/book.pdf">⬇ DOWNLOAD COMPLETE BOOK (PDF)</a>
       <p class="hint" id="learn-pdf-status">Knowledge version: commit ${esc(TREE.git_commit || "unknown")}${TREE.generated_at_utc ? ` · generated ${esc(TREE.generated_at_utc)}` : ""}.</p>
     </section>
+    <section class="panel ai-intel-panel">
+      <h2>Daily AI Intelligence</h2>
+      <p class="hint" style="margin-top:0;">A short, real research pass on what changed in AI engineering, refreshed once a day. Click any line to open it.</p>
+      <div id="ai-intel-body"><p class="hint">Loading…</p></div>
+    </section>
     <div id="learn-search-results"></div>
     <div id="learn-domain-grid" class="topic-grid domain-grid">${domainCards}</div>
   `;
+}
+
+async function wireAiIntelligence() {
+  const body = document.getElementById("ai-intel-body");
+  if (!body) return;
+  let dates;
+  try {
+    const resp = await fetch("/api/ai-intelligence/dates");
+    dates = (await resp.json()).dates || [];
+  } catch (_) {
+    body.innerHTML = `<p class="hint">Couldn't load today's report right now — try refreshing.</p>`;
+    return;
+  }
+  if (!dates.length) {
+    body.innerHTML = `<p class="hint">Nothing published yet — the first daily report is on its way.</p>`;
+    return;
+  }
+
+  const latest = dates[0];
+  let sections = [];
+  try {
+    const resp = await fetch(`/api/ai-intelligence/daily/${encodeURIComponent(latest)}`);
+    sections = (await resp.json()).sections || [];
+  } catch (_) {
+    body.innerHTML = `<p class="hint">Couldn't load ${esc(latest)}'s report right now.</p>`;
+    return;
+  }
+
+  const archive = dates.slice(1, 8);
+  body.innerHTML = `
+    <p class="hint" style="margin-bottom:8px;">${esc(latest)}</p>
+    <ul class="ai-intel-list">
+      ${sections.map((s) => `
+        <li class="ai-intel-item">
+          <button class="ai-intel-line" aria-expanded="false">${esc(s.heading)}</button>
+          <div class="ai-intel-detail" hidden>${esc(s.body)}</div>
+        </li>
+      `).join("")}
+    </ul>
+    ${archive.length ? `<p class="hint">Earlier: ${archive.map(d => esc(d)).join(" · ")}</p>` : ""}
+  `;
+
+  // Event delegation on the panel body, not per-button listeners --
+  // matches this file's own top-level click-delegation pattern (see the
+  // bottom of this file) and needs nothing more than addEventListener,
+  // since the highlight lines are freshly-inserted, dynamic content.
+  body.addEventListener("click", (e) => {
+    const btn = e.target.closest(".ai-intel-line");
+    if (!btn) return;
+    const detail = btn.nextElementSibling;
+    const open = btn.getAttribute("aria-expanded") === "true";
+    btn.setAttribute("aria-expanded", open ? "false" : "true");
+    if (detail) detail.hidden = open;
+  });
 }
 
 function wirePdfDownload() {
@@ -428,6 +487,7 @@ function render() {
     APP_ROOT.innerHTML = renderLanding();
     wireSearch();
     wirePdfDownload();
+    wireAiIntelligence();
     return;
   }
   const { node, breadcrumb } = resolvePath(segments);

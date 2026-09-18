@@ -89,10 +89,11 @@ function makeElement() {
   return el;
 }
 
-function buildContext(initialPath) {
-  const elements = { "learn-app": makeElement() };
+function buildContext(initialPath, aiIntelFixture) {
+  const elements = { "learn-app": makeElement(), "ai-intel-body": makeElement() };
   let currentPath = initialPath;
   const historyEntries = [];
+  const aiIntel = aiIntelFixture || { dates: [] };
 
   const documentStub = {
     getElementById: (id) => elements[id] || null,
@@ -119,6 +120,14 @@ function buildContext(initialPath) {
   const fetchStub = async (url) => {
     if (url === "/learn-tree.json") {
       return { json: async () => FIXTURE_TREE };
+    }
+    if (url === "/api/ai-intelligence/dates") {
+      return { json: async () => ({ dates: aiIntel.dates }) };
+    }
+    if (url.startsWith("/api/ai-intelligence/daily/")) {
+      const date = decodeURIComponent(url.slice("/api/ai-intelligence/daily/".length));
+      const sections = (aiIntel.days && aiIntel.days[date]) || [];
+      return { json: async () => ({ date, sections }) };
     }
     throw new Error("unexpected fetch: " + url);
   };
@@ -275,6 +284,34 @@ async function loadLearnJs(ctx) {
     await loadLearnJs(ctx);
     const html = ctx.elements["learn-app"].innerHTML;
     assertIncludes(html, "Back to Performance", "an unresolvable ?from= falls back to the canonical parent, not a crash");
+  }
+
+  // ---- Daily AI Intelligence panel ------------------------------------
+  {
+    const ctx = buildContext("/learn", { dates: [] });
+    await loadLearnJs(ctx);
+    const html = ctx.elements["ai-intel-body"].innerHTML;
+    assertIncludes(html, "Nothing published yet", "no dates published yet renders an honest empty state, not an error");
+  }
+  {
+    const ctx = buildContext("/learn", {
+      dates: ["2026-09-17", "2026-09-16"],
+      days: {
+        "2026-09-17": [
+          { heading: "Important Changes", body: "Something real happened today." },
+          { heading: "Interview Knowledge", body: "A real interview-relevant fact." },
+        ],
+      },
+    });
+    await loadLearnJs(ctx);
+    const html = ctx.elements["ai-intel-body"].innerHTML;
+    assertIncludes(html, "2026-09-17", "shows the latest published date");
+    assertIncludes(html, "Important Changes", "shows each section heading as a highlight line");
+    assertIncludes(html, "Interview Knowledge", "shows every section, not just the first");
+    assertIncludes(html, "Something real happened today.", "detail body is present in the DOM (hidden, not omitted)");
+    assertIncludes(html, 'aria-expanded="false"', "highlight lines start collapsed");
+    assertIncludes(html, "hidden", "detail block starts hidden until clicked");
+    assertIncludes(html, "2026-09-16", "earlier dates are listed for browsing");
   }
 
   console.log(`${passed} passed, ${failures} failed`);
