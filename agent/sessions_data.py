@@ -442,4 +442,11 @@ def build_sessions_snapshot(include_test_data: bool = False) -> dict:
         # cost/tokens per verified change); Dashboard shows the full
         # per-window consumption breakdown.
         "economics": event_ledger.get_usage_economics(),
+        # Real gap found 2026-09-18 (the 40 EUR overnight-session incident):
+        # "economics" above is Workbench-only, but its headline "Lifetime AI
+        # spend" figure sat unlabeled on this same page as a real, much
+        # larger Claude Code development cost -- confirmed genuinely
+        # confusing via the Owner's own screenshot. Shown as an explicitly
+        # separate, equally-real sibling, never merged into one number.
+        "dev_session_economics": event_ledger.get_dev_session_cost_summary(),
     }

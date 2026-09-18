@@ -765,5 +765,44 @@ class DisplayTimezoneWindowTestCase(unittest.TestCase):
         )
 
 
+class DevSessionCostSummaryTestCase(unittest.TestCase):
+    """Real gap found 2026-09-18 (the 40 EUR overnight-session incident):
+    get_usage_economics() is Workbench-only, but its 'Lifetime AI spend'
+    figure sat unlabeled on the same page as a real, much larger Claude
+    Code development cost -- confusing, per the Owner's own screenshot.
+    get_dev_session_cost_summary() is the separate, equally-real
+    counterpart for source='claude_code' sessions; this proves it computes
+    real cost from real tokens via pricing_config.py, the same way
+    session_history.py's per-session cost already does, never a second,
+    divergent calculation."""
+
+    def test_reachable_shape_and_scope_note_names_claude_code_only(self):
+        result = el.get_dev_session_cost_summary()
+        self.assertEqual(result["status"], "REACHABLE")
+        self.assertIn("claude_code", result["canonical_source"])
+        self.assertIn("lifetime", result)
+        self.assertIn("today", result)
+        self.assertIn("this_week", result)
+
+    def test_a_real_inserted_row_is_costed_via_pricing_config_not_a_second_formula(self):
+        import pricing_config
+        run_marker = _unique("test-devcost-session")
+        el.record_event(
+            "model_usage", session_id=run_marker, source="claude_code",
+            activity_class=el.ACTIVITY_CLASS_PRODUCT_DEVELOPMENT,
+            provider="anthropic", model="claude-sonnet-5",
+            input_tokens=1000, output_tokens=2000, cache_read_tokens=3000, cache_write_tokens=4000,
+        )
+        expected = pricing_config.calculate_cost(
+            "anthropic", "claude-sonnet-5", input_tokens=1000, output_tokens=2000,
+            cache_read_tokens=3000, cache_write_tokens=4000,
+        )
+        result = el.get_dev_session_cost_summary()
+        # The real inserted row must be reflected in the real lifetime total
+        # (>= since other real/test rows already exist in the shared ledger).
+        self.assertGreaterEqual(result["lifetime"]["cost_usd"], expected["total_usd"] - 0.000001)
+        self.assertGreaterEqual(result["lifetime"]["input_tokens"], 1000)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -34,7 +34,7 @@ function fmtUsd(n) {
 function renderEfficiencySummary(d) {
   const e = d.economics;
   if (!e || e.status !== "REACHABLE") {
-    return section("AI Delivery Efficiency", `<div class="econ-note">Event ledger ${e ? esc(e.status) : "UNAVAILABLE"} — real efficiency ratios require the remote event ledger; see the Event Ledger section below for detail.</div>`);
+    return section("Workbench Delivery Efficiency", `<div class="econ-note">Event ledger ${e ? esc(e.status) : "UNAVAILABLE"} — real efficiency ratios require the remote event ledger; see the Event Ledger section below for detail.</div>`);
   }
   const lifetime = e.lifetime;
   const verified = lifetime.runs_completed_verified;
@@ -66,13 +66,52 @@ function renderEfficiencySummary(d) {
     ${windowCard("Lifetime", lifetime)}
   </div>`;
 
-  return section("AI Delivery Efficiency", `
-    <p class="hint" style="margin-top:0;">Real, ledger-backed ratios — never estimated, never fabricated. A failed or no-change run's real cost is still counted (see ${esc(e.canonical_source)}).</p>
+  // Real gap found 2026-09-18 (the 40 EUR overnight-session incident): this
+  // section's title/numbers cover WORKBENCH pipeline runs only, but nothing
+  // said so -- a viewer could easily read "Lifetime AI spend: $1.49" as the
+  // platform's total AI spend, when a real, much larger Claude Code
+  // development cost lives entirely outside this section. Title and hint
+  // now say the scope explicitly; renderDevSessionCostSummary() below is
+  // the separate, equally-real sibling for that other domain.
+  return section("Workbench Delivery Efficiency (pipeline runs only — see \"Claude Code Development Cost\" below for a separate total)", `
+    <p class="hint" style="margin-top:0;">Real, ledger-backed ratios for Workbench pipeline runs — never estimated, never fabricated. A failed or no-change run's real cost is still counted (see ${esc(e.canonical_source)}). This does NOT include Claude Code development-session cost — that is tracked separately below.</p>
     ${tilesHtml}
     <p class="hint" style="margin-top:1.2rem;">Recent windows:</p>
     ${windowsHtml}
     ${renderEfficiencyChart(e)}
     <p class="hint" style="margin-top:0.9rem;">Full per-window consumption breakdown (this hour/last 24h/this month, tokens by category, pricing versions): see <a href="/dashboard">Dashboard</a>'s Economics / Consumption section.</p>
+  `);
+}
+
+// Real gap found 2026-09-18 (the 40 EUR overnight-session incident): no
+// aggregate view of Claude Code's OWN development-session cost existed
+// anywhere -- only a single session's own detail page could show it. This
+// is the lifetime/today/this-week rollup, sourced from
+// event_ledger.get_dev_session_cost_summary() (source='claude_code',
+// event_type='model_usage') -- deliberately never merged with
+// renderEfficiencySummary()'s Workbench-only numbers above.
+function renderDevSessionCostSummary(d) {
+  const dc = d.dev_session_economics;
+  if (!dc || dc.status !== "REACHABLE") {
+    return section("Claude Code Development Cost", `<div class="econ-note">Event ledger ${dc ? esc(dc.status) : "UNAVAILABLE"}.</div>`);
+  }
+  const windowCard = (label, w) => {
+    if (!w || w.sessions_total === 0) {
+      return `<div class="econ-card"><div class="econ-label">${esc(label)}</div><div class="econ-value">no sessions in this window</div></div>`;
+    }
+    return `<div class="econ-card">
+      <div class="econ-label">${esc(label)}</div>
+      <div class="econ-value">${fmtUsd(w.cost_usd)}${w.cost_known_for_all_captured_sessions ? "" : " (partial)"}</div>
+      <div class="kv-row"><span>${w.sessions_total} session(s)</span><span>${(w.input_tokens + w.output_tokens).toLocaleString()} tokens</span></div>
+    </div>`;
+  };
+  return section("Claude Code Development Cost (building this platform — separate from Workbench above)", `
+    <p class="hint" style="margin-top:0;">Real cost of Claude Code development sessions (writing/debugging this platform's own code), computed from real captured tokens via the same versioned pricing table every other cost figure on this site uses. Entirely separate from Workbench pipeline-run cost above — the two are never combined into one number. See ${esc(dc.canonical_source)}.</p>
+    <div class="econ-grid">
+      ${windowCard(`Today (${dc.display_timezone})`, dc.today)}
+      ${windowCard(`This week (${dc.display_timezone})`, dc.this_week)}
+      ${windowCard("Lifetime", dc.lifetime)}
+    </div>
   `);
 }
 
@@ -724,6 +763,7 @@ async function load() {
 
   main.innerHTML = [
     renderEfficiencySummary(data),
+    renderDevSessionCostSummary(data),
     renderEventLedger(data),
     renderDevSessionControls(),
     renderSessionHistoryPanel(),

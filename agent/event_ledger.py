@@ -865,6 +865,85 @@ def get_usage_economics() -> dict:
     }
 
 
+def get_dev_session_cost_summary() -> dict:
+    """Real gap found 2026-09-18 (the 40 EUR overnight-session incident,
+    Owner escalation): get_usage_economics() above is Workbench-only by
+    design (its own canonical_source says so), but its numbers ("Lifetime
+    AI spend: $1.49") sat on the same page as a real $439.87 Claude Code
+    development session with nothing telling a viewer these are two
+    completely separate accounting domains -- confirmed confusing via the
+    Owner's own screenshot. This is the Claude Code development-session
+    counterpart: same window shape (lifetime/today/this_week, same
+    display-timezone convention) so the two can be shown side by side
+    with equal honesty, never silently combined into one misleading
+    number. Reads `model_usage` events (source='claude_code') -- these
+    never carry a stored cost_usd (claude_code_hook.py records raw
+    tokens only), so cost is computed here via the same versioned
+    pricing_config.py every other real cost figure in this project uses,
+    exactly as session_history.py's _usage_for_claude_code() already
+    does for a single session -- never a second, divergent calculation."""
+    import pricing_config
+    try:
+        conn = _connect()
+    except Exception as exc:  # noqa: BLE001 - Usage page must never break because the ledger is unreachable
+        return {"status": "UNREACHABLE", "error": str(exc)}
+    try:
+        ensure_schema()
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT session_id, timestamp_utc, provider, model,
+                       input_tokens, output_tokens, cache_read_tokens, cache_write_tokens
+                FROM delivery_events
+                WHERE event_type = 'model_usage' AND source = 'claude_code'
+                ORDER BY timestamp_utc DESC
+            """)
+            cols = [d[0] for d in cur.description]
+            rows = [dict(zip(cols, r)) for r in cur.fetchall()]
+    finally:
+        conn.close()
+
+    now = datetime.now(timezone.utc)
+    windows = compute_display_windows(now)
+
+    def _aggregate(subset: list) -> dict:
+        session_ids = {r["session_id"] for r in subset if r["session_id"]}
+        input_tokens = sum(r["input_tokens"] or 0 for r in subset)
+        output_tokens = sum(r["output_tokens"] or 0 for r in subset)
+        cache_read = sum(r["cache_read_tokens"] or 0 for r in subset)
+        cache_write = sum(r["cache_write_tokens"] or 0 for r in subset)
+        cost_total = 0.0
+        cost_known = True
+        for r in subset:
+            cost = pricing_config.calculate_cost(
+                r["provider"] or "anthropic", r["model"], input_tokens=r["input_tokens"] or 0,
+                output_tokens=r["output_tokens"] or 0, cache_read_tokens=r["cache_read_tokens"] or 0,
+                cache_write_tokens=r["cache_write_tokens"] or 0,
+            )
+            if cost.get("available"):
+                cost_total += cost["total_usd"]
+            else:
+                cost_known = False
+        return {
+            "sessions_total": len(session_ids),
+            "input_tokens": input_tokens, "output_tokens": output_tokens,
+            "cache_read_tokens": cache_read, "cache_write_tokens": cache_write,
+            "cost_usd": round(cost_total, 6),
+            "cost_known_for_all_captured_sessions": cost_known,
+        }
+
+    today_rows = [r for r in rows if r["timestamp_utc"] >= windows["today_calendar_start_utc"]]
+    this_week_rows = [r for r in rows if r["timestamp_utc"] >= windows["this_week_calendar_start_utc"]]
+
+    return {
+        "status": "REACHABLE",
+        "canonical_source": "event ledger (delivery_events, event_type=model_usage, source=claude_code) — Claude Code DEVELOPMENT sessions only, entirely separate from Workbench/get_usage_economics() above; never combined into one number",
+        "display_timezone": DISPLAY_TIMEZONE_NAME,
+        "today": {**_aggregate(today_rows), "window_kind": "CALENDAR", "note": f"calendar day in {DISPLAY_TIMEZONE_NAME}, DST-safe"},
+        "this_week": {**_aggregate(this_week_rows), "window_kind": "CALENDAR", "note": f"Monday 00:00 in {DISPLAY_TIMEZONE_NAME} to now, DST-safe"},
+        "lifetime": _aggregate(rows),
+    }
+
+
 if __name__ == "__main__":
     import sys
     # Entrypoint for trigger_background_sync()'s detached subprocess only —

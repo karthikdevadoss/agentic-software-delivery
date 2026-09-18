@@ -247,14 +247,20 @@ const FIXTURE_DETAIL = {
     cost_per_verified_change_note: "lifetime COMPLETED runs with known cost only",
   };
   const efficiencyHtml = sandbox.renderEfficiencySummary({ economics: ECONOMICS_FIXTURE });
-  assertIncludes(efficiencyHtml, "AI Delivery Efficiency", "the efficiency section has the exact required heading");
+  // Real gap found 2026-09-18 (40 EUR overnight-session incident): this
+  // heading used to just say "AI Delivery Efficiency" with no indication
+  // it covers Workbench pipeline runs only -- confirmed confusing when a
+  // much larger Claude Code development cost sat unlabeled on the same
+  // page. Heading and body must now say the scope explicitly.
+  assertIncludes(efficiencyHtml, "Workbench Delivery Efficiency", "the efficiency section's heading names its real scope (Workbench only), not a bare generic 'AI Delivery Efficiency'");
+  assertIncludes(efficiencyHtml, "does NOT include Claude Code", "the section explicitly says what it excludes, so it can never be mistaken for a total AI spend figure");
   assertIncludes(efficiencyHtml, "$0.08", "cost per verified change is shown as a real computed ratio, not a placeholder");
   assertIncludes(efficiencyHtml, "6,667", "tokens per verified change is derived from real lifetime totals ((900000+100000)/150)");
   assertIncludes(efficiencyHtml, "150", "lifetime verified change count is shown");
   assertIncludes(efficiencyHtml, "/dashboard", "the section links to Dashboard for the full per-window breakdown instead of duplicating it");
 
   const efficiencyUnreachableHtml = sandbox.renderEfficiencySummary({ economics: { status: "UNREACHABLE", error: "connection refused" } });
-  assertIncludes(efficiencyUnreachableHtml, "AI Delivery Efficiency", "an unreachable ledger still renders the section with its real heading");
+  assertIncludes(efficiencyUnreachableHtml, "Workbench Delivery Efficiency", "an unreachable ledger still renders the section with its real heading");
   assert(!efficiencyUnreachableHtml.includes("INSUFFICIENT DATA") || efficiencyUnreachableHtml.includes("UNREACHABLE"), "an unreachable ledger is labeled honestly, never silently shown as zero/empty tiles");
 
   const efficiencyNoDataHtml = sandbox.renderEfficiencySummary({
@@ -287,6 +293,31 @@ const FIXTURE_DETAIL = {
   const svgChartHtml = sandbox.svgBarChart([{ label: "X", value: 5 }, { label: "Y", value: 10 }]);
   assertIncludes(svgChartHtml, "<svg", "svgBarChart produces a real SVG element");
   assert((svgChartHtml.match(/<rect/g) || []).length === 4, "svgBarChart renders 2 bars as 4 rects (track+fill per bar)");
+
+  // ---- Claude Code Development Cost (real gap found 2026-09-18: the 40
+  // EUR overnight-session incident had no aggregate view anywhere, only a
+  // single session's own detail page) ---------------------------------
+  const DEV_COST_FIXTURE = {
+    status: "REACHABLE",
+    canonical_source: "event ledger (delivery_events, event_type=model_usage, source=claude_code)",
+    display_timezone: "Europe/Berlin",
+    today: { sessions_total: 1, input_tokens: 7078, output_tokens: 3047211, cost_usd: 439.866923, cost_known_for_all_captured_sessions: true },
+    this_week: { sessions_total: 1, input_tokens: 7078, output_tokens: 3047211, cost_usd: 439.866923, cost_known_for_all_captured_sessions: true },
+    lifetime: { sessions_total: 1, input_tokens: 7078, output_tokens: 3047211, cost_usd: 439.866923, cost_known_for_all_captured_sessions: true },
+  };
+  const devCostHtml = sandbox.renderDevSessionCostSummary({ dev_session_economics: DEV_COST_FIXTURE });
+  assertIncludes(devCostHtml, "Claude Code Development Cost", "the dev-cost section has its own distinct heading");
+  assertIncludes(devCostHtml, "$439.87", "the real lifetime dev-session cost is shown as an actual number, not just a label");
+  assertIncludes(devCostHtml, "separate from Workbench", "the section explicitly says it is not combined with Workbench cost");
+
+  const devCostUnreachableHtml = sandbox.renderDevSessionCostSummary({ dev_session_economics: { status: "UNREACHABLE" } });
+  assertIncludes(devCostUnreachableHtml, "Claude Code Development Cost", "an unreachable ledger still renders the section with its real heading");
+  assert(!devCostUnreachableHtml.includes("$0.00") && !devCostUnreachableHtml.includes("$0.0000"), "an unreachable ledger must never show a fabricated $0 cost");
+
+  const devCostEmptyHtml = sandbox.renderDevSessionCostSummary({
+    dev_session_economics: { ...DEV_COST_FIXTURE, today: { sessions_total: 0 }, this_week: { sessions_total: 0 }, lifetime: { sessions_total: 0, input_tokens: 0, output_tokens: 0, cost_usd: 0, cost_known_for_all_captured_sessions: true } },
+  });
+  assertIncludes(devCostEmptyHtml, "no sessions in this window", "a genuinely empty window says so honestly, never a fabricated $0.00");
   assert(sandbox.svgBarChart([]) === "", "svgBarChart with no bars renders nothing, not an empty/broken SVG shell");
 
   console.log(`${passed} passed, ${failures} failed`);

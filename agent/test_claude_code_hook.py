@@ -16,6 +16,7 @@ Run: python agent/test_claude_code_hook.py
 
 import io
 import json
+import shutil
 import subprocess
 import sys
 import time
@@ -374,6 +375,78 @@ class ExtractUsageFromTranscriptTestCase(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertEqual(result["input_tokens"], 7)
         self.assertEqual(result["output_tokens"], 9)
+
+
+class IterSubagentTranscriptsTestCase(unittest.TestCase):
+    """agent/claude_code_hook.py's _iter_subagent_transcripts -- real gap
+    found 2026-09-18 (the 40 EUR overnight-session incident): explaining
+    per-task cost required manually locating <session>/subagents/*.jsonl
+    by hand. This is the automated version of that exact manual process,
+    following the same on-disk convention discovered during that
+    investigation."""
+
+    def setUp(self):
+        self.tmp_dir = Path(el.SPOOL_PATH).parent / f"claude_hook_subagent_test_{uuid.uuid4().hex[:8]}"
+        self.tmp_dir.mkdir(parents=True, exist_ok=True)
+        self.main_transcript = self.tmp_dir / "main-session.jsonl"
+        self.main_transcript.write_text("", encoding="utf-8")
+        self.subagents_dir = self.tmp_dir / "main-session" / "subagents"
+        self.subagents_dir.mkdir(parents=True, exist_ok=True)
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp_dir, ignore_errors=True)
+
+    def _write_subagent(self, agent_id, meta, usage_lines):
+        (self.subagents_dir / f"{agent_id}.meta.json").write_text(json.dumps(meta), encoding="utf-8")
+        with (self.subagents_dir / f"{agent_id}.jsonl").open("w", encoding="utf-8") as f:
+            for line in usage_lines:
+                f.write(json.dumps(line) + "\n")
+
+    def test_no_subagents_dir_yields_nothing(self):
+        lone = self.tmp_dir / "lonely.jsonl"
+        lone.write_text("", encoding="utf-8")
+        self.assertEqual(list(claude_code_hook._iter_subagent_transcripts(str(lone))), [])
+
+    def test_missing_main_transcript_yields_nothing(self):
+        self.assertEqual(list(claude_code_hook._iter_subagent_transcripts(None)), [])
+        self.assertEqual(list(claude_code_hook._iter_subagent_transcripts(str(self.tmp_dir / "missing.jsonl"))), [])
+
+    def test_reads_real_meta_and_usage_for_each_subagent(self):
+        self._write_subagent(
+            "agent-abc123",
+            {"agentType": "fork", "isFork": True, "description": "Implement Phase 1: cost accounting fix", "worktreeBranch": "worktree-agent-abc123"},
+            [{"type": "assistant", "message": {"role": "assistant", "model": "claude-sonnet-5",
+              "usage": {"input_tokens": 5, "output_tokens": 100, "cache_creation_input_tokens": 2, "cache_read_input_tokens": 50}}}],
+        )
+        self._write_subagent(
+            "agent-def456",
+            {"agentType": "Explore", "description": "Trace usage/cost data path"},
+            [{"type": "assistant", "message": {"role": "assistant", "model": "claude-sonnet-5",
+              "usage": {"input_tokens": 1, "output_tokens": 10, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 5}}}],
+        )
+        results = list(claude_code_hook._iter_subagent_transcripts(str(self.main_transcript)))
+        self.assertEqual(len(results), 2)
+        by_id = {meta["agent_id"]: (meta, usage) for meta, usage in results}
+        fork_meta, fork_usage = by_id["agent-abc123"]
+        self.assertEqual(fork_meta["agentType"], "fork")
+        self.assertEqual(fork_meta["worktreeBranch"], "worktree-agent-abc123")
+        self.assertEqual(fork_usage["output_tokens"], 100)
+        explore_meta, explore_usage = by_id["agent-def456"]
+        self.assertEqual(explore_meta["agentType"], "Explore")
+        self.assertEqual(explore_usage["output_tokens"], 10)
+
+    def test_subagent_with_no_usage_data_is_skipped_not_fabricated(self):
+        self._write_subagent("agent-empty", {"agentType": "Explore", "description": "no-op"}, [])
+        self.assertEqual(list(claude_code_hook._iter_subagent_transcripts(str(self.main_transcript))), [])
+
+    def test_malformed_meta_json_does_not_crash_the_whole_scan(self):
+        (self.subagents_dir / "agent-badmeta.meta.json").write_text("not json", encoding="utf-8")
+        with (self.subagents_dir / "agent-badmeta.jsonl").open("w", encoding="utf-8") as f:
+            f.write(json.dumps({"type": "assistant", "message": {"role": "assistant", "model": "claude-sonnet-5",
+                                 "usage": {"input_tokens": 1, "output_tokens": 1}}}) + "\n")
+        results = list(claude_code_hook._iter_subagent_transcripts(str(self.main_transcript)))
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0][0]["agent_id"], "agent-badmeta")
 
 
 if __name__ == "__main__":

@@ -153,6 +153,49 @@ def _extract_usage_from_transcript(transcript_path):
     return totals
 
 
+def _iter_subagent_transcripts(main_transcript_path):
+    """Yields (meta_dict, usage_dict) for every subagent spawned during this
+    session -- real gap found 2026-09-18 (the 40 EUR overnight-session
+    incident): closing this required a from-scratch manual forensic
+    investigation (locating <session>/subagents/*.jsonl by hand, matching
+    each .meta.json sidecar). Claude Code's own SubagentStop hook payload
+    does not expose which specific subagent just finished or its
+    transcript path (verified: only cwd/transcript_path[=the MAIN
+    session's]/permission_mode/stop_hook_active are present -- see this
+    module's own field-verification note at the top of the file), so a
+    live per-subagent hook is not reliable. Instead, called once at
+    SessionEnd (a point already proven reliable) and walks the on-disk
+    convention observed directly in a real installed Claude Code version:
+    <project_dir>/<session_id>/subagents/agent-<id>.jsonl plus a sibling
+    agent-<id>.meta.json (agentType, description, worktreeBranch when a
+    fork used an isolated worktree). This convention is NOT documented
+    anywhere; if a future Claude Code version changes it, this silently
+    yields nothing (never raises) -- the whole-session model_usage total
+    from _extract_usage_from_transcript remains correct and complete
+    regardless, since it is computed independently from the main
+    transcript alone. Never double-counts: subagent turns are NOT present
+    in the main transcript (verified: every real transcript inspected had
+    isSidechain=false / absent for 100% of its own entries)."""
+    main_path = Path(main_transcript_path) if main_transcript_path else None
+    if not main_path or not main_path.exists():
+        return
+    subagents_dir = main_path.parent / main_path.stem / "subagents"
+    if not subagents_dir.is_dir():
+        return
+    for meta_path in sorted(subagents_dir.glob("agent-*.meta.json")):
+        agent_id = meta_path.name[: -len(".meta.json")]
+        transcript_path = subagents_dir / f"{agent_id}.jsonl"
+        try:
+            meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            meta = {}
+        usage = _extract_usage_from_transcript(transcript_path)
+        if usage is None:
+            continue
+        meta["agent_id"] = agent_id
+        yield meta, usage
+
+
 def _notify_async(title, message):
     """Best-effort, detached, non-blocking — never awaited, never allowed
     to raise into the caller. See agent/claude_notify.ps1."""
@@ -235,6 +278,39 @@ def main():
                     cache_read_tokens=usage["cache_read_input_tokens"],
                     status="SessionEnd",
                     payload={"real_assistant_message_count": usage["message_count"]},
+                )
+
+            # Real gap found 2026-09-18 (the 40 EUR overnight-session
+            # incident): explaining "why did this cost what it cost"
+            # required manually locating and parsing each spawned
+            # subagent's own separate transcript file by hand. Captured
+            # here as a DISTINCT event_type (never "model_usage") so it
+            # can never be summed into -- and silently inflate or duplicate
+            # -- the whole-session total above; this is supplementary
+            # per-task detail, not a second measurement of the same thing.
+            for meta, sub_usage in _iter_subagent_transcripts(payload.get("transcript_path")):
+                event_ledger.spool_only(
+                    "claude_code_subagent_usage",
+                    source="claude_code",
+                    activity_class=event_ledger.ACTIVITY_CLASS_PRODUCT_DEVELOPMENT,
+                    session_id=payload.get("session_id"),
+                    actor_type="ai",
+                    provider="anthropic",
+                    model=sub_usage.get("model"),
+                    tool_name=meta.get("agentType"),
+                    input_tokens=sub_usage["input_tokens"],
+                    output_tokens=sub_usage["output_tokens"],
+                    cache_write_tokens=sub_usage["cache_creation_input_tokens"],
+                    cache_read_tokens=sub_usage["cache_read_input_tokens"],
+                    status="SessionEnd",
+                    payload={
+                        "agent_id": meta.get("agent_id"),
+                        "agent_type": meta.get("agentType"),
+                        "description": _bounded(meta.get("description"), 300),
+                        "worktree_branch": meta.get("worktreeBranch"),
+                        "is_fork": meta.get("isFork", False),
+                        "real_assistant_message_count": sub_usage["message_count"],
+                    },
                 )
 
         event_ledger.trigger_background_sync()
