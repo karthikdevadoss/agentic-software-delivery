@@ -226,7 +226,7 @@ class AnalyzeWithLlmTestCase(unittest.TestCase):
         self.assertFalse(result["model_called"])
         self.assertEqual(result["explanation"], bp.INSUFFICIENT_CONTEXT)
 
-    def test_valid_model_json_is_parsed_and_usage_recorded(self):
+    def test_valid_model_json_is_parsed(self):
         usage = SimpleNamespace(input_tokens=100, output_tokens=50,
                                  cache_creation_input_tokens=None, cache_read_input_tokens=None)
 
@@ -238,12 +238,39 @@ class AnalyzeWithLlmTestCase(unittest.TestCase):
             return SimpleNamespace(content=[SimpleNamespace(type="text", text=payload)], usage=usage)
 
         ctx = bp.RagContext("USED", "q", [], "some context", 5.0)
-        import metrics
-        before = len(metrics.get_model_usage_events())
         result = bp.analyze_with_llm("req", ctx, create_fn=fake_create)
         self.assertTrue(result["model_called"])
         self.assertEqual(result["affected_components"], ["CustomerService"])
-        self.assertEqual(len(metrics.get_model_usage_events()), before + 1)
+
+    def test_AEQ_028_a_test_injected_create_fn_never_forwards_fake_usage_to_metrics(self):
+        """THE REAL DEFECT THIS CLOSES (AEQ-028, second leak source): this
+        file's create_fn injections are, by analyze_with_llm's own
+        documented contract ("injectable so the automated test suite
+        never makes a real, billed Anthropic API call"), always a test
+        double -- no real call happens. Before this fix, this function
+        unconditionally forwarded ANY non-None response.usage
+        (including a test double's fake one) to
+        metrics.record_model_usage(), which bridges into the real,
+        shared, durable production event ledger whenever web_server.py
+        has been imported in the same process (true of any full
+        `python -m unittest discover` run). This is the exact same bug
+        class fixed in reasoning_gateway.py (AEQ-028) -- that fix did not
+        close this second, independent call site."""
+        usage = SimpleNamespace(input_tokens=100, output_tokens=50,
+                                 cache_creation_input_tokens=None, cache_read_input_tokens=None)
+
+        def fake_create(**kwargs):
+            payload = json.dumps({
+                "affected_components": [], "expected_files": [], "verification_plan": None,
+                "explanation": "ok", "missing_context": None,
+            })
+            return SimpleNamespace(content=[SimpleNamespace(type="text", text=payload)], usage=usage)
+
+        ctx = bp.RagContext("USED", "q", [], "some context", 5.0)
+        import metrics
+        metrics.reset()
+        bp.analyze_with_llm("req", ctx, create_fn=fake_create)
+        self.assertEqual(metrics.get_model_usage_events(), [])
 
     def test_non_json_model_output_is_reported_honestly_not_crashed(self):
         def fake_create(**kwargs):
