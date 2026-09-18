@@ -241,6 +241,33 @@ const FIXTURE_DETAIL = {
   });
   assertIncludes(efficiencyNoDataHtml, "INSUFFICIENT DATA", "a genuinely absent ratio is labeled INSUFFICIENT DATA, never fabricated as $0.00 or similar");
 
+  // ---- Visual chart (real production gap found via Owner screenshot
+  // feedback 2026-09-18: Dashboard got real charts, Usage did not) ------
+  assertIncludes(efficiencyHtml, "chart-block", "AI Delivery Efficiency renders a real visual chart, not just text tiles");
+  assertIncludes(efficiencyHtml, "Verified-change rate by window", "the chart has its real, descriptive title");
+  assertIncludes(efficiencyHtml, "<svg", "the chart is a real rendered SVG element");
+  // Fixture windows: last_run 1/1=100%, today 2/3=67%, this_week 15/20=75%,
+  // lifetime 150/200=75% -- every window has real runs, so every window
+  // must produce a real bar (never silently dropped).
+  const chartSvgMatches = efficiencyHtml.match(/<rect[^>]*class="chart-fill[^"]*"/g) || [];
+  assert(chartSvgMatches.length === 4, `all 4 windows with real runs produce a real bar (found ${chartSvgMatches.length})`);
+
+  const chartNoDataHtml = sandbox.renderEfficiencySummary({
+    economics: {
+      ...ECONOMICS_FIXTURE,
+      last_run: { runs_total: 0, runs_completed_verified: 0 },
+      today: { runs_total: 0, runs_completed_verified: 0 },
+      this_week: { runs_total: 0, runs_completed_verified: 0 },
+      lifetime: { ...ECONOMICS_FIXTURE.lifetime, runs_total: 0, runs_completed_verified: 0 },
+    },
+  });
+  assert(!chartNoDataHtml.includes("<svg"), "a genuinely empty window set renders no chart at all, never a fake/empty one");
+
+  const svgChartHtml = sandbox.svgBarChart([{ label: "X", value: 5 }, { label: "Y", value: 10 }]);
+  assertIncludes(svgChartHtml, "<svg", "svgBarChart produces a real SVG element");
+  assert((svgChartHtml.match(/<rect/g) || []).length === 4, "svgBarChart renders 2 bars as 4 rects (track+fill per bar)");
+  assert(sandbox.svgBarChart([]) === "", "svgBarChart with no bars renders nothing, not an empty/broken SVG shell");
+
   console.log(`${passed} passed, ${failures} failed`);
   process.exit(failures ? 1 : 0);
 })();

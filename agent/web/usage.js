@@ -71,8 +71,52 @@ function renderEfficiencySummary(d) {
     ${tilesHtml}
     <p class="hint" style="margin-top:1.2rem;">Recent windows:</p>
     ${windowsHtml}
+    ${renderEfficiencyChart(e)}
     <p class="hint" style="margin-top:0.9rem;">Full per-window consumption breakdown (this hour/last 24h/this month, tokens by category, pricing versions): see <a href="/dashboard">Dashboard</a>'s Economics / Consumption section.</p>
   `);
+}
+
+// ---- Visual chart (hand-rolled inline SVG, no charting library -- same
+// pattern as dashboard.js's svgBarChart, duplicated rather than shared
+// since this frontend has no build step/module system; every real number
+// here comes from the exact same economics object rendered as text just
+// above it, never a second, independently-computed source) ------------
+function svgBarChart(bars, { width = 640, barHeight = 22, gap = 10, valueFmt = (v) => String(v), maxValue = null } = {}) {
+  if (!bars.length) return "";
+  const labelWidth = 150;
+  const trackWidth = width - labelWidth - 70;
+  const max = maxValue != null ? maxValue : Math.max(...bars.map((b) => b.value), 0.0001);
+  const rowHeight = barHeight + gap;
+  const height = bars.length * rowHeight;
+  let svg = `<svg viewBox="0 0 ${width} ${height}" width="100%" height="${height}" role="img" aria-label="chart">`;
+  bars.forEach((b, i) => {
+    const y = i * rowHeight;
+    const w = Math.max((b.value / max) * trackWidth, b.value > 0 ? 2 : 0);
+    svg += `<text x="0" y="${y + barHeight / 2 + 4}" class="chart-label">${esc(b.label)}</text>`;
+    svg += `<rect x="${labelWidth}" y="${y}" width="${trackWidth}" height="${barHeight}" rx="4" class="chart-track"></rect>`;
+    svg += `<rect x="${labelWidth}" y="${y}" width="${w}" height="${barHeight}" rx="4" class="chart-fill ${esc(b.cls || "")}"></rect>`;
+    svg += `<text x="${labelWidth + trackWidth + 8}" y="${y + barHeight / 2 + 4}" class="chart-value">${esc(valueFmt(b.value))}</text>`;
+  });
+  svg += "</svg>";
+  return svg;
+}
+
+// Verified-change rate per window, reusing the exact same real windows
+// (last_run/today/this_week/lifetime) the text tiles above already show.
+function renderEfficiencyChart(e) {
+  const windows = [
+    ["Last run", e.last_run], ["Today", e.today], ["This week", e.this_week], ["Lifetime", e.lifetime],
+  ];
+  const bars = windows
+    .filter(([, w]) => w && w.runs_total > 0)
+    .map(([label, w]) => ({
+      label,
+      value: w.runs_completed_verified / w.runs_total,
+      cls: w.runs_completed_verified === w.runs_total ? "chart-good" : "chart-partial",
+    }));
+  if (!bars.length) return "";
+  const chart = svgBarChart(bars, { valueFmt: (v) => Math.round(v * 100) + "%", maxValue: 1 });
+  return `<div class="chart-block"><p class="chart-title">Verified-change rate by window</p>${chart}</div>`;
 }
 
 function scoreClass(score) {
