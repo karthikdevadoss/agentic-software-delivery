@@ -158,10 +158,23 @@ function renderVerify(v) {
 
 // ---------- Lifecycle wiring ----------
 
+// One-click demo run: START INCIDENT used to only reproduce + investigate
+// the defect, leaving three separate manual clicks (Diagnose, Generate
+// Candidate Patch, Run Tests) before a viewer ever reached something to
+// approve. It now chains straight through detection -> real AI diagnosis
+// -> real AI-generated + compiled candidate patch -> real test run,
+// landing on "ready to approve" with zero further clicks — the same real
+// backend calls the individual buttons already made, just run in
+// sequence instead of waiting on a human between each one. The
+// per-step buttons stay wired and usable on their own (re-running a step,
+// or exploring a slower path) — this only automates the common case.
+// The approval step itself is deliberately NOT part of this chain: that
+// stays a real, separate, ADMIN-authenticated click, same as before —
+// automating that away would remove the actual point of demonstrating it.
 document.getElementById("start-btn").addEventListener("click", async () => {
   const btn = document.getElementById("start-btn");
   btn.disabled = true;
-  btn.textContent = "STARTING…";
+  btn.textContent = "REPRODUCING…";
   try {
     await postJson("/api/triage/scenario-a/reset");
     show("reset-btn");
@@ -179,11 +192,35 @@ document.getElementById("start-btn").addEventListener("click", async () => {
     renderPatch(await getJson("/api/triage/scenario-a/patch"));
     show("step-verify");
     show("step-approve");
+
+    btn.textContent = "RUNNING AI DIAGNOSIS…";
+    document.getElementById("diagnose-body").innerHTML = `<p class="hint">Calling the model with the real evidence above…</p>`;
+    try {
+      renderDiagnosis(await postJson("/api/triage/scenario-a/diagnose", { reproduction_result: lastReproduction }));
+    } catch (err) {
+      document.getElementById("diagnose-body").innerHTML = `<p class="hint">Diagnosis failed: ${esc(err.message)}. You can retry with the button below.</p>`;
+    }
+
+    btn.textContent = "GENERATING CANDIDATE PATCH… (real model call + isolated compile, ~20-40s)";
+    document.getElementById("candidate-body").innerHTML = `<p class="hint">Asking the model to write the actual fix, then compiling it in an isolated workspace…</p>`;
+    try {
+      renderCandidate(await postJson("/api/triage/scenario-a/generate-candidate-patch", { reproduction_result: lastReproduction }));
+    } catch (err) {
+      document.getElementById("candidate-body").innerHTML = `<p class="hint">Candidate generation failed: ${esc(err.message)}. You can retry with the button below.</p>`;
+    }
+
+    btn.textContent = "RUNNING REGRESSION TESTS… (real Maven run, ~20-40s)";
+    document.getElementById("verify-body").innerHTML = `<p class="hint">Running the real focused regression tests…</p>`;
+    try {
+      renderVerify(await postJson("/api/triage/scenario-a/verify"));
+    } catch (err) {
+      document.getElementById("verify-body").innerHTML = `<p class="hint">Verification failed to run: ${esc(err.message)}. You can retry with the button below.</p>`;
+    }
   } catch (err) {
     document.getElementById("reproduce-body").innerHTML = `<p class="hint">Could not start incident: ${esc(err.message)}</p>`;
   } finally {
     btn.disabled = false;
-    btn.textContent = "START INCIDENT";
+    btn.textContent = "▶ RUN INCIDENT END TO END";
   }
 });
 

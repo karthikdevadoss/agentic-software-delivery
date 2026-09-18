@@ -46,3 +46,15 @@
 .approval-panel button.reject { background: #2a2e3a; color: var(--muted); }
 
 #resolved-body .verdict.fixed { font-size: 1rem; }
+
+/* One-click demo entry point: the single button that runs reproduction,
+   AI diagnosis, candidate-patch generation, and testing in one go —
+   visually the loudest thing on the page, since it's the intended
+   starting point for a first-time viewer. */
+#start-btn.one-click-btn {
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 0.7rem 1.4rem;
+  background: var(--accent);
+}
+#start-btn.one-click-btn:hover { filter: brightness(1.1); }
