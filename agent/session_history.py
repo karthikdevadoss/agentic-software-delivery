@@ -952,6 +952,15 @@ def get_session_detail(session_id: str) -> dict:
 
         engineering_evidence = _workbench_engineering_evidence(conn, session_id) if kind == KIND_WORKBENCH_RUN else None
 
+        # Real feature requested by the Owner (2026-09-18): the incident
+        # story ("40 EUR gone in under 7 minutes") linked here, but this
+        # page only ever showed the WHOLE session's total -- confirmed
+        # confusing. incident_windows is empty for the overwhelming
+        # majority of sessions (nothing is auto-generated); when present,
+        # it's a specific, manually-curated notable sub-window with its
+        # own real token/cost totals, distinct from the summary above.
+        incident_windows = el.get_session_incident_windows(session_id) if kind == KIND_CLAUDE_CODE else []
+
         return {
             **summary,
             "timeline": timeline,
@@ -960,6 +969,7 @@ def get_session_detail(session_id: str) -> dict:
             "quality": quality,
             "comparison": comparison,
             "engineering_evidence": engineering_evidence,
+            "incident_windows": incident_windows,
         }
     finally:
         conn.close()

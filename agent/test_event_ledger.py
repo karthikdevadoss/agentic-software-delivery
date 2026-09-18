@@ -821,5 +821,54 @@ class DevSessionCostSummaryTestCase(unittest.TestCase):
                 el.delete_event_for_test_cleanup(event_id)
 
 
+class SessionIncidentWindowTestCase(unittest.TestCase):
+    """Real feature requested by the Owner (2026-09-18): a session's own
+    detail page only ever showed the WHOLE session's total cost, even when
+    a story specifically highlighted one narrow, notable sub-window (the
+    real 40 EUR incident, gone in under 7 minutes) -- confirmed confusing
+    via his own screenshot when clicking through landed on the 38-hour/
+    $439 total instead. get_session_incident_windows() is a rare,
+    manually-curated per-session record, never auto-generated -- most
+    sessions have zero."""
+
+    def test_no_windows_for_a_session_with_none_is_an_empty_list_not_an_error(self):
+        result = el.get_session_incident_windows(str(uuid.uuid4()))
+        self.assertEqual(result, [])
+
+    def test_a_real_inserted_window_round_trips_with_its_own_distinct_cost(self):
+        import pricing_config
+        session_id = str(uuid.uuid4())
+        event_id = None
+        try:
+            result_insert = el.record_event(
+                "session_incident_window", session_id=session_id, source="claude_code",
+                activity_class=el.ACTIVITY_CLASS_PRODUCT_DEVELOPMENT,
+                provider="anthropic", model="claude-sonnet-5",
+                input_tokens=10, output_tokens=20, cache_read_tokens=30, cache_write_tokens=40,
+                payload={
+                    "window_start_utc": "2026-01-01T00:00:00+00:00", "window_end_utc": "2026-01-01T00:05:00+00:00",
+                    "title": "Test window", "note": "a test note",
+                    "cumulative_cost_before_usd": 1.0, "cumulative_cost_after_usd": 1.5,
+                },
+            )
+            event_id = result_insert["event_id"]
+            windows = el.get_session_incident_windows(session_id)
+            self.assertEqual(len(windows), 1)
+            w = windows[0]
+            self.assertEqual(w["title"], "Test window")
+            self.assertEqual(w["tokens"]["output_tokens"], 20)
+            expected_cost = pricing_config.calculate_cost(
+                "anthropic", "claude-sonnet-5", input_tokens=10, output_tokens=20,
+                cache_read_tokens=30, cache_write_tokens=40,
+            )
+            self.assertEqual(w["cost"]["status"], "ACTUAL")
+            self.assertAlmostEqual(w["cost"]["cost_usd"], expected_cost["total_usd"], places=6)
+            self.assertEqual(w["cumulative_cost_before_usd"], 1.0)
+            self.assertEqual(w["cumulative_cost_after_usd"], 1.5)
+        finally:
+            if event_id:
+                el.delete_event_for_test_cleanup(event_id)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -318,6 +318,31 @@ const FIXTURE_DETAIL = {
     dev_session_economics: { ...DEV_COST_FIXTURE, today: { sessions_total: 0 }, this_week: { sessions_total: 0 }, lifetime: { sessions_total: 0, input_tokens: 0, output_tokens: 0, cost_usd: 0, cost_known_for_all_captured_sessions: true } },
   });
   assertIncludes(devCostEmptyHtml, "no sessions in this window", "a genuinely empty window says so honestly, never a fabricated $0.00");
+
+  // ---- Notable Incident Window(s) (real feature requested 2026-09-18:
+  // clicking through from the 40-EUR-incident story landed on the WHOLE
+  // session's 38hr/$439 total, not the specific ~7-minute window the
+  // story is actually about -- confirmed confusing via the Owner's own
+  // screenshot) ---------------------------------------------------
+  assert(sandbox.renderIncidentWindows([]) === "", "no incident windows renders nothing, not an empty section shell");
+  assert(sandbox.renderIncidentWindows(null) === "", "a null incident_windows value renders nothing, never crashes");
+
+  const INCIDENT_WINDOW_FIXTURE = [{
+    window_start_utc: "2026-09-16T23:23:28+00:00", window_end_utc: "2026-09-16T23:30:21.713000+00:00",
+    title: "The real 40 EUR credit exhaustion (under 7 minutes)",
+    note: "Starts the instant the session switched to unsupervised mode.",
+    cumulative_cost_before_usd: 34.863586, cumulative_cost_after_usd: 44.070075,
+    tokens: { input_tokens: 104, output_tokens: 53733, cache_read_tokens: 28383257, cache_write_tokens: 1196920 },
+    cost: { status: "ACTUAL", cost_usd: 9.206489, pricing_version: "anthropic-2026-09-10-v1" },
+  }];
+  const incidentHtml = sandbox.renderIncidentWindows(INCIDENT_WINDOW_FIXTURE);
+  assertIncludes(incidentHtml, "Notable Incident Window", "the incident-window section has its own distinct heading");
+  assertIncludes(incidentHtml, "The real 40 EUR credit exhaustion", "the real window title is shown");
+  assertIncludes(incidentHtml, "$9.2065", "the window's OWN cost is shown, distinct from the whole-session total");
+  assertIncludes(incidentHtml, "$34.86", "cumulative cost BEFORE the window is shown as context");
+  assertIncludes(incidentHtml, "$44.07", "cumulative cost AFTER the window is shown as context");
+  assertIncludes(incidentHtml, "PARTIAL RECONSTRUCTION", "an incident window is honestly labeled as reconstructed, never presented as a live per-window capture");
+  assertIncludes(incidentHtml, "not the whole session's own total", "the card explicitly disambiguates itself from the whole-session total shown elsewhere on the page");
   assert(sandbox.svgBarChart([]) === "", "svgBarChart with no bars renders nothing, not an empty/broken SVG shell");
 
   console.log(`${passed} passed, ${failures} failed`);

@@ -722,6 +722,71 @@ def delete_event_for_test_cleanup(event_id):
         conn.close()
 
 
+def get_session_incident_windows(session_id):
+    """Real feature requested by the Owner (2026-09-18): a session's own
+    detail page only ever showed the WHOLE session's total cost -- for the
+    real 40 EUR incident, that meant clicking through from the incident
+    story landed on a 38-hour/$439 view, not the specific ~7-minute window
+    the story is actually about, which the Owner correctly flagged as
+    confusing ("i wanted to check details... which is not what i asked").
+
+    Reads event_type='session_incident_window' rows for one session_id --
+    a deliberately rare, manually-curated record (NOT auto-generated per
+    session; most sessions have zero) marking a specific real, notable
+    sub-window worth calling out on its own, with its own token/cost
+    totals distinct from the session-wide model_usage total. Cost is
+    computed here from real captured tokens via pricing_config.py, same
+    as every other real cost figure in this project -- never a second,
+    divergent calculation. backfill_source/evidence_quality are always
+    'historical_incident_analysis'/'reconstructed_from_transcript' for
+    this event type, honestly marking it as a manual reconstruction, not
+    a live per-window capture (no such live capability exists)."""
+    import pricing_config
+    conn = _connect()
+    try:
+        ensure_schema()
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT timestamp_utc, duration_ms, provider, model,
+                       input_tokens, output_tokens, cache_read_tokens, cache_write_tokens,
+                       payload
+                FROM delivery_events
+                WHERE event_type = 'session_incident_window' AND session_id = %s
+                ORDER BY timestamp_utc ASC
+                """,
+                (session_id,),
+            )
+            cols = [d[0] for d in cur.description]
+            rows = [dict(zip(cols, r)) for r in cur.fetchall()]
+    finally:
+        conn.close()
+
+    windows = []
+    for r in rows:
+        cost = pricing_config.calculate_cost(
+            r["provider"] or "anthropic", r["model"], input_tokens=r["input_tokens"] or 0,
+            output_tokens=r["output_tokens"] or 0, cache_read_tokens=r["cache_read_tokens"] or 0,
+            cache_write_tokens=r["cache_write_tokens"] or 0,
+        )
+        payload = r["payload"] or {}
+        windows.append({
+            "window_start_utc": payload.get("window_start_utc"),
+            "window_end_utc": payload.get("window_end_utc"),
+            "title": payload.get("title"),
+            "note": payload.get("note"),
+            "cumulative_cost_before_usd": payload.get("cumulative_cost_before_usd"),
+            "cumulative_cost_after_usd": payload.get("cumulative_cost_after_usd"),
+            "tokens": {
+                "input_tokens": r["input_tokens"], "output_tokens": r["output_tokens"],
+                "cache_read_tokens": r["cache_read_tokens"], "cache_write_tokens": r["cache_write_tokens"],
+            },
+            "cost": ({"status": "ACTUAL", "cost_usd": cost["total_usd"], "pricing_version": cost.get("pricing_version")}
+                      if cost.get("available") else {"status": "COST_UNAVAILABLE", "reason": cost.get("reason")}),
+        })
+    return windows
+
+
 def get_run_events(run_id):
     ensure_schema()
     conn = _connect()

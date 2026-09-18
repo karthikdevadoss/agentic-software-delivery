@@ -660,6 +660,36 @@ function renderComparisonBlock(c) {
   return parts.join("");
 }
 
+// Real feature requested by the Owner (2026-09-18): "i wanted to check
+// details [about the specific 7-minute incident]... which is not what i
+// asked" -- a session's own detail page only ever showed the WHOLE
+// session's total, even when a story linked here specifically to
+// highlight one narrow, notable sub-window. incident_windows is empty
+// for almost every session (nothing auto-generates it); when present,
+// each is its own real token/cost total, honestly labeled as a
+// reconstructed historical analysis, not a live per-window capture.
+function renderIncidentWindows(windows) {
+  if (!windows || !windows.length) return "";
+  const blocks = windows.map(w => {
+    const range = (w.window_start_utc && w.window_end_utc)
+      ? `${berlinTimeLabel(w.window_start_utc)} &rarr; ${berlinTimeLabel(w.window_end_utc)} Europe/Berlin`
+      : "time range not recorded";
+    const cumBefore = w.cumulative_cost_before_usd != null ? fmtUsd(w.cumulative_cost_before_usd) : null;
+    const cumAfter = w.cumulative_cost_after_usd != null ? fmtUsd(w.cumulative_cost_after_usd) : null;
+    return `<div class="incident-window-card">
+      <h3>${esc(w.title || "Notable window")}</h3>
+      <p class="hint">${range} &mdash; PARTIAL RECONSTRUCTION (reconstructed from the session's own transcript, not a live per-window capture)</p>
+      ${w.note ? `<p>${esc(w.note)}</p>` : ""}
+      <div class="kv-row">
+        <span>Tokens (this window only): ${tokenSummary({ status: "EXACT", ...w.tokens })}</span>
+        <span>Cost (this window only): ${costText(w.cost, null)}</span>
+      </div>
+      ${(cumBefore || cumAfter) ? `<p class="hint">Cumulative session spend: ${cumBefore || "unknown"} before this window &rarr; ${cumAfter || "unknown"} after &mdash; this window is a SLICE of the whole session, not the whole session's own total (see "Model Usage, Tokens &amp; Cost" above for that).</p>` : ""}
+    </div>`;
+  }).join("");
+  return section("Notable Incident Window(s)", blocks);
+}
+
 function renderTimelineBlock(timeline) {
   if (!timeline || !timeline.length) return `<p class="hint">No timeline events captured.</p>`;
   const rows = timeline.slice(0, 200).map(t =>
@@ -705,6 +735,7 @@ async function renderSessionDetail(sessionId) {
       <p><strong>Cost:</strong> ${costText(d.cost, d.cost_display_label)}</p>
       <p class="hint">Model: ${esc(d.model || "not recorded for this session kind")}</p>
     `)}
+    ${renderIncidentWindows(d.incident_windows)}
     ${section("Value", `
       <p><strong>Technical value:</strong> ${d.value.technical_value.verified_changes_completed} verified change(s), ${d.value.technical_value.failures} failure(s)</p>
       <p><strong>Learning value:</strong> ${d.value.learning_value.knowledge_candidates_created} knowledge candidate(s) linked to this session</p>
