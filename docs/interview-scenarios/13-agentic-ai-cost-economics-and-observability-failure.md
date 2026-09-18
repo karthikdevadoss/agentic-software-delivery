@@ -1,11 +1,13 @@
-# Interview Scenario: Agentic AI Cost Economics — A Real €40 Overnight Incident, and Why the Observability Meant to Prevent It Had Silently Failed
+# Interview Scenario: A Real €40 Credit, Gone in Under 7 Minutes — Forensically Reconstructing an Agentic AI Cost Incident, and Fixing the Observability That Failed to Show It
 
-Derived from a real incident (2026-09-16 → 2026-09-18): a single Claude Code
-session accumulated an estimated $439.87-at-API-list-price token bill (real
-€40 pay-as-you-go credit actually burned before switching to a Max plan),
-root-caused via direct forensic analysis of the session's own transcript
-files, and two real, previously-undiscovered defects found and fixed in the
-telemetry system that was supposed to make this kind of thing visible.
+Derived from a real incident (2026-09-16): a real pay-as-you-go API credit
+top-up (~€40) was fully exhausted in **under 7 minutes**, at a precisely
+identifiable moment inside a much longer Claude Code session — reconstructed
+to the exact second via direct forensic parsing of the session's own
+transcript files, not estimation. The same investigation also found and
+fixed two real, previously-undiscovered defects in the telemetry system that
+was supposed to make this kind of thing visible on its own, without needing
+manual forensics at all.
 
 ## Business Why
 
@@ -100,33 +102,51 @@ files (`~/.claude/projects/<project>/<session>.jsonl` for the main
 conversation, plus a `<session>/subagents/*.jsonl` per spawned subagent —
 each carries real, provider-returned `usage` objects per assistant turn:
 `input_tokens`, `output_tokens`, `cache_creation_input_tokens`,
-`cache_read_input_tokens`).
+`cache_read_input_tokens`). The method: replay every assistant turn's
+`usage` object in timestamp order, computing a running cumulative cost at
+Anthropic's list pricing for the model in use ($2/$10/$2.50/$0.20 per MTok
+for input/output/cache-write/cache-read) — then find the exact moment that
+running total crosses a real, known dollar boundary.
 
-Key findings from parsing ~3,540 assistant turns across a 38-hour, 4-times-
-resumed session:
+**The exact boundary, to the minute:**
 
-- **Total: 3.05M output tokens, 16.8M cache-write tokens, 1.84 BILLION
-  cache-read tokens** — at Anthropic's list pricing for the model in use
-  ($2/$10/$2.50/$0.20 per MTok for input/output/cache-write/cache-read),
-  that totals **$439.87**.
-- **Per-hour bucketing** (grouping every turn's timestamp to its UTC hour
-  and summing cost) pinpointed a single hour at ~$49 — the almost-certain
-  match for the Owner's own report of losing a real €40 credit top-up "in
-  an hour."
-- **Subagent attribution**: each subagent spawned via the `Agent`/`Task`
-  tool gets its *own* transcript file, not inlined into the parent's
-  `isSidechain` field as might be assumed — so accurately attributing cost
-  to "the two parallel background forks" required locating and separately
-  parsing 5 distinct subagent transcript files (found via each one's
-  `.meta.json` sidecar, which records `agentType`, `description`, and for
-  `fork`-type agents, `worktreeBranch`). Those 5 subagents totaled only
-  ~$36 of the $440 — the dominant cost was the *main* thread's own 38-hour,
-  never-compacted history, not the subagent work itself.
-- **The real trigger event**: two `fork`-type subagents were launched in
-  parallel at 01:13–01:14 AM specifically to "get more done while the Owner
-  slept" (one UI/frontend work, one backend cost-accounting work in an
-  isolated git worktree) — both were cut off after ~20 minutes by a real
-  rate/spend limit, which is what forced an emergency plan-tier switch.
+- **23:05 UTC** — an interactive, supervised exchange: *"I want you to act
+  as my technical partner here, not just as an implementation agent...
+  do not edit anything yet."*
+- **23:23:28 UTC** — the mode switch: *"OVERNIGHT OWNER-AUTHORIZED
+  ENGINEERING + AI-INTELLIGENCE PASS... I am going offline... Do NOT stop
+  to ask me for another plan approval, routine engineering decisions..."*
+  — removing the one thing (a human checkpoint) that could have caught
+  what happened next.
+- **23:25:49 UTC** — cumulative cost crosses $40. **23:30:21 UTC** —
+  crosses $44 (~€40.7 at the day's conversion rate). **The real €40 credit
+  was gone in under 7 minutes of unsupervised operation.**
+
+**Why it happened that fast, mechanically — not "a runaway loop," something
+more mundane and more instructive:** by this point the session already had
+~5-6 hours of accumulated conversation history, so *every single turn* —
+a plain `Bash` command, a `Read`, an `Edit` — was re-sending roughly
+550,000-590,000 cache-read tokens just to maintain context, before any new
+work happened. At $0.20/MTok that's ~$0.11-0.18 *per turn* as pure
+overhead. A per-minute replay of the exact window shows 5-15 turns firing
+per minute (Bash, Read, Edit, and live browser automation via a
+Claude-in-Chrome MCP integration) with nothing pausing it. At roughly
+$1-3/minute sustained, a ~€40 credit does not last long. No single action
+was expensive; the combination of *already-large context* × *high turn
+frequency* × *zero pause* was.
+
+**Zooming out to the full session** (it continued long after this, now
+running against Max plan quota rather than further real charges): across
+~3,540 assistant turns over 38 hours and 4 resumes, total usage was 3.05M
+output tokens, 16.8M cache-write tokens, and 1.84 BILLION cache-read
+tokens — $439.87 at raw list price if the *entire* session had been billed
+per-token, which it was not. Five subagents (found via each session's
+`<session>/subagents/*.jsonl` + `.meta.json` sidecar, since Claude Code
+does not inline subagent turns into the parent transcript) accounted for
+only ~$36 of that total; the dominant driver throughout was the main
+thread's own ever-growing, never-compacted context, the same mechanism
+identified in the precise 7-minute window above — just sustained for much
+longer.
 
 ## Failure Cases (real, observed)
 
@@ -177,16 +197,33 @@ forever). Both proven against the real fix, not mocked around it.
   moment a real backlog needs draining — fixed to reuse one connection for
   the whole batch, with a one-row fresh-connection retry as a fallback if
   the shared connection itself drops mid-batch.
-- The next real gap (proposed, pending review, not yet built): per-task
-  granularity is still missing — today's `model_usage` event is one row
-  per whole Claude Code session, not per meaningful sub-task, so "why did
-  this cost what it cost" for a normal-length session still requires this
-  same manual transcript-forensics process rather than a live answer.
+- Closed the same night: per-subagent cost attribution. `claude_code_hook.py`'s
+  `SessionEnd` handler now automatically walks `<session>/subagents/*.jsonl`
+  (the exact convention this investigation discovered by hand) and records
+  one `claude_code_subagent_usage` event per spawned subagent — a future
+  incident gets this attribution automatically, not via manual forensics.
+- Also closed: the Usage page's headline "Lifetime AI spend" figure covered
+  Workbench pipeline runs only, with no label saying so — sitting next to
+  this incident's real $439.87 Claude Code development cost, it looked
+  directly contradictory. Fixed with an explicitly-scoped, separate
+  "Claude Code Development Cost" panel (`get_dev_session_cost_summary()`)
+  shown alongside, never merged into, the Workbench number.
+- Still open: cost is only visible at whole-session granularity for the
+  *main* thread (subagents are now itemized, the main thread is not) — a
+  future improvement would checkpoint usage incrementally (e.g. on `Stop`)
+  rather than only at `SessionEnd`, so a still-running multi-hour session
+  is never a total blind spot.
 
 ## Interview Questions This Answers
 
 - "Tell me about a real production incident involving cost/observability
   for an AI system — how did you find the actual root cause?"
+- "Given a known real-world boundary (a credit that hit zero) but no
+  application-level log for it, how do you locate the exact moment it
+  happened using only lower-level data you do have?" (Answer: replay the
+  real per-event usage data in order, compute a running cumulative value,
+  and find where it crosses the known threshold — turning an approximate
+  memory of 'it happened sometime that night' into a to-the-second finding.)
 - "What's the difference between a system that's *functionally correct*
   and one that's *operationally reliable* — give a concrete example."
 - "Explain why prompt caching can still lead to a large total bill despite

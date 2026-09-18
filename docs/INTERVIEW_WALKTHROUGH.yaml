@@ -78,7 +78,7 @@ paths:
       end-to-end run surfaced.
     start_link: "/workbench"
     capability_ids: [agentic-ai-delivery-pipeline, rag-mcp-embeddings, independent-qa-evaluator, test-impact-analysis]
-    story_ids: [agentic-delivery-pipeline, testing-tia-verification]
+    story_ids: [agentic-delivery-pipeline, testing-tia-verification, agentic-ai-cost-incident]
 
 # Featured stories (featured: true) get the full structured breakdown.
 # All others are real too -- indexed with a one-line summary and a link to
@@ -267,3 +267,31 @@ stories:
     title: "Test Impact Analysis & Selective Regression -- Explainable, Fail-Closed"
     one_line: "A deliberately risk-classified subset of tests per change, with a fail-closed default (full regression) for anything unrecognized -- an explicit design intent, with its own open gaps honestly tracked, not a claim of perfect coverage."
     doc_path: "docs/interview-scenarios/10-testing-tia-verification.md"
+
+  - id: agentic-ai-cost-incident
+    path_id: ai-assisted-delivery
+    featured: true
+    title: "A Real EUR40 Credit, Gone in Under 7 Minutes -- Forensically Reconstructing an Agentic AI Cost Incident"
+    doc_path: "docs/interview-scenarios/13-agentic-ai-cost-economics-and-observability-failure.md"
+    live_demo:
+      label: "See this exact incident's real, live-computed cost on production"
+      url: "https://agentic-platform-backend-production.up.railway.app/usage/session/b5171aab-65ba-4ef4-a49b-cab99301d614"
+    business_problem: "Agentic coding tools charge by token, and prompt caching makes a session's per-message cost look cheap while its aggregate cost over hours can be enormous -- with no live, in-context visibility into which activity is actually driving spend."
+    engineering_requirement: "Given only a known real-world fact (a EUR40 credit hit zero, no application-level log for the moment it happened), find the exact point it occurred using lower-level data, then fix the observability gap that made this necessary in the first place."
+    design_decision: "Replay every real assistant turn's provider-returned usage object in timestamp order, compute a running cumulative cost at list pricing, and find where that running total crosses the known dollar threshold -- rather than accepting an approximate 'sometime that hour' answer."
+    implementation: "Found the credit crossed $40 at 23:25:49 UTC and $44 (~EUR40.7) at 23:30:21 UTC -- under 7 minutes after the Owner's own prompt switched the session from supervised to 'go offline, do not ask me anything.' Root mechanism: ~5-6 hours of accumulated context meant every turn re-sent ~550-590K cache-read tokens before any new work happened, and 5-15 turns/minute with no pause turned that per-turn overhead into a sustained $1-3/minute burn."
+    runtime_details: "Separately found and fixed two real, independent telemetry bugs discovered during the same investigation: a sync lock with no staleness check (7 days of silently undelivered telemetry), and a non-reentrant threading.Lock deadlocking every real background sync -- see docs/interview-scenarios/13-... for the full technical writeup."
+    testing: "3 new regression tests proving the exact deadlock/staleness bugs are fixed (a live repro script confirmed the hang before, and the fix, before any test was trusted); the recomputed cost ($439.866923) was independently verified to exactly match the same figure computed from raw transcript files by hand."
+    failure_mode: "A telemetry system can be 100% functionally correct at capture time while completely broken at delivery time -- these are separable failure modes, proven separately, not inferred from each other."
+    verification: "Deployed and independently curl-verified live against production: the real incident session's cost renders correctly on its own Usage page, and a separate 'Claude Code Development Cost' panel now exists so this class of spend is never silently absent from the platform's own cost accounting again."
+    at_scale: "The same replay-and-find-the-crossing-point technique generalizes to any 'when did X happen' question where you have granular event data but no direct log of the boundary event itself -- applicable well beyond cost incidents (rate limit boundaries, quota exhaustion, gradual resource leaks)."
+    real_evidence:
+      - {label: "Full write-up", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/interview-scenarios/13-agentic-ai-cost-economics-and-observability-failure.md"}
+      - {label: "The fixes", source_paths: ["agent/event_ledger.py", "agent/claude_code_hook.py", "agent/session_history.py"]}
+    how_to_explain:
+      why: "Unbounded context growth combined with high-frequency unsupervised tool-calling can turn a 'cheap per-token' price into a fast real-money burn -- and if the telemetry meant to show this silently breaks, nobody finds out until it's already happened."
+      what: "A real EUR40 credit was exhausted in under 7 minutes; the observability system meant to make this visible had two independent, silent failures of its own."
+      how: "Replayed real per-turn usage data in timestamp order to find the exact crossing point, then root-caused the telemetry gap with a live repro script before trusting any fix."
+      tradeoff: "Per-subagent cost attribution now happens automatically at SessionEnd rather than in real time at each subagent's own stop -- Claude Code's hook payload doesn't expose which subagent just finished, so a reliable, once-per-session sweep beats a fragile live heuristic."
+      failure: "Without this fix, a future incident of the same shape would again be invisible until someone went looking by hand."
+      verification: "Independently curl-verified against live production after deploy -- the real session's real cost, not a claim."
