@@ -63,6 +63,7 @@ import triage_execution
 import triage_promotion
 import event_ledger
 import execution_tools
+import ai_intelligence
 import learn_pdf
 import learn_tree
 import metrics
@@ -1472,6 +1473,21 @@ async def get_learn_tree_data(request: Request):
     return JSONResponse(learn_tree.load_tree())
 
 
+async def get_ai_intelligence_dates(request: Request):
+    """Real committed dates only -- an empty list is a truthful "nothing
+    published yet", not an error, since the daily routine may not have
+    run/pushed its first public file yet."""
+    return JSONResponse({"dates": ai_intelligence.list_dates()})
+
+
+async def get_ai_intelligence_day(request: Request):
+    date = request.path_params.get("date", "")
+    markdown = ai_intelligence.read_day(date)
+    if markdown is None:
+        return JSONResponse({"error": f"No public AI-intelligence report for {date!r}"}, status_code=404)
+    return JSONResponse({"date": date, "sections": ai_intelligence.parse_sections(markdown)})
+
+
 async def get_learn_book_pdf(request: Request):
     try:
         pdf_bytes, generated_at, is_fresh = learn_pdf.get_or_generate_pdf()
@@ -1992,6 +2008,8 @@ routes = [
     Route("/api/runs/{run_id}/decide", decide, methods=["POST"]),
     Route("/api/learn/tree", get_learn_tree_data, methods=["GET"]),
     Route("/api/learn/book.pdf", get_learn_book_pdf, methods=["GET"]),
+    Route("/api/ai-intelligence/dates", get_ai_intelligence_dates, methods=["GET"]),
+    Route("/api/ai-intelligence/daily/{date}", get_ai_intelligence_day, methods=["GET"]),
     Route("/api/sessions/history", get_session_history, methods=["GET"]),
     Route("/api/sessions/history/{session_id}", get_session_detail, methods=["GET"]),
     Route("/api/showcase/{slug}", get_showcase_data, methods=["GET"]),

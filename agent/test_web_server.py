@@ -14,12 +14,14 @@ Run: python agent/test_web_server.py
 import asyncio
 import json
 import re
+import shutil
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
 
+import ai_intelligence
 import demo_catalogue
 import demo_execution
 import web_server as ws
@@ -1240,6 +1242,57 @@ class LearnRecursiveRouteTestCase(unittest.IsolatedAsyncioTestCase):
         body = json.loads(response.body)
         self.assertIn("domains", body)
         self.assertGreater(len(body["domains"]), 0)
+
+
+class AiIntelligenceRouteTestCase(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        self._orig_dir = ai_intelligence.DAILY_DIR
+        self._tmp_dir = Path(__file__).resolve().parent / "_tmp_ai_intelligence_route_test"
+        if self._tmp_dir.exists():
+            shutil.rmtree(self._tmp_dir)
+        self._tmp_dir.mkdir(parents=True)
+        ai_intelligence.DAILY_DIR = self._tmp_dir
+
+    def tearDown(self):
+        ai_intelligence.DAILY_DIR = self._orig_dir
+        if self._tmp_dir.exists():
+            shutil.rmtree(self._tmp_dir)
+
+    def test_routes_are_registered(self):
+        routes = {r.path: r for r in ws.routes if hasattr(r, "path")}
+        self.assertIn("/api/ai-intelligence/dates", routes)
+        self.assertIn("/api/ai-intelligence/daily/{date}", routes)
+
+    async def test_dates_route_returns_empty_list_honestly_when_nothing_published(self):
+        response = await ws.get_ai_intelligence_dates(mock.Mock())
+        body = json.loads(response.body)
+        self.assertEqual(body["dates"], [])
+
+    async def test_dates_route_returns_real_committed_dates(self):
+        (self._tmp_dir / "2026-09-15.md").write_text("## X\nbody", encoding="utf-8")
+        response = await ws.get_ai_intelligence_dates(mock.Mock())
+        body = json.loads(response.body)
+        self.assertEqual(body["dates"], ["2026-09-15"])
+
+    async def test_day_route_404s_for_a_date_with_no_real_file(self):
+        response = await ws.get_ai_intelligence_day(mock.Mock(path_params={"date": "2020-01-01"}))
+        self.assertEqual(response.status_code, 404)
+
+    async def test_day_route_returns_real_parsed_sections(self):
+        (self._tmp_dir / "2026-09-15.md").write_text(
+            "## Important Changes\nsomething real happened\n", encoding="utf-8"
+        )
+        response = await ws.get_ai_intelligence_day(mock.Mock(path_params={"date": "2026-09-15"}))
+        body = json.loads(response.body)
+        self.assertEqual(body["date"], "2026-09-15")
+        self.assertEqual(len(body["sections"]), 1)
+        self.assertEqual(body["sections"][0]["heading"], "Important Changes")
+
+    async def test_day_route_rejects_path_traversal_in_date_param(self):
+        response = await ws.get_ai_intelligence_day(
+            mock.Mock(path_params={"date": "../../../../etc/passwd"})
+        )
+        self.assertEqual(response.status_code, 404)
 
 
 class LearnPdfRouteTestCase(unittest.IsolatedAsyncioTestCase):
