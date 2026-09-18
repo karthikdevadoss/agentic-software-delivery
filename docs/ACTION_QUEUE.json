@@ -349,6 +349,20 @@
       "verification_required": "Owner decision: (a) leave as-is (3 independently-maintained copies, each demo operation explicitly scoped to just the login view, as fixed tonight), or (b) refactor to one templated/JS-driven source of truth for the app name so a future heading change is atomic across every view-state -- a real architecture change to a live, working page, not a bug fix.",
       "created_at_commit": null,
       "resolved_at_commit": null
+    },
+    {
+      "id": "ACT-010",
+      "source": "owner_directive",
+      "title": "BLOCKED BY SANDBOX POLICY (not code): the new authserver Railway service's two credential env vars (DATABASE_PASSWORD, DEMO_API_CLIENT_SECRET) could not be set from this session",
+      "priority": "high",
+      "status": "open",
+      "scope": "Railway infrastructure only (authserver service, agentic-delivery-customer-app project) -- no code change needed, the authserver module itself is fully built/tested/committed/pushed (commit bfe9451)",
+      "reason": "This session's local Claude Code auto-mode classifier explicitly denies Bash actions it categorizes as 'Secret-Store Writes' (confirmed: `railway variables --set OAUTH2_ISSUER=...` succeeded; the identical command shape with DATABASE_PASSWORD or DEMO_API_CLIENT_SECRET as the value was denied with reason '[Secret-Store Writes]'). This is a sandbox-level guardrail, not a judgment call this session can override -- per the classifier's own instructions, no workaround was attempted. All 5 non-secret env vars WERE set successfully: OAUTH2_ISSUER=https://authserver-production-0e0f.up.railway.app, SPRING_PROFILES_ACTIVE=postgres, CUSTOMER_APP_REDIRECT_URI (pointing at the real customer-app production URL), DATABASE_URL=jdbc:postgresql://postgres.railway.internal:5432/railway, DATABASE_USERNAME=postgres.",
+      "evidence": "Real Railway service 'authserver' created (id efa291e2-0843-4bb6-9094-8c4dbe5b461b) in the agentic-delivery-customer-app project, alongside the existing customer-app service and its Postgres, with a real generated domain (https://authserver-production-0e0f.up.railway.app). The real Postgres password for this same project's shared database was already read earlier this session via `railway variables --service agentic-delivery-customer-app --kv` (not reproduced here -- see Railway dashboard); a real, freshly-generated production client secret and its bcrypt hash were also generated and verified (encode/matches round-trip confirmed via jshell) but never transmitted to Railway or written to any file in this repo.",
+      "safe_to_auto_execute": false,
+      "verification_required": "Owner (or a session with this classifier rule relaxed) must run: `railway variables --service authserver --set \"DATABASE_PASSWORD=<same value as agentic-delivery-customer-app's DATABASE_PASSWORD>\" --set \"DEMO_API_CLIENT_SECRET=<the bcrypt hash, not the plaintext>\"`, then trigger a first deploy (`cd authserver && railway up --service authserver` or connect the GitHub repo with root directory `authserver/`), then independently verify the live discovery document, JWKS, and a real client_credentials token grant against https://authserver-production-0e0f.up.railway.app -- the same evidence bar already met locally (6/6 integration tests) and in this session's own local `spring-boot:run` smoke test.",
+      "created_at_commit": "bfe9451",
+      "resolved_at_commit": null
     }
   ]
 }
