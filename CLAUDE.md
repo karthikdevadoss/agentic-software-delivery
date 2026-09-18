@@ -104,6 +104,38 @@ which numbers, which incidents) lives outside this public repository.
   explicitly reopens feature work. Check docs/PROJECT_STATE.json's
   `next_phase`/`next_action` for whether this is currently in effect.
 
+## Backlog and sizing discipline (Phase 1, 2026-09-18)
+Adapted from Scrum's core idea for a team of one AI executor and one human
+Product Owner/Tech Lead -- not a literal copy of human-team ceremonies (no
+Daily Scrum, no fixed sprint clock, no team-culture coaching: those exist
+to coordinate *multiple* people, which does not apply here). See
+docs/BACKLOG.json for the full rationale and docs/interview-scenarios/ for
+the incident that motivated it.
+
+- **No non-trivial task starts without a sized backlog entry.** Before
+  beginning real work (not a trivial in-scope fix already covered by the
+  Proactive action policy above), add or update an item in
+  docs/BACKLOG.json with a description and a **size**: SMALL / MEDIUM /
+  LARGE / XLARGE (the current official Scrum Guide term -- "estimate" was
+  removed in the 2020 revision). Sizing is Claude's own responsibility,
+  done before the work, using the rubric in docs/BACKLOG.json's
+  `_sizing_rubric` -- never skipped, never assigned after the fact to
+  match how it went.
+- **A "sprint" here is one sized item, start to finish** -- not a fixed
+  clock. There is exactly one executor working sequentially, so there is
+  no multi-person sync problem a fixed timebox exists to solve.
+- **Ad-hoc work still gets sized**, just at the moment it's requested
+  rather than planned days ahead -- "ad-hoc" changes when something is
+  planned, never whether it's sized.
+- **Plan changes are the Owner's prerogative, always** -- if a backlog
+  item is abandoned or paused mid-way, mark it `descoped` with a reason;
+  never let it silently vanish or count as a bad size prediction later.
+- **Size vs. actual comparison exists (agent/backlog.py) but retro is not
+  yet automated** -- this is a deliberate Phase 1 scope limit: prove the
+  simple version adds real value before building a scheduled retro
+  subagent, to avoid the measurement system itself becoming the waste it
+  exists to prevent.
+
 ## Feedback discipline
 For every meaningful run: compare expected vs. actual, classify any gap
 (implementation bug / test gap / requirement ambiguity / architecture /

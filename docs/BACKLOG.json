@@ -1,0 +1,40 @@
+{
+  "_purpose": "The Product Backlog + Sprint Backlog (Scrum-inspired, adapted for AI-executed work -- see docs/interview-scenarios/ and the 2026-09-18 overnight design conversation for the full reasoning). Every non-trivial task Claude does gets an entry here, SIZED before work starts (Small/Medium/Large/XLarge -- the current official Scrum term is 'size', not 'estimate' -- Claude, the one doing the work, is responsible for sizing it, per the 2020 Scrum Guide's own principle). 'status' distinguishes Product Backlog (backlog) from Sprint Backlog (active) from done work. A 'sprint' here is NOT a fixed timebox -- it's the variable-length span of one sized item, start to finish (see design rationale below). This is a lean, unscheduled first version deliberately: no automated retro subagent yet -- prove size-vs-actual comparison works manually first, per the Owner's own 'don't build the waste-risk before proving the simple version' call.",
+  "_size_values": [
+    "SMALL",
+    "MEDIUM",
+    "LARGE",
+    "XLARGE"
+  ],
+  "_status_values": [
+    "backlog",
+    "active",
+    "done",
+    "descoped"
+  ],
+  "_sizing_rubric": {
+    "SMALL": "One clear sub-ask, one file or a tightly-scoped handful, follows an existing pattern in this codebase, low ambiguity.",
+    "MEDIUM": "A few distinct sub-asks or files, may touch 2 layers (e.g. backend + frontend), mostly follows existing patterns with some new logic.",
+    "LARGE": "Multiple sub-asks/files/subsystems, meaningful new logic or design decisions, real ambiguity requiring investigation before implementation.",
+    "XLARGE": "Cross-cutting, genuinely novel (no existing pattern to extend), high ambiguity, likely spans multiple work sessions."
+  },
+  "_design_rationale": "Sized item = the natural 'sprint' unit, not a fixed clock, because there is exactly one executor working sequentially (no multi-person sync problem a fixed timebox exists to solve). Retro/correction is a SEPARATE, later phase -- deliberately not built yet, to avoid the exact waste this system exists to prevent (an elaborate measurement system costing more than it saves). This file alone, plus the sizing discipline, is Phase 1.",
+  "items": [
+    {
+      "id": "BL-001",
+      "title": "Build Phase 1 of the AI-Scrum-Master system: backlog file + sizing rule + size-vs-actual comparison helper",
+      "description": "Create docs/BACKLOG.json (this file), add the sizing gate rule to CLAUDE.md, and write a small helper (agent/backlog.py) that pulls a backlog item's real cost/time from the event ledger via its linked session_ids, for manual size-vs-actual review. Deliberately excludes the scheduled retro subagent and the activity/task-category breakdown (both deferred to a later phase, per the Owner's explicit 'prove the lean version first' instruction).",
+      "size": "MEDIUM",
+      "size_rationale": "Touches 3 files (this backlog file, CLAUDE.md, one new small Python module), follows an existing pattern closely (session_history.py's own query style), but is genuinely new logic (no existing 'backlog' concept to extend) -- not SMALL, but bounded enough not to be LARGE.",
+      "status": "done",
+      "parent_id": null,
+      "session_ids": [
+        "4458375d-aeb5-4b41-bedb-7600143fb83c"
+      ],
+      "commit_shas": [],
+      "created_at": "2026-09-18T19:45:00+00:00",
+      "started_at": "2026-09-18T19:45:00+00:00",
+      "completed_at": "2026-09-18T20:15:00+00:00"
+    }
+  ]
+}
