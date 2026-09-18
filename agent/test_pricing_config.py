@@ -62,5 +62,39 @@ class CalculateCostTestCase(unittest.TestCase):
         self.assertNotIn("total_usd", result)
 
 
+class VersionedPricingHistoryTestCase(unittest.TestCase):
+    """A future price change must never silently rewrite a past run's
+    cost -- each entry is dated, and as_of selects the rate that actually
+    applied on a given date, never today's rate mislabeled with an old
+    version string."""
+
+    def test_as_of_none_returns_the_current_latest_entry(self):
+        result = pricing_config.calculate_cost(
+            "anthropic", "claude-sonnet-5", input_tokens=1_000_000,
+        )
+        self.assertEqual(result["pricing_version"], pricing_config.PRICING_VERSION)
+        self.assertEqual(result["pricing_verified_date"], pricing_config.PRICING_VERIFIED_DATE)
+
+    def test_as_of_a_date_before_any_known_entry_is_unavailable_not_a_wrong_guess(self):
+        """A run from before this model's earliest verified pricing entry
+        existed must never be silently priced using a rate that didn't
+        apply yet."""
+        result = pricing_config.calculate_cost(
+            "anthropic", "claude-sonnet-5", input_tokens=1000, as_of="2020-01-01",
+        )
+        self.assertFalse(result["available"])
+        self.assertIn("reason", result)
+
+    def test_as_of_on_or_after_an_entrys_effective_date_selects_it(self):
+        pricing = pricing_config.get_pricing("anthropic", "claude-sonnet-5", as_of="2026-09-10")
+        self.assertIsNotNone(pricing)
+        self.assertEqual(pricing["input"], 2.00 / 1_000_000)
+
+    def test_get_pricing_for_a_real_model_still_returns_all_rate_keys(self):
+        pricing = pricing_config.get_pricing("anthropic", "claude-sonnet-5")
+        for key in ("input", "output", "cache_write", "cache_read"):
+            self.assertIn(key, pricing)
+
+
 if __name__ == "__main__":
     unittest.main()

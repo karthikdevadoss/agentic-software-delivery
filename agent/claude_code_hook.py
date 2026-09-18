@@ -12,17 +12,31 @@ CRITICAL invariants:
      network I/O in the synchronous path — plus a best-effort, detached,
      non-blocking background sync trigger. A hook that blocks on a
      TCP-proxied Postgres connection would visibly slow down every tool
-     call in every future Claude Code session in this repo.
+     call in every future Claude Code session in this repo. DELIBERATE
+     EXCEPTION (Owner directive, task-level AI cost accounting,
+     2026-09-18): SessionEnd specifically also does a local, streaming
+     read of the session's own transcript file to extract real token
+     usage (see _extract_usage_from_transcript below) — a one-time cost
+     paid once per whole session, not per tool call, so it does not
+     compound the way a per-PreToolUse cost would; still local disk I/O
+     only, never network.
   2. MUST NEVER raise/exit non-zero in a way that blocks Claude Code.
      SessionStart/SessionEnd cannot block by design, but PreToolUse/
      PermissionRequest CAN (a non-zero exit can deny a tool call) — so
      every code path here is wrapped to fail safe (exit 0) rather than
      accidentally deny a real, legitimate action because telemetry broke.
-  3. Never captures hidden chain-of-thought — the hook JSON Claude Code
-     provides on stdin does not expose it (verified: no such field exists
-     in the installed binary's own hook payload construction), and this
-     script does not read transcript_path's file contents, only records
-     its path for reference.
+  3. AMENDED (2026-09-18): never captures hidden chain-of-thought or any
+     message CONTENT/text — the hook JSON Claude Code provides on stdin
+     does not expose chain-of-thought (verified: no such field exists in
+     the installed binary's own hook payload construction), and for
+     transcript_path specifically, this script reads ONLY each recorded
+     message's `usage` object (real, provider-returned token counts —
+     structurally the same category of fact as an HTTP response's
+     Content-Length header, not the message's own text) — it never reads,
+     stores, or logs any message's `content`/text field. This distinction
+     is enforced in code, not just in this comment: see
+     _extract_usage_from_transcript's own docstring and the assertion in
+     its test coverage that content is never touched.
 
 Hook JSON field names (session_id, hook_event_name, cwd, tool_name,
 tool_input, tool_response, prompt, transcript_path, permission_mode,
@@ -77,6 +91,66 @@ def _bounded(value, limit=MAX_TEXT_CHARS):
     if len(text) <= limit:
         return text
     return text[:limit] + f"...[truncated, {len(text)} chars total]"
+
+
+def _extract_usage_from_transcript(transcript_path):
+    """Streams the session's own transcript JSONL line by line, reading
+    ONLY each assistant message's `usage` object (real, provider-returned
+    token counts) and `model` field — NEVER `content`/text, on any line,
+    for any reason. Returns a summed-usage dict, or None if the file is
+    missing/unreadable/contains no usage data (never a fabricated zero).
+
+    Each transcript line's top-level shape (verified directly against a
+    real transcript file, not assumed from documentation):
+      {"type": "assistant", "message": {"role": "assistant", "model": ...,
+       "usage": {"input_tokens": ..., "output_tokens": ...,
+                 "cache_creation_input_tokens": ...,
+                 "cache_read_input_tokens": ...,
+                 "output_tokens_details": {"thinking_tokens": ...}, ...},
+       "content": [...]}, ...}
+    Only `message.usage` and `message.model` are ever accessed below —
+    `message.content` is never read, copied, or referenced, by design."""
+    if not transcript_path:
+        return None
+    path = Path(transcript_path)
+    if not path.exists():
+        return None
+
+    totals = {
+        "input_tokens": 0, "output_tokens": 0,
+        "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0,
+        "message_count": 0,
+    }
+    model = None
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    obj = json.loads(line)
+                except (json.JSONDecodeError, ValueError):
+                    continue
+                if obj.get("type") != "assistant":
+                    continue
+                message = obj.get("message") or {}
+                usage = message.get("usage")
+                if not usage:
+                    continue
+                totals["input_tokens"] += usage.get("input_tokens") or 0
+                totals["output_tokens"] += usage.get("output_tokens") or 0
+                totals["cache_creation_input_tokens"] += usage.get("cache_creation_input_tokens") or 0
+                totals["cache_read_input_tokens"] += usage.get("cache_read_input_tokens") or 0
+                totals["message_count"] += 1
+                model = message.get("model") or model
+    except OSError:
+        return None
+
+    if totals["message_count"] == 0:
+        return None
+    totals["model"] = model
+    return totals
 
 
 def _notify_async(title, message):
@@ -143,6 +217,26 @@ def main():
             status=hook_event,
             payload=event_payload,
         )
+
+        if hook_event == "SessionEnd":
+            usage = _extract_usage_from_transcript(payload.get("transcript_path"))
+            if usage is not None:
+                event_ledger.spool_only(
+                    "model_usage",
+                    source="claude_code",
+                    activity_class=event_ledger.ACTIVITY_CLASS_PRODUCT_DEVELOPMENT,
+                    session_id=payload.get("session_id"),
+                    actor_type="ai",
+                    provider="anthropic",
+                    model=usage.get("model"),
+                    input_tokens=usage["input_tokens"],
+                    output_tokens=usage["output_tokens"],
+                    cache_write_tokens=usage["cache_creation_input_tokens"],
+                    cache_read_tokens=usage["cache_read_input_tokens"],
+                    status="SessionEnd",
+                    payload={"real_assistant_message_count": usage["message_count"]},
+                )
+
         event_ledger.trigger_background_sync()
     except Exception:  # noqa: BLE001 - telemetry must never break Claude Code itself
         pass

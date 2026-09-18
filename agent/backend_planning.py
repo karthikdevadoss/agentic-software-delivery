@@ -256,6 +256,18 @@ def analyze_with_llm(requirement: str, rag_context: RagContext, api_key: str | N
             "model_called": False,
         }
 
+    # AEQ-028 (see reasoning_gateway.py's identical comment/fix): whether
+    # THIS call goes through the real Anthropic client is decided here,
+    # before create_fn is reassigned below -- an injected create_fn is,
+    # per this function's own docstring ("injectable so the automated
+    # test suite never makes a real, billed Anthropic API call"), always
+    # a test double. Usage must only ever be recorded for a real call:
+    # metrics.record_model_usage() bridges into the real, shared,
+    # durable production event ledger whenever web_server has been
+    # imported anywhere in the current process, which a full
+    # `python -m unittest discover` run does incidentally regardless of
+    # which test file actually calls this function.
+    real_client_call = create_fn is None
     if create_fn is None:
         api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
         if not api_key:
@@ -275,7 +287,7 @@ def analyze_with_llm(requirement: str, rag_context: RagContext, api_key: str | N
     )
 
     usage = getattr(response, "usage", None)
-    if usage is not None:
+    if usage is not None and real_client_call:
         metrics.record_model_usage(
             provider="anthropic", model="claude-sonnet-5",
             input_tokens=usage.input_tokens, output_tokens=usage.output_tokens,
