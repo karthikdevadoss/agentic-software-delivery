@@ -289,7 +289,10 @@ def _record_ledger_event(run: "Run", internal_type: str, data: dict) -> None:
     'Event Ledger (live)' section) saw NULL for exactly the rows that
     actually had real cost data. Populate the real columns for this
     event type so it's queryable the same way 'model_usage' events
-    already are."""
+    already are. cost_usd/pricing_version were the one pair still left
+    JSON-only after that fix (same bug class, found later) — now
+    populated as real columns too, via event_ledger.get_usage_economics()'s
+    matching COALESCE read path."""
     usage = data if internal_type == "usage_summary" and data.get("captured") else {}
     event_ledger.record_event(
         _canonical_event_type(internal_type, data),
@@ -308,6 +311,8 @@ def _record_ledger_event(run: "Run", internal_type: str, data: dict) -> None:
         output_tokens=usage.get("output_tokens"),
         cache_read_tokens=usage.get("cache_read_tokens"),
         cache_write_tokens=usage.get("cache_write_tokens"),
+        cost_usd=usage.get("cost_usd"),
+        pricing_version=usage.get("pricing_version"),
         training_eligibility=event_ledger.TRAINING_ALLOWED_AFTER_REDACTION,
         payload=data,
     )
@@ -457,6 +462,14 @@ def _build_usage_summary(usage_start_index: int) -> dict:
         "cost_usd": cost.get("total_usd"),
         "cost_unavailable_reason": cost.get("reason"),
         "pricing_version": cost.get("pricing_version"),
+        # Same measurement-quality vocabulary as session_history.py's
+        # _COST_DISPLAY_LABELS -- "ACTUAL" here means real, provider-
+        # returned tokens run through the versioned pricing table (never a
+        # provider-returned dollar figure, which Anthropic's API doesn't
+        # expose). A frontend can render "ACTUAL COST — CALCULATED FROM
+        # ACTUAL USAGE" for this exact status rather than inventing its
+        # own label.
+        "cost_status": "ACTUAL" if cost["available"] else "COST_UNAVAILABLE",
     }
 
 

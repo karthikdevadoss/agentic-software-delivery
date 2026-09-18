@@ -466,7 +466,22 @@ class UsageEconomicsTestCase(unittest.TestCase):
                     "SELECT "
                     "COALESCE(input_tokens, (payload->>'input_tokens')::bigint), "
                     "COALESCE(output_tokens, (payload->>'output_tokens')::bigint), "
-                    "(payload->>'cost_usd')::double precision, status "
+                    "COALESCE(cost_usd, (payload->>'cost_usd')::double precision), status "
+                    "FROM delivery_events WHERE run_id = %s AND event_type = 'run_usage_summary'",
+                    (run_id,),
+                )
+                return cur.fetchone()
+        finally:
+            conn.close()
+
+    def _raw_cost_row(self, run_id):
+        conn = el._connect()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT "
+                    "COALESCE(cost_usd, (payload->>'cost_usd')::double precision), "
+                    "COALESCE(pricing_version, (payload->>'pricing_version')) "
                     "FROM delivery_events WHERE run_id = %s AND event_type = 'run_usage_summary'",
                     (run_id,),
                 )
@@ -499,6 +514,21 @@ class UsageEconomicsTestCase(unittest.TestCase):
         row = self._raw_row(run_id)
         self.assertEqual(row[0], 999)
         self.assertEqual(row[1], 88)
+
+    def test_cost_usd_and_pricing_version_are_real_queryable_columns(self):
+        """cost_usd/pricing_version were the one pair left JSON-only after
+        the input_tokens/output_tokens fix above -- same bug class, fixed
+        later. Proves the real dedicated columns exist, are populated when
+        supplied, and are preferred over payload by the same COALESCE
+        pattern already proven for tokens."""
+        run_id = _unique("test-econ-cost-columns")
+        el.record_event(
+            "run_usage_summary", run_id=run_id, source="test_suite", status="COMPLETED",
+            cost_usd=0.009876, pricing_version="anthropic-2026-09-10-v1",
+            payload={"captured": True, "cost_usd": 0.111111, "pricing_version": "stale-payload-only-value"},
+        )
+        row = self._raw_cost_row(run_id)
+        self.assertEqual(row, (0.009876, "anthropic-2026-09-10-v1"))
 
     def test_failed_run_usage_is_preserved_not_dropped(self):
         """A failed run still spent real money — its usage row must be

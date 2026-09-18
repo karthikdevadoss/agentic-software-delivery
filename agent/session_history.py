@@ -373,8 +373,25 @@ def list_sessions(before_cursor: str = None, limit: int = 20, include_test_data:
         conn.close()
 
 
+# Task-level AI cost accounting, Owner directive 2026-09-18: every cost
+# figure must carry honest provenance, never fake precision. The internal
+# status code "ACTUAL" here has always meant, and its own display label
+# already says, "CALCULATED FROM ACTUAL USAGE" — real captured tokens run
+# through pricing_config.py's versioned table, since Anthropic's API never
+# returns a provider-billed dollar cost directly. Kept as "ACTUAL" (not
+# renamed) to avoid unrelated churn across every existing call site —
+# the label already shown to a human is the honest, precise one.
+#
+# OBSERVED_CREDIT_DELTA is added here as a defined vocabulary entry, not a
+# wired capability: reserved for a future non-API surface (e.g. Cowork)
+# where only an account-credit balance change is observable and individual
+# token counts cannot be derived. Nothing in this codebase produces this
+# status today — until a real integration exists, any cost lacking a real
+# ACTUAL/token-derived source correctly falls through to COST_UNAVAILABLE
+# below, never silently rendered as $0.00.
 _COST_DISPLAY_LABELS = {
     "ACTUAL": "ACTUAL COST — CALCULATED FROM ACTUAL USAGE",
+    "OBSERVED_CREDIT_DELTA": "COST OBSERVED — ACCOUNT CREDIT DELTA (TOKEN-LEVEL DETAIL NOT AVAILABLE)",
     "AGGREGATE_ONLY_TOKENS": "COST UNAVAILABLE — AGGREGATE_ONLY",
     "NOT_CAPTURED": "COST UNAVAILABLE — TOKENS NOT CAPTURED",
     "OTHER": "COST UNAVAILABLE",
@@ -384,6 +401,8 @@ _COST_DISPLAY_LABELS = {
 def _cost_display_label(tokens: dict, cost: dict) -> str:
     if cost.get("status") == "ACTUAL":
         return _COST_DISPLAY_LABELS["ACTUAL"]
+    if cost.get("status") == "OBSERVED_CREDIT_DELTA":
+        return _COST_DISPLAY_LABELS["OBSERVED_CREDIT_DELTA"]
     if tokens.get("status") == "AGGREGATE_ONLY":
         return _COST_DISPLAY_LABELS["AGGREGATE_ONLY_TOKENS"]
     if tokens.get("status") == "NOT_CAPTURED":

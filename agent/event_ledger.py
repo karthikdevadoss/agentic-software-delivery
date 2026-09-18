@@ -78,7 +78,7 @@ ENVELOPE_FIELDS = (
     "cache_write_tokens", "tool_name", "tool_call_id", "git_commit",
     "deployment_version", "data_classification", "retention_class",
     "training_eligibility", "payload", "backfill_source",
-    "evidence_quality", "activity_class",
+    "evidence_quality", "activity_class", "cost_usd", "pricing_version",
 )
 
 # Real event types this session's Workbench pipeline actually emits.
@@ -718,8 +718,8 @@ def get_usage_economics() -> dict:
                     COALESCE(output_tokens, (payload->>'output_tokens')::bigint) AS output_tokens,
                     COALESCE(cache_read_tokens, (payload->>'cache_read_tokens')::bigint) AS cache_read_tokens,
                     COALESCE(cache_write_tokens, (payload->>'cache_write_tokens')::bigint) AS cache_write_tokens,
-                    (payload->>'cost_usd')::double precision AS cost_usd,
-                    (payload->>'pricing_version') AS pricing_version,
+                    COALESCE(cost_usd, (payload->>'cost_usd')::double precision) AS cost_usd,
+                    COALESCE(pricing_version, (payload->>'pricing_version')) AS pricing_version,
                     COALESCE((payload->>'captured')::boolean, true) AS captured
                 FROM delivery_events
                 WHERE event_type = 'run_usage_summary'

@@ -249,5 +249,132 @@ class PermissionConfigTestCase(unittest.TestCase):
         self.assertNotIn("dangerously-skip-permissions", raw)
 
 
+class _NoContentAccessDict(dict):
+    """A dict that raises if 'content' is ever looked up — used to prove
+    _extract_usage_from_transcript genuinely never reads a message's
+    content/text, not merely that the returned shape happens to omit it."""
+
+    def __getitem__(self, key):
+        if key == "content":
+            raise AssertionError("_extract_usage_from_transcript accessed 'content' -- it must never read message text")
+        return super().__getitem__(key)
+
+    def get(self, key, default=None):
+        if key == "content":
+            raise AssertionError("_extract_usage_from_transcript accessed 'content' -- it must never read message text")
+        return super().get(key, default)
+
+
+class ExtractUsageFromTranscriptTestCase(unittest.TestCase):
+    """agent/claude_code_hook.py's _extract_usage_from_transcript -- reads
+    a real Claude Code session transcript JSONL and sums real, provider-
+    returned token usage. The one invariant this whole feature depends on:
+    it must NEVER read a message's content/text, only its usage object."""
+
+    def setUp(self):
+        self.tmp_dir = Path(el.SPOOL_PATH).parent / f"claude_hook_transcript_test_{uuid.uuid4().hex[:8]}"
+        self.tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    def tearDown(self):
+        for f in self.tmp_dir.glob("*"):
+            f.unlink()
+        self.tmp_dir.rmdir()
+
+    def _write_transcript(self, lines):
+        path = self.tmp_dir / "transcript.jsonl"
+        with path.open("w", encoding="utf-8") as f:
+            for line in lines:
+                f.write(json.dumps(line) + "\n")
+        return path
+
+    def test_returns_none_for_missing_path(self):
+        self.assertIsNone(claude_code_hook._extract_usage_from_transcript(None))
+        self.assertIsNone(claude_code_hook._extract_usage_from_transcript(""))
+
+    def test_returns_none_for_nonexistent_file(self):
+        missing = self.tmp_dir / "does-not-exist.jsonl"
+        self.assertIsNone(claude_code_hook._extract_usage_from_transcript(str(missing)))
+
+    def test_returns_none_when_no_assistant_messages_have_usage(self):
+        path = self._write_transcript([
+            {"type": "user", "message": {"role": "user", "content": "hi"}},
+            {"type": "system", "message": {}},
+        ])
+        self.assertIsNone(claude_code_hook._extract_usage_from_transcript(str(path)))
+
+    def test_sums_real_usage_across_multiple_assistant_messages(self):
+        path = self._write_transcript([
+            {"type": "assistant", "message": {"role": "assistant", "model": "claude-sonnet-5",
+             "usage": {"input_tokens": 10, "output_tokens": 20,
+                        "cache_creation_input_tokens": 5, "cache_read_input_tokens": 100}}},
+            {"type": "user", "message": {"role": "user", "content": "irrelevant"}},
+            {"type": "assistant", "message": {"role": "assistant", "model": "claude-sonnet-5",
+             "usage": {"input_tokens": 2, "output_tokens": 483,
+                        "cache_creation_input_tokens": 0, "cache_read_input_tokens": 43564}}},
+        ])
+        result = claude_code_hook._extract_usage_from_transcript(str(path))
+        self.assertIsNotNone(result)
+        self.assertEqual(result["input_tokens"], 12)
+        self.assertEqual(result["output_tokens"], 503)
+        self.assertEqual(result["cache_creation_input_tokens"], 5)
+        self.assertEqual(result["cache_read_input_tokens"], 43664)
+        self.assertEqual(result["message_count"], 2)
+        self.assertEqual(result["model"], "claude-sonnet-5")
+
+    def test_malformed_lines_are_skipped_not_fatal(self):
+        path = self.tmp_dir / "transcript.jsonl"
+        with path.open("w", encoding="utf-8") as f:
+            f.write("not json at all\n")
+            f.write(json.dumps({"type": "assistant", "message": {
+                "role": "assistant", "model": "claude-sonnet-5",
+                "usage": {"input_tokens": 1, "output_tokens": 1},
+            }}) + "\n")
+            f.write("\n")  # blank line
+        result = claude_code_hook._extract_usage_from_transcript(str(path))
+        self.assertIsNotNone(result)
+        self.assertEqual(result["message_count"], 1)
+
+    def test_never_accesses_message_content_even_when_present(self):
+        """The real, structural guarantee: a message dict that raises on
+        any 'content' lookup must still be processed correctly -- proving
+        the function's code path genuinely never touches that key, not
+        merely that its return value happens to omit it."""
+        real_transcript_line = {
+            "type": "assistant",
+            "message": _NoContentAccessDict({
+                "role": "assistant",
+                "model": "claude-sonnet-5",
+                "usage": {"input_tokens": 7, "output_tokens": 9},
+                "content": "SHOULD NEVER BE READ",
+            }),
+        }
+        # json.dumps would need to serialize the dict, which doesn't
+        # trigger __getitem__/get -- write real JSON, then monkeypatch
+        # json.loads for this one test to return the guarded dict instead,
+        # so the guard is active on the object the function actually
+        # receives from parsing, not just on an object we never pass in.
+        path = self._write_transcript([{
+            "type": "assistant",
+            "message": {"role": "assistant", "model": "claude-sonnet-5",
+                        "usage": {"input_tokens": 7, "output_tokens": 9},
+                        "content": "SHOULD NEVER BE READ"},
+        }])
+
+        real_loads = json.loads
+
+        def guarded_loads(s):
+            parsed = real_loads(s)
+            if isinstance(parsed, dict) and parsed.get("type") == "assistant":
+                parsed["message"] = _NoContentAccessDict(parsed["message"])
+            return parsed
+
+        with mock.patch.object(claude_code_hook.json, "loads", side_effect=guarded_loads):
+            result = claude_code_hook._extract_usage_from_transcript(str(path))
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result["input_tokens"], 7)
+        self.assertEqual(result["output_tokens"], 9)
+
+
 if __name__ == "__main__":
     unittest.main()

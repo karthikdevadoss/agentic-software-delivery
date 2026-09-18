@@ -75,3 +75,13 @@ CREATE INDEX IF NOT EXISTS idx_delivery_events_event_type ON delivery_events (ev
 -- safe to run against a table that predates this column.
 ALTER TABLE delivery_events ADD COLUMN IF NOT EXISTS activity_class TEXT;
 CREATE INDEX IF NOT EXISTS idx_delivery_events_activity_class ON delivery_events (activity_class);
+
+-- Real, queryable cost columns (previously only inside `payload` JSONB --
+-- the same "JSON-only field that should be a real column" bug class the
+-- token columns above were already fixed for; cost itself was still
+-- exposed to this exact bug). Additive, idempotent -- safe against a
+-- table that predates these columns. get_usage_economics() COALESCEs
+-- with the existing payload->>'cost_usd'/'pricing_version' reads so
+-- historical pre-fix rows still aggregate correctly.
+ALTER TABLE delivery_events ADD COLUMN IF NOT EXISTS cost_usd DOUBLE PRECISION;
+ALTER TABLE delivery_events ADD COLUMN IF NOT EXISTS pricing_version TEXT;
