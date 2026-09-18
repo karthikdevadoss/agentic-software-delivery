@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>4.1.1</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.example</groupId>
+    <artifactId>authserver</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>authserver</name>
+    <description>Real, spec-compliant OAuth2/OIDC Authorization Server for the Customer App,
+        genuinely separate deployable from the Customer App's own resource server, matching
+        real enterprise architecture (an app never issues its own tokens in production; it
+        validates tokens minted by a dedicated Authorization Server/IdP). Reads the SAME
+        real demo_identity table the Customer App already owns (read-only from this side) so
+        the two services share one real identity source rather than diverging copies.</description>
+
+    <properties>
+        <java.version>21</java.version>
+    </properties>
+
+    <dependencies>
+        <!-- The current (Spring Boot 4.x), non-deprecated starter name,
+             verified against Maven Central and the real Spring Boot
+             starter-rename tracking issue (spring-projects/spring-boot#46522)
+             before use, not assumed from older docs/training-data knowledge,
+             since this exact rename class of gotcha (autoconfiguration
+             modules split out / starters renamed in Boot 4) has already
+             cost this project real CI failures twice (Flyway, Kafka; see
+             app/pom.xml's own comments and docs/LESSONS.md). Pulls in
+             spring-boot-starter-webmvc transitively, no separate web
+             starter needed. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security-oauth2-authorization-server</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <!-- Same real, live production Postgres the Customer App's demo_identity
+             table lives in (see application-postgres.properties); this
+             service reads it, never migrates/writes its schema (no Flyway
+             here, the Customer App owns that migration history exclusively). -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>
