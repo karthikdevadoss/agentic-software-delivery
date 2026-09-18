@@ -361,6 +361,94 @@ class OutageSpoolTestCase(unittest.TestCase):
         self.assertEqual(len(rows), 1, "spool retry of an already-inserted event must not duplicate")
 
 
+class SyncSpoolFreshProcessTestCase(unittest.TestCase):
+    """Real incident (2026-09-18): sync_spool()'s `with _lock:` calls
+    _insert(), which unconditionally calls ensure_schema(), which itself
+    does `with _lock:` -- a non-reentrant threading.Lock deadlocks a
+    thread trying to re-acquire a lock it already holds. This is not a
+    rare interleaving: EVERY real background sync is a brand-new
+    subprocess (trigger_background_sync() always spawns `python
+    event_ledger.py --sync-spool` fresh), so _schema_ready is False and
+    this path is hit on every single real sync. Simulates that exact
+    fresh-process condition by resetting _schema_ready before calling
+    sync_spool() directly (can't spawn a real subprocess and assert on
+    its hang from here) -- if the lock regresses to non-reentrant, this
+    test must hang/timeout rather than silently pass."""
+
+    def setUp(self):
+        self.spool_path = Path(el.SPOOL_PATH).parent / f"event_spool_freshproc_test_{uuid.uuid4().hex[:8]}.jsonl"
+        self._spool_patcher = mock.patch.object(el, "SPOOL_PATH", self.spool_path)
+        self._spool_patcher.start()
+        self._schema_ready_before = el._schema_ready
+        el._schema_ready = False  # simulate a genuinely fresh process
+
+    def tearDown(self):
+        el._schema_ready = self._schema_ready_before
+        self._spool_patcher.stop()
+        if self.spool_path.exists():
+            self.spool_path.unlink()
+
+    def test_sync_spool_does_not_hang_when_schema_not_yet_initialized(self):
+        run_id = _unique("test-run-freshproc")
+        envelope = el.build_envelope("run_started", run_id=run_id, source="test_suite")
+        self.spool_path.write_text(json.dumps(envelope) + "\n", encoding="utf-8")
+
+        result_holder = {}
+        def _run():
+            result_holder["result"] = el.sync_spool()
+        t = threading.Thread(target=_run, daemon=True)
+        t.start()
+        t.join(timeout=15)
+        self.assertFalse(t.is_alive(), "sync_spool() hung -- the _lock reentrancy regressed")
+        self.assertEqual(result_holder["result"]["synced"], 1)
+        self.assertEqual(result_holder["result"]["remaining"], 0)
+
+
+class StaleSyncLockTestCase(unittest.TestCase):
+    """Real incident (2026-09-18): a sync process was killed before its
+    `finally` could remove SYNC_LOCK_PATH, orphaning the lock. With no
+    staleness check, trigger_background_sync() silently refused to spawn
+    a new sync for 7 real days -- 18,190 real events piled up in the local
+    spool, none ever reaching the durable ledger, with zero visible error
+    anywhere (hooks must never raise). Uses a dedicated lock file so this
+    test can never interact with a real sync a live process might be
+    running."""
+
+    def setUp(self):
+        self.lock_path = Path(el.SYNC_LOCK_PATH).parent / f"event_ledger_sync_test_{uuid.uuid4().hex[:8]}.lock"
+        self._patcher = mock.patch.object(el, "SYNC_LOCK_PATH", self.lock_path)
+        self._patcher.start()
+
+    def tearDown(self):
+        self._patcher.stop()
+        if self.lock_path.exists():
+            self.lock_path.unlink()
+
+    def test_fresh_lock_still_blocks_a_new_sync(self):
+        self.lock_path.touch()
+        with mock.patch("subprocess.Popen") as popen:
+            result = el.trigger_background_sync()
+        popen.assert_not_called()
+        self.assertFalse(result["spawned"])
+        self.assertEqual(result["reason"], "sync already in progress")
+        self.assertTrue(self.lock_path.exists(), "a fresh lock must not be removed")
+
+    def test_stale_lock_past_max_age_is_removed_and_a_new_sync_spawns(self):
+        self.lock_path.touch()
+        stale_time = time.time() - el.SYNC_LOCK_MAX_AGE_SECONDS - 60
+        import os
+        os.utime(self.lock_path, (stale_time, stale_time))
+
+        with mock.patch("subprocess.Popen") as popen:
+            result = el.trigger_background_sync()
+
+        popen.assert_called_once()
+        self.assertTrue(result["spawned"])
+        # a fresh lock was re-acquired for the new sync, not left absent
+        self.assertTrue(self.lock_path.exists())
+        self.assertLess(time.time() - self.lock_path.stat().st_mtime, 5)
+
+
 class PreTerminalCrashDurabilityTestCase(unittest.TestCase):
     """F. A run that fails/crashes BEFORE reaching a terminal state must
     not lose events emitted earlier — write-through means each event is

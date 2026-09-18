@@ -261,6 +261,55 @@ def _usage_for_workbench(conn, run_ids):
         return {r[0]: r[1:] for r in cur.fetchall()}
 
 
+def _usage_for_claude_code(conn, session_ids):
+    """Real gap found and fixed 2026-09-18 (the €40 overnight-session
+    incident investigation): claude_code_hook.py's SessionEnd handler has
+    captured real per-session token usage (event_type='model_usage',
+    source='claude_code') since commit 338f10f (2026-09-18 04:03), but
+    this module was never updated to read it -- every claude_code_dev_session
+    card hardcoded tokens=NOT_CAPTURED/cost=COST_UNAVAILABLE regardless of
+    whether real usage existed, the same "two systems evolved independently"
+    bug class already documented elsewhere in this project. SUM() handles a
+    session resumed multiple times (each resume's SessionEnd, if it ever
+    fires mid-session, would add its own row) without double-counting a
+    single genuine total. cost_usd is computed here (never stored on the
+    row itself -- the hook records raw tokens only) via the same versioned
+    pricing_config.calculate_cost() every other real cost figure in this
+    project goes through, so a claude_code session's cost is never a
+    second, divergent calculation."""
+    if not session_ids:
+        return {}
+    import pricing_config
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT session_id,
+                   SUM(COALESCE(input_tokens, 0)),
+                   SUM(COALESCE(output_tokens, 0)),
+                   SUM(COALESCE(cache_read_tokens, 0)),
+                   SUM(COALESCE(cache_write_tokens, 0)),
+                   (ARRAY_AGG(provider ORDER BY timestamp_utc DESC))[1],
+                   (ARRAY_AGG(model ORDER BY timestamp_utc DESC))[1]
+            FROM delivery_events
+            WHERE event_type = 'model_usage' AND source = 'claude_code' AND session_id = ANY(%s)
+            GROUP BY session_id
+            """,
+            (session_ids,),
+        )
+        result = {}
+        for sid, in_tok, out_tok, cache_read, cache_write, provider, model in cur.fetchall():
+            cost = pricing_config.calculate_cost(
+                provider or "anthropic", model, input_tokens=in_tok, output_tokens=out_tok,
+                cache_read_tokens=cache_read, cache_write_tokens=cache_write,
+            )
+            result[sid] = {
+                "input_tokens": in_tok, "output_tokens": out_tok,
+                "cache_read_tokens": cache_read, "cache_write_tokens": cache_write,
+                "model": model, "cost": cost,
+            }
+        return result
+
+
 def _usage_for_v2_trial(conn, run_ids):
     """v2_trial sessions only have AGGREGATE_ONLY subagent totals (see
     docs/ARCHITECTURE_V2_EVALUATION_PLAN.md's Trial #3 economics note) —
@@ -356,10 +405,11 @@ def list_sessions(before_cursor: str = None, limit: int = 20, include_test_data:
         ai_active = _ai_active_ms(conn, cc_ids, wb_ids + v2_ids)
         usage_wb = _usage_for_workbench(conn, wb_ids)
         usage_v2 = _usage_for_v2_trial(conn, v2_ids)
+        usage_cc = _usage_for_claude_code(conn, cc_ids)
 
         sessions = []
         for r in rows:
-            sessions.append(_render_session_summary(r, goals_cc, goals_wb, ai_active, usage_wb, usage_v2))
+            sessions.append(_render_session_summary(r, goals_cc, goals_wb, ai_active, usage_wb, usage_v2, usage_cc))
 
         next_cursor = rows[-1]["start_ts"].isoformat() if (has_more and rows) else None
         return {
@@ -437,7 +487,8 @@ def _window_semantics(start_ts, end_ts, has_end_event):
     return wall_ms, "OBSERVED_EVENT_WINDOW", "reconstructed from first/last OBSERVED event only — does not prove continuous activity across this span"
 
 
-def _render_session_summary(r, goals_cc, goals_wb, ai_active, usage_wb, usage_v2):
+def _render_session_summary(r, goals_cc, goals_wb, ai_active, usage_wb, usage_v2, usage_cc=None):
+    usage_cc = usage_cc or {}
     sid, kind = r["id"], r["kind"]
     start_ts, end_ts = r["start_ts"], r["end_ts"]
     wall_ms, window_kind, window_note = _window_semantics(start_ts, end_ts, r["has_end_event"])
@@ -470,9 +521,24 @@ def _render_session_summary(r, goals_cc, goals_wb, ai_active, usage_wb, usage_v2
         raw_goal = goals_cc.get(sid) or "NOT CAPTURED"
         summary["goal"] = concise_title(raw_goal) if raw_goal != "NOT CAPTURED" else raw_goal
         summary["raw_capture"] = raw_goal if raw_goal != summary["goal"] else None
-        summary["model"] = "claude-sonnet-5"
-        summary["tokens"] = {"status": "NOT_CAPTURED", "note": "Claude Code hook interface exposes no token-usage field for development sessions (verified against claude_code_hook.py's own field list)."}
-        summary["cost"] = {"status": "COST_UNAVAILABLE", "reason": "no token usage captured for this session kind"}
+        usage = usage_cc.get(sid)
+        if usage:
+            summary["model"] = usage["model"] or "claude-sonnet-5"
+            summary["tokens"] = {
+                "status": "EXACT",
+                "input_tokens": usage["input_tokens"], "output_tokens": usage["output_tokens"],
+                "cache_read_tokens": usage["cache_read_tokens"], "cache_write_tokens": usage["cache_write_tokens"],
+            }
+            cost = usage["cost"]
+            summary["cost"] = (
+                {"status": "ACTUAL", "cost_usd": cost["total_usd"], "pricing_version": cost.get("pricing_version"),
+                 "pricing_note": "calculated from real captured tokens via pricing_config.py — Claude Code's own interface never returns a provider-billed dollar figure directly"}
+                if cost.get("available") else {"status": "COST_UNAVAILABLE", "reason": cost.get("reason")}
+            )
+        else:
+            summary["model"] = "claude-sonnet-5"
+            summary["tokens"] = {"status": "NOT_CAPTURED", "note": "no model_usage event exists for this session — either it predates claude_code_hook.py's usage-capture (commit 338f10f, 2026-09-18) or SessionEnd never fired for it (e.g. a crashed/force-closed session)."}
+            summary["cost"] = {"status": "COST_UNAVAILABLE", "reason": "no token usage captured for this session"}
     elif kind == KIND_WORKBENCH_RUN:
         raw_goal = goals_wb.get(sid) or "NOT CAPTURED"
         summary["goal"] = concise_title(raw_goal) if raw_goal != "NOT CAPTURED" else raw_goal
@@ -769,7 +835,8 @@ def get_session_detail(session_id: str) -> dict:
         ai_active = _ai_active_ms(conn, cc_ids, wb_ids + v2_ids)
         usage_wb = _usage_for_workbench(conn, wb_ids)
         usage_v2 = _usage_for_v2_trial(conn, v2_ids)
-        summary = _render_session_summary(r, goals_cc, goals_wb, ai_active, usage_wb, usage_v2)
+        usage_cc = _usage_for_claude_code(conn, cc_ids)
+        summary = _render_session_summary(r, goals_cc, goals_wb, ai_active, usage_wb, usage_v2, usage_cc)
 
         # Timeline: real observable events for this id, in order.
         id_col = "session_id" if kind == KIND_CLAUDE_CODE else "run_id"

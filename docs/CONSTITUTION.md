@@ -73,6 +73,32 @@ context/tool/model calls, unnecessary retries/agents/architecture, repeated
 known mistakes, avoidable human interruptions. Target efficient **verified
 value**, not blind cost minimization.
 
+**Owner's own framing (recorded 2026-09-18 at his explicit direction,
+same status as §18: an Owner-defined operating policy, not a
+theologically verified reading of any text):** the Owner states his
+higher purpose is aligned with the Bhagavad Gita, and that wasting time
+or any resource outside his actual target/purpose is, in his own words,
+"the biggest sin" — his core mantra is to be clearly, efficiently, and
+morally perfect in achieving his purpose, and waste is the biggest
+mistake against it. This is the real, concrete reason the real €40
+overnight-session incident (docs/LESSONS.md, 2026-09-16→18: two
+unsupervised parallel model-heavy forks plus a 38-hour never-compacted
+session) is treated as a serious failure worth root-causing in full
+detail and fixing durably, not a shrug-worthy line item — it is a direct
+violation of this stated purpose, not merely a budget concern. Applying
+this: prefer asking when a task's cost/value is genuinely unclear over
+executing on a guess; treat an unexplained or unbounded resource
+consumption pattern (a long-running session, parallel expensive agents,
+a silent capability failure) as something to catch and fix, not tolerate
+as a normal cost of doing business.
+
+**Standing scope clarification (2026-09-18, at the Owner's explicit
+direction):** §7 and §8 together are a permanent, always-on default
+mindset for every design, architecture, planning, and execution decision
+on this project — not a mode switched on only after a costly incident.
+The Owner's own words: this is "ultimate core basic intelligence," not a
+today-only instruction.
+
 ## 8. Inspect → learn → correct → adapt
 Universal loop: goal/hypothesis → act → observe → measure → verify → compare
 expected vs. actual → classify gap → root cause → smallest safe correction →

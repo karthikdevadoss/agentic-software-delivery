@@ -6,6 +6,62 @@ current state (see PROJECT_STATE.json). Keep entries short and reusable;
 this is not a session diary. Add a new entry only when a real failure or
 surprising verified behavior would otherwise get rediscovered later.
 
+- **A background-sync lock file with no staleness/TTL check can silently
+  disable an entire telemetry pipeline for days with zero visible error.**
+  Real incident (found 2026-09-18): `agent/event_ledger.py`'s
+  `trigger_background_sync()` guarded spawning a new sync process with
+  `if SYNC_LOCK_PATH.exists(): return`. A sync process died (laptop
+  sleep/crash) before its own `finally: SYNC_LOCK_PATH.unlink()` could
+  run, orphaning the lock on 2026-09-11. For the next 7 real days, every
+  Claude Code hook event (session starts, tool calls, and critically,
+  every `model_usage` token/cost record) was correctly captured by
+  `claude_code_hook.py` but only ever reached the local spool file
+  (`agent/event_spool.jsonl`, grew to 41MB / 18,190 events) — the
+  Postgres ledger that Usage/Dashboard actually read from saw nothing
+  from real sessions after 2026-09-11, even though the capture code
+  itself was working correctly the whole time. This is invisible by
+  design (a Claude Code hook must never raise/block), so nothing alerted
+  anyone. **Fixed:** `SYNC_LOCK_PATH` is now treated as abandoned (removed,
+  new sync spawned) once older than `SYNC_LOCK_MAX_AGE_SECONDS` (30 min —
+  a normal drain finishes in well under a minute). **General rule:** any
+  "if lock file exists, skip" guard around a background process needs a
+  max-age escape hatch, or one killed process permanently wedges the
+  whole mechanism with no error surfaced anywhere. Separately noted, not
+  yet fixed: `sync_spool()`'s `_insert()` opens a brand-new DB connection
+  (`ensure_schema()` + `_connect()`) per row — fine for the normal
+  trickle of live events, but painfully slow (tens of minutes) when
+  draining a multi-thousand-row backlog; a real batch/connection-reuse
+  path would help future backlog drains.
+
+- **A single ~38-hour, 4-times-resumed Claude Code session with no context
+  compaction can accumulate token costs an order of magnitude beyond what
+  any individual action "feels like."** Real incident (2026-09-16→18,
+  session `b5171aab...`): total session usage was 3.05M output tokens,
+  16.8M cache-write tokens, and **1.84 billion** cache-read tokens —
+  ~$439.87 at raw Anthropic API list pricing (Sonnet 5), even though
+  cache reads are priced at 1/10th of fresh input specifically because
+  they're supposed to be cheap. The single most expensive hour
+  (2026-09-16 23:00–00:00 UTC, ~$49) lines up with the Owner's own report
+  of losing a real €40 API credit top-up "in an hour." Root mechanism:
+  every one of 3,540 assistant turns re-sent a very large accumulated
+  conversation/tool-output history under prompt caching — cheap *per
+  token*, but the volume compounds across thousands of turns in one
+  never-compacted, multiply-resumed session. A separate, smaller
+  contributor (~$36 of the $439, isolated via each subagent's own
+  transcript under `<session>/subagents/*.jsonl`): two model-heavy `fork`
+  subagents launched in parallel at 01:13–01:14 to "get more done while
+  the Owner slept" (Phase 0 UX work + Phase 1 cost-accounting work,
+  matching the existing parallel-agent policy incident already recorded
+  above this entry) — both cut off after ~20 minutes by a rate/spend
+  limit, consistent with the account being on pay-as-you-go API credit at
+  that specific moment, not yet the Max plan. **General rule:** the
+  biggest cost risk in an agentic coding session is not any single
+  expensive tool call — it's session *longevity without compaction*
+  multiplying an already-large context across thousands of turns. Prefer
+  `/clear`/`/compact` between genuinely separate tasks; treat a session
+  still open after many hours and multiple `--resume`s as a cost smell
+  worth checking, not just a convenience.
+
 - **Claude Sonnet 5 returns thinking blocks by default; never assume
   `content[0]` is text.** A response's content list can start with a
   `thinking` block before any `text`/`tool_use` block. Always filter

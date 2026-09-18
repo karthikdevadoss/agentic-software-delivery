@@ -23,6 +23,7 @@ ever deleted from it until a remote insert genuinely succeeds.
 import json
 import os
 import threading
+import time
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -113,7 +114,22 @@ KNOWN_EVENT_TYPES = frozenset({
     "subagent_started", "subagent_stopped",
 })
 
-_lock = threading.Lock()
+# REAL INCIDENT (found 2026-09-18, same investigation as the stale sync
+# lock above): a plain threading.Lock() here caused sync_spool() to
+# deadlock -- permanently, zero progress, no error -- on its very first
+# _insert() call in ANY fresh process where _schema_ready was still
+# False, because _insert() unconditionally calls ensure_schema(), which
+# re-acquires this SAME lock from the SAME thread. A non-reentrant Lock
+# blocks forever on that second acquire. This is not a rare edge case:
+# trigger_background_sync() ALWAYS spawns a brand-new `python
+# event_ledger.py --sync-spool` subprocess, which starts with
+# _schema_ready=False every single time -- so every real background sync
+# this mechanism ever spawned was liable to hang forever the moment it
+# tried to drain even one row, silently (a hung detached subprocess
+# raises nothing anywhere). RLock allows the same thread to re-enter
+# while still serializing other threads -- the actual behavior every
+# caller here already assumed.
+_lock = threading.RLock()
 _schema_ready = False
 
 
@@ -229,10 +245,19 @@ def build_envelope(event_type, **fields):
     return envelope
 
 
-def _insert(envelope):
+def _insert(envelope, conn=None):
+    """conn=None (the normal live-event path): opens/closes its own
+    connection, as before. conn=<an open connection> (used by
+    sync_spool()'s batch drain): reuses it instead of paying a fresh
+    TCP+TLS handshake per row -- see the real incident in docs/LESSONS.md
+    where a 7-day, 18k+ row backlog made the per-row cost of
+    connect-per-insert actually matter (would have taken hours to drain).
+    Caller owns closing a connection it passed in."""
     import psycopg2.extras
     ensure_schema()
-    conn = _connect()
+    owns_conn = conn is None
+    if owns_conn:
+        conn = _connect()
     try:
         with conn, conn.cursor() as cur:
             cols = ENVELOPE_FIELDS
@@ -249,7 +274,8 @@ def _insert(envelope):
                 values,
             )
     finally:
-        conn.close()
+        if owns_conn:
+            conn.close()
 
 
 def _spool_append(envelope):
@@ -277,20 +303,43 @@ def sync_spool():
     keeps only genuinely-still-failing ones in the file. Idempotent — an
     event already inserted (e.g. a prior partial sync) is a safe
     ON CONFLICT DO NOTHING no-op, never a duplicate row. Never deletes an
-    event that hasn't actually been confirmed inserted remotely."""
+    event that hasn't actually been confirmed inserted remotely.
+
+    Reuses ONE connection for the whole batch (real incident, see
+    docs/LESSONS.md: a connect-per-row drain of an 18k-row backlog was
+    on pace to take hours). If the connection itself drops mid-batch,
+    falls back to per-row reconnect for the remainder rather than
+    aborting the whole sync."""
     if not SPOOL_PATH.exists():
         return {"synced": 0, "remaining": 0}
     with _lock:
         lines = [l for l in SPOOL_PATH.read_text(encoding="utf-8").splitlines() if l.strip()]
         synced = 0
         still_failing = []
+        conn = None
+        try:
+            conn = _connect()
+        except Exception:  # noqa: BLE001 - fall back to per-row connect below
+            conn = None
         for line in lines:
             envelope = json.loads(line)
             try:
-                _insert(envelope)
+                _insert(envelope, conn=conn)
                 synced += 1
             except Exception:  # noqa: BLE001
-                still_failing.append(line)
+                if conn is not None:
+                    try:
+                        conn.close()
+                    except Exception:  # noqa: BLE001
+                        pass
+                    conn = None
+                try:
+                    _insert(envelope)  # one retry: fresh connection, this row only
+                    synced += 1
+                except Exception:  # noqa: BLE001
+                    still_failing.append(line)
+        if conn is not None:
+            conn.close()
         if still_failing:
             SPOOL_PATH.write_text("\n".join(still_failing) + "\n", encoding="utf-8")
         else:
@@ -321,6 +370,20 @@ def spool_only(event_type, **fields):
     return {"event_id": envelope["event_id"], "remote_persisted": False, "spooled": True}
 
 
+# REAL INCIDENT (found 2026-09-18): a sync process holding SYNC_LOCK_PATH
+# was killed (laptop sleep/crash/forced shutdown) before its own `finally`
+# block could run, orphaning the lock file. With no staleness check, every
+# subsequent trigger_background_sync() call for 7 days silently saw the
+# lock, returned {"spawned": False}, and did nothing — spool_only() kept
+# appending real events to event_spool.jsonl (which grew to 41MB / 18,190
+# events) while zero of them ever reached the durable Postgres ledger, with
+# no error surfaced anywhere (by design, hooks must never raise). A normal
+# drain (triggered on nearly every hook event) finishes in well under a
+# minute; 30 minutes is generous headroom over that before a lock is
+# treated as abandoned rather than in-progress.
+SYNC_LOCK_MAX_AGE_SECONDS = 30 * 60
+
+
 def trigger_background_sync():
     """Best-effort, non-blocking: spawns a detached background process to
     drain the spool, without making the caller wait even a millisecond
@@ -328,10 +391,21 @@ def trigger_background_sync():
     (e.g. several tool calls in a row) doesn't pile up redundant sync
     processes — if a sync is already in flight, this is a no-op. Never
     raises: a failure to even SPAWN the background sync must not be
-    allowed to slow down or break the caller (a Claude Code hook)."""
+    allowed to slow down or break the caller (a Claude Code hook).
+
+    A lock older than SYNC_LOCK_MAX_AGE_SECONDS is treated as abandoned
+    (the process that created it died without reaching its `finally`
+    cleanup) rather than in-progress, and is removed so a new sync can
+    run — see the real incident recorded above."""
     try:
         if SYNC_LOCK_PATH.exists():
-            return {"spawned": False, "reason": "sync already in progress"}
+            age_seconds = time.time() - SYNC_LOCK_PATH.stat().st_mtime
+            if age_seconds < SYNC_LOCK_MAX_AGE_SECONDS:
+                return {"spawned": False, "reason": "sync already in progress"}
+            try:
+                SYNC_LOCK_PATH.unlink()
+            except OSError:
+                return {"spawned": False, "reason": "stale lock present but could not be removed"}
         SYNC_LOCK_PATH.touch(exist_ok=False)
     except OSError:
         return {"spawned": False, "reason": "could not acquire sync lock"}
