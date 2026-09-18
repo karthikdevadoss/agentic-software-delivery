@@ -1165,3 +1165,26 @@ surprising verified behavior would otherwise get rediscovered later.
   git archaeology, especially across a context-compaction boundary
   where the next session has no memory of having stashed anything at
   all.
+
+- **Running multiple model-heavy background agents in parallel "to get
+  more done while the Owner sleeps" multiplies real spend rate, not just
+  wall-clock throughput — treat parallelism as a deliberate cost decision,
+  not a default.** Real incident: two heavy forks (one doing an extensive
+  real multi-source web-research pass, one doing large multi-file backend
+  implementation with repeated test runs) were launched simultaneously
+  after an instruction to "use the full session without waiting for
+  approval." One failed on a rate limit, the other on a real monthly
+  spend limit — a genuine, non-trivial amount of real money, on an
+  account that had to be upgraded mid-session to continue. Both forks'
+  in-progress work was safely recovered (nothing was lost — checked out
+  each worktree, ran its real test suite, completed one missing test file
+  the failed fork hadn't gotten to yet, then committed/pushed) — but the
+  spend itself was real and avoidable. **General rule:** "use the full
+  session autonomously" is an instruction about not stalling for routine
+  approval, not an instruction to maximize parallel model-heavy work by
+  default — before running more than one expensive agent at once, the
+  real question is whether parallelism materially reduces total
+  time-to-verified-outcome enough to justify multiplying token/cost
+  consumption, not merely "can this be done faster in parallel." See
+  CLAUDE.md's Human-AI Engineering Operating Policy for the standing rule
+  this incident produced.

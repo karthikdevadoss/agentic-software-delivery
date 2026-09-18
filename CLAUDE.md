@@ -40,6 +40,59 @@ dependencies/platform strategy, needs product/business judgment, or is
 irreversible/high-risk. Those become entries in docs/ACTION_QUEUE.json
 (status: open) awaiting explicit approval instead.
 
+## Human-AI Engineering Operating Policy
+Applies to every AI-assisted task on this project, on top of the general
+"do not waste resources" / "efficient verified value, not blind cost
+minimization" principle (docs/CONSTITUTION.md §7). Sanitized/generic here
+by design — this project's own private operating detail (which models,
+which numbers, which incidents) lives outside this public repository.
+
+- **Task contract before substantial work.** A non-trivial task gets a
+  clear scope/goal before real work starts (Plan Mode for interactive
+  work; an explicit Owner authorization message for an unattended run).
+  Mechanical/small fixes inside an already-approved scope don't need a
+  new contract each time (see Proactive action policy above).
+- **Strong reasoning capacity where it materially matters, not by
+  default.** Reach for the strongest available model/effort for
+  architecture decisions, difficult debugging, root-cause analysis,
+  security decisions, production incidents, complex implementation,
+  independent QA/evaluation, and high-risk verification. Use lighter
+  models or deterministic tooling (grep/search, file reads, formatting,
+  simple edits, routine test execution, status checks, deterministic data
+  transforms) for genuinely mechanical work. Never downgrade a difficult
+  task to save cost; never spend a strong model's capacity on work
+  software or a lighter model performs equally reliably.
+- **Parallel agents are a deliberate choice, not a default.** Before
+  running multiple model-heavy agents/subagents at once, the real
+  question is: will parallelism materially reduce total time-to-VERIFIED-
+  outcome enough to justify multiplying token/cost consumption? Deterministic
+  shell/test processes and lightweight independent searches may run in
+  parallel freely; expensive reasoning/coding agents normally run
+  sequentially unless parallel execution has clear, stated value.
+- **Cost/usage accounting, honestly labeled.** For every concrete AI-
+  assisted task, preserve what's real where observable: model, effort,
+  timing, calls, tokens, cost, retries, and verified/not-verified outcome.
+  Never present an estimate as an actual figure. Use honest provenance —
+  a real measured/captured value, a value calculated from real captured
+  data via a versioned source (e.g. pricing), an observed but
+  incompletely-attributable value, or genuinely unknown — never silently
+  turn "unknown" into a fabricated zero or a false "actual." The goal
+  metric is cost per VERIFIED outcome (and time, retries, human
+  intervention per verified outcome), not the cheapest individual model
+  call.
+- **Never change a paid spend/usage limit without the Owner's explicit,
+  separate approval.** Even when a task is otherwise pre-authorized
+  end-to-end.
+- **New dashboards/trackers/frameworks require a real decision they
+  answer.** Don't build a new tracking surface, config layer, or
+  abstraction "for completeness" — extend or reuse what already exists
+  unless a genuine, current need can't be met that way.
+- **Validation/hardening mode is a real, declarable project state.** When
+  the Owner declares it, new feature work stops; effort goes to testing,
+  verifying, fixing, and hardening what already exists until the Owner
+  explicitly reopens feature work. Check docs/PROJECT_STATE.json's
+  `next_phase`/`next_action` for whether this is currently in effect.
+
 ## Feedback discipline
 For every meaningful run: compare expected vs. actual, classify any gap
 (implementation bug / test gap / requirement ambiguity / architecture /
