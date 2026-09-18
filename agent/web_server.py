@@ -43,6 +43,8 @@ from pathlib import Path
 import uvicorn
 from starlette.applications import Starlette
 from starlette.concurrency import run_in_threadpool
+from starlette.middleware import Middleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import FileResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response
 from starlette.routing import Mount, Route
@@ -2078,7 +2080,34 @@ routes = [
     Mount("/", app=StaticFiles(directory=str(WEB_DIR), html=True), name="static"),
 ]
 
-app = Starlette(routes=routes)
+
+class ForceRevalidateStaticAssets(BaseHTTPMiddleware):
+    """REAL PRODUCTION DEFECT (found 2026-09-18 while investigating an
+    Owner-reported 'no UI changes visible' screenshot): neither
+    StaticFiles's mount nor the individual page routes' FileResponse calls
+    set a Cache-Control header, so a static .js/.css/.html response is
+    served with only ETag/Last-Modified -- with no explicit freshness
+    lifetime, browsers fall back to HEURISTIC caching and can keep serving
+    an old cached script for hours after a real deploy, with zero error or
+    visual indication. Reproduced directly (not assumed): after this
+    session's usage.js chart commit was already live and byte-identical on
+    the server (confirmed via diff against a fresh curl), a real
+    Chrome tab's rendered Usage page still had zero <svg> chart elements;
+    only feeding the freshly no-store-fetched script back through eval()
+    made the chart appear -- proving the RUNNING script in that tab was a
+    stale cached copy, not a missing feature. `no-cache` (not `no-store`)
+    is the correct fix: it forces a conditional GET against the existing
+    ETag on every load (a fast 304 when unchanged, real content
+    immediately after a deploy), rather than disabling caching's benefit
+    entirely."""
+
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        response.headers.setdefault("Cache-Control", "no-cache")
+        return response
+
+
+app = Starlette(routes=routes, middleware=[Middleware(ForceRevalidateStaticAssets)])
 
 
 if __name__ == "__main__":

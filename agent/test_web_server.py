@@ -395,6 +395,41 @@ class NestedRouteAssetPathTestCase(unittest.TestCase):
         self.assertEqual(offenders, {}, f"relative local asset path(s) found: {offenders}")
 
 
+class StaticAssetRevalidationTestCase(unittest.TestCase):
+    """Regression lock for a real production defect (found 2026-09-18): a
+    static .js response with only ETag/Last-Modified and no explicit
+    Cache-Control falls back to browser HEURISTIC caching, which can keep
+    serving an old cached script for hours after a real deploy with zero
+    error or visual indication -- reproduced live (see ForceRevalidateStaticAssets's
+    own docstring): usage.js's chart feature was already deployed and
+    byte-identical on the server, but a real Chrome tab kept rendering the
+    pre-chart version until the cached script was forced to re-fetch.
+    Cache-Control: no-cache (not no-store) is the fix -- every request
+    revalidates against the existing ETag (cheap 304 when unchanged, real
+    content immediately after a deploy)."""
+
+    def test_static_js_asset_carries_no_cache(self):
+        from starlette.testclient import TestClient
+        client = TestClient(ws.app)
+        resp = client.get("/usage.js")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.headers.get("cache-control"), "no-cache")
+
+    def test_html_page_route_carries_no_cache(self):
+        from starlette.testclient import TestClient
+        client = TestClient(ws.app)
+        resp = client.get("/dashboard")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.headers.get("cache-control"), "no-cache")
+
+    def test_api_json_response_carries_no_cache(self):
+        from starlette.testclient import TestClient
+        client = TestClient(ws.app)
+        resp = client.get("/api/sessions")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.headers.get("cache-control"), "no-cache")
+
+
 class ProfilePrivacyTestCase(unittest.TestCase):
     """P0 privacy regression lock (2026-09-13): /profile must never be a
     reachable route, must not exist inside the publicly-served WEB_DIR
