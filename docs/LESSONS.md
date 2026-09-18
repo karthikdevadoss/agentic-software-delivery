@@ -1188,3 +1188,38 @@ surprising verified behavior would otherwise get rediscovered later.
   consumption, not merely "can this be done faster in parallel." See
   CLAUDE.md's Human-AI Engineering Operating Policy for the standing rule
   this incident produced.
+
+- **A static asset response with only ETag/Last-Modified and no explicit
+  Cache-Control silently falls back to browser HEURISTIC caching — a real
+  deploy can go live on the server while every returning visitor's browser
+  keeps executing an old cached script, with zero error, zero console
+  warning, and zero visual sign anything is stale.** Real incident
+  (2026-09-18): the Owner reported via screenshots that the Usage page's
+  new chart feature "isn't showing" days after it was built, tested, and
+  deployed. Investigation initially found the server-side file genuinely
+  current (byte-identical to the deployed source via a direct curl diff)
+  and the chart logic genuinely correct against real production data
+  (replaying it in a browser console produced a correct chart) — which
+  made it tempting to conclude the report was simply a stale/un-scrolled
+  screenshot, as an earlier, similar-sounding report that same session
+  actually was. The real, different root cause was only found by directly
+  re-evaluating a freshly `fetch(..., {cache:'no-store'})`'d copy of the
+  script inside the SAME already-loaded tab and watching the chart appear
+  immediately — proof the tab's currently-*executing* script differed from
+  the currently-*served* one. Neither Starlette's `StaticFiles` mount nor
+  individual `FileResponse` page routes set `Cache-Control` by default;
+  with no explicit freshness lifetime, Chrome's heuristic caching can keep
+  reusing a cached `.js`/`.css`/`.html` response for hours after a
+  redeploy. **General rule:** when a report says a deployed, tested,
+  server-verified-correct feature "isn't showing," don't stop at
+  confirming the server is correct — that only proves the deploy worked,
+  not that the browser is running it. Check what the browser is actually
+  *executing* (re-fetch-and-eval the live asset in-session, or check
+  response headers for a caching directive) before concluding the report
+  is stale evidence. Fix: `Cache-Control: no-cache` (not `no-store`) on
+  every response via a small ASGI middleware — forces revalidation against
+  the existing ETag on every load (a cheap 304 when unchanged, real
+  content immediately after a deploy) without disabling caching's benefit
+  entirely. Any server serving static JS/CSS/HTML with only
+  ETag/Last-Modified and no Cache-Control has this same latent defect,
+  not just this project.
