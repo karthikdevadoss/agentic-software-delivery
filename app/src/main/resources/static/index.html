@@ -1147,8 +1147,15 @@
       var response = await fetch('/actuator/info');
       if (!response.ok) throw new Error('actuator/info returned ' + response.status);
       var info = await response.json();
-      var commit = info.git && info.git.commit && info.git.commit.id;
-      var buildTime = info.build && info.build.time;
+      // info.deploy.* (set as real Railway variables at deploy time, see
+      // scripts/deploy_customer_app.sh) is the reliable source for this
+      // app's actual deploy path (`railway up`, which uploads the local
+      // directory without .git -- confirmed via Railway's own build log).
+      // info.git.* (from git-commit-id-maven-plugin) is kept as a
+      // fallback for local dev or a future GitHub-connected auto-deploy,
+      // where a real .git directory genuinely is present at build time.
+      var commit = (info.deploy && info.deploy.commit) || (info.git && info.git.commit && info.git.commit.id);
+      var buildTime = (info.deploy && info.deploy.time) || (info.build && info.build.time);
       if (!commit && !buildTime) {
         el.textContent = '';
         return;
