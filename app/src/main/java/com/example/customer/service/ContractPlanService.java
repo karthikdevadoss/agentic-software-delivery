@@ -1,12 +1,17 @@
 package com.example.customer.service;
 
 import com.example.customer.dto.ContractPlanEnrollRequest;
+import com.example.customer.event.ContractPlanEnrolledEvent;
 import com.example.customer.model.ContractPlan;
 import com.example.customer.model.ContractPlanStatus;
+import com.example.customer.outbox.OutboxEvent;
+import com.example.customer.outbox.OutboxEventRepository;
 import com.example.customer.repository.ContractPlanRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.json.JsonMapper;
 
+import java.time.Instant;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 
@@ -21,13 +26,23 @@ import java.util.Optional;
 public class ContractPlanService {
 
     static final String NO_ACTIVE_PLAN_MESSAGE = "No active contract plan found for customer";
+    private static final String AGGREGATE_TYPE = "ContractPlan";
+    private static final String EVENT_TYPE = "ContractPlanEnrolled";
 
     private final ContractPlanRepository contractPlanRepository;
     private final CustomerService customerService;
+    private final OutboxEventRepository outboxEventRepository;
+    private final JsonMapper jsonMapper;
 
-    public ContractPlanService(ContractPlanRepository contractPlanRepository, CustomerService customerService) {
+    public ContractPlanService(
+            ContractPlanRepository contractPlanRepository,
+            CustomerService customerService,
+            OutboxEventRepository outboxEventRepository,
+            JsonMapper jsonMapper) {
         this.contractPlanRepository = contractPlanRepository;
         this.customerService = customerService;
+        this.outboxEventRepository = outboxEventRepository;
+        this.jsonMapper = jsonMapper;
     }
 
     public ContractPlan getActivePlan(Long customerId) {
@@ -77,7 +92,22 @@ public class ContractPlanService {
 
         ContractPlan newPlan = new ContractPlan(
                 customerId, request.planName(), request.ratePerKwh(), request.effectiveStartDate());
-        return contractPlanRepository.save(newPlan);
+        ContractPlan saved = contractPlanRepository.save(newPlan);
+
+        // TRANSACTIONAL OUTBOX, same pattern as CustomerPreferenceService.update():
+        // this row commits in the SAME transaction as the plan write, so
+        // OutboxPublisher can never publish an enrollment that didn't really
+        // happen, and a genuinely committed enrollment can never silently
+        // fail to get an event row. The idempotent no-op path above
+        // deliberately does NOT reach here -- a duplicate submission of an
+        // already-active plan is not a new business event.
+        ContractPlanEnrolledEvent event = new ContractPlanEnrolledEvent(
+                saved.getId(), customerId, saved.getPlanName(), saved.getRatePerKwh(),
+                saved.getEffectiveStartDate(), Instant.now());
+        outboxEventRepository.save(new OutboxEvent(
+                AGGREGATE_TYPE, saved.getId(), EVENT_TYPE, jsonMapper.writeValueAsString(event)));
+
+        return saved;
     }
 
     private static boolean isSameTerms(ContractPlan existing, ContractPlanEnrollRequest request) {

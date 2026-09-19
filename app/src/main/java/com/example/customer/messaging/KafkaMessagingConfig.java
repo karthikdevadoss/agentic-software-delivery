@@ -18,11 +18,19 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Topics and consumer-side failure handling for the CustomerPreferenceUpdated
- * event flow. A malformed/poison message is retried twice (200ms apart)
- * then routed to the ".DLT" dead-letter topic rather than blocking the
+ * Topics and consumer-side failure handling for the outbox-published event
+ * flows. A malformed/poison message is retried twice (200ms apart) then
+ * routed to the ".DLT" dead-letter topic rather than blocking the
  * partition forever or being silently dropped -- "recovery strategy" is a
  * real, explicit decision here, not an omission.
+ *
+ * Two independent event families are wired here: CustomerPreferenceUpdated
+ * (one topic, one consumer group) and ContractPlanEnrolled (one topic, TWO
+ * independent consumer groups -- Notification and BillingSync -- a real
+ * fan-out: Kafka delivers each consumer group its own full copy of the
+ * topic, so both process every event independently). EVENT_TYPE_TO_TOPIC
+ * is what lets OutboxPublisher stay a single generic relay instead of
+ * growing a topic-specific branch for every new event type added.
  *
  * Entirely conditional on app.kafka.enabled -- see application.properties'
  * EVENTING section for the real production incident that made this
@@ -38,6 +46,19 @@ public class KafkaMessagingConfig {
     public static final String CUSTOMER_PREFERENCE_EVENTS_TOPIC = "customer-preference-events";
     public static final String CUSTOMER_PREFERENCE_EVENTS_DLT = CUSTOMER_PREFERENCE_EVENTS_TOPIC + ".DLT";
     public static final String CONSUMER_GROUP_ID = "customer-app-preference-consumer";
+
+    public static final String CONTRACT_PLAN_EVENTS_TOPIC = "contract-plan-events";
+    public static final String CONTRACT_PLAN_EVENTS_DLT = CONTRACT_PLAN_EVENTS_TOPIC + ".DLT";
+    public static final String CONTRACT_PLAN_NOTIFICATION_GROUP_ID = "contract-plan-notification-consumer";
+    public static final String CONTRACT_PLAN_BILLING_SYNC_GROUP_ID = "contract-plan-billing-sync-consumer";
+
+    /** eventType (OutboxEvent.eventType) -> the topic it publishes to. The
+     * single source of truth OutboxPublisher looks up instead of hardcoding
+     * one topic -- adding a third event type means adding one entry here. */
+    public static final Map<String, String> EVENT_TYPE_TO_TOPIC = Map.of(
+            "CustomerPreferenceUpdated", CUSTOMER_PREFERENCE_EVENTS_TOPIC,
+            "ContractPlanEnrolled", CONTRACT_PLAN_EVENTS_TOPIC
+    );
 
     /**
      * Boot's own auto-configured KafkaTemplate bean is generically typed
@@ -82,9 +103,28 @@ public class KafkaMessagingConfig {
     }
 
     @Bean
+    public NewTopic contractPlanEventsTopic() {
+        return TopicBuilder.name(CONTRACT_PLAN_EVENTS_TOPIC).partitions(3).replicas(1).build();
+    }
+
+    @Bean
+    public NewTopic contractPlanEventsDeadLetterTopic() {
+        return TopicBuilder.name(CONTRACT_PLAN_EVENTS_DLT).partitions(1).replicas(1).build();
+    }
+
+    /** source topic -> its own dead-letter topic, so one shared error handler
+     * (below) can serve every listener without each one needing its own
+     * DefaultErrorHandler bean. */
+    private static final Map<String, String> TOPIC_TO_DLT = Map.of(
+            CUSTOMER_PREFERENCE_EVENTS_TOPIC, CUSTOMER_PREFERENCE_EVENTS_DLT,
+            CONTRACT_PLAN_EVENTS_TOPIC, CONTRACT_PLAN_EVENTS_DLT
+    );
+
+    @Bean
     public DefaultErrorHandler kafkaErrorHandler(KafkaTemplate<String, String> kafkaTemplate) {
         DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(kafkaTemplate,
-                (record, exception) -> new TopicPartition(CUSTOMER_PREFERENCE_EVENTS_DLT, record.partition()));
+                (record, exception) -> new TopicPartition(
+                        TOPIC_TO_DLT.getOrDefault(record.topic(), record.topic() + ".DLT"), record.partition()));
         FixedBackOff backOff = new FixedBackOff(200L, 2L);
         return new DefaultErrorHandler(recoverer, backOff);
     }

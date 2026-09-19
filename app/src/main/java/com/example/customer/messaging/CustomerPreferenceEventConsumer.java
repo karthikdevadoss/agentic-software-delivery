@@ -37,6 +37,7 @@ import tools.jackson.databind.json.JsonMapper;
 public class CustomerPreferenceEventConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(CustomerPreferenceEventConsumer.class);
+    static final String CONSUMER_NAME = "customer-preference-notification";
 
     private final ProcessedEventRepository processedEventRepository;
     private final JsonMapper jsonMapper;
@@ -61,7 +62,7 @@ public class CustomerPreferenceEventConsumer {
     public void onMessage(String envelopeJson) {
         OutboxEventEnvelope envelope = jsonMapper.readValue(envelopeJson, OutboxEventEnvelope.class);
 
-        if (processedEventRepository.existsById(envelope.eventId())) {
+        if (processedEventRepository.existsByConsumerNameAndEventId(CONSUMER_NAME, envelope.eventId())) {
             duplicatesSkipped.increment();
             log.info("Skipping already-processed event {} -- idempotent duplicate delivery", envelope.eventId());
             return;
@@ -74,7 +75,7 @@ public class CustomerPreferenceEventConsumer {
         notificationSenderFactory.getSender(event.notificationChannel())
                 .send(event.customerId(), "Your account preferences were updated.");
 
-        processedEventRepository.save(new ProcessedEvent(envelope.eventId()));
+        processedEventRepository.save(new ProcessedEvent(CONSUMER_NAME, envelope.eventId()));
         processed.increment();
     }
 }

@@ -115,7 +115,8 @@ class CustomerPreferenceEventFlowIntegrationTest {
             var event = outboxEventRepository.findAll().stream()
                     .filter(e -> e.getAggregateId().equals(created.getId())).findFirst().orElseThrow();
             assertThat(event.getPublishedAt()).isNotNull();
-            assertThat(processedEventRepository.existsById(event.getEventId())).isTrue();
+            assertThat(processedEventRepository.existsByConsumerNameAndEventId(
+                    CustomerPreferenceEventConsumer.CONSUMER_NAME, event.getEventId())).isTrue();
         });
     }
 

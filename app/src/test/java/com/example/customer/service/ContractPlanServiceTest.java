@@ -4,6 +4,7 @@ import com.example.customer.dto.ContractPlanEnrollRequest;
 import com.example.customer.model.ContractPlan;
 import com.example.customer.model.ContractPlanStatus;
 import com.example.customer.model.Customer;
+import com.example.customer.outbox.OutboxEventRepository;
 import com.example.customer.repository.ContractPlanRepository;
 import com.example.customer.repository.CustomerRepository;
 import org.junit.jupiter.api.Test;
@@ -11,6 +12,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -31,10 +33,13 @@ class ContractPlanServiceTest {
     private ContractPlanRepository contractPlanRepository;
     @Mock
     private CustomerRepository customerRepository;
+    @Mock
+    private OutboxEventRepository outboxEventRepository;
+    private final JsonMapper jsonMapper = JsonMapper.builder().build();
 
     private ContractPlanService service(Customer existingCustomer) {
         when(customerRepository.findById(1L)).thenReturn(Optional.ofNullable(existingCustomer));
-        return new ContractPlanService(contractPlanRepository, new CustomerService(customerRepository));
+        return new ContractPlanService(contractPlanRepository, new CustomerService(customerRepository), outboxEventRepository, jsonMapper);
     }
 
     private Customer existingCustomer() {
@@ -46,7 +51,7 @@ class ContractPlanServiceTest {
     @Test
     void getActivePlan_whenNoneExists_throwsWithClearMessage() {
         when(contractPlanRepository.findByCustomerIdAndStatus(1L, ContractPlanStatus.ACTIVE)).thenReturn(Optional.empty());
-        ContractPlanService service = new ContractPlanService(contractPlanRepository, new CustomerService(customerRepository));
+        ContractPlanService service = new ContractPlanService(contractPlanRepository, new CustomerService(customerRepository), outboxEventRepository, jsonMapper);
 
         assertThatThrownBy(() -> service.getActivePlan(1L))
                 .isInstanceOf(NoSuchElementException.class)

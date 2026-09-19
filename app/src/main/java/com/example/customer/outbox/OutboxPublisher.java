@@ -65,11 +65,22 @@ public class OutboxPublisher {
     }
 
     private void publishOne(OutboxEvent event) {
+        String topic = KafkaMessagingConfig.EVENT_TYPE_TO_TOPIC.get(event.getEventType());
+        if (topic == null) {
+            // Fail loud, not silent: an outbox row with no topic mapping is a
+            // real configuration bug (a new event type shipped without
+            // registering it in EVENT_TYPE_TO_TOPIC) -- left unpublished so
+            // it is visibly stuck rather than silently lost, and every poll
+            // will keep flagging it until the mapping is fixed.
+            publishFailures.increment();
+            log.error("No topic mapped for outbox event type '{}' (event {}); leaving unpublished -- add it to KafkaMessagingConfig.EVENT_TYPE_TO_TOPIC",
+                    event.getEventType(), event.getEventId());
+            return;
+        }
         OutboxEventEnvelope envelope = new OutboxEventEnvelope(
                 event.getEventId(), event.getAggregateType(), event.getAggregateId(), event.getEventType(), event.getPayload());
         try {
-            kafkaTemplate.send(KafkaMessagingConfig.CUSTOMER_PREFERENCE_EVENTS_TOPIC,
-                            String.valueOf(event.getAggregateId()), jsonMapper.writeValueAsString(envelope))
+            kafkaTemplate.send(topic, String.valueOf(event.getAggregateId()), jsonMapper.writeValueAsString(envelope))
                     .get(5, TimeUnit.SECONDS);
             event.markPublished();
             outboxEventRepository.save(event);
