@@ -220,6 +220,46 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <!-- Generates META-INF/build-info.properties (build time,
+                     artifact/group/name/version) at package time, which
+                     Spring Boot's actuator auto-configuration picks up and
+                     serves at the already-public GET /actuator/info:
+                     paired with git-commit-id-maven-plugin below (real
+                     commit SHA) so the deployed app can be visually
+                     distinguished from a stale build, not just inferred
+                     from deploy timestamps. -->
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>build-info</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- Generates git.properties (git.commit.id.abbrev, git.commit.time,
+                 git.branch) at build time from the real checked-out repo:
+                 Spring Boot's actuator auto-configuration serves this
+                 automatically at GET /actuator/info alongside build-info
+                 above. Requires the build environment to have .git present
+                 (true for Railway's Railpack builder, which clones the
+                 full repo); failOnNoGitDirectory is false so a genuinely
+                 git-less build (e.g. a source tarball) still succeeds,
+                 just without commit info, rather than failing the build. -->
+            <plugin>
+                <groupId>io.github.git-commit-id</groupId>
+                <artifactId>git-commit-id-maven-plugin</artifactId>
+                <version>9.0.1</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>revision</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <failOnNoGitDirectory>false</failOnNoGitDirectory>
+                    <generateGitPropertiesFile>true</generateGitPropertiesFile>
+                </configuration>
             </plugin>
             <!-- Real branch/line coverage, not a claimed number: prepare-agent
                  instruments the JVM running `mvn test`, report generates

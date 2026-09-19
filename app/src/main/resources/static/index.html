@@ -256,6 +256,7 @@
   .activity-note { font-size: 0.75rem; color: var(--muted); margin-top: var(--sp-3); }
 
   footer.app-footer { margin-top: var(--sp-8); text-align: center; font-size: 0.78rem; color: var(--muted); }
+  .build-info { display: inline-block; margin-left: 0.5em; opacity: 0.7; }
 
   /* ---- Admin console ---- */
   .admin-search-row { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: flex-end; margin-bottom: var(--sp-4); }
@@ -484,7 +485,7 @@
 
 </div>
 
-<footer class="app-footer">Powered by Agentic Delivery</footer>
+<footer class="app-footer">Powered by Agentic Delivery <span id="build-info" class="build-info"></span></footer>
 
 </div>
 
@@ -1132,9 +1133,43 @@
     }
   }
 
+  // ---------- Build info (footer version stamp) ----------
+  // Lets a viewer visually confirm they're looking at the currently
+  // deployed build rather than a stale cached/CDN page, without needing
+  // to check Railway or git manually -- pulled from the already-public
+  // GET /actuator/info (git commit + build time), sourced from the real
+  // git-commit-id-maven-plugin/spring-boot-maven-plugin build-info output,
+  // never hand-typed, so it can't silently drift from the real deploy.
+  async function loadBuildInfo() {
+    var el = document.getElementById('build-info');
+    if (!el) return;
+    try {
+      var response = await fetch('/actuator/info');
+      if (!response.ok) throw new Error('actuator/info returned ' + response.status);
+      var info = await response.json();
+      var commit = info.git && info.git.commit && info.git.commit.id;
+      var buildTime = info.build && info.build.time;
+      if (!commit && !buildTime) {
+        el.textContent = '';
+        return;
+      }
+      var parts = [];
+      if (commit) parts.push('build ' + commit);
+      if (buildTime) parts.push(new Date(buildTime).toLocaleString());
+      el.textContent = '· ' + parts.join(' — ');
+      el.title = 'Deployed commit and build time, from /actuator/info';
+    } catch (err) {
+      // Never block/break the page over a missing version stamp -- just
+      // leave the footer without it, rather than showing an error state
+      // for a purely informational element.
+      el.textContent = '';
+    }
+  }
+
   // ---------- Init ----------
 
   loadPersonas();
+  loadBuildInfo();
   route();
 })();
 </script>
