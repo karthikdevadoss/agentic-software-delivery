@@ -1,0 +1,30 @@
+# Exposes the same Customer/ContractPlan domain already served over REST
+# (see CustomerController/ContractPlanController) through GraphQL instead --
+# a genuine, real comparison of the two API styles over identical data,
+# not a separate toy schema. Every query delegates to the exact same
+# services and WorkspaceAccessGuard the REST controllers use (see
+# CustomerGraphQLController) -- no duplicated business logic.
+
+type Query {
+    "A single customer by id. Requires a valid token; per-customer access is enforced in the resolver via WorkspaceAccessGuard, the same guard the REST endpoints use -- GraphQL's single POST /graphql endpoint cannot be scope-restricted per-operation the way REST paths are, so authorization is enforced at the field/resolver level instead."
+    customer(id: ID!): Customer
+
+    "The customer's current active contract plan, if any."
+    activeContractPlan(customerId: ID!): ContractPlan
+}
+
+type Customer {
+    id: ID!
+    name: String!
+    email: String!
+}
+
+type ContractPlan {
+    id: ID!
+    customerId: ID!
+    planName: String!
+    ratePerKwh: String!
+    effectiveStartDate: String!
+    effectiveEndDate: String
+    status: String!
+}

@@ -26,6 +26,15 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
+        <!-- GraphQL: exposes the same Customer/ContractPlan domain already
+             served over REST (CustomerController/ContractPlanController),
+             deliberately reusing the exact same services and
+             WorkspaceAccessGuard: a genuine, real "REST vs GraphQL over
+             the same domain" comparison, not a separate demo app. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-graphql</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>

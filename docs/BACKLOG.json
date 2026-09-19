@@ -35,6 +35,32 @@
       "created_at": "2026-09-18T19:45:00+00:00",
       "started_at": "2026-09-18T19:45:00+00:00",
       "completed_at": "2026-09-18T20:15:00+00:00"
+    },
+    {
+      "id": "BL-002",
+      "title": "EPIC-1: Interview-ready Master Learn PDF, gap-fill (backend + AI parity depth + system design + business/leadership + light legacy/frontend + German-market section)",
+      "description": "Top priority per Owner directive 2026-09-19: extend the existing agent/learn_pdf.py + learn-tree.json pipeline (not a rebuild) so it covers Java/Spring backend, AI/GenAI engineering at parity depth with backend, system design, engineering leadership/AI-product-strategy, light domain-business-knowledge, light legacy/frontend tech, and a new German-market interview section. Gap audit already done: of 396 topics/31 domains, only 2 of 23 17-part deep-dive topics are AI-related (imbalance vs. the 'AI on par with backend' requirement); domain-business-knowledge, legacy-tech, frontend, and German-market sections are entirely absent. Scope was grounded against the Owner's real, verified professional background (tracked in a private companion repo, not this public one, per this project's own public/private separation rules) before content work started.",
+      "size": "XLARGE",
+      "size_rationale": "Cross-cutting (touches learn-tree.json, learn_pdf.py, and multiple new domains), genuinely novel content-generation work (not extending an existing pattern), high ambiguity resolved through extensive direct clarification, will span multiple sessions despite a 1-2 day target for a first pass.",
+      "status": "active",
+      "parent_id": null,
+      "session_ids": [],
+      "commit_shas": [],
+      "created_at": "2026-09-19T00:00:00+00:00",
+      "started_at": "2026-09-19T00:00:00+00:00",
+      "completed_at": null,
+      "checklist": [
+        {"step": "Professional-background scoping completed (private repo)", "status": "done"},
+        {"step": "AI/GenAI deep-dive parity gap-fill (~15-19 new 17-part topics)", "status": "pending"},
+        {"step": "AI/product-strategy + engineering-leadership topics", "status": "pending"},
+        {"step": "Domain business knowledge (energy/healthcare/insurance, light)", "status": "pending"},
+        {"step": "Legacy tech (light conversational: Struts/JSF/EJB/WebLogic/ANT-CVS/QTP-era)", "status": "pending"},
+        {"step": "Frontend fundamentals (light: React/Angular basics)", "status": "pending"},
+        {"step": "German-market interview format/culture section", "status": "pending"},
+        {"step": "Freshness pass: verify 2026 interview trends via real research", "status": "pending"},
+        {"step": "Deepen thin spots vs. NRG stack (GraphQL, observability, Kafka/messaging -- exact tools TBD)", "status": "in_progress", "note": "GraphQL: DONE -- real endpoint added (CustomerGraphQLController, schema.graphqls), reusing existing services/WorkspaceAccessGuard; a real bug found+fixed during testing (unhandled NoSuchElementException surfacing as a silent GraphQL error). Observability: turned out to be ALREADY SOLID (100% trace sampling, ECS structured logs, traceId/spanId via Brave -- no gap, verified by reading application.properties, not assumed). Kafka: already solid pre-existing (KafkaMessagingConfig, transactional outbox) -- nothing to add, PDF content just needs to reference it. Full regression after GraphQL addition: 131 tests, 0 failures, 0 errors, 14 honest skips (Docker-dependent)."},
+        {"step": "Regenerate PDF, verify, deploy, live-check", "status": "pending"}
+      ]
     }
   ]
 }

@@ -56,7 +56,7 @@ public class SecurityConfig {
                 .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/index.html", "/static/**", "/h2-console/**",
-                                "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                                "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/graphiql").permitAll()
                         // Called server-to-server by AppointmentAvailabilityClient over a
                         // real HTTP loopback (see application.properties), which does not
                         // carry a recruiter's JWT -- permitted deliberately, not an
