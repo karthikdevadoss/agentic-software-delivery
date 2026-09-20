@@ -57,3 +57,20 @@ to-self, e.g. memory files — background housekeeping, not project work),
   verified against real public Spring Boot release history. Private repo.
 - **research** — real database-usage research across the whole career,
   per-project list confirmed. Private repo.
+- **discussion** — pre-next-sprint status check ("are you sure we don't
+  have to talk more") — surfaced and fixed 2 real gaps (this log being
+  stale, the category-tagging system not yet built) and 2 real decisions
+  (app/billing-facade rework approved as `ACT-013`, prompting-coaching
+  check-in sequencing agreed). No separate file — findings are recorded
+  where the fixes actually landed (`docs/BACKLOG.json`, `ACTION_QUEUE.json`).
+- **research** — deep research (Opus-model agent, real web research)
+  into AI-native testing/verification strategy, grounded in a real audit
+  of 7 actual bugs from this session. Full content in this repo's own
+  `docs/AI_NATIVE_TESTING_RESEARCH.md` — public, process-methodology
+  content, not personal, so it lives in the main docs tree rather than
+  this index alone.
+- **discussion** — sprint-scope negotiation (4 rounds of correction:
+  interview-book deprioritized, app/career work folded back in,
+  stabilization prioritized, a missed standing Scrum-research commitment
+  caught) — led directly to the new mandatory pre-sprint-proposal
+  checklist in `docs/BACKLOG.json`'s `_calibration_process`.
