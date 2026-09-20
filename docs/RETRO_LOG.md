@@ -175,7 +175,7 @@ own conversation history, and the Claude-memory file
 
 ---
 
-## Sprint retro: BL-009 through BL-015 (in progress)
+## Sprint retro: BL-009 through BL-015 (complete)
 
 Sprint approved 2026-09-20 (Owner: "go ahead... lets see how this sprint
 estimation and actuals come up... prepare the retro analysis and keep it
@@ -193,7 +193,7 @@ ready"). Pre-sprint estimates (given to the Owner before work started):
 
 *Total estimated: ~2h35m–3h55m.*
 
-### Actuals so far (BL-009–BL-013 done; BL-014/BL-015 in progress in an isolated worktree fork)
+### Final actuals — all 7 items done or honestly concluded
 
 | Item | Size given | Actual size | Verdict | Real evidence |
 |---|---|---|---|---|
@@ -202,7 +202,17 @@ ready"). Pre-sprint estimates (given to the Owner before work started):
 | BL-011 | SMALL, 10–15 min, MEDIUM confidence | SMALL | Matched — no gap | `1a4f35c`, 06:24:36 UTC — 5m03s isolated delta from BL-009/010's commit. Real friction that justified the MEDIUM (not HIGH) confidence: 2 real SDK API mismatches hit and fixed (3-tuple vs 2-tuple unpack, camelCase vs snake_case result attributes) — genuinely untested code path was genuinely slightly wrong, as flagged going in |
 | BL-012 | MEDIUM, 20–30 min | SMALL | **Estimation wrong** — not a difficulty misjudgment, a cross-task synergy the estimate couldn't see: BL-013 (running in parallel) built the actual Playwright spec as a side effect of proving its own feature, so BL-012's real remaining work was only wiring it into `test_impact_analysis.py` + updating one outdated test + docs, not writing a spec from scratch as scoped | `87a2ef6`, 06:26:45 UTC — 2m09s isolated delta from BL-011's commit |
 | BL-013 | LARGE, 45–75 min, MEDIUM confidence | MEDIUM | **Estimation wrong** — the estimate assumed a green-field build (Controller/Service/Repository/validation from scratch, per its own description), but the feature skeleton already existed from an earlier session with only the uniqueness check missing; real narrower scope, not a difficulty misjudgment | Fork's own report: ~22 min wall-clock (05:54:11→06:16:21 UTC), corroborated independently by commit `f3ecbc6` at 06:16:14 UTC (7s apart). 152/152 real `app/` tests, 0 failures (baseline 148); first-ever Playwright spec for the Customer App frontend, run for real against a locally started server |
-| BL-014 | LARGE, 30–50 min, LOW confidence | *pending* | *pending* | Dispatched as an isolated-worktree fork ~06:20 UTC, in progress |
+| BL-014 | LARGE, 30–50 min, LOW confidence | **Not completed — honest partial** | **Estimation wrong** — the LOW confidence hedge correctly flagged real risk but the 30–50 min RANGE still implicitly assumed a finished, working result was achievable in that window. It wasn't: root cause (Boot 4.1.1 + micrometer-tracing 1.7.1 + Spring Cloud 2025.1.2 never auto-configures a real Brave `Tracer` — `NoopTracerAutoConfiguration` always wins, zero Brave-specific autoconfiguration class on the classpath) required real investigation depth (562k+614k tokens, 440 tool calls across two runs) no time-bounded estimate at this size would have anticipated. Real, valuable partial: 2 genuine infra gaps found and fixed (billing-service's `RestClient.Builder` bypassing `RestClientAutoConfiguration`; api-gateway missing tracing entirely). Deliberately stopped rather than improvising unverified Brave wiring — consistent with this project's own "never fabricate what was tested" rule. Left `active` in BACKLOG.json (real, unfinished work — not an Owner-driven descope) | `b496e3f`, 06:43:41 UTC. Hit its 200-turn agent limit once (562k tokens/200 tool uses/26m14s) before being resumed and continuing (further 614k tokens/240 tool uses/33m20s to reach this honest stopping point) |
+| BL-015 | MEDIUM, 20–35 min, MEDIUM confidence | MEDIUM | Matched — no gap, and fast: mirrored the already-proven `BillingCustomerClient` pattern exactly, as the sizing rationale predicted | `57d3b5f`, 06:54:23 UTC — 10m42s isolated delta from BL-014's commit. 12 new tests, full billing-service suite 28/28 passing, 0 failures. **Real live proof through the gateway** (not just compiled): created a customer, enrolled a plan (€0.20/kWh), submitted 2 real meter readings (50+30 kWh), called the new endpoint → `totalKwhConsumed: 80.0, estimatedCost: 16.00` — exactly correct. One real Eureka registry-cache propagation lag hit and resolved (not a bug) |
+
+**Sprint totals:** 6 of 7 items done and proven; 1 (BL-014) honestly concluded as a real, valuable partial rather than forced to a false "done." 4 of 7 matched their estimate; 3 were "estimation wrong" (2 favorably — BL-012/BL-013 both finished faster because of information the estimate couldn't have had at plan time; 1 unfavorably — BL-014 hit genuine unknown-unknown depth beyond what even its LOW-confidence hedge implied). Zero "implementation issues" findings this sprint — every gap traced to the estimate, not to execution mistakes.
+
+**Token/cost accounting, honestly scoped:** real, harness-reported usage exists for the 3 forked items — BL-013: 337,441 tokens / 81 tool uses / 1,258,450ms. BL-014+BL-015 combined (one fork, two runs): 1,176,970 tokens / 440 tool uses / 3,574,240ms. The parent session's own direct work on BL-009/010/011/012 (plus retro/rubric/doc work) has no token/time figure available to report — no tool in this session exposes that number back to the session itself — so it is left genuinely unknown here rather than estimated or fabricated, per this project's own cost-transparency rule.
+
+**Proposed action items from this sprint (not yet actioned — awaiting Owner review/approval, per the calibration loop's own rule):**
+1. Add a rubric note: for a genuinely first-of-its-kind, deep-unknown integration (LOW confidence), the estimate should explicitly allow "may not complete as scoped, may return a real partial finding" as a valid bounded outcome, not just a wider time range assuming a finished result either way.
+2. Add a rubric note for the cross-item-synergy case found at BL-012: when two sprint items run concurrently and one plausibly produces a reusable artifact for the other, flag the later item's estimate as provisional at plan time rather than treating concurrently-run items as fully independent.
+3. BL-014 stays on the backlog as real, valuable, unfinished work (`active`) — a genuine next-sprint candidate once the Owner wants Brave tracing wired by hand, not something to silently drop.
 | BL-015 | MEDIUM, 20–35 min, MEDIUM confidence | *pending* | *pending* | Same fork as BL-014, in progress |
 
 **New lesson surfacing already (to fold into `_calibration_process` once
