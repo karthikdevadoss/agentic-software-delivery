@@ -92,7 +92,17 @@ tier runs on a plain dev machine with none of those running.
 - Does not touch any service's business logic or `pom.xml` — every
   service is used strictly as a real black box.
 - Does not deploy anywhere — entirely local processes on the dev machine.
-- Is not wired into `.github/workflows/ci.yml` — that is a separate,
-  deliberate decision for later, per this project's standing convention
-  of not silently changing what gates CI (see `docs/TESTING_ARCHITECTURE_V1.md`
-  §R for the same reasoning already applied to `verify_change.py`).
+
+## CI (BL-025, 2026-09-20)
+
+Wired into `.github/workflows/ci.yml` as its own `real-topology` job,
+run with `--port-offset 10000` (the same value proven locally above) —
+but deliberately INFORMATIONAL ONLY (`continue-on-error: true`), not
+gating, same convention this workflow already uses for the OWASP scan
+and `verify_change.py`'s dry-run. Real reason, not a generic disclaimer:
+a real local re-run done immediately before this CI wiring found this
+harness no longer reaches PASS — see `docs/TESTING_ARCHITECTURE_V1.md`'s
+§T section and `docs/ACTION_QUEUE.json`'s ACT-015 for the full real
+finding (ACT-013's legacy-billing-system dependency, added after this
+tier's own proof, is never started by this harness). Fix that first,
+re-verify, then remove `continue-on-error` as its own deliberate step.

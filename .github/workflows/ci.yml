@@ -174,18 +174,24 @@ jobs:
   # -- built alongside app/ (the monolith), not replacing it. Each service
   # is a fully independent Maven project (matches how they'd actually
   # deploy independently), so each gets its own matrix leg rather than one
-  # job running all 4 sequentially -- a failure in one service's tests
-  # shouldn't obscure whether the other 3 are still green. billing-service's
+  # job running all 6 sequentially -- a failure in one service's tests
+  # shouldn't obscure whether the other 5 are still green. billing-service's
   # Redis-backed tests (disabledWithoutDocker=true, skip on the local dev
   # machine, see docs/MICROSERVICES_ARCHITECTURE.md's smoke-test section)
   # run for real here, same as app/'s own Testcontainers tests above.
+  # ACT-014 / BL-024 (2026-09-20): eureka-server and api-gateway added --
+  # previously excluded with zero tests, a real escaped defect an
+  # independent qa-evaluator pass found retroactively re-verifying BL-007
+  # (2 of the 5 architecturally central pieces its own acceptance criteria
+  # named had no automated proof they even start, let alone route/register
+  # correctly). See docs/ACTION_QUEUE.json's ACT-014.
   microservices:
     name: Microservices - ${{ matrix.service }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        service: [customer-service, billing-service, notification-service, metering-service]
+        service: [customer-service, billing-service, notification-service, metering-service, eureka-server, api-gateway]
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-java@v5
@@ -215,3 +221,93 @@ jobs:
               echo "::error title=${{ matrix.service }}-${name}::${summary_line} ||| ${caused_by}"
             fi
           done
+
+  # BL-025: wires BL-021's real-topology multi-instance tier
+  # (services/real-topology-tests/run_real_topology_test.py) into CI --
+  # deliberately its OWN job, not folded into the `microservices` matrix
+  # above, since it starts and coordinates 4 real service processes
+  # together rather than testing one service in isolation (see
+  # docs/TESTING_ARCHITECTURE_V1.md's section T).
+  #
+  # INFORMATIONAL ONLY (continue-on-error: true), NOT a gating check --
+  # same convention this workflow already uses for the OWASP scan and the
+  # verify_change.py dry-run above, for the same real reason: this is
+  # freshly wired in and not yet proven reliable in GitHub's actual
+  # runner environment. REAL, HONEST FINDING from this session's own
+  # local re-verification (2026-09-20, not simulated): re-running the
+  # harness locally today, ahead of this CI wiring, found it no longer
+  # reaches PASS -- it got through real service startup, real Eureka
+  # registration, and real gateway-routing-readiness, then failed at the
+  # POST /customers/{id}/plan step with a real 503 ("legacy billing
+  # system unreachable"). Root cause: ACT-013 (built after BL-021's own
+  # "3 consecutive clean runs" proof) made billing-service's
+  # ContractPlanService.enroll() call a real LegacyBillingSystemClient
+  # against legacy-billing-system.base-url (default http://localhost:9099
+  # -- see services/billing-service/src/main/resources/application.properties),
+  # which nothing in this harness's 4-process topology starts. This is a
+  # real drift between two features built the same night, not a flake --
+  # logged as its own action item (see docs/ACTION_QUEUE.json's ACT-015)
+  # rather than silently patched here, since building a real
+  # legacy-billing-system stub process and wiring it into the harness's
+  # own process/port-offset/cleanup machinery is real new harness design,
+  # outside BL-025's own SMALL, "CI wiring only" scope. Running this job
+  # anyway (rather than skipping it) still has real value even while
+  # RED: it exercises real multi-process startup/registration/routing on
+  # GitHub's actual runner environment (the one thing this task could not
+  # verify from a local sandboxed session -- CPU/memory headroom for 4
+  # concurrent real JVMs is a genuinely open question, noted honestly
+  # rather than assumed) and gives real, fresh failure evidence once
+  # ACT-015 is fixed, at which point this step should become gating
+  # (continue-on-error removed) as a deliberate follow-up decision, not a
+  # silent default.
+  real-topology:
+    name: Real-topology multi-instance tier (BL-021/BL-025, informational only)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: |
+            services/eureka-server/pom.xml
+            services/customer-service/pom.xml
+            services/billing-service/pom.xml
+            services/api-gateway/pom.xml
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: agent/requirements.txt
+      # Reuses the already-pinned `requests` dependency
+      # (agent/requirements.txt) the harness itself relies on -- no new
+      # dependency file introduced just for this job.
+      - run: pip install -r agent/requirements.txt
+      # --port-offset 10000 matches the exact value already proven
+      # locally (docs/TESTING_ARCHITECTURE_V1.md section T: 3 consecutive
+      # clean runs, ~103-124s each) -- avoids any theoretical collision
+      # with another job's default ports without changing the harness
+      # itself. Timeouts bumped above the harness's own 90s defaults: a
+      # fresh GitHub-hosted runner has no warm JVM/dependency cache the
+      # way this project's own dev machine normally does, and this
+      # session's own local re-run (see the job-level comment above) saw
+      # real service startup take well over 90s under real concurrent
+      # CPU load -- a cold CI runner is a similarly real, not
+      # theoretical, slow-start case.
+      - name: Real-topology multi-instance test (informational -- see comments above)
+        id: topology
+        continue-on-error: true
+        run: python services/real-topology-tests/run_real_topology_test.py --port-offset 10000 --startup-timeout 180 --registry-timeout 120
+      # NOTE: continue-on-error:true above means the job-level `failure()`
+      # function never sees this step fail (it reports conclusion=success
+      # regardless of real outcome) -- checking the step's own `outcome`
+      # output directly is the only way to still upload real logs on a
+      # real failure.
+      - name: Upload real per-service logs (only runs if the harness failed)
+        if: steps.topology.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-topology-service-logs
+          path: services/real-topology-tests/logs/
+          retention-days: 7

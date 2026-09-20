@@ -451,8 +451,32 @@ simulated:**
 
 Runs entirely local, touches no other service's business logic or
 `pom.xml` (every service used strictly as a black box, per this item's
-own hard constraint), and is not wired into `.github/workflows/ci.yml` —
-a separate, deliberate decision for later, same reasoning as §R.
+own hard constraint).
+
+**BL-025 (2026-09-20): wired into `.github/workflows/ci.yml` as its own
+`real-topology` job — informational only (`continue-on-error: true`),
+deliberately NOT gating.** Real finding from re-verifying this tier
+before wiring it in: the "3 consecutive clean runs" proof above is now
+STALE. ACT-013 (built the same night, after this tier's own proof) made
+billing-service's `ContractPlanService.enroll()` call a real
+`LegacyBillingSystemClient` against `legacy-billing-system.base-url`
+(default `http://localhost:9099`) — a real dependency this harness's
+4-process topology never starts. A real local re-run today reached real
+service startup, real Eureka registry convergence, and real
+gateway-routing-readiness, then failed at `POST /customers/{id}/plan`
+with a real 503 (`legacy billing system unreachable`). This is a genuine
+drift between two same-night features, not a flake — tracked as its own
+item, `docs/ACTION_QUEUE.json`'s ACT-015, rather than silently patched
+during BL-025 (adding a real legacy-billing-system stub process to this
+harness is real new harness design — a 5th process, its own health
+check, wiring into the existing `--port-offset`/descendant-PID-cleanup
+machinery — outside BL-025's own SMALL, "CI wiring only" scope). The CI
+job stays informational until ACT-015 is fixed and re-verified, at which
+point removing `continue-on-error` is a deliberate follow-up decision,
+not a silent default. Whether GitHub's actual runner has enough real
+CPU/memory headroom for 4 concurrent real JVMs was NOT independently
+confirmed from the sandboxed session that did this wiring — noted
+honestly as still open, not assumed proven.
 
 ## Open items (tracked in docs/ACTION_QUEUE.json's TESTING-ARCH-V1-GAPS)
 
