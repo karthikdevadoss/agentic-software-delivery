@@ -26,7 +26,7 @@
       "safe_to_auto_execute": false,
       "verification_required": "Re-run the same empirical probe and confirm the new error message accurately describes the rejection reason; confirm the path is still rejected either way.",
       "created_at_commit": "8cd4083",
-      "resolved_at_commit": null
+      "resolved_at_commit": "b22296d"
     },
     {
       "id": "ACT-002",
@@ -40,7 +40,7 @@
       "safe_to_auto_execute": false,
       "verification_required": "A test file exists calling tools.py functions directly (not through a consumer) for traversal/symlink/absolute-path/redaction, and passes.",
       "created_at_commit": "8cd4083",
-      "resolved_at_commit": null
+      "resolved_at_commit": "b22296d"
     },
     {
       "id": "ACT-005",

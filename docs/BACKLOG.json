@@ -852,7 +852,9 @@
       "session_ids": [
         "da166cc9-854a-47c3-8b06-8d2034e4b8fc"
       ],
-      "commit_shas": [],
+      "commit_shas": [
+        "b22296d"
+      ],
       "created_at": "2026-09-20T14:23:11+00:00",
       "started_at": "2026-09-20T14:23:11+00:00",
       "completed_at": "2026-09-20T15:06:22+00:00",
@@ -872,7 +874,9 @@
       "session_ids": [
         "da166cc9-854a-47c3-8b06-8d2034e4b8fc"
       ],
-      "commit_shas": [],
+      "commit_shas": [
+        "b22296d"
+      ],
       "created_at": "2026-09-20T14:23:11+00:00",
       "started_at": "2026-09-20T14:23:11+00:00",
       "completed_at": "2026-09-20T15:06:22+00:00",
