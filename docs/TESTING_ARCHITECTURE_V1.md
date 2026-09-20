@@ -358,6 +358,102 @@ time would have caught.
 and `customerExists_forwardsTheActualPerCallToken_notAHardcodedOne` —
 both real, run, passing tests (8/8 in that class as of this commit).
 
+## §T. REAL-TOPOLOGY multi-instance tier — IMPLEMENTED (BL-021, 2026-09-20)
+
+Closes a real, previously-empty gap this document did not have a section
+for at all: nothing existed between "one service in isolation" (§G's
+UNIT/SPRING SLICE/REAL-INFRA INTEGRATION/CONTRACT levels, all real for
+`app/` and now for the `services/` microservices decomposition too) and
+production. That gap was not theoretical — a real bug audit the same
+night this decomposition was built found that 4 of 7 real defects
+(`docs/MICROSERVICES_ARCHITECTURE.md`'s own "Real end-to-end smoke test"
+section; full context in `docs/AI_NATIVE_TESTING_RESEARCH.md`) ONLY
+manifested with multiple REAL service instances running together against
+a REAL Eureka registry — invisible to every unit test, WireMock contract
+test, and single-service Testcontainers test, and only caught because a
+human manually started all 6 services and poked at them by hand.
+
+`services/real-topology-tests/run_real_topology_test.py` makes that a
+real, scripted, repeatable tier instead: starts a real `eureka-server` +
+3 real dependent instances (`customer-service`, `billing-service`,
+`api-gateway` — the minimum topology that exercises both the
+service-discovery bug class and the gateway load-balancing bug class from
+the original audit), polls real readiness at three separate real layers
+(each service's own health, Eureka's server-side registry, and the
+gateway's actual routing capability — see below for why all three are
+needed), then runs BL-007's own already-proven real authenticated request
+chain (`POST /auth/demo-token` -> `POST /customers` ->
+`POST /customers/{id}/plan` -> `GET /customers/{id}/plan`) through the
+real gateway, asserting on real, specific response fields, not just
+absence of an exception. Full design rationale, usage, and the "what this
+deliberately does NOT do" scope boundary: `services/real-topology-tests/
+README.md`.
+
+**Real findings from this tier's own first real runs (2026-09-20), not
+simulated:**
+
+1. **Server-side Eureka registry convergence does not imply
+   client-side readiness.** The Eureka SERVER's `/eureka/apps` registry
+   can report an instance UP before that instance's own CLIENT-side
+   `DiscoveryClient` (e.g. the gateway's) has actually fetched it into its
+   local cache — each client refreshes on its own periodic cycle,
+   separate from server-side registration. The harness's own first real
+   run caught this live: a real 503 "Unable to find instance for
+   customer-service" surfaced as a bare 500 on the very first routed
+   call, seconds after the server registry had already shown that
+   instance UP. Fixed by adding a real gateway-routing-readiness poll
+   (a harmless, side-effect-free real request, retried until it actually
+   succeeds) as a distinct third readiness layer, never a fixed sleep.
+2. **This same client-side-cache-warm-up race exists independently PER
+   downstream service id, at multiple points in the real call graph** —
+   proving the gateway could route to `customer-service` did not prove it
+   could yet route to `billing-service`, and separately did not prove
+   billing-service's OWN internal `BillingCustomerClient` (billing-service
+   -> customer-service) was warm either. Each of the 3 real client-side
+   LoadBalancer caches involved in the real request chain warmed up
+   independently on its own first real use. Fixed with a bounded,
+   backed-off retry at the HTTP-call layer, scoped ONLY to the exact
+   status codes this race manifests as (500, and the deliberately
+   distinct 503 `CustomerLookupOutcome.SERVICE_UNAVAILABLE` "please retry"
+   response) — a genuine 4xx auth/validation/not-found failure is never
+   retried, so a real bug still fails fast.
+3. **A real, serious safety bug in this harness's own first cleanup
+   design**, found and fixed during the same session: an early version
+   force-killed whatever process was LISTENING on a target port as a
+   cleanup fallback. On a machine running multiple git worktrees of this
+   same repository concurrently (a real, current condition, not a
+   hypothetical — confirmed via `git worktree list`), that fallback
+   killed a *different* worktree's real, unrelated, actively-running
+   service processes purely because they happened to occupy the same
+   fixed default port at that moment. Fixed by walking each started
+   process's REAL descendant PID tree (a PowerShell CIM query) and
+   killing only verified descendants of PIDs this run itself started —
+   the port-based fallback was removed outright, not hardened; a port
+   still bound after real cleanup is now only ever reported, never
+   touched.
+4. **Real port contention with a concurrently active sibling worktree**,
+   found and fixed the same session: this tier's first working version
+   used each service's fixed default local port
+   (8080/8081/8082/8761, matching `services/README.md`'s existing
+   convention), and a real run was interrupted mid-flow by a *different*
+   git worktree (confirmed via `git worktree list` + live process
+   inspection, not assumed) concurrently exercising these same services
+   on those same default ports. Fixed with a `--port-offset` CLI option:
+   every service already reads its own port and its Eureka URL from the
+   environment (`server.port=${PORT:...}`,
+   `eureka.client.service-url.defaultZone=${EUREKA_URL:...}`), and every
+   inter-service call resolves purely through Eureka service ids, never a
+   hardcoded port — so shifting the whole topology onto alternate ports
+   (e.g. `--port-offset 10000`) is a safe, zero-code-change way to avoid
+   the collision entirely. Verified live: 3 consecutive full real runs at
+   `--port-offset 10000`, all PASS, ~103-124s wall-clock each, while the
+   sibling worktree remained active on the default ports the whole time.
+
+Runs entirely local, touches no other service's business logic or
+`pom.xml` (every service used strictly as a black box, per this item's
+own hard constraint), and is not wired into `.github/workflows/ci.yml` —
+a separate, deliberate decision for later, same reasoning as §R.
+
 ## Open items (tracked in docs/ACTION_QUEUE.json's TESTING-ARCH-V1-GAPS)
 
 1. No dedicated Playwright spec for the Customer App's own frontend — the

@@ -621,16 +621,20 @@
       "estimate_range": "40-70 min",
       "confidence": "LOW_MEDIUM",
       "size_rationale": "First-of-its-kind real-topology test harness in this codebase -- per the updated sizing rubric, defaults to LARGE regardless of apparent simplicity.",
-      "status": "active",
+      "status": "completed",
       "category": "delivery",
       "parent_id": null,
       "session_ids": [
         "da166cc9-854a-47c3-8b06-8d2034e4b8fc"
       ],
-      "commit_shas": [],
+      "commit_shas": [
+        "aa4576f",
+        "cfd5106"
+      ],
       "created_at": "2026-09-20T13:01:26+00:00",
       "started_at": "2026-09-20T13:01:26+00:00",
-      "completed_at": null
+      "completed_at": "2026-09-20T13:41:45+00:00",
+      "actual_note": "Built in an isolated worktree (agent-a2801afacbc8b77f6, branch worktree-agent-a2801afacbc8b77f6). services/real-topology-tests/run_real_topology_test.py: real eureka-server + customer-service + billing-service + api-gateway, 3 real readiness layers (per-service health, Eureka server registry, actual gateway routing), BL-007's own proven request chain (POST /auth/demo-token -> POST /customers -> POST /customers/{id}/plan -> GET /customers/{id}/plan) through the real gateway, asserting real response fields (status codes, customerId, planName, ratePerKwh). REAL EVIDENCE: ran the harness 6 times total against real services (no mocks/stubs anywhere). Runs 1-4 each surfaced and got a real fix for a genuine defect class: (1) Eureka server-side registry convergence != gateway client-side DiscoveryClient readiness (real 503-as-500 caught live) -> added a dedicated gateway-routing-readiness poll; (2) the same per-service-id LoadBalancer warm-up race recurring independently for billing-service and for billing-service's own internal customer-service call -> added a bounded 500/503 retry; (3) a real, serious safety bug in this harness's OWN first cleanup design -- a port-based 'kill whatever is listening here' fallback force-killed a DIFFERENT, unrelated worktree's (agent-a9bae3d773be58f1e) real running service processes when this harness's own preflight refused early with an empty procs dict -- fixed by walking each started process's real descendant PID tree (PowerShell CIM query) and never touching a port-based fallback again; (4) real, ongoing port contention with that same sibling worktree still being actively used -> added a --port-offset CLI option (every service already reads PORT/EUREKA_URL from its environment; inter-service calls resolve only via Eureka service ids, so this needed zero service-code changes). Runs 5-7 (at --port-offset 10000, avoiding the sibling worktree's ports) were 3 CONSECUTIVE clean PASSes: ~103-124s wall-clock each, full topology up + full real authenticated cross-service flow verified + cleanup confirmed all 4 ports free every time (taskkill of tracked PID + every verified real descendant PID, e.g. run 3: eureka-server pid 80932 + descendants [80824,35316,77280], etc.). Time taken: ~65 minutes end-to-end (within the 40-70 min LARGE estimate, despite the mid-task safety incident and its fix, because catching and fixing that incident IS the kind of real defect this tier exists to catch -- it caught one in its own harness, not just in the services under test). Also added docs/TESTING_ARCHITECTURE_V1.md's new S section and services/real-topology-tests/README.md documenting all of the above, including the collateral-damage incident, honestly, not hidden. NOT wired into .github/workflows/ci.yml -- deliberate, per the task's own instruction, awaiting a separate decision."
     },
     {
       "id": "BL-022",
