@@ -98,6 +98,20 @@
       }
     },
     {
+      "id": "BL-006",
+      "title": "Real pagination at scale (GET /admin/customers/all + demo data seeding) and mutation testing (PIT)",
+      "description": "Owner authorized continuing 2026-09-20 with 'use today's usage fully and complete as much as you can' after BL-005 closed with real available time remaining. Two genuinely valuable, targeted additions rather than open-ended scope creep: (1) real pagination/sorting at real row counts (GET /admin/customers/all, unscoped from the existing demo-workspace admin tool, plus POST /admin/customers/seed-demo-data for generating realistic volume) -- ties back to the Owner's original 'increase scale of users' ask from earlier in the session; (2) mutation testing (PIT) -- a genuine 'latest testing tools' gap, verifying whether the existing test suite actually catches bugs, not just achieves line coverage.",
+      "size": "LARGE",
+      "size_rationale": "Two distinct sub-efforts, each touching multiple files/layers (pagination: repository+controller+security+migration+application.properties+test; PIT: pom.xml plugin config+a real run+results doc), genuinely new logic in both (allowlist-validated sort field, batch-insert configuration, PIT scoping decisions), real investigation required (existing admin query's workspace-scoping had to be understood before deciding NOT to modify it).",
+      "status": "done",
+      "parent_id": "BL-005",
+      "session_ids": [],
+      "commit_shas": ["93888dd", "a5916c6"],
+      "created_at": "2026-09-20T00:50:00+00:00",
+      "started_at": "2026-09-20T00:50:00+00:00",
+      "completed_at": "2026-09-20T03:08:57+02:00"
+    },
+    {
       "id": "BL-003",
       "title": "Kafka: ContractPlanEnrolled event with real fan-out to 2 independent consumers",
       "description": "Second real event type through the existing transactional-outbox/Kafka infrastructure (see docs/FLAGSHIP_MARKET_COVERAGE.md's Eventing row for the first). Generalized OutboxPublisher/KafkaMessagingConfig from one hardcoded topic to an eventType->topic registry. Fanned out to 2 independent consumer groups (Notification, BillingSync) -- Kafka delivers each group its own full copy of the topic. Found and fixed a real bug this exposed: ProcessedEvent's idempotency ledger was keyed by eventId alone, correct only when exactly one consumer processes a given event; moved to a composite (consumerName, eventId) key (V7 migration).",
