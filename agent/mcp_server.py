@@ -99,4 +99,19 @@ def search_project_context(query: str, top_k: int = 5, source_type: str = "") ->
 
 
 if __name__ == "__main__":
-    mcp.run()
+    # ACT-005 / BL-011: the streamable-http path documented above was, until
+    # now, never actually exercised -- only stdio (via mcp_demo.py's
+    # in-process Client). MCP_TRANSPORT lets agent/mcp_demo_http.py spawn
+    # this file as a real subprocess with a real HTTP transport for a real
+    # end-to-end verification; local dev/Claude Desktop/Claude Code still
+    # get the unchanged default (stdio) when this env var isn't set.
+    import os as _os
+    _transport = _os.environ.get("MCP_TRANSPORT", "stdio")
+    if _transport == "streamable-http":
+        mcp.run(
+            transport="streamable-http",
+            host=_os.environ.get("MCP_HOST", "127.0.0.1"),
+            port=int(_os.environ.get("MCP_PORT", "8000")),
+        )
+    else:
+        mcp.run()
