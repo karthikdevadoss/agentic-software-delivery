@@ -465,6 +465,20 @@
       "verification_required": "A real, properly-sized sprint of its own -- this is first-of-its-kind (a new domain, new resource modeling, likely new FHIR-library dependencies) and was deliberately NOT started in Sprint 5 despite time remaining in that sprint's 1-hour cap, to avoid either rushing a shallow/unconvincing implementation or blowing the explicit time cap on a LARGE-class item. Needs the Owner's explicit scoping decision on how deep to go before sizing it for real.",
       "created_at_commit": null,
       "resolved_at_commit": null
+    },
+    {
+      "id": "ACT-018",
+      "source": "devils_advocate_review",
+      "title": "Real devil-advocate self-critique of the whole system (architecture, testing, docs, cost, security) -- 9 findings, none yet actioned",
+      "priority": "medium",
+      "status": "open",
+      "scope": "Cross-cutting -- see full list below, each is its own real decision, not a mechanical fix.",
+      "reason": "A deliberate, requested devil's-advocate pass across the whole system, done 2026-09-20, grounded against real current industry research where relevant (microservices-at-scale sources cited on the trainer overview page). Real findings, not yet actioned, listed together here so none is lost: (1) the microservices decomposition may be a real anti-pattern for a team of one -- 2026 industry consensus puts real microservices benefit past 10-15 developers; (2) no saga/compensating-transaction pattern exists for real cross-service writes (billing -> customer/metering); (3) the web Workbench propose->approve->apply pipeline is likely vestigial in practice -- most real delivery this session happened via direct Claude Code sessions and forked subagents, not that pipeline; (4) a shared symmetric JWT secret across all 6 services is a known anti-pattern versus per-service asymmetric validation; (5) docs/LESSONS.md is proven partially write-only -- the --in-XML-comment bug is documented twice there and still recurred a third time, same AI, same session; (6) documentation sprawl (~45 files) is a real, ongoing staleness liability, evidenced by multiple independently-stale docs found and fixed this same session; (7) the real-topology CI job provides zero actual gating value today (continue-on-error: true); (8) long multi-fork sessions like this one are structurally the same shape as the mechanism behind the real EUR40 cost incident -- worth watching, not assumed self-enforcing; (9) 'model-neutral by design' is asserted, never empirically tested against a non-Claude model.",
+      "evidence": "Full writeup with citations: the trainer-facing overview artifact, section 12 (\"A real self-critique, run deliberately against the whole system\"), published 2026-09-20.",
+      "safe_to_auto_execute": false,
+      "verification_required": "Each of the 9 findings needs its own real Owner decision on whether/how deep to act -- several (1, 3) are genuine architecture-direction calls, not sized engineering tasks. Not actioned in the same sprint this was found, given a real external time constraint (a scheduled review meeting) -- logged durably rather than rushed or lost.",
+      "created_at_commit": null,
+      "resolved_at_commit": null
     }
   ]
 }
