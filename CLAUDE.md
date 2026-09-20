@@ -122,6 +122,14 @@ the incident that motivated it.
   done before the work, using the rubric in docs/BACKLOG.json's
   `_sizing_rubric` -- never skipped, never assigned after the fact to
   match how it went.
+  **Exception (Owner directive, 2026-09-20): post-retro improvement work
+  does not need to be sized.** Action items that come directly out of a
+  retro's own diagnosis (fixing a named estimation/implementation
+  mistake, building a tool the retro's own root-cause analysis called
+  for) may be picked up and done directly -- this is a deliberate
+  carve-out from the general rule, not a loosening of it elsewhere.
+  Category tagging in docs/OUTSIDE_SPRINT_LOG.md still applies if the
+  work happens outside an active sprint.
 - **A "sprint" here is one or more sized items approved together for one
   work session, start to finish** -- not a fixed clock (corrected
   2026-09-20: real practice diverged from this doc's original "one sized
