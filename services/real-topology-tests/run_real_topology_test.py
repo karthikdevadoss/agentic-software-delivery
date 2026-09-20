@@ -106,22 +106,48 @@ def _mvnw(service_dir: Path) -> Path:
     return service_dir / ("mvnw.cmd" if IS_WINDOWS else "mvnw")
 
 
+# Default local ports, matching services/README.md's existing convention.
+# A --port-offset lets an entire run be shifted onto alternate ports (see
+# build_services() below) -- added after a real run on this exact machine
+# was interrupted mid-flow by a DIFFERENT git worktree concurrently
+# exercising these same services on their fixed default ports (confirmed
+# via `git worktree list` + live process inspection, not assumed). Every
+# service already reads its own port and its EUREKA_URL from the
+# environment (see each service's application.properties -- e.g.
+# `server.port=${PORT:8081}`, `eureka.client.service-url.defaultZone=
+# ${EUREKA_URL:...}`), so this is a real, zero-risk, non-invasive
+# parameterization: no service source or config file is touched, and
+# inter-service calls still resolve purely through Eureka service ids
+# (never a hardcoded port), so an offset topology behaves identically to
+# the default one.
+DEFAULT_EUREKA_PORT = 8761
+DEFAULT_PORTS = {"customer-service": 8081, "billing-service": 8082, "api-gateway": 8080}
+
 # Startup order matters only in the sense that eureka-server should be
 # reachable before the others bother registering (they'll retry anyway
 # if not, but starting it first avoids pointless early registration
 # failures in the logs). The other 3 are started concurrently after that.
-EUREKA = {"name": "eureka-server", "dir": SERVICES_DIR / "eureka-server", "port": 8761, "eureka_app_id": None}
 
-DEPENDENT_SERVICES = [
-    {"name": "customer-service", "dir": SERVICES_DIR / "customer-service", "port": 8081, "eureka_app_id": "CUSTOMER-SERVICE"},
-    {"name": "billing-service", "dir": SERVICES_DIR / "billing-service", "port": 8082, "eureka_app_id": "BILLING-SERVICE"},
-    {"name": "api-gateway", "dir": SERVICES_DIR / "api-gateway", "port": 8080, "eureka_app_id": "API-GATEWAY"},
-]
 
-ALL_SERVICES = [EUREKA] + DEPENDENT_SERVICES
+def build_services(port_offset: int):
+    eureka_port = DEFAULT_EUREKA_PORT + port_offset
+    eureka = {"name": "eureka-server", "dir": SERVICES_DIR / "eureka-server", "port": eureka_port, "eureka_app_id": None}
+    dependents = [
+        {"name": "customer-service", "dir": SERVICES_DIR / "customer-service",
+         "port": DEFAULT_PORTS["customer-service"] + port_offset, "eureka_app_id": "CUSTOMER-SERVICE"},
+        {"name": "billing-service", "dir": SERVICES_DIR / "billing-service",
+         "port": DEFAULT_PORTS["billing-service"] + port_offset, "eureka_app_id": "BILLING-SERVICE"},
+        {"name": "api-gateway", "dir": SERVICES_DIR / "api-gateway",
+         "port": DEFAULT_PORTS["api-gateway"] + port_offset, "eureka_app_id": "API-GATEWAY"},
+    ]
+    return eureka, dependents, [eureka] + dependents, eureka_port
 
-GATEWAY_PORT = 8080
-EUREKA_PORT = 8761
+
+# Populated by main() before anything else runs (default offset 0 keeps
+# every module-level function usable standalone/under test without
+# requiring main() to run first).
+EUREKA, DEPENDENT_SERVICES, ALL_SERVICES, EUREKA_PORT = build_services(0)
+GATEWAY_PORT = DEFAULT_PORTS["api-gateway"]
 
 
 class HarnessError(Exception):
@@ -164,6 +190,15 @@ def start_service(service: dict) -> subprocess.Popen:
     log_path = LOG_DIR / f"{service['name']}.log"
     log_file = open(log_path, "w", encoding="utf-8", errors="replace")
 
+    # PORT/EUREKA_URL overrides -- see build_services()'s docstring-comment
+    # for why this is safe: every service already supports these via its
+    # own application.properties, and inter-service calls resolve purely
+    # through Eureka service ids, never a hardcoded port.
+    env = dict(os.environ)
+    env["PORT"] = str(service["port"])
+    if service["name"] != "eureka-server":
+        env["EUREKA_URL"] = f"http://localhost:{EUREKA_PORT}/eureka"
+
     # shell=False, explicit argv -- same pattern already proven correct
     # in this codebase (agent/build_tools.py's run_maven): no shell
     # metacharacter risk, and subprocess CAN launch a .cmd wrapper this
@@ -174,6 +209,7 @@ def start_service(service: dict) -> subprocess.Popen:
         stdout=log_file,
         stderr=subprocess.STDOUT,
         shell=False,
+        env=env,
     )
     service["_log_file_handle"] = log_file
     service["_log_path"] = log_path
@@ -554,7 +590,14 @@ def main():
                          help="Max seconds to wait for each service's own /actuator/health to report UP")
     parser.add_argument("--registry-timeout", type=float, default=90.0,
                          help="Max seconds to wait for real Eureka registry convergence (its own response cache refreshes on a real ~30s cycle)")
+    parser.add_argument("--port-offset", type=int, default=0,
+                         help="Shift every service's port by this amount (e.g. 10000 -> eureka-server on 18761, customer-service on 18081, ...). "
+                              "Lets this harness run without colliding with another worktree/session using the default ports on this machine.")
     args = parser.parse_args()
+
+    global EUREKA, DEPENDENT_SERVICES, ALL_SERVICES, EUREKA_PORT, GATEWAY_PORT
+    EUREKA, DEPENDENT_SERVICES, ALL_SERVICES, EUREKA_PORT = build_services(args.port_offset)
+    GATEWAY_PORT = DEFAULT_PORTS["api-gateway"] + args.port_offset
 
     overall_start = time.monotonic()
     procs: dict = {}

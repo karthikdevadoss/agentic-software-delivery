@@ -60,9 +60,17 @@ python services/real-topology-tests/run_real_topology_test.py
 ```
 
 Optional: `--startup-timeout <seconds>` (default 90, per-service health
-wait) and `--registry-timeout <seconds>` (default 90 — Eureka's own
+wait), `--registry-timeout <seconds>` (default 90 — Eureka's own
 full-registry response cache refreshes on a real ~30s default cycle, so
-this stays generous rather than tight).
+this stays generous rather than tight), and `--port-offset <N>` (default
+0) to shift every service onto alternate ports (e.g. `--port-offset
+10000` runs eureka-server on 18761, customer-service on 18081,
+billing-service on 18082, api-gateway on 18080) — every service already
+reads its own port and Eureka URL from the environment, and inter-service
+calls resolve purely through Eureka service ids, so this is a safe,
+zero-code-change way to avoid colliding with another worktree/session
+exercising these same services on their default ports on the same
+machine (a real condition this harness hit during its own development).
 
 Exit code `0` = PASS. Exit code `1` = FAIL, with the real failing step and
 evidence printed (also see `logs/<service>.log`, gitignored, for the real

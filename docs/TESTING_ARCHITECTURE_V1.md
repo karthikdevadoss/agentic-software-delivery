@@ -405,20 +405,23 @@ simulated:**
    the port-based fallback was removed outright, not hardened; a port
    still bound after real cleanup is now only ever reported, never
    touched.
-4. **Known, documented, NOT-yet-solved limitation**: this tier uses each
-   service's fixed default local port (8080/8081/8082/8761, matching
-   `services/README.md`'s existing convention) and therefore cannot safely
-   run concurrently with another worktree/session also exercising these
-   same services on the same machine — a real run was interrupted
-   mid-flow this same session by exactly that contention (confirmed via
-   `git worktree list` + process inspection, not assumed). The harness's
-   preflight port check correctly refuses when ports are already
-   occupied, but a race remains possible if a second session starts
-   between that check and this harness's own service startup. No fix
-   attempted this task (would require making every service's port and
-   peer URLs configurable per test run, a real architecture change beyond
-   this item's scope) — recorded honestly as an open item below rather
-   than silently worked around.
+4. **Real port contention with a concurrently active sibling worktree**,
+   found and fixed the same session: this tier's first working version
+   used each service's fixed default local port
+   (8080/8081/8082/8761, matching `services/README.md`'s existing
+   convention), and a real run was interrupted mid-flow by a *different*
+   git worktree (confirmed via `git worktree list` + live process
+   inspection, not assumed) concurrently exercising these same services
+   on those same default ports. Fixed with a `--port-offset` CLI option:
+   every service already reads its own port and its Eureka URL from the
+   environment (`server.port=${PORT:...}`,
+   `eureka.client.service-url.defaultZone=${EUREKA_URL:...}`), and every
+   inter-service call resolves purely through Eureka service ids, never a
+   hardcoded port — so shifting the whole topology onto alternate ports
+   (e.g. `--port-offset 10000`) is a safe, zero-code-change way to avoid
+   the collision entirely. Verified live: 3 consecutive full real runs at
+   `--port-offset 10000`, all PASS, ~103-124s wall-clock each, while the
+   sibling worktree remained active on the default ports the whole time.
 
 Runs entirely local, touches no other service's business logic or
 `pom.xml` (every service used strictly as a black box, per this item's
@@ -436,7 +439,3 @@ a separate, deliberate decision for later, same reasoning as §R.
    deliberately deferred, not mandatory per-change.
 5. No cross-run economics aggregation yet (§Q) — evidence capture starts
    now; aggregation is future work.
-6. `services/real-topology-tests/` (§S) uses fixed default ports and is
-   not safe to run concurrently with another worktree/session exercising
-   the same services on the same machine — real, confirmed, not yet
-   fixed (would need per-run configurable ports across all 4 services).
