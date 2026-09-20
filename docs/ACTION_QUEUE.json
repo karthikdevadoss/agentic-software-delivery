@@ -397,14 +397,15 @@
       "source": "owner_directive",
       "title": "Rework billing-service to be a realistic facade over a legacy billing system, matching real NRG architecture",
       "priority": "high",
-      "status": "open",
+      "status": "verified",
       "scope": "services/billing-service/src/main/java/com/example/billingservice/service/ContractPlanService.java and related (currently OWNS the full enrollment/contract-plan logic itself), docs/MICROSERVICES_ARCHITECTURE.md",
       "reason": "Real gap found 2026-09-20 during a pre-next-sprint review: extensive career-history Q&A that night confirmed the real NRG billing service is a bridge/facade over an older, separate billing system (it does not calculate bills itself) -- but the app built earlier the same night has billing-service own the full ContractPlan enrollment logic directly, not reflecting that facade pattern. Owner explicitly approved reworking this (2026-09-20): 'rework to make it as close to NRG... it could be an important topic to discuss in interview and also it covers many important usecases when implemented in the way it is in NRG.'",
       "evidence": "services/billing-service/.../ContractPlanService.java directly owns enrollment/contract-plan business logic and persistence; karthik-ai-context/context/CAREER_HISTORY.md NRG section (2026-09-20 entry) records the real facade pattern.",
       "safe_to_auto_execute": false,
       "verification_required": "A real design for what the billing-service should call out to (a mocked/simulated 'legacy billing system' service or stub, matching how real facade patterns are usually demoed) needs to be sized and estimated as part of a real sprint -- not started until that sprint is approved.",
+      "resolution": "Built LegacyBillingSystemClient + LegacyBillingSystemClientConfig (RestClient + Resilience4j circuit-breaker/retry, deliberately plain/non-@LoadBalanced -- a real legacy system is not a modern Eureka-registered peer, see the class Javadoc). ContractPlanService.enroll() now confirms the authoritative rate via this client instead of trusting the caller-submitted rate outright; the legacy call is placed after the existing idempotency no-op check so a duplicate submission never pays its cost. 10 new tests (7 WireMock-backed in LegacyBillingSystemClientIntegrationTest incl. an explicit outbound-request assertion and a negative unavailable-fallback test; 3 in ContractPlanServiceTest). Full billing-service suite: 28->38 tests, 0 failures both before and after. pom.xml/tracing config untouched (BL-014 owns that in a separate worktree).",
       "created_at_commit": null,
-      "resolved_at_commit": null
+      "resolved_at_commit": "5903183"
     }
   ]
 }

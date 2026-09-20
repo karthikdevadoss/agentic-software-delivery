@@ -657,16 +657,19 @@
       "estimate_range": "40-70 min",
       "confidence": "MEDIUM",
       "size_rationale": "Real design work but extends already-proven patterns (BillingCustomerClient-style REST+Resilience4j client) from tonight's own codebase.",
-      "status": "active",
+      "status": "done",
       "category": "delivery",
       "parent_id": null,
       "session_ids": [
         "da166cc9-854a-47c3-8b06-8d2034e4b8fc"
       ],
-      "commit_shas": [],
+      "commit_shas": [
+        "5903183"
+      ],
       "created_at": "2026-09-20T13:01:26+00:00",
       "started_at": "2026-09-20T13:01:26+00:00",
-      "completed_at": null
+      "completed_at": "2026-09-20T13:25:27+00:00",
+      "actual_note": "Done in ~24 min, at the fast end of the 40-70 min MEDIUM-confidence range (real evidence this pattern really was as proven/repeatable as the size_rationale assumed -- 3rd client built on the exact same RestClient+Resilience4j shape tonight, after customer-service and metering-service). Design: chose an in-process LegacyBillingSystemClient (not a whole separate 'legacy-billing-simulator' service) -- WireMock already plays that exact stand-in role for customer-service/metering-service in this codebase's own tests, and the BACKLOG size_rationale itself scoped this as a client extension, not a new deployable service. Built LegacyBillingSystemClient + LegacyBillingSystemClientConfig (deliberately plain/non-@LoadBalanced RestClient -- a real legacy system is not a modern Eureka-registered peer, documented in the class Javadoc as its own real interview point) + LegacyPlanPricingOutcome (sealed interface, mirrors EnrollmentLockService.LockResult's existing style) + LegacyBillingSystemUnavailableException. ContractPlanService.enroll() now calls confirmAuthoritativeRate() after the existing idempotency no-op check (so a duplicate submission never pays the legacy system's cost) and persists ITS confirmed rate, never the caller-submitted one -- the actual facade behavior change, proven by a dedicated test asserting the persisted rate differs from what the caller sent. 10 new tests: LegacyBillingSystemClientIntegrationTest (7, WireMock-backed: success, an explicit outbound-request assertion checking planName/customerId/bearer-token were really sent, 404-not-retried, 500-retries-then-unavailable, timeout, circuit-breaker-opens-and-stays-honest, repeated-404-never-opens-breaker) + 3 in ContractPlanServiceTest (authoritative-rate-used-not-caller-rate, plan-not-recognized-404, legacy-unavailable-503) plus never() assertions added to 3 existing tests (lock-not-acquired, customer-not-found, idempotent-no-op) proving the legacy client is never called on those short-circuit paths. Full billing-service suite genuinely run (./mvnw test) before AND after: 28 tests/0 failures/5 skipped (Docker-dependent Redis Testcontainers tests, pre-existing/expected) -> 38 tests/0 failures/5 skipped. One transient WireMock-count flake seen in a single full-suite run in BillingCustomerClientIntegrationTest (an UNTOUCHED file, confirmed via git status) -- reproduced as passing 6/6 in isolation and in two subsequent clean full-suite reruns, diagnosed as pre-existing timing flakiness under full-suite load, not a regression from this change. pom.xml and tracing/observability config untouched, as required (BL-014 owns that in a separate worktree) -- no new dependency was needed, resilience4j/wiremock were already present."
     },
     {
       "id": "AEQ-025B",

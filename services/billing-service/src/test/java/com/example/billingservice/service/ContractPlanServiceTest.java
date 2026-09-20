@@ -3,9 +3,12 @@ package com.example.billingservice.service;
 import com.example.billingservice.cache.EnrollmentLockService;
 import com.example.billingservice.client.BillingCustomerClient;
 import com.example.billingservice.client.CustomerLookupOutcome;
+import com.example.billingservice.client.LegacyBillingSystemClient;
+import com.example.billingservice.client.LegacyPlanPricingOutcome;
 import com.example.billingservice.dto.ContractPlanEnrollRequest;
 import com.example.billingservice.exception.CustomerServiceUnavailableException;
 import com.example.billingservice.exception.EnrollmentInProgressException;
+import com.example.billingservice.exception.LegacyBillingSystemUnavailableException;
 import com.example.billingservice.model.ContractPlan;
 import com.example.billingservice.model.ContractPlanStatus;
 import com.example.billingservice.outbox.OutboxEventRepository;
@@ -25,27 +28,39 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
  * Ported from app/'s ContractPlanServiceTest -- same rigor, same test
- * names/intent where the logic is unchanged. THE ONE REAL DIFFERENCE (the
- * point of this port): BillingCustomerClient is mocked directly instead of
- * an in-process CustomerRepository/CustomerService, since billing-service
- * now confirms a customer exists over a real (mocked, here) network call
- * -- see ContractPlanService's Javadoc.
+ * names/intent where the logic is unchanged. THE FIRST real difference
+ * this port made: BillingCustomerClient is mocked directly instead of an
+ * in-process CustomerRepository/CustomerService, since billing-service now
+ * confirms a customer exists over a real (mocked, here) network call --
+ * see ContractPlanService's Javadoc.
+ *
+ * ACT-013 adds a SECOND: LegacyBillingSystemClient is mocked the same way
+ * -- ContractPlanService no longer trusts a caller-submitted rate, it
+ * confirms it with this client (see confirmAuthoritativeRate()). Every
+ * pre-existing test below stubs it, via {@code service(...)}, to CONFIRM
+ * some rate (the specific value is irrelevant to those tests -- none of
+ * them assert on the persisted rate); the NEW facade-specific tests below
+ * assert on the actual outcome of that call.
  */
 @ExtendWith(MockitoExtension.class)
 class ContractPlanServiceTest {
 
     private static final String TEST_BEARER_TOKEN = "Bearer test-token";
+    private static final BigDecimal DEFAULT_LEGACY_CONFIRMED_RATE = new BigDecimal("0.9900");
 
     @Mock
     private ContractPlanRepository contractPlanRepository;
     @Mock
     private BillingCustomerClient billingCustomerClient;
+    @Mock
+    private LegacyBillingSystemClient legacyBillingSystemClient;
     @Mock
     private OutboxEventRepository outboxEventRepository;
     @Mock
@@ -54,12 +69,19 @@ class ContractPlanServiceTest {
 
     private ContractPlanService service(CustomerLookupOutcome lookupOutcome) {
         org.mockito.Mockito.lenient().when(billingCustomerClient.checkCustomerExists(1L, TEST_BEARER_TOKEN)).thenReturn(lookupOutcome);
+        // Lenient, same reasoning as lenientLockAcquired() below: not every
+        // test path actually reaches confirmAuthoritativeRate() (e.g. the
+        // customer-not-found test throws before it), and the specific rate
+        // value is irrelevant to every test that stubs via this helper --
+        // none of them assert on the persisted rate.
+        org.mockito.Mockito.lenient().when(legacyBillingSystemClient.confirmPlanPricing(any(), any(), any()))
+                .thenReturn(new LegacyPlanPricingOutcome.Confirmed(DEFAULT_LEGACY_CONFIRMED_RATE));
         lenientLockAcquired();
         return newService();
     }
 
     private ContractPlanService newService() {
-        return new ContractPlanService(contractPlanRepository, billingCustomerClient, outboxEventRepository, jsonMapper, enrollmentLockService);
+        return new ContractPlanService(contractPlanRepository, billingCustomerClient, legacyBillingSystemClient, outboxEventRepository, jsonMapper, enrollmentLockService);
     }
 
     /** Default every test to "lock acquired" (real Redis behavior for the
@@ -104,6 +126,7 @@ class ContractPlanServiceTest {
         verify(contractPlanRepository, org.mockito.Mockito.never()).findByCustomerIdAndStatus(any(), any());
         verify(contractPlanRepository, org.mockito.Mockito.never()).save(any());
         verify(billingCustomerClient, org.mockito.Mockito.never()).checkCustomerExists(any(), any());
+        verify(legacyBillingSystemClient, never()).confirmPlanPricing(any(), any(), any());
     }
 
     @Test
@@ -115,6 +138,10 @@ class ContractPlanServiceTest {
                 .isInstanceOf(NoSuchElementException.class)
                 .hasMessageContaining(ContractPlanService.CUSTOMER_NOT_FOUND_MESSAGE);
         verify(contractPlanRepository, org.mockito.Mockito.never()).findByCustomerIdAndStatus(any(), any());
+        // ACT-013: the legacy billing system's (slower, more expensive)
+        // pricing lookup must never even be attempted for a customer that
+        // was never confirmed to exist.
+        verify(legacyBillingSystemClient, never()).confirmPlanPricing(any(), any(), any());
     }
 
     /**
@@ -131,6 +158,7 @@ class ContractPlanServiceTest {
         assertThatThrownBy(() -> service.enroll(1L, request, TEST_BEARER_TOKEN))
                 .isInstanceOf(CustomerServiceUnavailableException.class);
         verify(contractPlanRepository, org.mockito.Mockito.never()).findByCustomerIdAndStatus(any(), any());
+        verify(legacyBillingSystemClient, never()).confirmPlanPricing(any(), any(), any());
     }
 
     @Test
@@ -175,6 +203,13 @@ class ContractPlanServiceTest {
      * a timeout whose original call had actually succeeded) must be a
      * true no-op: the existing active plan is returned unchanged, and
      * neither saveAndFlush() (cancel) nor save() (create) is ever called.
+     *
+     * ACT-013 addition: also proves the legacy billing system is NEVER
+     * called for this no-op path -- see ContractPlanService.enroll()'s
+     * Javadoc comment on confirmAuthoritativeRate()'s placement for why
+     * that ordering is deliberate (the legacy system is this flow's slow,
+     * expensive dependency; a duplicate submission has no business reason
+     * to pay that cost again).
      */
     @Test
     void enroll_whenIdenticalRequestSubmittedTwice_isIdempotentNoOp() {
@@ -190,6 +225,7 @@ class ContractPlanServiceTest {
         assertThat(result.getStatus()).isEqualTo(ContractPlanStatus.ACTIVE);
         verify(contractPlanRepository, org.mockito.Mockito.never()).saveAndFlush(any());
         verify(contractPlanRepository, org.mockito.Mockito.never()).save(any());
+        verify(legacyBillingSystemClient, never()).confirmPlanPricing(any(), any(), any());
     }
 
     /**
@@ -231,5 +267,87 @@ class ContractPlanServiceTest {
         service.enroll(1L, request, TEST_BEARER_TOKEN);
 
         verify(outboxEventRepository, times(1)).save(any());
+    }
+
+    /**
+     * ACT-013 CORE FACADE BEHAVIOR TEST: the actual point of this whole
+     * rework. The caller submits ratePerKwh=0.99 (a bogus/untrusted
+     * request); the legacy billing system is stubbed to CONFIRM a
+     * completely different rate (0.1550). The PERSISTED plan must carry
+     * the legacy-confirmed rate, never the caller-submitted one -- this is
+     * exactly the "facade, not owner" distinction ACT-013 exists to prove:
+     * before this change, request.ratePerKwh() was trusted outright.
+     */
+    @Test
+    void enroll_usesLegacyBillingSystemsAuthoritativeRate_neverTheCallerSubmittedRate() {
+        ContractPlanService service = newService();
+        when(billingCustomerClient.checkCustomerExists(1L, TEST_BEARER_TOKEN)).thenReturn(CustomerLookupOutcome.FOUND);
+        lenientLockAcquired();
+        when(contractPlanRepository.findByCustomerIdAndStatus(1L, ContractPlanStatus.ACTIVE)).thenReturn(Optional.empty());
+        when(contractPlanRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        BigDecimal legacyConfirmedRate = new BigDecimal("0.1550");
+        when(legacyBillingSystemClient.confirmPlanPricing("Basic", 1L, TEST_BEARER_TOKEN))
+                .thenReturn(new LegacyPlanPricingOutcome.Confirmed(legacyConfirmedRate));
+        ContractPlanEnrollRequest request = new ContractPlanEnrollRequest("Basic", new BigDecimal("0.99"), LocalDate.of(2026, 1, 1));
+
+        ContractPlan result = service.enroll(1L, request, TEST_BEARER_TOKEN);
+
+        assertThat(result.getRatePerKwh()).isEqualByComparingTo(legacyConfirmedRate);
+        assertThat(result.getRatePerKwh()).isNotEqualByComparingTo(request.ratePerKwh());
+        // Outbound-request-shape proof at the unit level: confirms the
+        // legacy client was actually invoked with the real plan name,
+        // customer id, and bearer token -- the real end-to-end proof that
+        // data is actually sent lives in
+        // LegacyBillingSystemClientIntegrationTest (WireMock-backed).
+        ArgumentCaptor<String> planNameCaptor = ArgumentCaptor.forClass(String.class);
+        verify(legacyBillingSystemClient, times(1)).confirmPlanPricing(planNameCaptor.capture(), org.mockito.ArgumentMatchers.eq(1L), org.mockito.ArgumentMatchers.eq(TEST_BEARER_TOKEN));
+        assertThat(planNameCaptor.getValue()).isEqualTo("Basic");
+    }
+
+    /**
+     * ACT-013: a plan code the legacy billing system's catalog does not
+     * recognize is a genuine 404 -- never falls back to the caller-submitted
+     * rate, and never mutates any plan state.
+     */
+    @Test
+    void enroll_whenLegacyBillingSystemDoesNotRecognizePlan_throwsBeforeMutatingAnything() {
+        ContractPlanService service = newService();
+        when(billingCustomerClient.checkCustomerExists(1L, TEST_BEARER_TOKEN)).thenReturn(CustomerLookupOutcome.FOUND);
+        lenientLockAcquired();
+        when(contractPlanRepository.findByCustomerIdAndStatus(1L, ContractPlanStatus.ACTIVE)).thenReturn(Optional.empty());
+        when(legacyBillingSystemClient.confirmPlanPricing("Nonexistent", 1L, TEST_BEARER_TOKEN))
+                .thenReturn(new LegacyPlanPricingOutcome.PlanNotRecognized());
+        ContractPlanEnrollRequest request = new ContractPlanEnrollRequest("Nonexistent", new BigDecimal("0.20"), LocalDate.of(2026, 1, 1));
+
+        assertThatThrownBy(() -> service.enroll(1L, request, TEST_BEARER_TOKEN))
+                .isInstanceOf(NoSuchElementException.class)
+                .hasMessageContaining(ContractPlanService.PLAN_NOT_RECOGNIZED_MESSAGE);
+        verify(contractPlanRepository, never()).saveAndFlush(any());
+        verify(contractPlanRepository, never()).save(any());
+        verify(outboxEventRepository, never()).save(any());
+    }
+
+    /**
+     * ACT-013: the honest, never-fabricated 503 path when
+     * LegacyBillingSystemClient genuinely could not reach the legacy
+     * system -- distinct from a real "plan not recognized." Mirrors
+     * enroll_whenCustomerServiceUnavailable_throwsCustomerServiceUnavailableException
+     * exactly, for the new dependency.
+     */
+    @Test
+    void enroll_whenLegacyBillingSystemUnavailable_throwsLegacyBillingSystemUnavailableException() {
+        ContractPlanService service = newService();
+        when(billingCustomerClient.checkCustomerExists(1L, TEST_BEARER_TOKEN)).thenReturn(CustomerLookupOutcome.FOUND);
+        lenientLockAcquired();
+        when(contractPlanRepository.findByCustomerIdAndStatus(1L, ContractPlanStatus.ACTIVE)).thenReturn(Optional.empty());
+        when(legacyBillingSystemClient.confirmPlanPricing("Basic", 1L, TEST_BEARER_TOKEN))
+                .thenReturn(new LegacyPlanPricingOutcome.Unavailable());
+        ContractPlanEnrollRequest request = new ContractPlanEnrollRequest("Basic", new BigDecimal("0.20"), LocalDate.of(2026, 1, 1));
+
+        assertThatThrownBy(() -> service.enroll(1L, request, TEST_BEARER_TOKEN))
+                .isInstanceOf(LegacyBillingSystemUnavailableException.class);
+        verify(contractPlanRepository, never()).saveAndFlush(any());
+        verify(contractPlanRepository, never()).save(any());
+        verify(outboxEventRepository, never()).save(any());
     }
 }
