@@ -77,6 +77,20 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- ACT-014 / BL-024: real downstream stubs for
+             GatewayRoutingIntegrationTest, proving GatewayRoutesConfig's
+             route selection and the lb()+uri() forwarding filter chain
+             actually deliver a request to the right downstream, and (per
+             docs/TESTING_ARCHITECTURE_V1.md's section S outbound-request-assertion
+             convention) that headers are forwarded untouched. Same version
+             already proven working elsewhere in this repo
+             (services/billing-service/pom.xml, app/pom.xml). -->
+        <dependency>
+            <groupId>org.wiremock</groupId>
+            <artifactId>wiremock-standalone</artifactId>
+            <version>3.10.0</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>

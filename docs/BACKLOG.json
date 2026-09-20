@@ -726,7 +726,7 @@
       "estimate_range": "30-50 min",
       "confidence": "MEDIUM",
       "size_rationale": "Follows the existing per-service test pattern already proven for customer-service/billing-service/metering-service/notification-service -- not first-of-its-kind, but 2 real new services plus a CI matrix change.",
-      "status": "active",
+      "status": "done",
       "category": "delivery",
       "parent_id": null,
       "session_ids": [
@@ -735,8 +735,8 @@
       "commit_shas": [],
       "created_at": "2026-09-20T14:23:11+00:00",
       "started_at": "2026-09-20T14:23:11+00:00",
-      "completed_at": null,
-      "actual_note": null
+      "completed_at": "2026-09-20T15:09:16+00:00",
+      "actual_note": "eureka-server: EurekaServerApplicationTests (real context-load) + EurekaServerRegistrationIntegrationTest (a real instance registers via Eureka's actual REST protocol and is discovered back, bounded Awaitility polling mirroring run_real_topology_test.py's own no-fixed-sleep convention) -- 2/2 passing. Pivoted away from a second in-process spring-cloud-netflix-eureka-client Spring context after it hit a real, reproducible library NPE (EurekaRegistration.getEurekaClient() null) -- documented in the test's Javadoc rather than worked around with internals. api-gateway: ApiGatewayApplicationTests (context load, Eureka client disabled via new application-test.properties matching billing-service's convention) + GatewayRoutingIntegrationTest (2 tests, 2 independent real WireMock servers proving both the /customers/** catch-all and the more specific /customers/*/plan route reach the RIGHT real downstream, plus outbound Authorization-header-propagation assertions per TESTING_ARCHITECTURE_V1.md section S) -- 3/3 passing. Added org.wiremock:wiremock-standalone:3.10.0 (test scope, same version already used by billing-service/app) to api-gateway/pom.xml. Both new-test classes observed genuinely failing at least once for the intended reason before the final green run (the Eureka NPE; a deliberate temporary route-order swap in GatewayRoutesConfig that made planRoute_forwardsToBillingService_notTheBroaderCustomerCatchAll fail with a real 404, then reverted). Both services added to .github/workflows/ci.yml's microservices matrix (now 6 services). ACT-014 marked resolved in docs/ACTION_QUEUE.json. Real local totals: eureka-server 2/2, api-gateway 3/3, 0 failures/0 errors both suites."
     },
     {
       "id": "BL-025",
@@ -746,7 +746,7 @@
       "estimate_range": "20-35 min",
       "confidence": "MEDIUM",
       "size_rationale": "The harness itself is already built and proven; this is CI wiring plus verifying it runs clean in GitHub's runner environment, not new harness design.",
-      "status": "active",
+      "status": "done",
       "category": "delivery",
       "parent_id": null,
       "session_ids": [
@@ -755,8 +755,8 @@
       "commit_shas": [],
       "created_at": "2026-09-20T14:23:11+00:00",
       "started_at": "2026-09-20T14:23:11+00:00",
-      "completed_at": null,
-      "actual_note": null
+      "completed_at": "2026-09-20T15:09:16+00:00",
+      "actual_note": "CI wiring done: new `real-topology` job in .github/workflows/ci.yml (setup-java 21 + setup-python 3.12 reusing agent/requirements.txt's already-pinned `requests`, runs `python services/real-topology-tests/run_real_topology_test.py --port-offset 10000 --startup-timeout 180 --registry-timeout 120`, uploads services/real-topology-tests/logs/ as a build artifact on failure). REAL, IMPORTANT FINDING that changed this item's own scope: re-running the harness locally today, before committing the wiring, found its 'proven' 3-clean-runs status is now STALE -- ACT-013 (built after that proof, same night) made billing-service's ContractPlanService.enroll() call a real LegacyBillingSystemClient against a legacy-billing-system stub this harness never starts, so the real end-to-end flow now fails at POST /customers/{id}/plan with a real 503. This is real new harness design to fix (a 5th stub process + its own health/cleanup wiring), explicitly outside this item's own SMALL/'CI wiring only' scope -- so the CI job was wired as INFORMATIONAL ONLY (continue-on-error: true), not gating, and the gap was logged as its own item (docs/ACTION_QUEUE.json's ACT-015) rather than silently expanded into this one. Could NOT independently confirm real GitHub Actions runner CPU/memory headroom for 4 concurrent real JVMs from this sandboxed session -- reported honestly as unverified, not assumed passing. docs/TESTING_ARCHITECTURE_V1.md section T and services/real-topology-tests/README.md both updated with this real finding rather than left stale."
     },
     {
       "id": "BL-026",
