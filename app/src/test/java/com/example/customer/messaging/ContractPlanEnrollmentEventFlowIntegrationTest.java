@@ -67,6 +67,8 @@ class ContractPlanEnrollmentEventFlowIntegrationTest {
     @Autowired
     private BillingSyncRecordRepository billingSyncRecordRepository;
     @Autowired
+    private BillingSyncCompensationRepository billingSyncCompensationRepository;
+    @Autowired
     private KafkaTemplate<String, String> kafkaTemplate;
     @Autowired
     private JsonMapper jsonMapper;
@@ -115,6 +117,38 @@ class ContractPlanEnrollmentEventFlowIntegrationTest {
         await().atMost(Duration.ofSeconds(5)).untilAsserted(() ->
                 assertThat(billingSyncRecordRepository.findAll())
                         .anyMatch(r -> r.getPlanName().equals("Solar Saver 12mo") && r.getCustomerId().equals(created.getId())));
+    }
+
+    /**
+     * SAGA-STYLE COMPENSATION proof: a plan name that triggers the
+     * simulated permanent billing-system rejection results in a
+     * BillingSyncCompensation row -- NOT a BillingSyncRecord, and NOT a
+     * message stuck retrying on the DLT (it's marked processed, since
+     * compensating IS the correct, complete handling of a permanent
+     * business failure). The Notification consumer is entirely
+     * unaffected -- it has no knowledge of BillingSync's internal
+     * business rule and still runs normally.
+     */
+    @Test
+    void billingSyncFailure_triggersCompensation_notARetryOrDeadLetter() {
+        Customer created = restTemplate.postForObject(
+                url("/customers"), new Customer("Compensation Test", "compensation-test@example.com"), Customer.class);
+
+        restTemplate.postForEntity(url("/customers/" + created.getId() + "/plan"),
+                new ContractPlanEnrollRequest("SIMULATE_BILLING_FAILURE_Plan", new BigDecimal("0.18"), LocalDate.now()),
+                com.example.customer.dto.ContractPlanResponse.class);
+
+        await().atMost(Duration.ofSeconds(40)).untilAsserted(() -> {
+            assertThat(billingSyncCompensationRepository.findAll())
+                    .anyMatch(c -> c.getPlanName().equals("SIMULATE_BILLING_FAILURE_Plan") && c.getCustomerId().equals(created.getId()));
+            assertThat(billingSyncRecordRepository.findAll())
+                    .noneMatch(r -> r.getPlanName().equals("SIMULATE_BILLING_FAILURE_Plan"));
+        });
+
+        var event = outboxEventRepository.findAll().stream()
+                .filter(e -> e.getPayload().contains("SIMULATE_BILLING_FAILURE_Plan")).findFirst().orElseThrow();
+        assertThat(processedEventRepository.existsByConsumerNameAndEventId("contract-plan-billing-sync", event.getEventId())).isTrue();
+        assertThat(processedEventRepository.existsByConsumerNameAndEventId("contract-plan-notification", event.getEventId())).isTrue();
     }
 
     @Test
