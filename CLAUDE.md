@@ -147,17 +147,23 @@ required vs. time taken -> any gap outside tolerance
 see docs/BACKLOG.json's `_calibration_process`) is diagnosed as exactly
 one of two causes: ESTIMATION WRONG or IMPLEMENTATION ISSUES (both may
 apply to the same item, named as two separate findings, never blended)
--> action items written (never sized) -> **explicit Owner approval
-required before acting on them** (a deliberate exception to this
-project's general autonomy-first default) -> action items done first ->
-only then size the next NEW task with the updated knowledge (never
-retroactively re-size an already-completed old task). A mid-sprint
-realization Claude makes on its own never triggers a re-estimate --
-finish the sprint as planned, it surfaces in that sprint's normal retro
-as an ESTIMATION WRONG finding. Only the Owner himself changing scope
-mid-sprint triggers an immediate re-estimate. Every retro's full data
-(comparison table, verdicts, evidence, discussion, action items) is
-stored permanently in docs/RETRO_LOG.md -- never left only in chat.
+-> action items written (never sized), in exactly THREE fixed sections
+every time (Owner's permanent structure, 2026-09-20): (1) estimation-
+mistake improvements, (2) implementation-mistake improvements, (3) items
+that are neither but still needed -- each with a proper reason, and at
+least one item addressing the SPRINT AS A WHOLE, not only individual
+tasks -> **explicit Owner approval required before acting on them** (a
+deliberate exception to this project's general autonomy-first default)
+-> action items done first -> only then size the next NEW task with the
+updated knowledge (never retroactively re-size an already-completed old
+task). A mid-sprint realization Claude makes on its own never triggers a
+re-estimate -- finish the sprint as planned, it surfaces in that
+sprint's normal retro as an ESTIMATION WRONG finding. Only the Owner
+himself changing scope mid-sprint triggers an immediate re-estimate.
+Every retro ALWAYS reports the overall sprint estimate vs. actual (not
+just per-item numbers), and its full data (comparison table, verdicts,
+evidence, discussion, action items) is stored permanently in
+docs/RETRO_LOG.md -- never left only in chat.
 
 ## Feedback discipline
 For every meaningful run: compare expected vs. actual, classify any gap
