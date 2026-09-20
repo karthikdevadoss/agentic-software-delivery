@@ -458,7 +458,24 @@ a separate, deliberate decision for later, same reasoning as §R.
 
 1. No dedicated Playwright spec for the Customer App's own frontend — the
    single most valuable next addition (§F/§I). **Partially closed
-   2026-09-20** — see docs/BACKLOG.json's BL-012.
+   2026-09-20** — see docs/BACKLOG.json's BL-012 (BL-013 added the first
+   spec, e2e/customer-app-update-email.spec.js, scoped to the Update Email
+   flow only). **CLOSED 2026-09-20** — BL-027 added
+   e2e/customer-app-frontend.spec.js: 8 real tests covering the login gate
+   (anonymous vs. USER vs. ADMIN view), the real USER cards (Overview,
+   Account/Profile, Plan, Preferences, Appointments, Activity) actually
+   rendering real data, a real Preferences write/read-after-reload flow,
+   and real ADMIN list-to-detail navigation + search. Both specs are wired
+   into `agent/test_impact_analysis.py`'s `FRONTEND_PATH_TO_SPECS` so a
+   future `index.html` change selects the full real coverage. Verified
+   live against a real local `mvnw spring-boot:run` instance (8/9 passing
+   together with the pre-existing Update Email spec; forced to
+   `mode: "serial"` after a real, observed 4-worker contention timeout
+   against the single dev Tomcat instance — not an app defect), and the
+   new suite was observed genuinely failing once (a deliberately seeded
+   wrong expected value in the Preferences reload assertion) before being
+   fixed back, per this project's "a new test is not trusted until it has
+   been observed failing" rule.
 2. Python Test Impact Analysis not yet built (§C) — Python changes are
    flagged, not auto-selected.
 3. No CI wiring yet (§R) — deliberate, awaiting explicit approval.

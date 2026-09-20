@@ -119,14 +119,18 @@ MANDATORY_TRIGGERS = [
 # gaps and docs/ACTION_QUEUE.json's TESTING-ARCH-V1-GAPS item. BL-013
 # (same day) added the first one, e2e/customer-app-update-email.spec.js,
 # as a real side effect of proving the Update Email feature works in a
-# real browser -- mapped here so that origin is now closed, not left
-# undiscovered by this file's own skip-reason logic below. Honest scope
-# note: this spec covers the login -> edit-email -> save -> reload flow
-# specifically, not every page/control on index.html -- a future change
-# to an unrelated part of the page (customer creation, preferences, admin
-# views) would still only be covered by this one spec's incidental
-# overlap, not a purpose-built one. Broader golden-path coverage for this
-# page remains real, separate future work, not claimed as done here.
+# real browser, covering only the login -> edit-email -> save -> reload
+# flow specifically.
+#
+# BL-027 (2026-09-20) closed the broader gap those two items left open:
+# e2e/customer-app-frontend.spec.js adds real coverage for the login gate
+# (anonymous vs. USER vs. ADMIN view), the real USER cards (Overview,
+# Account/Profile, Plan, Preferences, Appointments, Activity) actually
+# rendering real data rather than staying stuck loading, a real
+# Preferences write/read-after-reload flow, and real ADMIN list<->detail
+# navigation + search. Both specs are mapped here so a change to
+# index.html selects the full real coverage that exists today, not just
+# the first, narrower spec.
 FRONTEND_PATH_TO_SPECS = {
     "agent/web/workbench.html": ["e2e/workbench-catalogue.spec.js"],
     "agent/web/workbench.js": ["e2e/workbench-catalogue.spec.js"],
@@ -135,7 +139,10 @@ FRONTEND_PATH_TO_SPECS = {
     "agent/web/usage.js": ["e2e/usage.spec.js"],
     "agent/web/learn.html": ["e2e/learn.spec.js"],
     "agent/web/learn.js": ["e2e/learn.spec.js"],
-    "app/src/main/resources/static/index.html": ["e2e/customer-app-update-email.spec.js"],
+    "app/src/main/resources/static/index.html": [
+        "e2e/customer-app-update-email.spec.js",
+        "e2e/customer-app-frontend.spec.js",
+    ],
 }
 
 # Paths that, if changed, mean "this cannot be confidently bounded by V1's
