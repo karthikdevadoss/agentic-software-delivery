@@ -1,0 +1,71 @@
+services:
+  # The real Customer App, built from the same Dockerfile added this
+  # session -- self-contained: `docker-compose up` needs nothing already
+  # running. Defaults (H2, no Kafka/Redis) are fine here -- every feature
+  # that depends on Redis/Kafka already fails open/gracefully (see
+  # docs/DESIGN_PATTERNS.md), so the app starts and serves real traffic
+  # cleanly with neither provisioned, same as real production today.
+  customer-app:
+    build: ..
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # REAL PROBLEM THIS SOLVES: /actuator/prometheus requires a valid JWT
+  # (see SecurityConfig), and this app's demo tokens are deliberately
+  # short-lived (900s, see DemoJwtIssuer) -- a static bearer token pasted
+  # into prometheus.yml would work for 15 minutes and then silently start
+  # failing every scrape. This sidecar re-issues a fresh token every 10
+  # minutes (comfortably inside the 15-minute TTL) and writes it to a
+  # shared volume; Prometheus's bearer_token_file re-reads that file on
+  # EVERY scrape (real, documented Prometheus behavior -- no restart
+  # needed), so the token is always fresh without either side polling
+  # the other or needing a restart loop.
+  token-refresher:
+    image: curlimages/curl:8.11.0
+    depends_on:
+      customer-app:
+        condition: service_healthy
+    volumes:
+      - token-data:/tokens
+    entrypoint: >
+      sh -c "while true; do
+        curl -s -X POST http://customer-app:8080/auth/demo-token
+        | sed -n 's/.*\"access_token\":\"\\([^\"]*\\)\".*/\\1/p' > /tokens/demo-token.txt;
+        sleep 600;
+      done"
+
+  prometheus:
+    image: prom/prometheus:v3.0.1
+    depends_on:
+      - token-refresher
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - token-data:/tokens:ro
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    depends_on:
+      - prometheus
+    ports:
+      - "3000:3000"
+    environment:
+      # Local demo convenience only -- never how a real deployed Grafana
+      # would be configured (anonymous viewer access, a well-known default
+      # admin password). Fine here: this compose stack is not published
+      # anywhere, it's a local-only dashboard.
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+
+volumes:
+  token-data:

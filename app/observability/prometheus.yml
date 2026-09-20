@@ -1,0 +1,13 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'customer-app'
+    metrics_path: '/actuator/prometheus'
+    scheme: http
+    # Re-read fresh on EVERY scrape (real Prometheus behavior) -- see
+    # docker-compose.yml's token-refresher service for why this file's
+    # contents change every 10 minutes instead of going stale.
+    bearer_token_file: /tokens/demo-token.txt
+    static_configs:
+      - targets: ['customer-app:8080']
