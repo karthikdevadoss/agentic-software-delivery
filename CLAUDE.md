@@ -17,6 +17,7 @@ Before modifying anything:
 3. Read docs/DECISIONS.md when architectural context is needed.
 4. Read docs/LESSONS.md when working on tool-use loops, thinking blocks, path/security logic, or build tooling — skip otherwise.
 5. Check docs/ACTION_QUEUE.json (if present) for smaller open action items separate from the current phase.
+5a. Before sizing any new task, check docs/RETRO_LOG.md for prior estimation/implementation learnings and docs/BACKLOG.json's `_calibration_process` for the current tolerance band.
 6. Run git status --short.
 7. Run git log -5 --oneline.
 8. Inspect only files relevant to the next task.
@@ -135,6 +136,28 @@ the incident that motivated it.
   simple version adds real value before building a scheduled retro
   subagent, to avoid the measurement system itself becoming the waste it
   exists to prevent.
+
+### Phase 2: the estimation-calibration loop (added 2026-09-18/20, Owner directive)
+Every sprint (one sized item, start to finish) runs a closed loop:
+estimate (with a real numeric hour estimate + confidence, not just the
+SMALL/MEDIUM/LARGE/XLARGE label -- see docs/BACKLOG.json's
+`_sizing_rubric`) -> implement -> retro at the end, comparing time
+required vs. time taken -> any gap outside tolerance
+(actual/estimate-midpoint within +-30% to start, tightened over time --
+see docs/BACKLOG.json's `_calibration_process`) is diagnosed as exactly
+one of two causes: ESTIMATION WRONG or IMPLEMENTATION ISSUES (both may
+apply to the same item, named as two separate findings, never blended)
+-> action items written (never sized) -> **explicit Owner approval
+required before acting on them** (a deliberate exception to this
+project's general autonomy-first default) -> action items done first ->
+only then size the next NEW task with the updated knowledge (never
+retroactively re-size an already-completed old task). A mid-sprint
+realization Claude makes on its own never triggers a re-estimate --
+finish the sprint as planned, it surfaces in that sprint's normal retro
+as an ESTIMATION WRONG finding. Only the Owner himself changing scope
+mid-sprint triggers an immediate re-estimate. Every retro's full data
+(comparison table, verdicts, evidence, discussion, action items) is
+stored permanently in docs/RETRO_LOG.md -- never left only in chat.
 
 ## Feedback discipline
 For every meaningful run: compare expected vs. actual, classify any gap

@@ -13,10 +13,10 @@
     "descoped"
   ],
   "_sizing_rubric": {
-    "SMALL": "One clear sub-ask, one file or a tightly-scoped handful, follows an existing pattern in this codebase, low ambiguity.",
-    "MEDIUM": "A few distinct sub-asks or files, may touch 2 layers (e.g. backend + frontend), mostly follows existing patterns with some new logic.",
-    "LARGE": "Multiple sub-asks/files/subsystems, meaningful new logic or design decisions, real ambiguity requiring investigation before implementation.",
-    "XLARGE": "Cross-cutting, genuinely novel (no existing pattern to extend), high ambiguity, likely spans multiple work sessions."
+    "SMALL": "One clear sub-ask, one file or a tightly-scoped handful, follows an existing pattern in this codebase, low ambiguity. Attach a real numeric hour estimate (not just the label), even if narrow (e.g. 10-20 min).",
+    "MEDIUM": "A few distinct sub-asks or files, may touch 2 layers (e.g. backend + frontend), mostly follows existing patterns with some new logic. Attach a real numeric hour estimate.",
+    "LARGE": "Multiple sub-asks/files/subsystems, meaningful new logic or design decisions, real ambiguity requiring investigation before implementation. Attach a real numeric hour estimate; if the task is the FIRST real integration of a given kind in this codebase (first multi-service call, first use of a new infra piece, first cross-boundary flow), default to LARGE even if the individual steps sound simple -- unknown-unknowns are structurally higher the first time a pattern is exercised (real finding: BL-007 item 7, guessed MEDIUM, was actually LARGE for exactly this reason).",
+    "XLARGE": "Cross-cutting, genuinely novel (no existing pattern to extend), high ambiguity, likely spans multiple work sessions. For an XLARGE epic, size architecture/integration risk (drives confidence: LOW/MEDIUM/HIGH) and per-component implementation effort (drives the hour range) SEPARATELY rather than one blended number -- do not let heavy code reuse from an existing proven pattern (porting/adapting, not designing fresh) hide inside a number calibrated for ground-up novel work. If the task is known up front to be splittable across independent parallel subagents, give TWO figures: a sequential-effort estimate and a parallelized-wall-clock estimate, since parallel execution collapses wall-clock time in a way a single sequential number will not predict."
   },
   "_design_rationale": "Sized item = the natural 'sprint' unit, not a fixed clock, because there is exactly one executor working sequentially (no multi-person sync problem a fixed timebox exists to solve). Retro/correction is a SEPARATE, later phase -- deliberately not built yet, to avoid the exact waste this system exists to prevent (an elaborate measurement system costing more than it saves). This file alone, plus the sizing discipline, is Phase 1.",
   "items": [
@@ -31,7 +31,9 @@
       "session_ids": [
         "4458375d-aeb5-4b41-bedb-7600143fb83c"
       ],
-      "commit_shas": ["e190cc9"],
+      "commit_shas": [
+        "e190cc9"
+      ],
       "created_at": "2026-09-18T19:45:00+00:00",
       "started_at": "2026-09-18T19:45:00+00:00",
       "completed_at": "2026-09-18T20:15:00+00:00"
@@ -50,17 +52,60 @@
       "started_at": "2026-09-19T00:00:00+00:00",
       "completed_at": null,
       "checklist": [
-        {"step": "Professional-background scoping completed (private repo)", "status": "done"},
-        {"step": "AI/GenAI deep-dive parity gap-fill (~15-19 new 17-part topics)", "status": "done", "note": "23 new deep topics written (10 RAG/embeddings/MCP + 13 agents/evals/AI-security/AI-economics), real 2026 research grounded (OWASP GenAI Top 10, EU AI Act Art. 14, MCP spec 2026-07-28, real injection incidents). Currently in a LOCAL PERSONAL DRAFT ONLY -- not merged into the public agent/web/learn-tree.json or deployed, per Owner instruction (2026-09-19: 'no need to focus on making the Learn page better... just making the pdf is enough for now')."},
-        {"step": "AI/product-strategy + engineering-leadership topics", "status": "done", "note": "7 deep topics (build-vs-buy, AI ROI, when NOT to use AI, tech debt, architecture-under-ambiguity, AI-adoption leadership, stakeholder communication) -- in the personal draft only, same deferral as above."},
-        {"step": "Domain business knowledge (energy/healthcare/insurance, light)", "status": "done", "note": "6 light topics -- personal draft only."},
-        {"step": "Legacy tech (light conversational: Struts/JSF/EJB/WebLogic/ANT-CVS/QTP-era)", "status": "done", "note": "7 light topics -- personal draft only."},
-        {"step": "Frontend fundamentals (light: React/Angular basics)", "status": "done", "note": "5 light topics -- personal draft only."},
-        {"step": "German-market interview format/culture section", "status": "done", "note": "10 subsections, 71 sourced citations (process/format, language reality, culture, compensation, employment-law specifics, the PR advantage, company archetypes, prep checklist) -- personal draft only."},
-        {"step": "Freshness pass: verify 2026 interview trends via real research", "status": "done", "note": "Folded into the AI deep-dive and German-market forks directly rather than a separate pass -- each did real, cited 2026 research as part of writing, not after."},
-        {"step": "Deepen thin spots vs. NRG stack (GraphQL, observability, Kafka/messaging)", "status": "done", "note": "GraphQL: real endpoint added to the live public app (CustomerGraphQLController, schema.graphqls, commit f74df39), a real bug found+fixed during testing. Observability: confirmed already solid (100% trace sampling, ECS logs, traceId/spanId via Brave) -- no gap existed. Kafka: confirmed already solid (transactional outbox, real tests) -- no gap existed. Full regression: 131 tests, 0 failures, 0 errors, 14 honest skips."},
-        {"step": "Personal PDF draft generated (private, local-only)", "status": "done", "note": "All four content sections merged with the existing 396-topic tree plus new self-introduction/NRG-deep-dive/behavioral sections (written directly, never sent to a subagent, using confirmed CAREER_HISTORY.md facts only) into a LOCAL-ONLY draft tree, using the real unmodified agent/learn_pdf.py rendering pipeline via a path override -- agent/web/learn-tree.json itself was never touched. Output: C:\\Users\\Hemapriya\\Downloads\\docsforclaude\\Master_Interview_Book_DRAFT_v2.pdf (39 domains, 474 topics, 1.53MB, verified valid %PDF-1.4). Owner reviewing; corrections expected in a follow-up session."},
-        {"step": "Merge technical content into the real public learn-tree.json, verify, deploy, live-check", "status": "deferred", "note": "Deliberately NOT done -- explicit Owner instruction (2026-09-19): don't update the live Learn page for now, this is personal-use only until further notice. Revisit only when the Owner decides to (also note: Owner is now reconsidering whether /learn should stay public at all -- open question, not to be resolved unilaterally)."}
+        {
+          "step": "Professional-background scoping completed (private repo)",
+          "status": "done"
+        },
+        {
+          "step": "AI/GenAI deep-dive parity gap-fill (~15-19 new 17-part topics)",
+          "status": "done",
+          "note": "23 new deep topics written (10 RAG/embeddings/MCP + 13 agents/evals/AI-security/AI-economics), real 2026 research grounded (OWASP GenAI Top 10, EU AI Act Art. 14, MCP spec 2026-07-28, real injection incidents). Currently in a LOCAL PERSONAL DRAFT ONLY -- not merged into the public agent/web/learn-tree.json or deployed, per Owner instruction (2026-09-19: 'no need to focus on making the Learn page better... just making the pdf is enough for now')."
+        },
+        {
+          "step": "AI/product-strategy + engineering-leadership topics",
+          "status": "done",
+          "note": "7 deep topics (build-vs-buy, AI ROI, when NOT to use AI, tech debt, architecture-under-ambiguity, AI-adoption leadership, stakeholder communication) -- in the personal draft only, same deferral as above."
+        },
+        {
+          "step": "Domain business knowledge (energy/healthcare/insurance, light)",
+          "status": "done",
+          "note": "6 light topics -- personal draft only."
+        },
+        {
+          "step": "Legacy tech (light conversational: Struts/JSF/EJB/WebLogic/ANT-CVS/QTP-era)",
+          "status": "done",
+          "note": "7 light topics -- personal draft only."
+        },
+        {
+          "step": "Frontend fundamentals (light: React/Angular basics)",
+          "status": "done",
+          "note": "5 light topics -- personal draft only."
+        },
+        {
+          "step": "German-market interview format/culture section",
+          "status": "done",
+          "note": "10 subsections, 71 sourced citations (process/format, language reality, culture, compensation, employment-law specifics, the PR advantage, company archetypes, prep checklist) -- personal draft only."
+        },
+        {
+          "step": "Freshness pass: verify 2026 interview trends via real research",
+          "status": "done",
+          "note": "Folded into the AI deep-dive and German-market forks directly rather than a separate pass -- each did real, cited 2026 research as part of writing, not after."
+        },
+        {
+          "step": "Deepen thin spots vs. NRG stack (GraphQL, observability, Kafka/messaging)",
+          "status": "done",
+          "note": "GraphQL: real endpoint added to the live public app (CustomerGraphQLController, schema.graphqls, commit f74df39), a real bug found+fixed during testing. Observability: confirmed already solid (100% trace sampling, ECS logs, traceId/spanId via Brave) -- no gap existed. Kafka: confirmed already solid (transactional outbox, real tests) -- no gap existed. Full regression: 131 tests, 0 failures, 0 errors, 14 honest skips."
+        },
+        {
+          "step": "Personal PDF draft generated (private, local-only)",
+          "status": "done",
+          "note": "All four content sections merged with the existing 396-topic tree plus new self-introduction/NRG-deep-dive/behavioral sections (written directly, never sent to a subagent, using confirmed CAREER_HISTORY.md facts only) into a LOCAL-ONLY draft tree, using the real unmodified agent/learn_pdf.py rendering pipeline via a path override -- agent/web/learn-tree.json itself was never touched. Output: C:\\Users\\Hemapriya\\Downloads\\docsforclaude\\Master_Interview_Book_DRAFT_v2.pdf (39 domains, 474 topics, 1.53MB, verified valid %PDF-1.4). Owner reviewing; corrections expected in a follow-up session."
+        },
+        {
+          "step": "Merge technical content into the real public learn-tree.json, verify, deploy, live-check",
+          "status": "deferred",
+          "note": "Deliberately NOT done -- explicit Owner instruction (2026-09-19): don't update the live Learn page for now, this is personal-use only until further notice. Revisit only when the Owner decides to (also note: Owner is now reconsidering whether /learn should stay public at all -- open question, not to be resolved unilaterally)."
+        }
       ]
     },
     {
@@ -72,20 +117,71 @@
       "status": "done",
       "parent_id": null,
       "session_ids": [],
-      "commit_shas": ["3e07ccd", "28f836d", "53c2f3b", "95a85ec", "7257ee9", "59ecead", "70d1555", "c108b23", "11c1a4f", "07b5e9a", "724cace", "da10224"],
+      "commit_shas": [
+        "3e07ccd",
+        "28f836d",
+        "53c2f3b",
+        "95a85ec",
+        "7257ee9",
+        "59ecead",
+        "70d1555",
+        "c108b23",
+        "11c1a4f",
+        "07b5e9a",
+        "724cace",
+        "da10224"
+      ],
       "created_at": "2026-09-20T01:53:00+00:00",
       "started_at": "2026-09-20T01:53:00+00:00",
       "completed_at": "2026-09-20T03:15:54+00:00",
       "actual_wall_clock_note": "CORRECTED 2026-09-20 (see LESSONS.md): originally recorded as ~1h04m/02:56:56 UTC, using the first 'done' commit (c108b23) as completed_at -- wrong. BL-007 was closed prematurely: CI coverage for the 4 new services didn't exist yet at that point (a real, undone gap, found right after), and wiring it surfaced 2 more genuine bugs (mvnw executable bit lost on Windows; a SecurityConfig bean needing @ConditionalOnWebApplication) that took real additional time to find and fix. Honest total, start to genuinely-verified-green-in-CI: 1h22m54s (01:53:00-03:15:54 UTC), not 1h04m. Still dramatically under the 12-20h estimate -- see the separate LESSONS.md entry for why (parallelization + a real conflation in the estimate between structural novelty and business-logic novelty), but the earlier-reported number itself was inaccurate and has been fixed here rather than left standing.",
       "checklist": [
-        {"step": "Architecture design doc (docs/MICROSERVICES_ARCHITECTURE.md)", "status": "done", "size": "MEDIUM"},
-        {"step": "Scaffold 6 service skeletons (eureka-server, api-gateway, customer/billing/notification/metering-service) -- all compile clean", "status": "done", "size": "LARGE"},
-        {"step": "Build out customer-service (Customer, CustomerPreference, auth/JWT issuance, ported+adapted from app/)", "status": "done", "size": "LARGE", "actual_note": "Model/repository/service/controller/dto/security/exception layers ported from app/'s com.example.customer to com.example.customerservice, adapted per scope: CustomerRepository simplified to a plain JpaRepository (dropped the admin searchWorkspaceCustomers query), CustomerPreferenceService has no OutboxEvent/Kafka (plain JPA write), DemoAuthController has no RateLimiterService (no Redis dependency in this service's pom), GlobalExceptionHandler carries only NotFound/ValidationFailure/ForbiddenWorkspace/InvalidCredentials, SecurityConfig keeps only customer/preference/auth rules, DemoJwtIssuer's DEMO_SCOPES kept full (contract:*/appointment:* included) since this service is the shared token issuer for the whole decomposition. Dropped springdoc-openapi annotations (@Tag/@SecurityRequirement) since that dependency isn't in this service's pom. Tests ported+adapted from app/'s test suite (AuthTestSupport, CustomerControllerIntegrationTest, CustomerPreferenceControllerIntegrationTest, SecurityIntegrationTest subset, DemoLoginControllerIntegrationTest, CustomerServiceTest, CustomerPreferenceServiceTest with outbox mocking removed). Real run: 43/43 tests passing, 0 failures, 0 errors, BUILD SUCCESS. pom.xml verified free of literal '--' outside legitimate XML comment delimiters. Committed locally, not pushed (Owner handles push after all 4 services reviewed together)."},
-        {"step": "Build out billing-service (ContractPlan, enrollment, Redis lock, real REST call to customer-service via Resilience4j)", "status": "done", "size": "LARGE", "actual_note": "Ported ContractPlan/enrollment/Redis-lock/outbox logic unchanged from app/'s customer package; the one real change: BillingCustomerClient replaces the in-process customerService.getById() with a genuine @LoadBalanced RestClient + Resilience4j circuit-breaker/retry call to customer-service, honestly distinguishing FOUND/NOT_FOUND/SERVICE_UNAVAILABLE (never fabricated), mapped to 200/404/503 respectively. Real gotcha found and fixed: a bare src/test/resources/application.properties silently SHADOWED (not layered with) the main properties file via Maven test-classpath ordering, breaking every @SpringBootTest's JWT secret resolution -- fixed via a profile-specific application-test.properties + @ActiveProfiles(\"test\"), recorded in docs/LESSONS.md for the other 3 services being built in parallel. Real test run (mvn clean test): Tests run: 20, Failures: 0, Errors: 0, Skipped: 5 (the 5 skips are the Testcontainers-backed Redis tests, disabledWithoutDocker=true, no Docker on this machine -- same as app/'s equivalent tests)."},
-        {"step": "Build out notification-service (senders, Kafka consumption, ported+adapted from app/)", "status": "done", "size": "MEDIUM", "actual_note": "Notification senders (Strategy+Factory) and the composite-key idempotent Kafka consumer ported from app/; new POST /notifications/send for direct synchronous triggering alongside the existing async Kafka path. Real run: 13 tests, 11 passing + 2 legitimately Docker-skipped (Testcontainers Kafka), 0 failures."},
-        {"step": "Build out metering-service (NEW domain: MeterReading, usage aggregation -- no existing code to port)", "status": "done", "size": "LARGE", "actual_note": "MeterReading entity (plain customerId reference, no JPA relationship, same rationale as CustomerPreference/ContractPlan), repository, custom @NotInFuture Bean Validation constraint, service with real aggregation (sum+count, empty-range handled explicitly), controller (3 endpoints), resource-server-only SecurityConfig (JwtDecoder built directly from app.security.jwt.* properties, no local token issuer since this service never issues tokens), WorkspaceAccessGuard ported from the monolith's exact role/cid claim logic, GlobalExceptionHandler. 14/14 tests passing (6 Mockito unit tests on the real aggregation math + 8 RestTemplate/RANDOM_PORT integration tests incl. 2 real workspace-isolation tests proving a customer-A token gets 403 on customer-B's data). pom.xml verified free of literal '--' outside legitimate XML comment delimiters."},
-        {"step": "End-to-end integration test: Eureka + Gateway + all 4 services running together, a real request routed through the gateway to the right service", "status": "done", "size": "LARGE", "actual_note": "Genuinely proven, not assumed: all 6 services started together locally, full real flow through the gateway (auth -> customer creation -> plan enrollment [real billing-service->customer-service REST call] -> metering -> read-back), all real Eureka discovery + load-balanced routing. 4 real bugs found and fixed this way (none catchable by unit/WireMock tests): a @LoadBalanced bean hijacking Eureka's own client, .before(uri(...)) not actually load-balancing without an explicit lb() filter, prefer-ip-address breaking same-machine self-connections, and a real missing JWT-propagation gap between billing-service and customer-service. Full writeup in docs/MICROSERVICES_ARCHITECTURE.md. 90/90 tests still pass after every fix. Sized LARGE in retrospect, not the original MEDIUM guess -- the real bugs found were genuine LARGE-level discovery/networking issues, not simple wiring."},
-        {"step": "Wire CI coverage for the 4 new services (real gap: they had zero CI verification until this step -- prior 'success' commits only reflected app/'s unaffected tests)", "status": "done", "size": "MEDIUM", "actual_note": "Added a matrix job (customer/billing/notification/metering-service, one leg each, fail-fast disabled). Found and fixed 2 MORE real bugs on the very first real-Docker run, neither catchable on this Docker-less dev machine: (1) the mvnw executable bit was lost copying it to all 6 new services on Windows (git ls-files showed 100644 vs app/mvnw's 100755) -- 'Permission denied', exit 126, before a single test ran; fixed via git update-index --chmod=+x. (2) notification-service's ContractPlanEventFlowIntegrationTest (Testcontainers Kafka, skips locally) uses WebEnvironment.NONE since it's pure Kafka/repository logic with no HTTP calls, but SecurityConfig unconditionally required an HttpSecurity bean that only auto-configures for a real servlet context -- fixed correctly with @ConditionalOnWebApplication, not by forcing the test to pay for an embedded server it doesn't need. Final CI run: ALL GREEN -- all 4 microservices, plus the existing Customer App/Python backend/Node frontend jobs, genuinely passing together."}
+        {
+          "step": "Architecture design doc (docs/MICROSERVICES_ARCHITECTURE.md)",
+          "status": "done",
+          "size": "MEDIUM"
+        },
+        {
+          "step": "Scaffold 6 service skeletons (eureka-server, api-gateway, customer/billing/notification/metering-service) -- all compile clean",
+          "status": "done",
+          "size": "LARGE"
+        },
+        {
+          "step": "Build out customer-service (Customer, CustomerPreference, auth/JWT issuance, ported+adapted from app/)",
+          "status": "done",
+          "size": "LARGE",
+          "actual_note": "Model/repository/service/controller/dto/security/exception layers ported from app/'s com.example.customer to com.example.customerservice, adapted per scope: CustomerRepository simplified to a plain JpaRepository (dropped the admin searchWorkspaceCustomers query), CustomerPreferenceService has no OutboxEvent/Kafka (plain JPA write), DemoAuthController has no RateLimiterService (no Redis dependency in this service's pom), GlobalExceptionHandler carries only NotFound/ValidationFailure/ForbiddenWorkspace/InvalidCredentials, SecurityConfig keeps only customer/preference/auth rules, DemoJwtIssuer's DEMO_SCOPES kept full (contract:*/appointment:* included) since this service is the shared token issuer for the whole decomposition. Dropped springdoc-openapi annotations (@Tag/@SecurityRequirement) since that dependency isn't in this service's pom. Tests ported+adapted from app/'s test suite (AuthTestSupport, CustomerControllerIntegrationTest, CustomerPreferenceControllerIntegrationTest, SecurityIntegrationTest subset, DemoLoginControllerIntegrationTest, CustomerServiceTest, CustomerPreferenceServiceTest with outbox mocking removed). Real run: 43/43 tests passing, 0 failures, 0 errors, BUILD SUCCESS. pom.xml verified free of literal '--' outside legitimate XML comment delimiters. Committed locally, not pushed (Owner handles push after all 4 services reviewed together)."
+        },
+        {
+          "step": "Build out billing-service (ContractPlan, enrollment, Redis lock, real REST call to customer-service via Resilience4j)",
+          "status": "done",
+          "size": "LARGE",
+          "actual_note": "Ported ContractPlan/enrollment/Redis-lock/outbox logic unchanged from app/'s customer package; the one real change: BillingCustomerClient replaces the in-process customerService.getById() with a genuine @LoadBalanced RestClient + Resilience4j circuit-breaker/retry call to customer-service, honestly distinguishing FOUND/NOT_FOUND/SERVICE_UNAVAILABLE (never fabricated), mapped to 200/404/503 respectively. Real gotcha found and fixed: a bare src/test/resources/application.properties silently SHADOWED (not layered with) the main properties file via Maven test-classpath ordering, breaking every @SpringBootTest's JWT secret resolution -- fixed via a profile-specific application-test.properties + @ActiveProfiles(\"test\"), recorded in docs/LESSONS.md for the other 3 services being built in parallel. Real test run (mvn clean test): Tests run: 20, Failures: 0, Errors: 0, Skipped: 5 (the 5 skips are the Testcontainers-backed Redis tests, disabledWithoutDocker=true, no Docker on this machine -- same as app/'s equivalent tests)."
+        },
+        {
+          "step": "Build out notification-service (senders, Kafka consumption, ported+adapted from app/)",
+          "status": "done",
+          "size": "MEDIUM",
+          "actual_note": "Notification senders (Strategy+Factory) and the composite-key idempotent Kafka consumer ported from app/; new POST /notifications/send for direct synchronous triggering alongside the existing async Kafka path. Real run: 13 tests, 11 passing + 2 legitimately Docker-skipped (Testcontainers Kafka), 0 failures."
+        },
+        {
+          "step": "Build out metering-service (NEW domain: MeterReading, usage aggregation -- no existing code to port)",
+          "status": "done",
+          "size": "LARGE",
+          "actual_note": "MeterReading entity (plain customerId reference, no JPA relationship, same rationale as CustomerPreference/ContractPlan), repository, custom @NotInFuture Bean Validation constraint, service with real aggregation (sum+count, empty-range handled explicitly), controller (3 endpoints), resource-server-only SecurityConfig (JwtDecoder built directly from app.security.jwt.* properties, no local token issuer since this service never issues tokens), WorkspaceAccessGuard ported from the monolith's exact role/cid claim logic, GlobalExceptionHandler. 14/14 tests passing (6 Mockito unit tests on the real aggregation math + 8 RestTemplate/RANDOM_PORT integration tests incl. 2 real workspace-isolation tests proving a customer-A token gets 403 on customer-B's data). pom.xml verified free of literal '--' outside legitimate XML comment delimiters."
+        },
+        {
+          "step": "End-to-end integration test: Eureka + Gateway + all 4 services running together, a real request routed through the gateway to the right service",
+          "status": "done",
+          "size": "LARGE",
+          "actual_note": "Genuinely proven, not assumed: all 6 services started together locally, full real flow through the gateway (auth -> customer creation -> plan enrollment [real billing-service->customer-service REST call] -> metering -> read-back), all real Eureka discovery + load-balanced routing. 4 real bugs found and fixed this way (none catchable by unit/WireMock tests): a @LoadBalanced bean hijacking Eureka's own client, .before(uri(...)) not actually load-balancing without an explicit lb() filter, prefer-ip-address breaking same-machine self-connections, and a real missing JWT-propagation gap between billing-service and customer-service. Full writeup in docs/MICROSERVICES_ARCHITECTURE.md. 90/90 tests still pass after every fix. Sized LARGE in retrospect, not the original MEDIUM guess -- the real bugs found were genuine LARGE-level discovery/networking issues, not simple wiring."
+        },
+        {
+          "step": "Wire CI coverage for the 4 new services (real gap: they had zero CI verification until this step -- prior 'success' commits only reflected app/'s unaffected tests)",
+          "status": "done",
+          "size": "MEDIUM",
+          "actual_note": "Added a matrix job (customer/billing/notification/metering-service, one leg each, fail-fast disabled). Found and fixed 2 MORE real bugs on the very first real-Docker run, neither catchable on this Docker-less dev machine: (1) the mvnw executable bit was lost copying it to all 6 new services on Windows (git ls-files showed 100644 vs app/mvnw's 100755) -- 'Permission denied', exit 126, before a single test ran; fixed via git update-index --chmod=+x. (2) notification-service's ContractPlanEventFlowIntegrationTest (Testcontainers Kafka, skips locally) uses WebEnvironment.NONE since it's pure Kafka/repository logic with no HTTP calls, but SecurityConfig unconditionally required an HttpSecurity bean that only auto-configures for a real servlet context -- fixed correctly with @ConditionalOnWebApplication, not by forcing the test to pay for an embedded server it doesn't need. Final CI run: ALL GREEN -- all 4 microservices, plus the existing Customer App/Python backend/Node frontend jobs, genuinely passing together."
+        }
       ]
     },
     {
@@ -97,24 +193,96 @@
       "status": "done",
       "parent_id": null,
       "session_ids": [],
-      "commit_shas": ["4f7d16e", "1ca4705", "d4c5dbf", "056e1b1", "71eb426", "c63010a", "b16aea2", "4715896", "f93642d", "c134f87", "692d1de", "1aa1845", "dbaf8a6", "723d40b"],
+      "commit_shas": [
+        "4f7d16e",
+        "1ca4705",
+        "d4c5dbf",
+        "056e1b1",
+        "71eb426",
+        "c63010a",
+        "b16aea2",
+        "4715896",
+        "f93642d",
+        "c134f87",
+        "692d1de",
+        "1aa1845",
+        "dbaf8a6",
+        "723d40b"
+      ],
       "created_at": "2026-09-19T00:00:00+00:00",
       "started_at": "2026-09-19T00:00:00+00:00",
       "completed_at": "2026-09-20T02:49:09+02:00",
       "checklist": [
-        {"step": "BL-003: Kafka ContractPlanEnrolled fan-out event", "status": "done", "size": "LARGE"},
-        {"step": "BL-004: Redis distributed lock for enrollment concurrency", "status": "done", "size": "LARGE"},
-        {"step": "Redis rate limiting on a public endpoint", "status": "done", "size": "MEDIUM"},
-        {"step": "New Triage Lab Scenario D (fan-out idempotency bug replay)", "status": "done", "size": "MEDIUM"},
-        {"step": "Design-patterns catalog (what's already genuinely in the code) + 1 new pattern (Saga-style compensation)", "status": "done", "size": "MEDIUM"},
-        {"step": "Dockerfile for the Customer App", "status": "done", "size": "SMALL", "actual_note": "CI-verified: real `docker build` gates the pipeline and passed."},
-        {"step": "OWASP dependency-check wired into CI", "status": "done", "size": "MEDIUM", "actual_note": "Wired and running (informational). Real finding: NVD now requires an API key for reliable CVE access -- documented in the workflow itself, real follow-up needs the Owner (a free NVD key as a GitHub secret)."},
-        {"step": "k6 load-test baseline (real measured p95/throughput)", "status": "done", "size": "LARGE", "actual_note": "k6 didn't need Docker (downloaded the binary directly after winget hung) -- real measured run: 4,146 requests, 0 failures, 128.5 req/s, p95=89.3ms."},
-        {"step": "Local Prometheus + Grafana dashboard on real /actuator/prometheus metrics", "status": "done", "size": "LARGE", "actual_note": "Written and syntax-validated, metric names grep-confirmed real. NOT locally run-verified (no Docker) -- honestly labeled as such in app/observability/README.md, real next step for the Owner once Docker is available."},
-        {"step": "Incident runbook/postmortem doc", "status": "done", "size": "SMALL"},
-        {"step": "OWASP Top 10 self-assessment note", "status": "done", "size": "SMALL-MEDIUM", "actual_note": "Verified the current OWASP Top 10:2025 revision via WebFetch against owasp.org before writing -- the 2021 list most training material references is stale."},
-        {"step": "GDPR/data-retention note + outbox-as-audit-trail documentation", "status": "done", "size": "SMALL"},
-        {"step": "Final verify + update coverage docs + commit/push wrap-up", "status": "done", "size": "MEDIUM-LARGE"}
+        {
+          "step": "BL-003: Kafka ContractPlanEnrolled fan-out event",
+          "status": "done",
+          "size": "LARGE"
+        },
+        {
+          "step": "BL-004: Redis distributed lock for enrollment concurrency",
+          "status": "done",
+          "size": "LARGE"
+        },
+        {
+          "step": "Redis rate limiting on a public endpoint",
+          "status": "done",
+          "size": "MEDIUM"
+        },
+        {
+          "step": "New Triage Lab Scenario D (fan-out idempotency bug replay)",
+          "status": "done",
+          "size": "MEDIUM"
+        },
+        {
+          "step": "Design-patterns catalog (what's already genuinely in the code) + 1 new pattern (Saga-style compensation)",
+          "status": "done",
+          "size": "MEDIUM"
+        },
+        {
+          "step": "Dockerfile for the Customer App",
+          "status": "done",
+          "size": "SMALL",
+          "actual_note": "CI-verified: real `docker build` gates the pipeline and passed."
+        },
+        {
+          "step": "OWASP dependency-check wired into CI",
+          "status": "done",
+          "size": "MEDIUM",
+          "actual_note": "Wired and running (informational). Real finding: NVD now requires an API key for reliable CVE access -- documented in the workflow itself, real follow-up needs the Owner (a free NVD key as a GitHub secret)."
+        },
+        {
+          "step": "k6 load-test baseline (real measured p95/throughput)",
+          "status": "done",
+          "size": "LARGE",
+          "actual_note": "k6 didn't need Docker (downloaded the binary directly after winget hung) -- real measured run: 4,146 requests, 0 failures, 128.5 req/s, p95=89.3ms."
+        },
+        {
+          "step": "Local Prometheus + Grafana dashboard on real /actuator/prometheus metrics",
+          "status": "done",
+          "size": "LARGE",
+          "actual_note": "Written and syntax-validated, metric names grep-confirmed real. NOT locally run-verified (no Docker) -- honestly labeled as such in app/observability/README.md, real next step for the Owner once Docker is available."
+        },
+        {
+          "step": "Incident runbook/postmortem doc",
+          "status": "done",
+          "size": "SMALL"
+        },
+        {
+          "step": "OWASP Top 10 self-assessment note",
+          "status": "done",
+          "size": "SMALL-MEDIUM",
+          "actual_note": "Verified the current OWASP Top 10:2025 revision via WebFetch against owasp.org before writing -- the 2021 list most training material references is stale."
+        },
+        {
+          "step": "GDPR/data-retention note + outbox-as-audit-trail documentation",
+          "status": "done",
+          "size": "SMALL"
+        },
+        {
+          "step": "Final verify + update coverage docs + commit/push wrap-up",
+          "status": "done",
+          "size": "MEDIUM-LARGE"
+        }
       ],
       "sizing_meta": {
         "sized_on": "2026-09-20",
@@ -131,7 +299,10 @@
       "status": "done",
       "parent_id": "BL-005",
       "session_ids": [],
-      "commit_shas": ["93888dd", "a5916c6"],
+      "commit_shas": [
+        "93888dd",
+        "a5916c6"
+      ],
       "created_at": "2026-09-20T00:50:00+00:00",
       "started_at": "2026-09-20T00:50:00+00:00",
       "completed_at": "2026-09-20T03:08:57+02:00"
@@ -145,7 +316,9 @@
       "status": "done",
       "parent_id": "BL-005",
       "session_ids": [],
-      "commit_shas": ["4f7d16e"],
+      "commit_shas": [
+        "4f7d16e"
+      ],
       "created_at": "2026-09-19T00:00:00+00:00",
       "started_at": "2026-09-19T00:00:00+00:00",
       "completed_at": "2026-09-19T21:17:46+02:00"
@@ -159,10 +332,42 @@
       "status": "done",
       "parent_id": "BL-005",
       "session_ids": [],
-      "commit_shas": ["1ca4705"],
+      "commit_shas": [
+        "1ca4705"
+      ],
       "created_at": "2026-09-19T00:00:00+00:00",
       "started_at": "2026-09-19T00:00:00+00:00",
       "completed_at": "2026-09-20T02:12:47+02:00"
+    },
+    {
+      "id": "BL-008",
+      "title": "Create docs/RETRO_LOG.md: structured, permanent store of estimation/implementation retro learnings",
+      "description": "Owner directive 2026-09-20, part of the permanent estimation-calibration-loop working style: a dedicated, separate document (not LESSONS.md, which is general technical gotchas) that stores, after every retro, per task/epic: (1) learnings from wrong ESTIMATION, (2) learnings from wrong IMPLEMENTATION that caused an estimate/actual gap, plus the full retro table, discussion, and action items for future retrieval. Goal stated directly by the Owner: converge estimation and implementation toward very small time/sizing variance over many retro cycles.",
+      "size": "MEDIUM",
+      "size_rationale": "One new document with a clear, explicit structure given directly by the Owner (low ambiguity), but also touches CLAUDE.md (session-startup checklist + canonical-document list) so the new doc is actually discoverable by a fresh session, per this project's own durable-state rules -- 2 files, not SMALL, but no new logic/code, so not LARGE.",
+      "status": "done",
+      "parent_id": null,
+      "session_ids": [],
+      "commit_shas": [],
+      "created_at": "2026-09-20T04:20:00+00:00",
+      "started_at": "2026-09-20T04:20:00+00:00",
+      "completed_at": "2026-09-20T04:40:00+00:00"
     }
-  ]
+  ],
+  "_calibration_process": {
+    "_purpose": "Phase 2 (added 2026-09-20, BL-007 retro): the estimation-calibration loop that makes sizing actually improve over time, adapted from Scrum for one AI executor + one human Product Owner. Every retro and its full data (comparison tables, verdicts, evidence, action items, discussion) is stored durably in docs/RETRO_LOG.md, never left only in chat.",
+    "loop": [
+      "1. Size a task before work starts (numeric hour estimate + confidence, not just the T-shirt label -- see _sizing_rubric).",
+      "2. Implement it.",
+      "3. Retro at the end of every sprint (one sized item, start to finish -- never a fixed calendar cadence): compare time required (estimate) vs. time taken (actual) using the tolerance band below.",
+      "4. Any gap outside tolerance is diagnosed as exactly one of two causes (both may apply to the same item if real evidence supports both, named as two separate findings, never blended into a false single verdict): (a) ESTIMATION WRONG -- the size/estimate itself was miscalled, or (b) IMPLEMENTATION ISSUES -- the estimate was right but a real execution mistake cost extra time.",
+      "5. Action items are written from the diagnosis, WITHOUT sizing the action items themselves.",
+      "6. Wait for the Owner's explicit approval before touching anything for those action items -- this is a deliberate exception to the general autonomy-first default on this project.",
+      "7. Work the approved action items first, before picking up any new task.",
+      "8. Only then size the NEXT new task, using the updated rubric/knowledge -- never retroactively re-size an already-completed old task.",
+      "Mid-sprint scope/understanding changes that Claude discovers on its own do NOT trigger a re-estimate -- finish the sprint as originally planned; the gap surfaces only in that sprint's normal retro and always counts as ESTIMATION WRONG (a self-realized sizing miss is by definition an estimation-logic gap, not an execution mistake). The ONLY thing that triggers a mid-sprint re-estimate is the Owner himself changing the scope mid-task -- re-size immediately when that happens, log why, then continue."
+    ],
+    "tolerance": "Starting band (set 2026-09-20, first version): actual-time / estimate-midpoint ratio within [0.7, 1.3] (+-30%) = matched, no gap. Outside that band triggers the full diagnosis in step 4. Tighten this band periodically (e.g. every ~10 retro'd items) as real variance narrows -- each tightening is itself a dated entry in docs/RETRO_LOG.md, since a shrinking tolerance band is the visible evidence the loop is working.",
+    "storage": "docs/RETRO_LOG.md is the canonical, permanent store for every retro's full data -- see that file's own structure. This _calibration_process block is the mechanism; RETRO_LOG.md is the history."
+  }
 }
