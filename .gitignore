@@ -40,6 +40,9 @@ target/
 *.jar
 *.war
 
+# Real-topology test harness per-run service logs (derived/local, not source — see services/real-topology-tests/)
+services/real-topology-tests/logs/
+
 # Node / Playwright (e2e/, Phase 2 browser regression suite)
 node_modules/
 test-results/
