@@ -80,6 +80,18 @@
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-loadbalancer</artifactId>
         </dependency>
+        <!-- BL-014: Boot 4's client-side RestClient autoconfiguration
+             (RestClientBuilderConfigurer, the ObservationRestClientCustomizer
+             that wires tracing propagation into every RestClient) lives in
+             this separate module, not transitively pulled in by
+             spring-boot-starter-web alone in Boot 4's modular split.
+             Needed so BillingCustomerClientConfig's manually-built
+             RestClient.Builder beans actually get Boot's own customizer
+             pipeline instead of being a bare, uninstrumented builder. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-restclient</artifactId>
+        </dependency>
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-registry-prometheus</artifactId>
@@ -87,6 +99,15 @@
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-tracing-bridge-brave</artifactId>
+        </dependency>
+        <!-- BL-014 real finding: micrometer-tracing-bridge-brave alone
+             gives Brave classes on the classpath but not the Spring Boot
+             autoconfiguration glue that creates an active Tracer bean
+             wired into the Observation pipeline. In Boot 4's modular
+             split that glue is this separate module. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-micrometer-tracing</artifactId>
         </dependency>
         <dependency>
             <groupId>io.github.resilience4j</groupId>
