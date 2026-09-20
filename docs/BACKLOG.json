@@ -1082,6 +1082,52 @@
       "contaminated": true,
       "contamination_reason": "bundled with BL-034 in one combined commit, no clean isolated split",
       "pattern_type": "apply_known_pattern"
+    },
+    {
+      "id": "BL-036",
+      "title": "Structured JSON logging across the microservices (real, confirmed NRG-adjacent practice)",
+      "description": "Add structured JSON logging (Logback + a JSON encoder) to eureka-server, api-gateway, customer-service, billing-service, metering-service, notification-service. Confirmed real NRG production-support pairing (CloudWatch + Splunk are confirmed hands-on observability tools -- Splunk ingests structured JSON far more usefully than plain text; see the private career-context repo's NRG stack gap analysis, category B). Every service gets real traceId/spanId correlation fields in its JSON output (already-wired Brave tracing MDC fields), not just plain text logs.",
+      "size": "SMALL",
+      "estimate_range": "15-20 min",
+      "confidence": "MEDIUM",
+      "size_rationale": "Existence-checked first (grep confirmed no logstash-logback/JsonLayout dependency anywhere in the repo) -- real gap, not a duplicate. suggest_estimate() computed a 4.0 min midpoint (n=3, apply_known_pattern/MEDIUM) but that reference class was small single-file wiring/doc changes, not a first-time config+dependency change applied identically across 6 services -- deliberately deviating upward from the computed suggestion for that reason, per the explicit-deviation rule just added to the calibration process, rather than silently overriding it.",
+      "status": "active",
+      "category": "delivery",
+      "parent_id": null,
+      "session_ids": [
+        "da166cc9-854a-47c3-8b06-8d2034e4b8fc"
+      ],
+      "commit_shas": [],
+      "created_at": "2026-09-20T16:49:23+00:00",
+      "started_at": "2026-09-20T16:49:23+00:00",
+      "completed_at": null,
+      "actual_note": null,
+      "pattern_type": "apply_known_pattern",
+      "actual_ratio": null,
+      "contaminated": false
+    },
+    {
+      "id": "BL-037",
+      "title": "MapStruct DTO<->entity mapping, real example (confirmed NRG tool, first use in this codebase)",
+      "description": "Add org.mapstruct as a real dependency and use it for at least one real DTO<->entity mapping in one service (billing-service or customer-service, whichever has the cleanest existing manual-mapping code to replace) -- confirmed real NRG hands-on tool (context/CAREER_HISTORY.md's technical-stack list) not yet represented anywhere in this codebase. Real, bounded example, not a mass refactor of every DTO in every service.",
+      "size": "SMALL",
+      "estimate_range": "20-35 min",
+      "confidence": "LOW_MEDIUM",
+      "size_rationale": "Existence-checked first (grep confirmed no org.mapstruct dependency anywhere) -- real gap. suggest_estimate() returned INSUFFICIENT_HISTORY (n=0 for SMALL/LOW_MEDIUM/first_of_kind) -- correctly falls back to the raw rubric band unadjusted, per the tool's own honesty design. First real use of MapStruct's annotation-processor build-time codegen in this codebase -- first-of-its-kind for this specific tool, even though the general pattern (a mapper layer) is common.",
+      "status": "active",
+      "category": "delivery",
+      "parent_id": null,
+      "session_ids": [
+        "da166cc9-854a-47c3-8b06-8d2034e4b8fc"
+      ],
+      "commit_shas": [],
+      "created_at": "2026-09-20T16:49:23+00:00",
+      "started_at": "2026-09-20T16:49:23+00:00",
+      "completed_at": null,
+      "actual_note": null,
+      "pattern_type": "first_of_kind",
+      "actual_ratio": null,
+      "contaminated": false
     }
   ],
   "_calibration_process": {
