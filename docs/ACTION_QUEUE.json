@@ -1,5 +1,5 @@
 {
-  "_purpose": "Current actionable work discovered during verified sessions \u2014 not project history. Resolved items are removed here (their resolution is recorded via the commit that removes them + PROJECT_STATUS.md/LESSONS.md if reusable), not accumulated forever. This is separate from PROJECT_STATE.json's next_phase/next_action, which tracks the one current phase-level priority, not the backlog of smaller items surfaced along the way.",
+  "_purpose": "Current actionable work discovered during verified sessions — not project history. Resolved items are removed here (their resolution is recorded via the commit that removes them + PROJECT_STATUS.md/LESSONS.md if reusable), not accumulated forever. This is separate from PROJECT_STATE.json's next_phase/next_action, which tracks the one current phase-level priority, not the backlog of smaller items surfaced along the way.",
   "_status_values": [
     "open",
     "in_progress",
@@ -262,7 +262,7 @@
       "reason": "Built a real, dogfooded Testing Architecture V1 (risk/blast-radius classification, Test Impact Analysis, a selective regression engine with a real fail-closed fallback, an always-on smoke tier, an extended Verification Contract schema) this session, per explicit instruction to make testing non-ad-hoc for this AI-developed platform. Per that same instruction's own anti-overengineering constraint, several named sub-capabilities were deliberately left designed-only rather than built in the same sitting.",
       "evidence": "docs/TESTING_ARCHITECTURE_V1.md is the full write-up. Five concrete open items: (1) no dedicated Playwright spec exists for the Customer App's own frontend (app/src/main/resources/static/index.html) -- verify_change.py already surfaces this honestly as a skip reason rather than silently passing, and this is the single most valuable next addition; (2) Test Impact Analysis is Java-only -- a Python agent/*.py change is flagged in the skip list, not auto-mapped to specific test modules; (3) verify_change.py is not wired into .github/workflows/ci.yml -- CI's full mvnw test/python/node suites remain the sole authoritative gate, deliberately not changed without separate explicit approval; (4) no mutation/property/fuzz/performance/chaos tooling exists (no PIT dependency in app/pom.xml) -- deliberately deferred, not mandatory per-change per the task's own instruction; (5) verify_change.py's per-run evidence JSON (agent/.verify_change_evidence/*.json) is real but not yet aggregated across runs into first-pass-yield/rework/cost metrics.",
       "safe_to_auto_execute": false,
-      "verification_required": "Each item, if picked up: (1) needs a real Playwright spec against the deployed Customer App plus a verify_change.py mapping-table update, independently re-run; (2) needs a Python file/module-to-test mapping mirroring agent/test_impact_analysis.py's Java table, with its own dogfooding test; (3) needs an explicit decision on authoritative-gate wiring (additive annotation first, per docs/TESTING_ARCHITECTURE_V1.md \u00a7R, not a silent gate swap) before any CI file edit; (4)/(5) need their own scoped tasks, not opportunistic partial builds.",
+      "verification_required": "Each item, if picked up: (1) needs a real Playwright spec against the deployed Customer App plus a verify_change.py mapping-table update, independently re-run; (2) needs a Python file/module-to-test mapping mirroring agent/test_impact_analysis.py's Java table, with its own dogfooding test; (3) needs an explicit decision on authoritative-gate wiring (additive annotation first, per docs/TESTING_ARCHITECTURE_V1.md §R, not a silent gate swap) before any CI file edit; (4)/(5) need their own scoped tasks, not opportunistic partial builds.",
       "created_at_commit": "0767e06",
       "resolved_at_commit": null
     },
@@ -376,6 +376,20 @@
       "safe_to_auto_execute": false,
       "verification_required": "Confirm reasoning_gateway.call()'s actual return shape includes real usage (input/output/cache tokens, cost if computable) via direct source read; thread it through _call_model_text -> diagnose()/generate_candidate_patch() (all 3 scenarios) -> the route handlers' JSON response -> triage.js/triage-b.js/triage-c.js's diagnosis/candidate cards, honestly labeled NOT_CAPTURED if a specific call's usage is genuinely unavailable (never a fabricated number). Add a focused regression test per changed function. Deploy and independently curl/browser-verify the real tokens/cost appear for a real diagnose/generate-candidate-patch call before considering this closed.",
       "created_at_commit": "f98aa4d",
+      "resolved_at_commit": null
+    },
+    {
+      "id": "ACT-012",
+      "source": "verification",
+      "title": "JaCoCo 0.8.12 cannot instrument the JDK this machine now runs (class file major version 68)",
+      "priority": "low",
+      "status": "open",
+      "scope": "app/pom.xml (JaCoCo plugin version), any isolated-workspace test run that instruments coverage (agent/triage_execution.py's _isolated_compile_java_candidate with test_classes set)",
+      "reason": "Found during the BL-009/BL-013 sprint (2026-09-20) while running the full test_triage_execution.py suite: 3 tests that spawn a real `mvnw test` inside an isolated workspace (ApplyAndVerifyCandidateTestCase, ApplyAndVerifyCandidateBTestCase, ApplyAndVerifyCandidateCTestCase) fail with 'IllegalArgumentException: Unsupported class file major version 68' from JaCoCo's instrumenter -- major version 68 corresponds to a JDK newer than 21 (JDK 21 is major version 65), meaning this dev machine's `java`/JAVA_HOME now resolves to a JDK JaCoCo 0.8.12 doesn't support. Confirmed via BL-013's own investigation (git stash to a clean baseline) that this is pre-existing and NOT caused by BL-009's or BL-013's changes -- neither touches JaCoCo config or JDK selection.",
+      "evidence": "agent/test_triage_execution.py full run, 2026-09-20: 3 failures, all identical root cause -- 'Caused by: java.io.IOException: Error while instrumenting ... with JaCoCo 0.8.12.202403310830/dbfb6f2' then 'Caused by: java.lang.IllegalArgumentException: Unsupported class file major version 68'. app/'s own direct `mvn test` run (not through an isolated workspace) is unaffected -- BL-013 confirmed 152/152 real tests, 0 failures there.",
+      "safe_to_auto_execute": false,
+      "verification_required": "Either bump the JaCoCo dependency used by these isolated-workspace runs to a version that supports this JDK's class file version, or pin the isolated workspace's own JDK selection to match what the rest of this codebase already targets (21) -- needs the Owner's call on which, since it touches build tooling versions.",
+      "created_at_commit": "7a29928",
       "resolved_at_commit": null
     }
   ]

@@ -361,13 +361,15 @@
       "estimate_range": "15-25 min",
       "confidence": "HIGH",
       "size_rationale": "Plumbing an already-computed value through an existing return-contract shape, not new logic; HIGH confidence because the exact pattern (usage dict -> UI) is already proven elsewhere in this codebase.",
-      "status": "active",
+      "status": "done",
       "parent_id": null,
       "session_ids": [],
-      "commit_shas": [],
+      "commit_shas": [
+        "7a29928"
+      ],
       "created_at": "2026-09-20T05:54:11+00:00",
       "started_at": "2026-09-20T05:54:11+00:00",
-      "completed_at": null
+      "completed_at": "2026-09-20T06:19:38+00:00"
     },
     {
       "id": "BL-010",
@@ -377,13 +379,15 @@
       "estimate_range": "15-20 min",
       "confidence": "HIGH",
       "size_rationale": "Two small, already-root-caused, well-scoped fixes in one existing file plus one new focused test file.",
-      "status": "active",
+      "status": "done",
       "parent_id": null,
       "session_ids": [],
-      "commit_shas": [],
+      "commit_shas": [
+        "7a29928"
+      ],
       "created_at": "2026-09-20T05:54:11+00:00",
       "started_at": "2026-09-20T05:54:11+00:00",
-      "completed_at": null
+      "completed_at": "2026-09-20T06:19:38+00:00"
     },
     {
       "id": "BL-011",
