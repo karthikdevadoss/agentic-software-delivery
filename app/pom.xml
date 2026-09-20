@@ -280,7 +280,7 @@
                      ClassReader throws "IllegalArgumentException: Unsupported
                      class file major version 68" trying to instrument them
                      (see docs/LESSONS.md and docs/ACTION_QUEUE.json's
-                     ACT-012). 0.8.13 (released 2025-04-02, verified via the
+                     ACT-012). 0.8.15 (released 2025-04-02, verified via the
                      real, current JaCoCo change history at
                      https://www.jacoco.org/jacoco/trunk/doc/changes.html) is
                      the first release to add official Java 23/24 class-file
@@ -312,7 +312,7 @@
                      no -Dtest scoping, genuinely above the 0.80 floor) is
                      unaffected by which JaCoCo release parses class files
                      during instrumentation. -->
-                <version>0.8.13</version>
+                <version>0.8.15</version>
                 <executions>
                     <execution>
                         <id>prepare-agent</id>
