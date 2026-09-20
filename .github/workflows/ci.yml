@@ -25,6 +25,25 @@ jobs:
       - name: mvn test
         working-directory: app
         run: ./mvnw test -B
+      # Real build verification for app/Dockerfile: this dev machine has
+      # no Docker installed (see docs/LESSONS.md), so this is the ONLY
+      # place this Dockerfile is actually proven to build, not just
+      # reasoned through. Deliberately gating (not continue-on-error) --
+      # a Dockerfile that doesn't build is a real defect, not noise.
+      - name: Build the Customer App Docker image (real, gating verification)
+        working-directory: app
+        run: docker build -t customer-app:ci .
+      # OWASP dependency-check: rolled out INFORMATIONAL-ONLY first
+      # (continue-on-error, no failBuildOnCVSS threshold set), same
+      # pattern this workflow already uses for the Testing Architecture V1
+      # verify-change step above -- a new security scan can have real
+      # false-positive noise against transitive dependencies that aren't
+      # actually exploitable in this app's context; prove it's not noisy
+      # here before ever making it a hard gate, not the other way around.
+      - name: OWASP dependency-check (informational only, does not gate CI)
+        working-directory: app
+        continue-on-error: true
+        run: ./mvnw org.owasp:dependency-check-maven:13.0.0:check -B -DprettyPrint=true
       # Job logs require authenticated access even on a public repo, which
       # blocked real diagnosis of a failure from outside an interactive
       # session. Workflow-command annotations, by contrast, are readable
