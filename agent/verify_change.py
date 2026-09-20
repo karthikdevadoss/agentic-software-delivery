@@ -18,6 +18,7 @@ Usage (from the repository root):
 """
 
 import json
+import re
 import subprocess
 import sys
 import time
@@ -28,6 +29,14 @@ AGENT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = AGENT_DIR.parent
 APP_DIR = REPO_ROOT / "app"
 EVIDENCE_DIR = AGENT_DIR / ".verify_change_evidence"
+SUREFIRE_DIR = APP_DIR / "target" / "surefire-reports"
+
+# Real format, verified against an actual surefire-reports/*.txt file
+# (2026-09-20), not assumed from memory:
+#   "Tests run: N, Failures: N, Errors: N, Skipped: N, Time elapsed: ..."
+_SUREFIRE_SUMMARY_RE = re.compile(
+    r"Tests run:\s*(\d+),\s*Failures:\s*(\d+),\s*Errors:\s*(\d+),\s*Skipped:\s*(\d+)"
+)
 
 sys.path.insert(0, str(AGENT_DIR))
 import change_risk  # noqa: E402
@@ -78,12 +87,38 @@ def _run(argv, cwd) -> dict:
     return {"argv": argv, "cwd": str(cwd), "exit_code": result.returncode, "duration_seconds": duration}
 
 
+def _parse_surefire_skips() -> dict:
+    """Real per-class Skipped counts from the actual surefire-reports/*.txt
+    files this run just produced -- never estimated, never parsed from
+    console stdout (which _run() doesn't even capture). Caller must clear
+    SUREFIRE_DIR before invoking the test run, or a stale report from an
+    earlier, differently-scoped run would silently inflate/pollute this
+    count -- the same "mvn clean before trusting a result" gotcha already
+    recorded in docs/LESSONS.md, applied here to evidence integrity."""
+    total_skipped = 0
+    per_class = {}
+    if SUREFIRE_DIR.is_dir():
+        for f in SUREFIRE_DIR.glob("*.txt"):
+            text = f.read_text(encoding="utf-8", errors="replace")
+            m = _SUREFIRE_SUMMARY_RE.search(text)
+            if m:
+                skipped = int(m.group(4))
+                if skipped:
+                    per_class[f.stem] = skipped
+                    total_skipped += skipped
+    return {"total_skipped": total_skipped, "per_class": per_class}
+
+
 def _mvnw_test(test_classes=None) -> dict:
+    import shutil
+    shutil.rmtree(SUREFIRE_DIR, ignore_errors=True)  # see _parse_surefire_skips's own docstring
     mvnw = "mvnw.cmd" if sys.platform == "win32" else "mvnw"
     argv = [str(APP_DIR / mvnw), "test"]
     if test_classes:
         argv.append(f"-Dtest={','.join(test_classes)}")
-    return _run(argv, APP_DIR)
+    result = _run(argv, APP_DIR)
+    result["skipped"] = _parse_surefire_skips()
+    return result
 
 
 def build_plan(paths, dry_run_only=False):
@@ -146,6 +181,9 @@ def execute(paths, selection: tia.ImpactSelection, dry_run: bool) -> dict:
 
     if dry_run:
         evidence["overall_exit_code"] = 0
+        evidence["verdict"] = "DRY_RUN"
+        evidence["verdict_reason"] = "no commands were executed"
+        evidence["test_skip_accounting"] = {"total_skipped": 0, "by_command": {}}
         return evidence
 
     java_touched = any(p.startswith("app/") for p in paths)
@@ -153,10 +191,13 @@ def execute(paths, selection: tia.ImpactSelection, dry_run: bool) -> dict:
 
     if selection.fail_closed:
         for name, argv, cwd in [
-            ("java-full-suite", [str(APP_DIR / ("mvnw.cmd" if sys.platform == "win32" else "mvnw")), "test"], APP_DIR),
+            ("java-full-suite", None, APP_DIR),
             ("python-regression", [sys.executable, "-m", "unittest", "discover", "-p", "test_*.py"], AGENT_DIR),
         ]:
-            result = _run(argv, cwd)
+            if name == "java-full-suite":
+                result = _mvnw_test()
+            else:
+                result = _run(argv, cwd)
             result["name"] = name
             evidence["commands"].append(result)
             overall_rc = overall_rc or result["exit_code"]
@@ -184,6 +225,45 @@ def execute(paths, selection: tia.ImpactSelection, dry_run: bool) -> dict:
                 result["name"] = "java-selected"
                 evidence["commands"].append(result)
                 overall_rc = overall_rc or result["exit_code"]
+
+    # BL-017 (2026-09-20): SKIPPED is not PASSED. Real incident this closes:
+    # BL-007's SecurityConfig gap was invisible locally because the one test
+    # that would have caught it always skipped (no Docker) -- Maven itself
+    # exits 0 for a run with skipped tests, so overall_rc alone cannot tell
+    # "verified" from "never actually executed". A HIGH/CRITICAL-risk or
+    # CROSS_MODULE/SYSTEM-blast-radius change whose mandatory suite had any
+    # real skipped tests is UNVERIFIED, never PASSED, regardless of exit code.
+    total_skipped = 0
+    skipped_detail = {}
+    for cmd in evidence["commands"]:
+        skip_info = cmd.get("skipped")
+        if skip_info and skip_info["total_skipped"]:
+            total_skipped += skip_info["total_skipped"]
+            skipped_detail[cmd["name"]] = skip_info["per_class"]
+
+    is_high_risk = (
+        selection.classification.risk in ("HIGH", "CRITICAL")
+        or selection.classification.blast_radius in ("CROSS_MODULE", "SYSTEM")
+    )
+    evidence["test_skip_accounting"] = {"total_skipped": total_skipped, "by_command": skipped_detail}
+
+    if is_high_risk and total_skipped and overall_rc == 0:
+        evidence["verdict"] = "UNVERIFIED"
+        evidence["verdict_reason"] = (
+            f"{total_skipped} test(s) skipped during a HIGH-risk/CROSS_MODULE-or-SYSTEM change "
+            f"(risk={selection.classification.risk}, blast_radius={selection.classification.blast_radius}): "
+            f"{skipped_detail} -- a skipped mandatory test proves nothing; this is NOT the same claim as PASSED."
+        )
+        overall_rc = 1
+    elif overall_rc == 0:
+        evidence["verdict"] = "PASSED"
+        evidence["verdict_reason"] = (
+            f"{total_skipped} test(s) skipped (non-blocking for this change's risk level)" if total_skipped
+            else "no skipped tests"
+        )
+    else:
+        evidence["verdict"] = "FAILED"
+        evidence["verdict_reason"] = f"overall_exit_code={overall_rc}"
 
     evidence["overall_exit_code"] = overall_rc
     return evidence
@@ -215,6 +295,7 @@ def main():
     evidence = execute(paths, selection, dry_run)
     evidence_path = _save_evidence(evidence)
     print(f"\nEvidence written: {evidence_path.relative_to(REPO_ROOT)}")
+    print(f"Verdict: {evidence['verdict']} ({evidence['verdict_reason']})")
     print(f"Overall exit code: {evidence['overall_exit_code']}")
     sys.exit(evidence["overall_exit_code"])
 

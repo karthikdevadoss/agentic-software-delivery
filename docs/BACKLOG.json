@@ -539,7 +539,7 @@
       "estimate_range": "15-25 min",
       "confidence": "MEDIUM_HIGH",
       "size_rationale": "Extends verify_change.py's existing fail-closed concept (already applied to selection ambiguity) one step to execution/skip accounting.",
-      "status": "active",
+      "status": "done",
       "category": "delivery",
       "parent_id": null,
       "session_ids": [
@@ -548,7 +548,8 @@
       "commit_shas": [],
       "created_at": "2026-09-20T13:01:26+00:00",
       "started_at": "2026-09-20T13:01:26+00:00",
-      "completed_at": null
+      "completed_at": "2026-09-20T13:08:21+00:00",
+      "actual_note": "Real skip-accounting via app/target/surefire-reports/*.txt parsing (verified against real report format). New verdict field: UNVERIFIED (not PASSED) when a HIGH/CRITICAL-risk or CROSS_MODULE/SYSTEM-blast-radius change has any skipped tests, even though Maven itself exits 0. 5 new tests, one caught a real test-isolation bug in itself (stale real surefire reports from earlier runs polluting the test) before being fixed. Real dry-run smoke test confirmed the new verdict/test_skip_accounting fields appear correctly in the evidence JSON."
     },
     {
       "id": "BL-018",
