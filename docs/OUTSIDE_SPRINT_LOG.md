@@ -35,3 +35,8 @@ to-self, e.g. memory files — background housekeeping, not project work),
   `_calibration_process`, since they're process-methodology content, not
   personal — this index entry exists only so the *activity itself*
   (a review happened, outside any sprint) has a category.
+- **research** — NRG project real-tech-stack gap analysis (candidates
+  only, none confirmed as claims). Full content in the private repo
+  (`karthik-ai-context/coaching/NRG_STACK_GAP_ANALYSIS.md`) — personal
+  career-fact content, stays there per this project's public/private
+  separation rule.
