@@ -391,6 +391,20 @@
       "verification_required": "Either bump the JaCoCo dependency used by these isolated-workspace runs to a version that supports this JDK's class file version, or pin the isolated workspace's own JDK selection to match what the rest of this codebase already targets (21) -- needs the Owner's call on which, since it touches build tooling versions.",
       "created_at_commit": "7a29928",
       "resolved_at_commit": null
+    },
+    {
+      "id": "ACT-013",
+      "source": "owner_directive",
+      "title": "Rework billing-service to be a realistic facade over a legacy billing system, matching real NRG architecture",
+      "priority": "high",
+      "status": "open",
+      "scope": "services/billing-service/src/main/java/com/example/billingservice/service/ContractPlanService.java and related (currently OWNS the full enrollment/contract-plan logic itself), docs/MICROSERVICES_ARCHITECTURE.md",
+      "reason": "Real gap found 2026-09-20 during a pre-next-sprint review: extensive career-history Q&A that night confirmed the real NRG billing service is a bridge/facade over an older, separate billing system (it does not calculate bills itself) -- but the app built earlier the same night has billing-service own the full ContractPlan enrollment logic directly, not reflecting that facade pattern. Owner explicitly approved reworking this (2026-09-20): 'rework to make it as close to NRG... it could be an important topic to discuss in interview and also it covers many important usecases when implemented in the way it is in NRG.'",
+      "evidence": "services/billing-service/.../ContractPlanService.java directly owns enrollment/contract-plan business logic and persistence; karthik-ai-context/context/CAREER_HISTORY.md NRG section (2026-09-20 entry) records the real facade pattern.",
+      "safe_to_auto_execute": false,
+      "verification_required": "A real design for what the billing-service should call out to (a mocked/simulated 'legacy billing system' service or stub, matching how real facade patterns are usually demoed) needs to be sized and estimated as part of a real sprint -- not started until that sprint is approved.",
+      "created_at_commit": null,
+      "resolved_at_commit": null
     }
   ]
 }

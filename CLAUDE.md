@@ -179,6 +179,19 @@ just per-item numbers), and its full data (comparison table, verdicts,
 evidence, discussion, action items) is stored permanently in
 docs/RETRO_LOG.md -- never left only in chat.
 
+### Phase 3: every activity carries a category (added 2026-09-20, Owner directive)
+Every backlog item gets a `category`: `delivery` (real product/feature
+work) or `scrum_process` (sizing/retro/rubric/process-infrastructure
+work). No item may lack one, same discipline as size/estimate -- see
+docs/BACKLOG.json's `_category_values` and `_calibration_process`.
+Real work that never becomes a sized backlog item (ad-hoc discussion/
+research the Owner gives between sprints) still needs SOME category --
+tracked in docs/OUTSIDE_SPRINT_LOG.md with its own sub-categories
+(bookkeeping/research/discussion), never left untracked. Purpose: let a
+future report compare the real cost of running this Scrum system itself
+against the real cost of delivery work, to judge whether the overhead is
+worth it.
+
 ## Feedback discipline
 For every meaningful run: compare expected vs. actual, classify any gap
 (implementation bug / test gap / requirement ambiguity / architecture /

@@ -36,7 +36,8 @@
       ],
       "created_at": "2026-09-18T19:45:00+00:00",
       "started_at": "2026-09-18T19:45:00+00:00",
-      "completed_at": "2026-09-18T20:15:00+00:00"
+      "completed_at": "2026-09-18T20:15:00+00:00",
+      "category": "scrum_process"
     },
     {
       "id": "BL-002",
@@ -106,7 +107,8 @@
           "status": "deferred",
           "note": "Deliberately NOT done -- explicit Owner instruction (2026-09-19): don't update the live Learn page for now, this is personal-use only until further notice. Revisit only when the Owner decides to (also note: Owner is now reconsidering whether /learn should stay public at all -- open question, not to be resolved unilaterally)."
         }
-      ]
+      ],
+      "category": "delivery"
     },
     {
       "id": "BL-007",
@@ -184,7 +186,8 @@
           "size": "MEDIUM",
           "actual_note": "Added a matrix job (customer/billing/notification/metering-service, one leg each, fail-fast disabled). Found and fixed 2 MORE real bugs on the very first real-Docker run, neither catchable on this Docker-less dev machine: (1) the mvnw executable bit was lost copying it to all 6 new services on Windows (git ls-files showed 100644 vs app/mvnw's 100755) -- 'Permission denied', exit 126, before a single test ran; fixed via git update-index --chmod=+x. (2) notification-service's ContractPlanEventFlowIntegrationTest (Testcontainers Kafka, skips locally) uses WebEnvironment.NONE since it's pure Kafka/repository logic with no HTTP calls, but SecurityConfig unconditionally required an HttpSecurity bean that only auto-configures for a real servlet context -- fixed correctly with @ConditionalOnWebApplication, not by forcing the test to pay for an embedded server it doesn't need. Final CI run: ALL GREEN -- all 4 microservices, plus the existing Customer App/Python backend/Node frontend jobs, genuinely passing together."
         }
-      ]
+      ],
+      "category": "delivery"
     },
     {
       "id": "BL-005",
@@ -290,7 +293,8 @@
         "sized_on": "2026-09-20",
         "total_range_min_max": "280-470 min",
         "note": "Owner-requested retro (2026-09-19/20, see LESSONS.md) found the original chat-only minute estimates for BL-003/BL-004 undersold real LARGE-sized work. This checklist's ranges replace point-estimates with size-first, range-second, confidence-labeled figures per the corrected discipline. Owner authorized proceeding 2026-09-20 without further approval for ~8 hours; GitHub push for CI verification approved, Railway production deploy explicitly NOT approved tonight (held for Owner review)."
-      }
+      },
+      "category": "delivery"
     },
     {
       "id": "BL-006",
@@ -307,7 +311,8 @@
       ],
       "created_at": "2026-09-20T00:50:00+00:00",
       "started_at": "2026-09-20T00:50:00+00:00",
-      "completed_at": "2026-09-20T03:08:57+02:00"
+      "completed_at": "2026-09-20T03:08:57+02:00",
+      "category": "delivery"
     },
     {
       "id": "BL-003",
@@ -323,7 +328,8 @@
       ],
       "created_at": "2026-09-19T00:00:00+00:00",
       "started_at": "2026-09-19T00:00:00+00:00",
-      "completed_at": "2026-09-19T21:17:46+02:00"
+      "completed_at": "2026-09-19T21:17:46+02:00",
+      "category": "delivery"
     },
     {
       "id": "BL-004",
@@ -339,7 +345,8 @@
       ],
       "created_at": "2026-09-19T00:00:00+00:00",
       "started_at": "2026-09-19T00:00:00+00:00",
-      "completed_at": "2026-09-20T02:12:47+02:00"
+      "completed_at": "2026-09-20T02:12:47+02:00",
+      "category": "delivery"
     },
     {
       "id": "BL-008",
@@ -355,7 +362,8 @@
       "commit_shas": [],
       "created_at": "2026-09-20T04:20:00+00:00",
       "started_at": "2026-09-20T04:20:00+00:00",
-      "completed_at": "2026-09-20T04:40:00+00:00"
+      "completed_at": "2026-09-20T04:40:00+00:00",
+      "category": "scrum_process"
     },
     {
       "id": "BL-009",
@@ -375,7 +383,8 @@
       ],
       "created_at": "2026-09-20T05:54:11+00:00",
       "started_at": "2026-09-20T05:54:11+00:00",
-      "completed_at": "2026-09-20T06:19:38+00:00"
+      "completed_at": "2026-09-20T06:19:38+00:00",
+      "category": "delivery"
     },
     {
       "id": "BL-010",
@@ -395,7 +404,8 @@
       ],
       "created_at": "2026-09-20T05:54:11+00:00",
       "started_at": "2026-09-20T05:54:11+00:00",
-      "completed_at": "2026-09-20T06:19:38+00:00"
+      "completed_at": "2026-09-20T06:19:38+00:00",
+      "category": "delivery"
     },
     {
       "id": "BL-011",
@@ -415,7 +425,8 @@
       ],
       "created_at": "2026-09-20T05:54:11+00:00",
       "started_at": "2026-09-20T05:54:11+00:00",
-      "completed_at": "2026-09-20T06:24:19+00:00"
+      "completed_at": "2026-09-20T06:24:19+00:00",
+      "category": "delivery"
     },
     {
       "id": "BL-012",
@@ -436,7 +447,8 @@
       "created_at": "2026-09-20T05:54:11+00:00",
       "started_at": "2026-09-20T05:54:11+00:00",
       "completed_at": "2026-09-20T06:26:23+00:00",
-      "actual_note": "Real scope discovered mid-sprint (self-realized, not Owner-driven -- per the calibration loop, finished as planned rather than pausing to re-estimate): BL-013 (running in parallel) already built e2e/customer-app-update-email.spec.js as a real side effect of proving its own feature in a browser -- the first-ever Playwright spec for the Customer App frontend. BL-012s actual remaining work was wiring that spec into agent/test_impact_analysis.py FRONTEND_PATH_TO_SPECS, updating the now-outdated gap test, and updating docs/TESTING_ARCHITECTURE_V1.md -- not writing a spec from scratch as originally scoped."
+      "actual_note": "Real scope discovered mid-sprint (self-realized, not Owner-driven -- per the calibration loop, finished as planned rather than pausing to re-estimate): BL-013 (running in parallel) already built e2e/customer-app-update-email.spec.js as a real side effect of proving its own feature in a browser -- the first-ever Playwright spec for the Customer App frontend. BL-012s actual remaining work was wiring that spec into agent/test_impact_analysis.py FRONTEND_PATH_TO_SPECS, updating the now-outdated gap test, and updating docs/TESTING_ARCHITECTURE_V1.md -- not writing a spec from scratch as originally scoped.",
+      "category": "delivery"
     },
     {
       "id": "BL-013",
@@ -457,7 +469,8 @@
       "created_at": "2026-09-20T05:54:11+00:00",
       "started_at": "2026-09-20T05:54:11+00:00",
       "completed_at": "2026-09-20T06:16:21+00:00",
-      "actual_note": "Real pre-existing gap found: Update Email backend/tests/UI already existed but had zero uniqueness enforcement against its own acceptance contract. Fix: DuplicateEmailException + existsByEmailAndIdNot + 409 mapping, 4 new tests (152 total, 0 failures, 0 errors, 21 skipped), first-ever Playwright spec for the Customer App frontend run for real against a locally started server, interview writeup. Deliberately did NOT use agent/main.py (advisory-only, produces a plan not code) or the heavier execution_tools.py Workbench pipeline (web-server-orchestrated, not built for ad hoc invocation) -- hand-coded directly following existing patterns instead, per the task directive's own discretion. No Railway deploy (held for Owner review, per standing policy)."
+      "actual_note": "Real pre-existing gap found: Update Email backend/tests/UI already existed but had zero uniqueness enforcement against its own acceptance contract. Fix: DuplicateEmailException + existsByEmailAndIdNot + 409 mapping, 4 new tests (152 total, 0 failures, 0 errors, 21 skipped), first-ever Playwright spec for the Customer App frontend run for real against a locally started server, interview writeup. Deliberately did NOT use agent/main.py (advisory-only, produces a plan not code) or the heavier execution_tools.py Workbench pipeline (web-server-orchestrated, not built for ad hoc invocation) -- hand-coded directly following existing patterns instead, per the task directive's own discretion. No Railway deploy (held for Owner review, per standing policy).",
+      "category": "delivery"
     },
     {
       "id": "BL-014",
@@ -476,7 +489,8 @@
       "created_at": "2026-09-20T05:54:11+00:00",
       "started_at": "2026-09-20T05:54:11+00:00",
       "completed_at": null,
-      "actual_note": "REAL INVESTIGATION DONE, NOT FULLY SOLVED -- honest partial completion. Found and fixed 2 real infrastructure gaps: (1) billing-service RestClient.Builder beans were built via the bare RestClient.builder() static factory, bypassing Spring Boot RestClientAutoConfiguration entirely (fixed via RestClientBuilderConfigurer, requires the spring-boot-restclient module which was also missing); (2) api-gateway had ZERO tracing dependency at all (added micrometer-tracing-bridge-brave). All 5 services now have consistent logging.structured.format.console=ecs + management.observations.key-values.application=<name> config. ROOT CAUSE FOUND via real evidence (jar inspection + a real Spring Boot --debug condition-evaluation report run against customer-service): Spring Boot 4.1.1 + micrometer-tracing 1.7.1 + Spring Cloud 2025.1.2 does NOT auto-configure a real Brave-backed Tracer bean anywhere in this dependency combination -- NoopTracerAutoConfiguration always wins (@ConditionalOnMissingBean found no Tracer bean), and grepping the FULL condition report for the string Brave returns zero matches -- no Brave-specific @AutoConfiguration class exists anywhere on the classpath. Real end-to-end trace-ID correlation across gateway->billing-service->customer-service was NOT achieved or proven live. Fixing this for real requires manually wiring Brave Tracing/Tracer/CurrentTraceContext/Propagator beans by hand (Micrometer Tracing's documented manual Brave setup) -- scoped as real follow-up work, not attempted blind without doc access to verify exact API shapes for this specific version combination, per this session's own 'never fabricate what was tested' rule. Stopped here deliberately to protect the rest of the sprint's time budget -- this is a genuine unknown-unknown even deeper than the LOW-confidence estimate anticipated, real evidence for the eventual sprint retro."
+      "actual_note": "REAL INVESTIGATION DONE, NOT FULLY SOLVED -- honest partial completion. Found and fixed 2 real infrastructure gaps: (1) billing-service RestClient.Builder beans were built via the bare RestClient.builder() static factory, bypassing Spring Boot RestClientAutoConfiguration entirely (fixed via RestClientBuilderConfigurer, requires the spring-boot-restclient module which was also missing); (2) api-gateway had ZERO tracing dependency at all (added micrometer-tracing-bridge-brave). All 5 services now have consistent logging.structured.format.console=ecs + management.observations.key-values.application=<name> config. ROOT CAUSE FOUND via real evidence (jar inspection + a real Spring Boot --debug condition-evaluation report run against customer-service): Spring Boot 4.1.1 + micrometer-tracing 1.7.1 + Spring Cloud 2025.1.2 does NOT auto-configure a real Brave-backed Tracer bean anywhere in this dependency combination -- NoopTracerAutoConfiguration always wins (@ConditionalOnMissingBean found no Tracer bean), and grepping the FULL condition report for the string Brave returns zero matches -- no Brave-specific @AutoConfiguration class exists anywhere on the classpath. Real end-to-end trace-ID correlation across gateway->billing-service->customer-service was NOT achieved or proven live. Fixing this for real requires manually wiring Brave Tracing/Tracer/CurrentTraceContext/Propagator beans by hand (Micrometer Tracing's documented manual Brave setup) -- scoped as real follow-up work, not attempted blind without doc access to verify exact API shapes for this specific version combination, per this session's own 'never fabricate what was tested' rule. Stopped here deliberately to protect the rest of the sprint's time budget -- this is a genuine unknown-unknown even deeper than the LOW-confidence estimate anticipated, real evidence for the eventual sprint retro.",
+      "category": "delivery"
     },
     {
       "id": "BL-015",
@@ -495,7 +509,8 @@
       "created_at": "2026-09-20T05:54:11+00:00",
       "started_at": "2026-09-20T05:54:11+00:00",
       "completed_at": "2026-09-20T06:53:58+00:00",
-      "actual_note": "DONE, genuinely proven live through the real gateway. Built MeteringUsageClient + MeteringUsageClientConfig (mirrors BillingCustomerClient exactly, including the RestClientBuilderConfigurer fix from BL-014), a new UsageEstimationService (kept separate from ContractPlanService deliberately, so its existing constructor/tests stay untouched), a new GET /customers/{id}/plan/usage-estimated-cost endpoint, and a new gateway route (the existing /customers/*/plan route does not match this longer path). 12 new tests (4 WireMock integration + 4 unit combination-math tests + kept both real), full billing-service suite: 28 tests, 0 failures, 0 errors. REAL LIVE PROOF: created a customer, enrolled a plan (rate 0.20/kWh), submitted 2 real meter readings (50.0 + 30.0 kWh) through metering-service, then called the new endpoint through the gateway -- returned totalKwhConsumed=80.000, readingCount=2, estimatedCost=16.00 (80 * 0.20), exactly correct. One real, honest hiccup on the way: the gateway briefly returned 503 'Unable to find instance for metering-service' right after metering-service started -- real Eureka client-side registry-cache propagation lag (each service's own Eureka client caches the registry and refreshes on its own ~30s interval; billing-service happened to have already refreshed, the gateway had not yet), not a code bug -- resolved itself once the gateway's own cache caught up, confirmed by retrying."
+      "actual_note": "DONE, genuinely proven live through the real gateway. Built MeteringUsageClient + MeteringUsageClientConfig (mirrors BillingCustomerClient exactly, including the RestClientBuilderConfigurer fix from BL-014), a new UsageEstimationService (kept separate from ContractPlanService deliberately, so its existing constructor/tests stay untouched), a new GET /customers/{id}/plan/usage-estimated-cost endpoint, and a new gateway route (the existing /customers/*/plan route does not match this longer path). 12 new tests (4 WireMock integration + 4 unit combination-math tests + kept both real), full billing-service suite: 28 tests, 0 failures, 0 errors. REAL LIVE PROOF: created a customer, enrolled a plan (rate 0.20/kWh), submitted 2 real meter readings (50.0 + 30.0 kWh) through metering-service, then called the new endpoint through the gateway -- returned totalKwhConsumed=80.000, readingCount=2, estimatedCost=16.00 (80 * 0.20), exactly correct. One real, honest hiccup on the way: the gateway briefly returned 503 'Unable to find instance for metering-service' right after metering-service started -- real Eureka client-side registry-cache propagation lag (each service's own Eureka client caches the registry and refreshes on its own ~30s interval; billing-service happened to have already refreshed, the gateway had not yet), not a code bug -- resolved itself once the gateway's own cache caught up, confirmed by retrying.",
+      "category": "delivery"
     }
   ],
   "_calibration_process": {
@@ -514,9 +529,14 @@
       "LESSON (BL-014, 2026-09-20 sprint): a LOW-confidence, first-of-its-kind integration task may validly conclude as a real, valuable PARTIAL (root cause found, not fully solved) rather than a finished result within its estimated range -- this is an honest, acceptable outcome of LOW confidence, not a process failure, and should be sized/communicated as such up front (the estimate range describes effort invested, not a promise of completion).",
       "LESSON (2026-09-20 sprint, sprint-level): a multi-item sprint's summed estimate must flag which items are plannable as PARALLEL (independent files/directories, safe for a forked subagent) before work starts, and give both a summed-SEQUENTIAL figure and an expected WALL-CLOCK figure for the sprint as a whole -- not just for a single large epic (BL-007's own retro already required this at epic level; this sprint showed the same gap applies at sprint level across multiple independently-sized items).",
       "LESSON, HIGH PRIORITY (2026-09-20, found via a rigorous ratio check across the BL-009-015 sprint, not just soft judgment): every completed item in that sprint landed at 0.09-0.68 of its estimate's midpoint -- NONE within the stated +-30% tolerance band. Two sprints in a row (this one and BL-007) show the same directional bias: hour-range estimates are still calibrated for a slower execution pace than this actual context (AI execution + heavy reuse of already-proven patterns in a codebase Claude already knows + real parallelization) delivers. ACTION: bias future numeric hour-range estimates meaningfully lower than intuition suggests, especially for tasks mirroring an existing proven pattern in this codebase (which should trend toward the LOW end of their size band, not the middle) -- and always compute the actual/estimate-midpoint RATIO explicitly at retro time rather than a soft 'did anything go wrong' judgment call, since the latter missed this same finding on 3 items the first time this sprint's retro was written.",
+      "CATEGORY TAGGING, STRICT RULE (2026-09-20, Owner directive): every backlog item carries a category -- 'delivery' (real sprint output/product work) or 'scrum_process' (sizing/retro/rubric/process-infrastructure work like BL-001 and BL-008). No item may lack a category, same discipline as size/estimate. Work that is not a sized backlog item at all (ad-hoc discussion/research between sprints) is tracked separately in docs/OUTSIDE_SPRINT_LOG.md with its own category (bookkeeping/research/discussion), not blended into this file's items. Purpose: let a future report compare real cost of SCRUM overhead itself against real cost of delivery work, to judge whether the overhead is worth it -- the Owner's own explicit goal.",
       "Mid-sprint scope/understanding changes that Claude discovers on its own do NOT trigger a re-estimate -- finish the sprint as originally planned; the gap surfaces only in that sprint's normal retro and always counts as ESTIMATION WRONG (a self-realized sizing miss is by definition an estimation-logic gap, not an execution mistake). The ONLY thing that triggers a mid-sprint re-estimate is the Owner himself changing the scope mid-task -- re-size immediately when that happens, log why, then continue."
     ],
     "tolerance": "Starting band (set 2026-09-20, first version): actual-time / estimate-midpoint ratio within [0.7, 1.3] (+-30%) = matched, no gap. Outside that band triggers the full diagnosis in step 4. Tighten this band periodically (e.g. every ~10 retro'd items) as real variance narrows -- each tightening is itself a dated entry in docs/RETRO_LOG.md, since a shrinking tolerance band is the visible evidence the loop is working. REAL DATA POINT (2026-09-20): the first real multi-item sprint tested against this band showed a one-sided bias, not narrowing variance -- all 7 items ran fast (ratio 0.09-0.68), none slow. Do NOT symmetrically tighten the band in response to a one-sided bias like this -- that would not fix the real problem (estimates still calibrated too high) and would make the band asymmetrically punishing. The correct response to a one-sided bias is recalibrating the ESTIMATES lower (see the loop lesson above), not narrowing the tolerance window. Only tighten the band once real variance is seen clustering closer to 1.0 in BOTH directions.",
     "storage": "docs/RETRO_LOG.md is the canonical, permanent store for every retro's full data -- see that file's own structure. This _calibration_process block is the mechanism; RETRO_LOG.md is the history."
-  }
+  },
+  "_category_values": [
+    "delivery",
+    "scrum_process"
+  ]
 }
