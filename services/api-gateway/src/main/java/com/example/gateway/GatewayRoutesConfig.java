@@ -49,6 +49,14 @@ public class GatewayRoutesConfig {
         RouterFunction<ServerResponse> billing = route("billing-service")
                 .GET("/customers/*/plan", http())
                 .POST("/customers/*/plan", http())
+                // BL-015: usage-estimated-cost is a real path SEGMENT under
+                // /plan, not the same route as the bare /customers/*/plan
+                // above -- this codebase's own functional routing matches
+                // paths literally, so it needs its own explicit route,
+                // ordered before the bare /plan GET/POST just for clarity
+                // (no actual overlap risk here since the path pattern
+                // itself is already more specific).
+                .GET("/customers/*/plan/usage-estimated-cost", http())
                 .before(uri("http://billing-service"))
                 .filter(lb("billing-service"))
                 .build();

@@ -465,13 +465,14 @@
       "estimate_range": "20-35 min",
       "confidence": "MEDIUM",
       "size_rationale": "New cross-service read (billing-service calling metering-service, mirroring the already-proven billing->customer REST+Resilience4j pattern from BL-007), bounded scope.",
-      "status": "active",
+      "status": "done",
       "parent_id": null,
       "session_ids": [],
       "commit_shas": [],
       "created_at": "2026-09-20T05:54:11+00:00",
       "started_at": "2026-09-20T05:54:11+00:00",
-      "completed_at": null
+      "completed_at": "2026-09-20T06:53:58+00:00",
+      "actual_note": "DONE, genuinely proven live through the real gateway. Built MeteringUsageClient + MeteringUsageClientConfig (mirrors BillingCustomerClient exactly, including the RestClientBuilderConfigurer fix from BL-014), a new UsageEstimationService (kept separate from ContractPlanService deliberately, so its existing constructor/tests stay untouched), a new GET /customers/{id}/plan/usage-estimated-cost endpoint, and a new gateway route (the existing /customers/*/plan route does not match this longer path). 12 new tests (4 WireMock integration + 4 unit combination-math tests + kept both real), full billing-service suite: 28 tests, 0 failures, 0 errors. REAL LIVE PROOF: created a customer, enrolled a plan (rate 0.20/kWh), submitted 2 real meter readings (50.0 + 30.0 kWh) through metering-service, then called the new endpoint through the gateway -- returned totalKwhConsumed=80.000, readingCount=2, estimatedCost=16.00 (80 * 0.20), exactly correct. One real, honest hiccup on the way: the gateway briefly returned 503 'Unable to find instance for metering-service' right after metering-service started -- real Eureka client-side registry-cache propagation lag (each service's own Eureka client caches the registry and refreshes on its own ~30s interval; billing-service happened to have already refreshed, the gateway had not yet), not a code bug -- resolved itself once the gateway's own cache caught up, confirmed by retrying."
     }
   ],
   "_calibration_process": {

@@ -74,4 +74,13 @@ public class GlobalExceptionHandler {
         body.put("error", ex.getMessage());
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(body);
     }
+
+    /** BL-015: 503 for a genuinely unreachable metering-service -- same
+     * reasoning as handleCustomerServiceUnavailable above. */
+    @ExceptionHandler(MeteringServiceUnavailableException.class)
+    public ResponseEntity<Map<String, String>> handleMeteringServiceUnavailable(MeteringServiceUnavailableException ex) {
+        Map<String, String> body = new LinkedHashMap<>();
+        body.put("error", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(body);
+    }
 }
