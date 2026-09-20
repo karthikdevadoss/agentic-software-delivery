@@ -676,3 +676,49 @@ Summarizing here for the retro, real challenge to last sprint's own conclusion: 
 4. The Scrum-process research's own genuinely new finding (rework costs may not be visible in a same-day retro window) is itself a real, open methodological question this project's calibration process has no answer for yet — not actioned this sprint (it would require either waiting real calendar time before retro-ing an item, or building a mechanism to revisit an old item's verdict later), flagged here as a real candidate for the Owner to weigh, not decided unilaterally.
 
 Retro prepared 2026-09-20, ~17:20–18:10 CEST (extended after `BL-032` self-corrected mid-retro-write-up), within the sprint the Owner explicitly authorized and started ("start sprint now"). All 12 items plus the `BL-032` correction and the `ACT-015`/`ACT-016` ID-collision fix are merged into `master` and pushed to `origin/master`; the sprint's own real findings (3 duplicate-item discoveries, the agent-stalling pattern, the parent session's own merge omission, a wrong root-cause call caught and corrected same night with independent re-verification on both sides, a real ID collision, and a genuinely live, pre-existing `app/` build gap found along the way) are durably recorded here and cross-referenced in `docs/LESSONS.md`/`docs/ACTION_QUEUE.json` rather than left only in this retro. Two worktree directories (`agent-a32e298458203bf4f`, `agent-a79a4ba812d0da391`) remain on disk, un-removed, because their tracked agent processes still show as alive on the harness side despite their work being fully merged — flagged for manual cleanup rather than a forced process kill. Next sprint scoping awaits the Owner's discussion.
+
+---
+
+## Sprint retro: BL-036 + BL-037 (complete)
+
+Sprint approved 2026-09-20 (Owner: "continue building the app as per our plan
+-- finish NRG related technologies work done... Before this sprint do
+estimate and then start the sprint yourself. Do not wait for me... keep
+this sprint shorter. Do not spend more than 1 hour"). Scoped by reading
+the private career-context repo's real, CONFIRMED (not candidate) NRG
+technical stack against what already exists in this codebase — both items
+existence-checked first per the just-added checklist step, both sized
+using `suggest_estimate()` for real.
+
+| Item | Size | Estimate | Confidence |
+|---|---|---|---|
+| BL-036: structured JSON logging across microservices | SMALL | 15–20 min | MEDIUM |
+| BL-037: MapStruct DTO mapping, first use in this codebase | SMALL | 20–35 min | LOW_MEDIUM |
+
+*Total estimated: ~45 min.*
+
+### Final actuals
+
+| Item | Ratio | Verdict | Real evidence |
+|---|---|---|---|
+| BL-036 | **0.17** | Estimation wrong (fast) — for a real, honest reason, not a sizing miss on new work | 5 of 6 services already had `logging.structured.format.console=ecs` from an earlier sprint; only `eureka-server` was missing it. Verified with real, live boot proof (real ECS JSON on stdout) for both the pre-existing config (customer-service) and the newly-added one (eureka-server) |
+| BL-037 | **0.25** | Estimation wrong (fast) | Real MapStruct 1.6.3 dependency + annotation processor, first use in this codebase; real generated code inspected directly; `CustomerPreferenceResponse.from()`'s dead manual mapping deleted, not left behind; 3 new tests proven non-vacuous by deliberately breaking the mapping and confirming the right failure; full suite 46/46 passing |
+
+**Overall sprint estimate vs. actual:**
+- Summed estimate: **~45 min.**
+- Real wall-clock (sprint-start commit `0d6cf48`, 18:49:53 CEST, through the last commit `0c4aa83`, 19:01:23 CEST): **11m30s.**
+- Ratio: **0.256** — continuing the same directional pattern as every prior sprint; both items were genuinely "apply an already-decided pattern" work, and both landed in the same fast range that pattern has consistently shown.
+
+### Action items
+
+**1. Estimation mistakes**
+1. BL-036's 0.17 ratio has a specific, checkable cause the existence-check step (added this same session) only partially caught: it confirmed the *technology* (structured JSON logging) wasn't a full duplicate, but didn't check *how many of the 6 services* already had it before sizing for all 6. **Action, real and cheap:** when a sprint item spans N identical targets (N services, N files), the existence-check should count how many already satisfy the requirement before pricing the item — not just confirm the requirement isn't fully met anywhere. Not yet built into `suggest_estimate()` or the checklist; flagged for the next time this shape of item comes up.
+
+**2. Implementation mistakes**
+1. **The exact `--`-inside-an-XML-comment bug already documented in `docs/LESSONS.md` (twice, from two earlier sprints this same session) was hit a THIRD time, by the same AI, in a brand-new comment written in this very sprint** (`services/customer-service/pom.xml`, "not remembered -- 1.6.3..."). Caught immediately by the real Maven parse failure, not silently — but the recurrence itself is the finding: a rule that has now been written down twice and still didn't prevent a third real occurrence is exactly the "written rules don't reliably survive real pressure" pattern named in this same session's Scrum-process cleanup. **Action:** a real, cheap STATIC-tier check (`perl -0777 -ne 'for (/<!--(.*?)-->/gs) { print "VIOLATION\n" if /--/ }' <file>`, already known-working from `docs/LESSONS.md`'s own entry) should run automatically on any `.xml`/`.pom` file touched in a diff, not be left as something to remember. Not yet built — a real, concrete next candidate for the same treatment the Scrum-cleanup gave other repeat problems.
+
+**3. Neither, but still needed**
+1. `ACT-017` (a real BCBSA-domain gap: HL7/SMART FHIR healthcare APIs have no representation in this app) found and logged, deliberately NOT started despite ~49 minutes remaining in the sprint's own 1-hour cap — genuinely first-of-its-kind/LARGE, and starting it with that little real budget risked either a rushed, unconvincing implementation or blowing the explicit time box. Left for the Owner's own scoping decision.
+2. Marsh's confirmed technical stack (Eureka/Hystrix/Zuul-family service discovery) was checked too and found to be **already well-represented** by the existing microservices architecture — a real, positive confirmation, not a gap, worth recording so it isn't re-investigated later as if it were still open.
+
+Retro prepared 2026-09-20, ~19:01–19:08 CEST, within the sprint's own 1-hour cap (used: ~19 minutes total, including this retro). Both items merged to `master` and pushed. Next sprint scoping awaits the Owner.
