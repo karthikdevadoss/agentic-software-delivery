@@ -1378,3 +1378,47 @@ surprising verified behavior would otherwise get rediscovered later.
   filename always shadows, never layers. Worth checking for on every new
   Spring Boot service in this decomposition (customer-service,
   notification-service, metering-service), not just this one.
+
+## BL-007 retro: two real process gaps found in how "done" and "size" were called (2026-09-20)
+
+Requested by the Owner directly ("do a retro and let me know how was ur
+estimation/sizing"). Both findings below are self-caught, not Owner-
+flagged, and both were corrected in the same session (docs/BACKLOG.json's
+BL-007 entry) rather than left as chat-only observations.
+
+**1. Sizing conflated structural novelty with business-logic novelty.**
+BL-007 was sized XLARGE / 12-20h / LOW confidence. The real driver of
+that size band was architectural unfamiliarity (first Eureka + gateway +
+multi-module-Maven decomposition in this codebase) and integration risk
+(N services that must actually talk to each other, not just each compile),
+not the business logic inside any one service — customer/billing/
+notification/metering CRUD-plus-a-bit is genuinely smaller than the size
+label implied on its own. The estimate happened to land in-range, but for
+the wrong reason: a future task that reuses this same scaffolding (a 5th
+domain service on the same gateway/Eureka/auth pattern) would NOT deserve
+the same XLARGE treatment, and sizing it that way from habit would be a
+real error the rubric as-used wouldn't catch. **General rule:** when a
+task both introduces new infra/architecture AND adds domain logic on top
+of it, size the two components separately — architecture/integration risk
+gates the confidence band (LOW/MEDIUM/HIGH), per-component implementation
+effort drives the hour range — rather than letting one XLARGE label
+average both together.
+
+**2. "Done" was called before the item's own CI coverage existed and had
+run green.** BL-007's checklist was marked complete and `completed_at`
+was first recorded at the point local smoke testing passed and the first
+commit landed (`c108b23`) — but the CI matrix job for these services
+(.github/workflows/ci.yml's `microservices` job) hadn't been added yet,
+let alone run. Wiring it in afterward surfaced 2 more real, CI-only bugs
+(the lost `mvnw` executable bit on Windows-copied files, and
+SecurityConfig's `HttpSecurity` bean failing to build under a
+`WebEnvironment.NONE` test) that a "done" status had already papered
+over. The actual total elapsed time was corrected from a first-reported
+~1h04m to the real 1h22m54s once measured against the CI run's own
+`updatedAt` timestamp (`gh run view --json createdAt,updatedAt`), and
+`docs/BACKLOG.json` was updated to say so explicitly rather than leave
+the earlier number standing. **General rule:** "verified locally" and
+"verified in CI" are different claims — an item is not truly done until
+its own CI coverage exists AND has run green, not just until local
+testing passes; `completed_at` should be captured at that point, not
+before it.
