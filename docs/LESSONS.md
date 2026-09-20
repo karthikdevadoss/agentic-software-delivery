@@ -1467,3 +1467,27 @@ before it.
   configurable, non-default ports/resources and must scope any
   force-kill strictly to verified descendants of PIDs the harness itself
   launched.
+
+- **The `D:foo`-style Windows pathlib blind spot is not confined to one
+  function — any other absolute-path check via `Path(...).is_absolute()`
+  needs the same scrutiny.** Real finding (BL-030, 2026-09-20, while
+  writing `agent/test_tools.py`'s direct coverage of `search_code`):
+  `search_code(query, glob)`'s own guard, `".." in glob or
+  Path(glob).is_absolute()`, has the identical Windows quirk already fixed
+  for `_resolve_safe_path()`'s drive-letter case — a POSIX-style pattern
+  like `/etc/**/*.java` is NOT `is_absolute()` on Windows (no drive
+  letter), so the guard silently passed it through. Unlike the drive-letter
+  case, this one didn't just mislabel the rejection reason: `Path.glob()`
+  itself then raised a bare, uncaught `NotImplementedError` ("Non-relative
+  patterns are unsupported") — breaking `tools.py`'s own contract that
+  every reportable failure surfaces as `RepoToolError`, not an arbitrary
+  exception, when called directly (the top-level `dispatch_tool_call`
+  catch-all masked this from an actual agent run, but a direct call — which
+  is exactly what a new test-boundary file does — hit it immediately).
+  **Fixed:** wrapped `REPO_ROOT.glob(glob)` in `try/except
+  (NotImplementedError, ValueError)`, re-raised as `RepoToolError`. **Rule:**
+  after fixing one Windows `is_absolute()` false-negative, grep the rest of
+  the module for other `Path(...).is_absolute()` guards protecting a
+  security boundary — they share the same platform assumption and the same
+  failure mode, and each one needs its own direct test (not just coverage
+  via a downstream consumer) before it's trusted.

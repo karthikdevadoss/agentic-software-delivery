@@ -219,7 +219,20 @@ def search_code(query: str, glob: str = "**/*.java") -> str:
     query_lower = query.lower()
     matches = []
 
-    for path in sorted(REPO_ROOT.glob(glob)):
+    # BL-030 / ACT-002 direct-testing find: a POSIX-style pattern like
+    # "/etc/**/*.java" is NOT Path.is_absolute() on Windows (same pathlib
+    # quirk as the D:foo case fixed for _resolve_safe_path above), so the
+    # check just above never caught it — and Path.glob() itself then raises
+    # a bare NotImplementedError ("Non-relative patterns are unsupported")
+    # instead of the intended, safely-reportable RepoToolError. Caught here
+    # so an unsafe-looking glob always fails closed with a clear reason,
+    # never an unhandled exception.
+    try:
+        candidates = sorted(REPO_ROOT.glob(glob))
+    except (NotImplementedError, ValueError):
+        raise RepoToolError(f"glob is not allowed: {glob!r}")
+
+    for path in candidates:
         if not path.is_file() or path.is_symlink():
             continue
         rel_parts = path.relative_to(REPO_ROOT).parts

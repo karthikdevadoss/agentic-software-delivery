@@ -846,7 +846,7 @@
       "estimate_range": "15-25 min",
       "confidence": "HIGH",
       "size_rationale": "Well-scoped, one new test file, follows the exact existing test patterns already used for the same boundary via other consumers.",
-      "status": "active",
+      "status": "done",
       "category": "delivery",
       "parent_id": null,
       "session_ids": [
@@ -855,8 +855,8 @@
       "commit_shas": [],
       "created_at": "2026-09-20T14:23:11+00:00",
       "started_at": "2026-09-20T14:23:11+00:00",
-      "completed_at": null,
-      "actual_note": null
+      "completed_at": "2026-09-20T15:06:22+00:00",
+      "actual_note": "DONE, taken over and finished by the parent session after the implementing fork stalled waiting on a long-running full-suite test run (a real, twice-repeated pattern this sprint -- flagging as an implementation-mistake action item at retro). Added agent/test_tools.py (24 real tests: direct read_file/list_repository_files/search_code/_resolve_safe_path coverage -- traversal, absolute-path, blocked-extension, blocked-directory, secret-named-file for both existing and not-yet-existing files, and redaction verified directly on tools.read_file itself, not just via rag_index's wrapper). 24/24 pass, 2 documented skips (symlink creation not permitted on this platform/account). Real escaped defect found and fixed along the way: search_code(query, glob)'s own absolute-path guard had the identical Windows Path.is_absolute() blind spot already known for the drive-letter case (BL-031) -- a POSIX-style glob like '/etc/**/*.java' is not is_absolute() on Windows, so it passed the guard, then Path.glob() raised an uncaught NotImplementedError instead of the expected RepoToolError. Fixed: wrapped the glob call, re-raised as RepoToolError. Recorded in docs/LESSONS.md. Adjacent regression check: test_write_tools.py clean; test_mcp_server.py showed 2 pre-existing failures confirmed unrelated (this fresh worktree checkout is missing the gitignored, locally-built agent/.rag_index/index.json that the main checkout has -- confirmed by direct file-presence comparison; the same test passes on master with its real index present)."
     },
     {
       "id": "BL-031",
@@ -866,7 +866,7 @@
       "estimate_range": "10-15 min",
       "confidence": "HIGH",
       "size_rationale": "One-line-scale error-message fix in a single function, already root-caused, no ambiguity.",
-      "status": "active",
+      "status": "done",
       "category": "delivery",
       "parent_id": null,
       "session_ids": [
@@ -875,8 +875,8 @@
       "commit_shas": [],
       "created_at": "2026-09-20T14:23:11+00:00",
       "started_at": "2026-09-20T14:23:11+00:00",
-      "completed_at": null,
-      "actual_note": null
+      "completed_at": "2026-09-20T15:06:22+00:00",
+      "actual_note": "DONE, taken over and finished by the parent session (see BL-030's note for why). tools._resolve_safe_path('D:foo') previously reported 'symlinks are not allowed' -- now gives an honest, drive/traversal-specific message. Real regression test added (test_foreign_drive_letter_path_gives_an_honest_drive_specific_error, part of the 24 in agent/test_tools.py) -- passes. Security boundary behavior unchanged, message-accuracy fix only."
     },
     {
       "id": "BL-032",
