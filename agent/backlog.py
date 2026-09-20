@@ -15,6 +15,7 @@ session cost figure in this project already goes through.
 """
 
 import json
+import re
 from pathlib import Path
 
 BACKLOG_PATH = Path(__file__).resolve().parent.parent / "docs" / "BACKLOG.json"
@@ -99,9 +100,97 @@ def size_vs_actual(item_id: str) -> dict:
     }
 
 
+def _parse_midpoint(estimate_range: str | None) -> float | None:
+    """'30-50 min' -> 40.0. Returns None if the field is missing or doesn't
+    match this project's own consistent '<n>-<n> min' convention."""
+    if not estimate_range:
+        return None
+    m = re.match(r"^\s*(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*min\s*$", estimate_range)
+    if not m:
+        return None
+    lo, hi = float(m.group(1)), float(m.group(2))
+    return (lo + hi) / 2.0
+
+
+def suggest_estimate(size: str, confidence: str, pattern_type: str, raw_estimate_range: str | None = None) -> dict:
+    """Real, computed reference-class lookup -- built 2026-09-20 as a
+    direct response to a real, named root cause: four sprints of retro
+    narrative never got mechanically fed back into how the NEXT estimate
+    gets written. Filters docs/BACKLOG.json's own history to items
+    matching (size, confidence, pattern_type) with a real numeric
+    estimate_range and actual_ratio, EXCLUDING anything flagged
+    contaminated=true (a duplicate, an agent-stall takeover, a superseded
+    investigation -- see each item's own contamination_reason).
+
+    Returns an honest shape, never a fabricated number: n=0 or n<3 comes
+    back as INSUFFICIENT_HISTORY with the raw rubric-derived guidance
+    still available to fall back on -- this function never invents
+    precision a thin sample can't support."""
+    data = load_backlog()
+    matches = []
+    for it in data["items"]:
+        if it.get("size") != size:
+            continue
+        if it.get("confidence") != confidence:
+            continue
+        if it.get("pattern_type") != pattern_type:
+            continue
+        if it.get("contaminated"):
+            continue
+        ratio = it.get("actual_ratio")
+        if ratio is None:
+            continue
+        matches.append({"id": it["id"], "ratio": ratio})
+
+    n = len(matches)
+    base = {
+        "size": size, "confidence": confidence, "pattern_type": pattern_type,
+        "raw_estimate_range": raw_estimate_range,
+    }
+    if n == 0:
+        return {
+            **base, "status": "INSUFFICIENT_HISTORY", "n": 0,
+            "reason": "no non-contaminated historical items match this exact "
+                      "(size, confidence, pattern_type) combination yet",
+            "fallback": "use the raw rubric-derived range unadjusted",
+        }
+
+    ratios = sorted(m["ratio"] for m in matches)
+    mid = len(ratios) // 2
+    median_ratio = ratios[mid] if len(ratios) % 2 else (ratios[mid - 1] + ratios[mid]) / 2.0
+
+    result = {
+        **base,
+        "status": "INSUFFICIENT_HISTORY" if n < 3 else "COMPUTED",
+        "n": n,
+        "median_ratio": round(median_ratio, 3),
+        "ratio_range": [round(min(ratios), 3), round(max(ratios), 3)],
+        "matched_items": [m["id"] for m in matches],
+    }
+    if n < 3:
+        result["reason"] = f"only {n} non-contaminated historical match(es) -- too thin to trust a computed number over the raw rubric band"
+        result["fallback"] = "use the raw rubric-derived range unadjusted"
+
+    raw_mid = _parse_midpoint(raw_estimate_range)
+    if raw_mid is not None:
+        result["raw_midpoint_min"] = raw_mid
+        result["suggested_midpoint_min"] = round(raw_mid * median_ratio, 1)
+        if n < 3:
+            result["suggested_midpoint_note"] = "low-confidence suggestion (n<3) -- weigh against the raw range, don't substitute it blindly"
+    return result
+
+
 if __name__ == "__main__":
     import sys
-    if len(sys.argv) > 1:
+
+    if len(sys.argv) > 1 and sys.argv[1] == "suggest-estimate":
+        if len(sys.argv) not in (5, 6):
+            print("usage: python agent/backlog.py suggest-estimate <SIZE> <CONFIDENCE> <PATTERN_TYPE> [<RAW_RANGE eg '30-50 min'>]")
+            print("  PATTERN_TYPE: apply_known_pattern | first_of_kind | investigation_only | verification_only | research")
+            sys.exit(2)
+        raw_range = sys.argv[5] if len(sys.argv) == 6 else None
+        print(json.dumps(suggest_estimate(sys.argv[2], sys.argv[3], sys.argv[4], raw_range), indent=2))
+    elif len(sys.argv) > 1:
         print(json.dumps(size_vs_actual(sys.argv[1]), indent=2))
     else:
         data = load_backlog()

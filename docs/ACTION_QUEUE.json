@@ -1,11 +1,13 @@
 {
   "_purpose": "Current actionable work discovered during verified sessions — not project history. Resolved items are removed here (their resolution is recorded via the commit that removes them + PROJECT_STATUS.md/LESSONS.md if reusable), not accumulated forever. This is separate from PROJECT_STATE.json's next_phase/next_action, which tracks the one current phase-level priority, not the backlog of smaller items surfaced along the way.",
   "_status_values": [
-    "open",
-    "in_progress",
     "blocked",
-    "verified",
-    "deferred"
+    "deferred",
+    "in_progress",
+    "open",
+    "ready_for_human_approval",
+    "resolved",
+    "verified"
   ],
   "_priority_values": [
     "critical",

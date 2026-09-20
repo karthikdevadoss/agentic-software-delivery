@@ -18,6 +18,11 @@ agent/.backend_rag_index/
 # Local Control UI run-history telemetry (derived/local, not source)
 agent/web_run_history.jsonl
 
+# Triage candidate compile/test full output logs (derived/local, not source --
+# see agent/triage_execution.py's _persist_full_output; a real incident
+# showed a truncated 2000-char tail alone can hide the actual error line)
+agent/.triage_logs/
+
 # Local development-session start/stop records (derived/local, not source)
 agent/dev_sessions.json
 

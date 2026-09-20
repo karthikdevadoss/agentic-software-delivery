@@ -24,6 +24,7 @@ import subprocess
 import time
 import urllib.error
 import urllib.request
+import uuid
 
 import tools
 import environment_preflight
@@ -34,6 +35,22 @@ APP_DIR = tools.REPO_ROOT / "app"
 MVNW = APP_DIR / ("mvnw.cmd" if os.name == "nt" else "mvnw")
 FIX_COMMIT = "2155a8a"
 FIX_FILE = "app/src/main/java/com/example/customer/service/ContractPlanService.java"
+
+# Real fix for a real incident (Sprint 4, BL-032): a root-cause investigation
+# trusted this module's own `output_tail = raw_output[-2000:]` field and
+# reached a wrong conclusion because the truncation had already discarded
+# the actual [ERROR] line before anyone looked. Every real subprocess call
+# below now ALSO persists its full, untruncated output to a local,
+# gitignored log file -- truncation stays a display-size concern for the
+# returned dict, never a data-loss concern for whoever investigates next.
+TRIAGE_LOG_DIR = tools.REPO_ROOT / "agent" / ".triage_logs"
+
+
+def _persist_full_output(label: str, output: str) -> str:
+    TRIAGE_LOG_DIR.mkdir(exist_ok=True)
+    log_path = TRIAGE_LOG_DIR / f"{label}_{uuid.uuid4().hex[:8]}.log"
+    log_path.write_text(output, encoding="utf-8", errors="replace")
+    return str(log_path)
 
 DIAGNOSIS_SYSTEM_PROMPT = """You are assisting a senior backend engineer diagnosing a real production
 defect in a Spring Boot application. You will be given: (1) the real
@@ -360,7 +377,11 @@ def _isolated_compile_java_candidate(
             compile_success = False
             compile_output = "compile timed out after 180s"
         duration_ms = round((time.monotonic() - start) * 1000, 1)
-        compile_result = {"success": compile_success, "duration_ms": duration_ms, "output_tail": compile_output[-2000:]}
+        compile_log_path = _persist_full_output("candidate_compile", compile_output)
+        compile_result = {
+            "success": compile_success, "duration_ms": duration_ms,
+            "output_tail": compile_output[-2000:], "full_output_log": compile_log_path,
+        }
 
         test_result = None
         test_success = True  # vacuously true when no tests were requested
@@ -377,9 +398,11 @@ def _isolated_compile_java_candidate(
                 test_success = False
                 test_output = "test run timed out after 240s"
             test_duration_ms = round((time.monotonic() - test_start) * 1000, 1)
+            test_log_path = _persist_full_output("candidate_test", test_output)
             test_result = {
                 "success": test_success, "tests": test_classes,
                 "duration_ms": test_duration_ms, "output_tail": test_output[-2000:],
+                "full_output_log": test_log_path,
             }
 
         if not compile_success:
@@ -578,6 +601,7 @@ def _run_focused_maven_tests(test_classes: list[str]) -> dict:
         "duration_ms": duration_ms,
         "tests": test_classes,
         "output_tail": raw_output[-2000:],
+        "full_output_log": _persist_full_output("verify_fix_test", raw_output),
     }
 
 

@@ -5,6 +5,39 @@ from unittest.mock import patch, MagicMock
 import pricing_config
 import triage_execution as te
 
+
+class PersistFullOutputTestCase(unittest.TestCase):
+    """Real regression test for a real incident (Sprint 4, BL-032): a
+    root-cause investigation trusted output_tail = raw_output[-2000:] and
+    reached a wrong conclusion because the actual [ERROR] line had already
+    been discarded before anyone looked. Every real subprocess call in
+    this module now also persists its full, untruncated output to a real
+    local file -- this proves that mechanism actually writes real content
+    to a real file, not just that the code runs without raising."""
+
+    def test_persists_real_full_content_to_a_real_file(self):
+        content = "line one\n" * 500 + "the real [ERROR] line buried past any 2000-char tail\n"
+        path = te._persist_full_output("regression_probe", content)
+        try:
+            from pathlib import Path
+            p = Path(path)
+            self.assertTrue(p.exists())
+            written = p.read_text(encoding="utf-8")
+            self.assertEqual(written, content)
+            self.assertIn("the real [ERROR] line buried past any 2000-char tail", written)
+        finally:
+            Path(path).unlink(missing_ok=True)
+
+    def test_each_call_gets_a_distinct_log_file(self):
+        p1 = te._persist_full_output("regression_probe", "first")
+        p2 = te._persist_full_output("regression_probe", "second")
+        try:
+            self.assertNotEqual(p1, p2)
+        finally:
+            from pathlib import Path
+            Path(p1).unlink(missing_ok=True)
+            Path(p2).unlink(missing_ok=True)
+
 _VALID_PREFLIGHT = {
     "status": "ENVIRONMENT_VALID", "expected_java_major_minimum": 21,
     "detected_java_major": 24, "raw_java_version_output": "openjdk 24", "duration_ms": 1.0,

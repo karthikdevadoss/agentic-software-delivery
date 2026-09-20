@@ -314,6 +314,71 @@ buggy code.
 - **The implementer never gets the last word on its own production
   success.** This already exists as a rule inside qa-evaluator; it belongs
   here too, because tonight it existed and was never invoked.
+- **A diagnostic/verification tool must be proven to detect the known-bad
+  case before its "clean" result is trusted, same as a test.** Real
+  incident (Sprint 4, BL-032): a root-cause read structured evidence
+  fields that had already been truncated to 2000 characters upstream
+  (`output_tail = raw_output[-2000:]`) and reached a wrong conclusion --
+  the evidence was real, the reading of it was careful, the *source* was
+  already lossy. Extends the existing "a new test is not trusted until
+  observed failing" rule to diagnostic scripts and evidence fields, not
+  just regression tests: before trusting a truncated/summarized field as
+  the basis for a root-cause claim, confirm by re-running with full,
+  untruncated output at least once.
+- **Never let a sprint's merge phase count as done because a task tracker
+  says so.** Real incident (Sprint 4): two worktree branches were fully
+  finished and marked `done` in `docs/BACKLOG.json`, but the parent
+  session never actually ran `git merge` for them -- caught by accident,
+  not by checking. Before writing a sprint's retro, run
+  `python agent/verify_sprint_merged.py <branch1> <branch2> ...` for
+  every worktree branch dispatched that sprint -- it exits non-zero and
+  names exactly which branch(es) are not real ancestors of `HEAD`
+  otherwise. A `git log --graph` glance is not a substitute; run the
+  script.
+- **A commit that claims to resolve a tracked item must be checked, not
+  trusted.** Real incident, four separate times in one sprint (Sprint 4):
+  real work shipped without `docs/ACTION_QUEUE.json`/`docs/BACKLOG.json`
+  reflecting it -- including once where the tracking file WAS touched in
+  the same commit, just not with the actual status flip for the item
+  being claimed. Run `python agent/verify_tracking_updated.py <since-ref>`
+  before closing a sprint -- it checks both that the tracking doc was
+  touched AND that the referenced item's real, current status (at `HEAD`,
+  not at the commit) actually shows it resolved.
+- **Reserve an `ACT-`/`BL-` id before handing it to a fork, never let a
+  fork mint its own.** Real incident (Sprint 4): two concurrent forks
+  each independently assigned `ACT-015` to two different, unrelated
+  findings, because both read the same sprint-start snapshot of
+  `docs/ACTION_QUEUE.json`. Independently confirmed by external research
+  (a real study of 142k+ agent-authored PRs) as a known real failure
+  class with the same recommended fix. Before dispatching a fork whose
+  task might create a new tracked item, run
+  `python agent/check_id_available.py <prefix>` (or a specific id) and
+  give the fork that exact id in its dispatch prompt -- don't let it
+  choose.
+- **Check declared/likely file scope across concurrently-dispatched forks
+  before merging, advisory not exclusive.** `python agent/
+  detect_scope_conflicts.py <base-ref> <branch1> <branch2> [...]` reports
+  real file-level overlaps between branches (computed from real `git
+  diff`, not from task descriptions) -- an overlap means the merge needs
+  real attention (order, conflict resolution), not that either fork's
+  work is wrong. Deliberately advisory: a real incident this same sprint
+  (`BL-030`) found and fixed a genuine bug in code adjacent to, not
+  inside, its declared scope -- a hard exclusive-lock model would have
+  blocked that.
+- **Two known-real problems from this same audit remain genuinely
+  unsolved, stated honestly rather than papered over with a rule that
+  looks like a fix:** (1) forked subagents sometimes stall mid-task after
+  launching a real long-running local command and never act on its real
+  completion -- root cause unconfirmed, plausibly a platform-level
+  turn/notification-loop issue outside this project's own code. Mitigate
+  by having a fork announce before running anything that will take
+  several minutes, and by the parent session proactively checking in on
+  such forks rather than passively trusting a "completed" notification
+  -- but this is a bandage on the symptom, not a fix for the cause. (2) no
+  concrete trigger defines when "the same problem reported a second time"
+  is similar enough to count as a real recurrence demanding a process
+  change rather than another one-off patch -- flagged as a real open
+  question, not resolved by naming it.
 
 ## Durable-state rules
 - Repository files and Git are authoritative; conversation history is supplementary.
