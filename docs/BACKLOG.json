@@ -696,7 +696,7 @@
       "estimate_range": "15-25 min",
       "confidence": "MEDIUM",
       "size_rationale": "Bounded, real web research task, same shape as other research passes tonight.",
-      "status": "active",
+      "status": "done",
       "category": "scrum_process",
       "parent_id": null,
       "session_ids": [
@@ -705,7 +705,8 @@
       "commit_shas": [],
       "created_at": "2026-09-20T13:01:26+00:00",
       "started_at": "2026-09-20T13:01:26+00:00",
-      "completed_at": null
+      "completed_at": "2026-09-20T13:24:50+00:00",
+      "actual_note": "Real, cited finding: industry research independently confirms this project own calibration-loop conclusions tonight (story points/velocity broken for AI-agent work; defect-escape-rate and rework-ratio as better metrics) -- this project had already moved to numeric estimates and escaped_defects tracking (BL-020) before this research ran. One real gap flagged for a future sprint: rework ratio is not yet tracked. Full writeup in docs/RETRO_LOG.md."
     }
   ],
   "_calibration_process": {

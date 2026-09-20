@@ -16,6 +16,57 @@ finish — never a fixed calendar timebox.
 
 ---
 
+## Standing Scrum-process research (once per sprint, BL-023)
+
+### 2026-09-20 — first pass: real external validation of this project's own findings
+
+Real web research (not opinion) on how the wider industry is currently
+adapting Scrum/estimation for AI coding agents, done as the standing
+once-per-sprint commitment.
+
+**The headline finding independently confirms tonight's own calibration
+work, from an outside source**: traditional story points/velocity are
+now widely recognized as broken for AI-agent work — "in 2024, a 3-point
+story represented X amount of human effort, but in 2026 an AI agent can
+generate the code for that same story in 4 seconds"; "when AI reduces
+drafting effort to near-zero while leaving verification complexity high,
+velocity becomes a vanity metric" ([dev.to — The Death of Story
+Points](https://dev.to/dmitryame/the-death-of-story-points-engineering-metrics-in-the-agentic-era-2kho)).
+This project independently arrived at the same conclusion tonight from
+its own real data (every completed sprint-3 item ran 0.09–0.68× its
+estimate) and had already moved to numeric hour-estimates + confidence
+rather than story points before this research ran — real, external
+confirmation the direction is right, not a new correction needed.
+
+**Proposed replacement metrics match what this project just built,
+independently, hours earlier**: "objective completion rates and cycle
+time," "defect escape rate," "rework ratio"
+([Scrum.org — From Velocity to Agent
+Efficiency](https://www.scrum.org/resources/blog/velocity-agent-efficiency-evidence-based-management-ai-era)).
+`BL-020` (this same sprint) added an `escaped_defects` field to
+`verify_change.py`'s evidence JSON for exactly this reason, before this
+research was run — good alignment, not a gap.
+
+**One real idea not yet built here, worth a future sprint's
+consideration**: "rework ratio" (how much of a "done" item later needed
+real correction) isn't explicitly tracked yet — `BL-014`'s honest partial
+and the earlier BL-007 premature-closure incident are real historical
+examples that a rework-ratio metric would have captured directly. Not
+built this pass (out of scope for a 15-25 min research task) — flagged
+as a real candidate for a future `_calibration_process` addition.
+
+**Process-framing finding, informational**: AWS's own prescriptive
+guidance suggests "Sprint Planning" should evolve into "Intent Design"
+for agent-driven work — defining roles/guardrails/fallback mechanisms
+rather than scripting every decision path
+([Agile Insider — Agentic AI Is Rewriting the Sprint
+Lifecycle](https://medium.com/agileinsider/agentic-ai-is-rewriting-the-sprint-lifecycle-2ecd15bee4c4)).
+This project's CLAUDE.md governance file already reads this way (durable
+rules and guardrails, not a literal task script) — noted as validation,
+not a required change.
+
+---
+
 ## Section 1 — Learnings from wrong ESTIMATION
 
 Root-caused, dated entries where the size/estimate itself was miscalled
