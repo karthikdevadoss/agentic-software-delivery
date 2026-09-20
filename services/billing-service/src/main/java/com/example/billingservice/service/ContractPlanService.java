@@ -3,10 +3,13 @@ package com.example.billingservice.service;
 import com.example.billingservice.cache.EnrollmentLockService;
 import com.example.billingservice.client.BillingCustomerClient;
 import com.example.billingservice.client.CustomerLookupOutcome;
+import com.example.billingservice.client.LegacyBillingSystemClient;
+import com.example.billingservice.client.LegacyPlanPricingOutcome;
 import com.example.billingservice.dto.ContractPlanEnrollRequest;
 import com.example.billingservice.event.ContractPlanEnrolledEvent;
 import com.example.billingservice.exception.CustomerServiceUnavailableException;
 import com.example.billingservice.exception.EnrollmentInProgressException;
+import com.example.billingservice.exception.LegacyBillingSystemUnavailableException;
 import com.example.billingservice.model.ContractPlan;
 import com.example.billingservice.model.ContractPlanStatus;
 import com.example.billingservice.outbox.OutboxEvent;
@@ -19,6 +22,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -31,25 +35,42 @@ import java.util.Optional;
  * plan's start date, and kept (never deleted) so plan history is queryable.
  *
  * Ported from app/'s com.example.customer.service.ContractPlanService --
- * see this class's Javadoc there for the full original reasoning. THE ONE
- * REAL CHANGE this port makes (the actual point of this microservice
- * exercise, see docs/MICROSERVICES_ARCHITECTURE.md): the monolith's
- * in-process {@code customerService.getById(customerId)} call is replaced
- * with a genuine REST call to customer-service via BillingCustomerClient.
- * Everything else -- the idempotency no-op check, the saveAndFlush-before-
- * insert ordering fix, the Redis lock integration, and the outbox event
- * write -- is unchanged.
+ * see this class's Javadoc there for the full original reasoning. THE
+ * FIRST real change this port made (see docs/MICROSERVICES_ARCHITECTURE.md):
+ * the monolith's in-process {@code customerService.getById(customerId)}
+ * call was replaced with a genuine REST call to customer-service via
+ * BillingCustomerClient.
+ *
+ * ACT-013, THE SECOND AND MORE SIGNIFICANT REAL CHANGE (see
+ * docs/ACTION_QUEUE.json / docs/BACKLOG.json): this class no longer OWNS
+ * the billing rate/plan-of-record decision either. Extensive interview-
+ * prep discussion with the Owner confirmed, in his own words, that his
+ * real NRG billing service is a BRIDGE/FACADE to an older, separate
+ * billing system -- it does not calculate bills itself. Before this
+ * change, {@code request.ratePerKwh()} (whatever the caller submitted) was
+ * trusted outright and persisted as-is; that is exactly the "owns billing
+ * outright" shape the Owner said does not match the real system. Now, a
+ * genuinely new enrollment (never the idempotent no-op path -- see below)
+ * calls LegacyBillingSystemClient to CONFIRM the authoritative rate for
+ * the requested plan, and THAT rate -- not the caller-submitted one -- is
+ * what gets persisted. The idempotency no-op check, the saveAndFlush-
+ * before-insert ordering fix, the Redis lock integration, and the outbox
+ * event write are all unchanged: this class now reads as "coordinates
+ * with the systems of record (customer-service, the legacy billing
+ * system) and applies business rules on top," not "owns billing outright."
  */
 @Service
 public class ContractPlanService {
 
     static final String NO_ACTIVE_PLAN_MESSAGE = "No active contract plan found for customer";
     static final String CUSTOMER_NOT_FOUND_MESSAGE = "Customer not found";
+    static final String PLAN_NOT_RECOGNIZED_MESSAGE = "Plan not recognized by the legacy billing system";
     private static final String AGGREGATE_TYPE = "ContractPlan";
     private static final String EVENT_TYPE = "ContractPlanEnrolled";
 
     private final ContractPlanRepository contractPlanRepository;
     private final BillingCustomerClient billingCustomerClient;
+    private final LegacyBillingSystemClient legacyBillingSystemClient;
     private final OutboxEventRepository outboxEventRepository;
     private final JsonMapper jsonMapper;
     private final EnrollmentLockService enrollmentLockService;
@@ -57,11 +78,13 @@ public class ContractPlanService {
     public ContractPlanService(
             ContractPlanRepository contractPlanRepository,
             @Lazy BillingCustomerClient billingCustomerClient,
+            @Lazy LegacyBillingSystemClient legacyBillingSystemClient,
             OutboxEventRepository outboxEventRepository,
             JsonMapper jsonMapper,
             EnrollmentLockService enrollmentLockService) {
         this.contractPlanRepository = contractPlanRepository;
         this.billingCustomerClient = billingCustomerClient;
+        this.legacyBillingSystemClient = legacyBillingSystemClient;
         this.outboxEventRepository = outboxEventRepository;
         this.jsonMapper = jsonMapper;
         this.enrollmentLockService = enrollmentLockService;
@@ -135,6 +158,18 @@ public class ContractPlanService {
             return currentlyActive.get();
         }
 
+        // ACT-013 FACADE: this is a genuinely NEW enrollment (the
+        // idempotent no-op path above already returned) -- confirm the
+        // authoritative rate with the legacy billing system of record
+        // before mutating anything. Deliberately placed AFTER the
+        // idempotency check, never before it: the legacy system is the
+        // slow, expensive dependency in this whole flow (exactly as it
+        // would be in a real bridge like this), and a duplicate
+        // submission of an already-active plan has no business reason to
+        // pay that cost again. Never trusts request.ratePerKwh() as the
+        // terms of record -- see this class's Javadoc for why.
+        BigDecimal authoritativeRatePerKwh = confirmAuthoritativeRate(customerId, request, callerBearerToken);
+
         // REAL BUG found only by a genuine Postgres integration test (H2's
         // ddl-auto schema has no equivalent constraint to violate, so this
         // was invisible there): Hibernate's default flush ORDER executes
@@ -153,7 +188,7 @@ public class ContractPlanService {
         });
 
         ContractPlan newPlan = new ContractPlan(
-                customerId, request.planName(), request.ratePerKwh(), request.effectiveStartDate());
+                customerId, request.planName(), authoritativeRatePerKwh, request.effectiveStartDate());
         ContractPlan saved = contractPlanRepository.save(newPlan);
 
         // TRANSACTIONAL OUTBOX, same pattern as the monolith's
@@ -171,6 +206,30 @@ public class ContractPlanService {
                 AGGREGATE_TYPE, saved.getId(), EVENT_TYPE, jsonMapper.writeValueAsString(event)));
 
         return saved;
+    }
+
+    /**
+     * ACT-013: the actual facade call -- see this class's Javadoc and
+     * LegacyBillingSystemClient's Javadoc for the full reasoning. Honestly
+     * distinguishes a confirmed rate from a genuinely unrecognized plan
+     * (404 -&gt; NoSuchElementException) from the legacy system being
+     * unreachable (503 -&gt; LegacyBillingSystemUnavailableException) --
+     * never fabricates an answer, same discipline as
+     * BillingCustomerClient's checkCustomerExists() handling above.
+     */
+    private BigDecimal confirmAuthoritativeRate(Long customerId, ContractPlanEnrollRequest request, String callerBearerToken) {
+        LegacyPlanPricingOutcome pricing =
+                legacyBillingSystemClient.confirmPlanPricing(request.planName(), customerId, callerBearerToken);
+        if (pricing instanceof LegacyPlanPricingOutcome.Confirmed confirmed) {
+            return confirmed.ratePerKwh();
+        }
+        if (pricing instanceof LegacyPlanPricingOutcome.PlanNotRecognized) {
+            throw new NoSuchElementException(PLAN_NOT_RECOGNIZED_MESSAGE + ": " + request.planName());
+        }
+        // LegacyPlanPricingOutcome.Unavailable
+        throw new LegacyBillingSystemUnavailableException(
+                "legacy billing system unreachable while pricing plan '" + request.planName()
+                        + "' for customer " + customerId + " -- please retry");
     }
 
     private static boolean isSameTerms(ContractPlan existing, ContractPlanEnrollRequest request) {

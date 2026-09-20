@@ -83,4 +83,13 @@ public class GlobalExceptionHandler {
         body.put("error", ex.getMessage());
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(body);
     }
+
+    /** ACT-013: 503 for a genuinely unreachable legacy billing system --
+     * same reasoning as handleCustomerServiceUnavailable above. */
+    @ExceptionHandler(LegacyBillingSystemUnavailableException.class)
+    public ResponseEntity<Map<String, String>> handleLegacyBillingSystemUnavailable(LegacyBillingSystemUnavailableException ex) {
+        Map<String, String> body = new LinkedHashMap<>();
+        body.put("error", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(body);
+    }
 }
