@@ -79,10 +79,10 @@
       "checklist": [
         {"step": "Architecture design doc (docs/MICROSERVICES_ARCHITECTURE.md)", "status": "done", "size": "MEDIUM"},
         {"step": "Scaffold 6 service skeletons (eureka-server, api-gateway, customer/billing/notification/metering-service) -- all compile clean", "status": "done", "size": "LARGE"},
-        {"step": "Build out customer-service (Customer, CustomerPreference, auth/JWT issuance, ported+adapted from app/)", "status": "not_started", "size": "LARGE"},
-        {"step": "Build out billing-service (ContractPlan, enrollment, Redis lock, real REST call to customer-service via Resilience4j)", "status": "not_started", "size": "LARGE"},
+        {"step": "Build out customer-service (Customer, CustomerPreference, auth/JWT issuance, ported+adapted from app/)", "status": "active", "size": "LARGE"},
+        {"step": "Build out billing-service (ContractPlan, enrollment, Redis lock, real REST call to customer-service via Resilience4j)", "status": "active", "size": "LARGE"},
         {"step": "Build out notification-service (senders, Kafka consumption, ported+adapted from app/)", "status": "not_started", "size": "MEDIUM"},
-        {"step": "Build out metering-service (NEW domain: MeterReading, usage aggregation -- no existing code to port)", "status": "not_started", "size": "LARGE"},
+        {"step": "Build out metering-service (NEW domain: MeterReading, usage aggregation -- no existing code to port)", "status": "done", "size": "LARGE", "actual_note": "MeterReading entity (plain customerId reference, no JPA relationship, same rationale as CustomerPreference/ContractPlan), repository, custom @NotInFuture Bean Validation constraint, service with real aggregation (sum+count, empty-range handled explicitly), controller (3 endpoints), resource-server-only SecurityConfig (JwtDecoder built directly from app.security.jwt.* properties, no local token issuer since this service never issues tokens), WorkspaceAccessGuard ported from the monolith's exact role/cid claim logic, GlobalExceptionHandler. 14/14 tests passing (6 Mockito unit tests on the real aggregation math + 8 RestTemplate/RANDOM_PORT integration tests incl. 2 real workspace-isolation tests proving a customer-A token gets 403 on customer-B's data). pom.xml verified free of literal '--' outside legitimate XML comment delimiters."},
         {"step": "End-to-end integration test: Eureka + Gateway + all 4 services running together, a real request routed through the gateway to the right service", "status": "not_started", "size": "MEDIUM"}
       ]
     },
