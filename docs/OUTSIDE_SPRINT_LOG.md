@@ -40,3 +40,11 @@ to-self, e.g. memory files — background housekeeping, not project work),
   (`karthik-ai-context/coaching/NRG_STACK_GAP_ANALYSIS.md`) — personal
   career-fact content, stays there per this project's public/private
   separation rule.
+- **discussion** — interactive role/boundary definition for the NRG
+  project (Q&A format) and the AI-adoption-work section, both confirmed
+  and written into the private career record — personal, stays there.
+- **research** — deep research (Fable-model agent, real web research)
+  into a realistic, non-idealized profile across NRG/BCBSA/Marsh —
+  technology, deployment, production support, architecture. Full content
+  in the private repo (`karthik-ai-context/coaching/REALISTIC_PROFILE_DEEP_RESEARCH.md`)
+  — personal career-fact content, stays there.
