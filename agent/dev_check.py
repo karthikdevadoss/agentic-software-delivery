@@ -20,6 +20,7 @@ Usage (from the repository root, or agent/ -- both resolve correctly):
     python agent/dev_check.py deployment-status
     python agent/dev_check.py production-verify
     python agent/dev_check.py verify-change [--base <ref>] [--dry-run]  # Testing Architecture V1 -- see agent/verify_change.py
+    python agent/dev_check.py aggregate-evidence [--json]  # cross-run metrics over verify-change's evidence -- see agent/aggregate_evidence.py
     python agent/dev_check.py all               # python + node + customer-app-tests
 
 Each subcommand exits 0 only on genuine success; any other outcome exits
@@ -134,6 +135,14 @@ def verify_change(args) -> int:
     return _run([sys.executable, str(AGENT_DIR / "verify_change.py"), *args], REPO_ROOT)
 
 
+def aggregate_evidence(args) -> int:
+    """Delegates to agent/aggregate_evidence.py -- real cross-run metrics
+    (first-pass yield, time rollup, honest insufficient-data reporting for
+    cost/rework) over verify_change.py's real evidence JSON files. Same
+    thin-passthrough pattern as verify_change() above."""
+    return _run([sys.executable, str(AGENT_DIR / "aggregate_evidence.py"), *args], REPO_ROOT)
+
+
 COMMANDS = {
     "python-regression": lambda args: python_regression(),
     "node-regression": lambda args: node_regression(),
@@ -142,6 +151,7 @@ COMMANDS = {
     "deployment-status": lambda args: deployment_status(),
     "production-verify": lambda args: production_verify(),
     "verify-change": verify_change,
+    "aggregate-evidence": aggregate_evidence,
 }
 
 
