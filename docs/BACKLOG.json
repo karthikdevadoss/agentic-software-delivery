@@ -418,7 +418,9 @@
       "status": "done",
       "parent_id": null,
       "session_ids": [],
-      "commit_shas": [],
+      "commit_shas": [
+        "87a2ef6"
+      ],
       "created_at": "2026-09-20T05:54:11+00:00",
       "started_at": "2026-09-20T05:54:11+00:00",
       "completed_at": "2026-09-20T06:26:23+00:00",
