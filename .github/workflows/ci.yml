@@ -40,6 +40,17 @@ jobs:
       # false-positive noise against transitive dependencies that aren't
       # actually exploitable in this app's context; prove it's not noisy
       # here before ever making it a hard gate, not the other way around.
+      #
+      # REAL, FIRST-RUN FINDING (2026-09-20, not yet fixed): NVD now
+      # requires an API key for reliable CVE-database access (a real,
+      # fairly recent NVD policy tightening, not a config mistake here)
+      # -- without one this step fails with "Invalid API Key, length of
+      # 0 too short" and cannot actually analyze anything. continue-on-error
+      # is exactly why that failure doesn't block CI. Real next step (needs
+      # the Owner, not something Claude can self-serve): get a free key at
+      # https://nvd.nist.gov/developers/request-an-api-key, add it as the
+      # GitHub Actions secret NVD_API_KEY, then this run line becomes:
+      #   ./mvnw org.owasp:dependency-check-maven:13.0.0:check -B -DprettyPrint=true -Dnvd.api.key=${{ secrets.NVD_API_KEY }}
       - name: OWASP dependency-check (informational only, does not gate CI)
         working-directory: app
         continue-on-error: true
