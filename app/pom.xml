@@ -321,6 +321,48 @@
                     </execution>
                 </executions>
             </plugin>
+            <!--
+                MUTATION TESTING (PIT): answers a different question than
+                JaCoCo's line-coverage gate above : not "did a test run
+                this line" but "would a test actually FAIL if this line's
+                logic were subtly wrong." Deliberately NOT bound to any
+                lifecycle phase (no executions block) : mutation testing
+                is genuinely slow (seconds-to-minutes per class, unlike
+                JaCoCo's near-free instrumentation), so it runs only on
+                demand: mvn org.pitest:pitest-maven:mutationCoverage
+                Scoped to the highest-value business-logic classes built
+                this session (real concurrency/idempotency/rate-limiting
+                logic, not DTOs/controllers/config, where a killed-vs-
+                survived mutant tells you the least) rather than the whole
+                codebase, which would multiply runtime for low real signal.
+            -->
+            <plugin>
+                <groupId>org.pitest</groupId>
+                <artifactId>pitest-maven</artifactId>
+                <version>1.30.0</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.pitest</groupId>
+                        <artifactId>pitest-junit5-plugin</artifactId>
+                        <version>1.2.3</version>
+                    </dependency>
+                </dependencies>
+                <configuration>
+                    <targetClasses>
+                        <param>com.example.customer.service.*</param>
+                        <param>com.example.customer.cache.*</param>
+                        <param>com.example.customer.security.RateLimiterService</param>
+                    </targetClasses>
+                    <targetTests>
+                        <param>com.example.customer.service.*</param>
+                        <param>com.example.customer.cache.*</param>
+                        <param>com.example.customer.security.*</param>
+                    </targetTests>
+                    <outputFormats>
+                        <outputFormat>HTML</outputFormat>
+                    </outputFormats>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 </project>
