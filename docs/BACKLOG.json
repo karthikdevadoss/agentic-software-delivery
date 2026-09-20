@@ -511,6 +511,196 @@
       "completed_at": "2026-09-20T06:53:58+00:00",
       "actual_note": "DONE, genuinely proven live through the real gateway. Built MeteringUsageClient + MeteringUsageClientConfig (mirrors BillingCustomerClient exactly, including the RestClientBuilderConfigurer fix from BL-014), a new UsageEstimationService (kept separate from ContractPlanService deliberately, so its existing constructor/tests stay untouched), a new GET /customers/{id}/plan/usage-estimated-cost endpoint, and a new gateway route (the existing /customers/*/plan route does not match this longer path). 12 new tests (4 WireMock integration + 4 unit combination-math tests + kept both real), full billing-service suite: 28 tests, 0 failures, 0 errors. REAL LIVE PROOF: created a customer, enrolled a plan (rate 0.20/kWh), submitted 2 real meter readings (50.0 + 30.0 kWh) through metering-service, then called the new endpoint through the gateway -- returned totalKwhConsumed=80.000, readingCount=2, estimatedCost=16.00 (80 * 0.20), exactly correct. One real, honest hiccup on the way: the gateway briefly returned 503 'Unable to find instance for metering-service' right after metering-service started -- real Eureka client-side registry-cache propagation lag (each service's own Eureka client caches the registry and refreshes on its own ~30s interval; billing-service happened to have already refreshed, the gateway had not yet), not a code bug -- resolved itself once the gateway's own cache caught up, confirmed by retrying.",
       "category": "delivery"
+    },
+    {
+      "id": "BL-016",
+      "title": "Apply AI-native testing governance: CLAUDE.md section + qa-evaluator.md amendments",
+      "description": "Apply the drafted \"AI-characteristic defect discipline\" CLAUDE.md section and qa-evaluator.md amendments (structured-disagreement mandate, withhold implementer narrative) from docs/AI_NATIVE_TESTING_RESEARCH.md.",
+      "size": "SMALL",
+      "estimate_range": "10-15 min",
+      "confidence": "HIGH",
+      "size_rationale": "Text already fully drafted in the research doc; this is applying/integrating it, not designing it.",
+      "status": "active",
+      "category": "delivery",
+      "parent_id": null,
+      "session_ids": [
+        "da166cc9-854a-47c3-8b06-8d2034e4b8fc"
+      ],
+      "commit_shas": [],
+      "created_at": "2026-09-20T13:01:26+00:00",
+      "started_at": "2026-09-20T13:01:26+00:00",
+      "completed_at": null
+    },
+    {
+      "id": "BL-017",
+      "title": "verify_change.py: skip-accounting + fail-closed-on-execution",
+      "description": "A HIGH/CRITICAL change whose mandatory suite was skipped must report UNVERIFIED, never PASSED, naming which gate did not execute.",
+      "size": "SMALL",
+      "estimate_range": "15-25 min",
+      "confidence": "MEDIUM_HIGH",
+      "size_rationale": "Extends verify_change.py's existing fail-closed concept (already applied to selection ambiguity) one step to execution/skip accounting.",
+      "status": "active",
+      "category": "delivery",
+      "parent_id": null,
+      "session_ids": [
+        "da166cc9-854a-47c3-8b06-8d2034e4b8fc"
+      ],
+      "commit_shas": [],
+      "created_at": "2026-09-20T13:01:26+00:00",
+      "started_at": "2026-09-20T13:01:26+00:00",
+      "completed_at": null
+    },
+    {
+      "id": "BL-018",
+      "title": "STATIC verification tier: file-mode/shebang gate",
+      "description": "First inhabitant of Testing Architecture V1's empty STATIC tier -- a zero-LLM script asserting mode 100755 for any file with a #! shebang or under scripts/, via git ls-files --stage.",
+      "size": "SMALL",
+      "estimate_range": "10-15 min",
+      "confidence": "HIGH",
+      "size_rationale": "Small, deterministic, no model involved -- closes the real mvnw-executable-bit bug class from tonight.",
+      "status": "active",
+      "category": "delivery",
+      "parent_id": null,
+      "session_ids": [
+        "da166cc9-854a-47c3-8b06-8d2034e4b8fc"
+      ],
+      "commit_shas": [],
+      "created_at": "2026-09-20T13:01:26+00:00",
+      "started_at": "2026-09-20T13:01:26+00:00",
+      "completed_at": null
+    },
+    {
+      "id": "BL-019",
+      "title": "Outbound-request-assertion convention + real example",
+      "description": "Document and demonstrate: for cross-service calls, assert the outbound request carries required headers (never just the response), plus a negative test that the downstream rejects a missing credential.",
+      "size": "SMALL",
+      "estimate_range": "15-20 min",
+      "confidence": "MEDIUM",
+      "size_rationale": "Documented convention plus one real applied example against an existing cross-service call.",
+      "status": "active",
+      "category": "delivery",
+      "parent_id": null,
+      "session_ids": [
+        "da166cc9-854a-47c3-8b06-8d2034e4b8fc"
+      ],
+      "commit_shas": [],
+      "created_at": "2026-09-20T13:01:26+00:00",
+      "started_at": "2026-09-20T13:01:26+00:00",
+      "completed_at": null
+    },
+    {
+      "id": "BL-020",
+      "title": "Evidence-JSON instrumentation: independent_evaluation + escaped_defects fields",
+      "description": "Add independent_evaluation:{invoked,verdict,findings_count} and escaped_defects fields to verify_change.py's per-run evidence JSON, so real cost-per-verified-outcome for independent review becomes measurable over time.",
+      "size": "SMALL",
+      "estimate_range": "15-20 min",
+      "confidence": "MEDIUM",
+      "size_rationale": "Bounded schema addition to an existing evidence-writing mechanism.",
+      "status": "active",
+      "category": "delivery",
+      "parent_id": null,
+      "session_ids": [
+        "da166cc9-854a-47c3-8b06-8d2034e4b8fc"
+      ],
+      "commit_shas": [],
+      "created_at": "2026-09-20T13:01:26+00:00",
+      "started_at": "2026-09-20T13:01:26+00:00",
+      "completed_at": null
+    },
+    {
+      "id": "BL-021",
+      "title": "Real-topology multi-instance test tier for the microservices decomposition",
+      "description": "A new testing tier between single-service Testcontainers tests and production: registry + 2+ real service instances + one real authenticated cross-service call, scripted and repeatable -- closes the largest structural gap found in tonight's bug audit (4 of 7 real defects lived in this space).",
+      "size": "LARGE",
+      "estimate_range": "40-70 min",
+      "confidence": "LOW_MEDIUM",
+      "size_rationale": "First-of-its-kind real-topology test harness in this codebase -- per the updated sizing rubric, defaults to LARGE regardless of apparent simplicity.",
+      "status": "active",
+      "category": "delivery",
+      "parent_id": null,
+      "session_ids": [
+        "da166cc9-854a-47c3-8b06-8d2034e4b8fc"
+      ],
+      "commit_shas": [],
+      "created_at": "2026-09-20T13:01:26+00:00",
+      "started_at": "2026-09-20T13:01:26+00:00",
+      "completed_at": null
+    },
+    {
+      "id": "BL-022",
+      "title": "Retroactive stabilization: qa-evaluator pass against BL-007 and BL-013",
+      "description": "Apply the new mandatory-qa-evaluator rule retroactively to 2 recent LARGE items to check for real escaped defects, per the Owner's \"stabilize with all our learnings\" directive.",
+      "size": "MEDIUM",
+      "estimate_range": "20-35 min",
+      "confidence": "MEDIUM",
+      "size_rationale": "Bounded -- uses the qa-evaluator subagent against already-known, already-shipped work.",
+      "status": "active",
+      "category": "delivery",
+      "parent_id": null,
+      "session_ids": [
+        "da166cc9-854a-47c3-8b06-8d2034e4b8fc"
+      ],
+      "commit_shas": [],
+      "created_at": "2026-09-20T13:01:26+00:00",
+      "started_at": "2026-09-20T13:01:26+00:00",
+      "completed_at": null
+    },
+    {
+      "id": "ACT-013",
+      "title": "Rework billing-service into a realistic facade over a legacy billing system",
+      "description": "Rework ContractPlanService to call out to a mocked/simulated legacy billing system instead of owning the enrollment/billing logic directly, matching what tonight's career-history Q&A confirmed about real NRG architecture.",
+      "size": "LARGE",
+      "estimate_range": "40-70 min",
+      "confidence": "MEDIUM",
+      "size_rationale": "Real design work but extends already-proven patterns (BillingCustomerClient-style REST+Resilience4j client) from tonight's own codebase.",
+      "status": "active",
+      "category": "delivery",
+      "parent_id": null,
+      "session_ids": [
+        "da166cc9-854a-47c3-8b06-8d2034e4b8fc"
+      ],
+      "commit_shas": [],
+      "created_at": "2026-09-20T13:01:26+00:00",
+      "started_at": "2026-09-20T13:01:26+00:00",
+      "completed_at": null
+    },
+    {
+      "id": "AEQ-025B",
+      "title": "App-name single source of truth (AEQ-025, option b)",
+      "description": "Refactor the Customer App's hardcoded display name/heading (login view, USER dashboard, ADMIN dashboard) into one templated/JS-driven source of truth, per the Owner's approved option (b).",
+      "size": "SMALL",
+      "estimate_range": "10-15 min",
+      "confidence": "HIGH",
+      "size_rationale": "Already-decided direction, small, bounded refactor of existing static markup.",
+      "status": "active",
+      "category": "delivery",
+      "parent_id": null,
+      "session_ids": [
+        "da166cc9-854a-47c3-8b06-8d2034e4b8fc"
+      ],
+      "commit_shas": [],
+      "created_at": "2026-09-20T13:01:26+00:00",
+      "started_at": "2026-09-20T13:01:26+00:00",
+      "completed_at": null
+    },
+    {
+      "id": "BL-023",
+      "title": "Scrum-process research (standing once-per-sprint commitment)",
+      "description": "Real web research on current best practices in AI-assisted Scrum/estimation methodologies, to stay current -- the standing recurring task committed to earlier tonight.",
+      "size": "SMALL",
+      "estimate_range": "15-25 min",
+      "confidence": "MEDIUM",
+      "size_rationale": "Bounded, real web research task, same shape as other research passes tonight.",
+      "status": "active",
+      "category": "scrum_process",
+      "parent_id": null,
+      "session_ids": [
+        "da166cc9-854a-47c3-8b06-8d2034e4b8fc"
+      ],
+      "commit_shas": [],
+      "created_at": "2026-09-20T13:01:26+00:00",
+      "started_at": "2026-09-20T13:01:26+00:00",
+      "completed_at": null
     }
   ],
   "_calibration_process": {
