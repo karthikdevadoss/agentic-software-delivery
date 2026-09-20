@@ -28,7 +28,7 @@ import tools.jackson.databind.json.JsonMapper;
 public class ContractPlanBillingSyncConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(ContractPlanBillingSyncConsumer.class);
-    static final String CONSUMER_NAME = "contract-plan-billing-sync";
+    public static final String CONSUMER_NAME = "contract-plan-billing-sync";
 
     private final ProcessedEventRepository processedEventRepository;
     private final BillingSyncRecordRepository billingSyncRecordRepository;

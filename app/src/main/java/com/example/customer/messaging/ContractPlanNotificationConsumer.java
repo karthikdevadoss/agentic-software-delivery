@@ -29,7 +29,7 @@ import tools.jackson.databind.json.JsonMapper;
 public class ContractPlanNotificationConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(ContractPlanNotificationConsumer.class);
-    static final String CONSUMER_NAME = "contract-plan-notification";
+    public static final String CONSUMER_NAME = "contract-plan-notification";
 
     private final ProcessedEventRepository processedEventRepository;
     private final JsonMapper jsonMapper;

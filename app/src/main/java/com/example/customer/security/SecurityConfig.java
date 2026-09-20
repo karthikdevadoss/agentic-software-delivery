@@ -92,6 +92,13 @@ public class SecurityConfig {
                                 "/internal/triage/scenario-c/reproduce").permitAll()
                         .requestMatchers(HttpMethod.GET, "/internal/triage/scenario-c/state").permitAll()
                         .requestMatchers(HttpMethod.POST, "/internal/triage/scenario-c/approve").hasAuthority("SCOPE_admin:read")
+                        // Incident Triage Lab, Scenario D: same shape as Scenarios A/B/C above --
+                        // operates only on a synthetic eventId (see TriageScenarioDService's
+                        // isolation contract), never a real Kafka message or real business data.
+                        .requestMatchers(HttpMethod.POST, "/internal/triage/scenario-d/reset",
+                                "/internal/triage/scenario-d/reproduce").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/internal/triage/scenario-d/state").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/internal/triage/scenario-d/approve").hasAuthority("SCOPE_admin:read")
                         .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
                         // Everything else under /actuator (metrics, prometheus, env, etc.)
                         // requires at least a valid token -- no admin scope exists in
