@@ -13,7 +13,9 @@ communication-style commentary) is referenced, not duplicated here.
 Sub-categories used so far: `bookkeeping` (Claude's own private notes-
 to-self, e.g. memory files — background housekeeping, not project work),
 `research` (research/analysis requested between sprints), `discussion`
-(process design conversation that doesn't produce a sized deliverable).
+(process design conversation that doesn't produce a sized deliverable),
+`deliverable` (a real artifact produced ad hoc, outside any sized backlog
+item — e.g. a one-off external-facing document).
 
 ---
 
@@ -74,3 +76,19 @@ to-self, e.g. memory files — background housekeeping, not project work),
   stabilization prioritized, a missed standing Scrum-research commitment
   caught) — led directly to the new mandatory pre-sprint-proposal
   checklist in `docs/BACKLOG.json`'s `_calibration_process`.
+- **deliverable** — built and published a one-page public Artifact
+  ("Agentic Software Delivery — Systems & Engineering Overview") for the
+  Owner's AI trainer to review, explicitly requested outside any sprint.
+  Covers architecture, the AI-native testing discipline, the Scrum-for-AI
+  calibration data, real incidents, the documentation system, company
+  thesis, honest gaps, and roadmap — then, per follow-up direction,
+  expanded with a dedicated section on the AI-engineering practice itself
+  (memory/context/skills/session/token/model handling), an interactive
+  Claude-`sample`-backed Q&A panel grounded only in the page's own
+  content (kept deliberately minimal after an explicit "no bugs" steer —
+  single question/single answer, no chat-thread state), and direct
+  GitHub links to every primary source document referenced, since the
+  Owner confirmed his trainer's own AI (Claude/Grok) will analyze this
+  directly rather than a human reading it start to end. Not tracked in
+  `docs/BACKLOG.json` — no sizing, no retro entry, per the Owner's
+  explicit "not part of any sprint" instruction.
