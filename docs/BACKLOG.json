@@ -579,7 +579,7 @@
       "estimate_range": "15-20 min",
       "confidence": "MEDIUM",
       "size_rationale": "Documented convention plus one real applied example against an existing cross-service call.",
-      "status": "active",
+      "status": "done",
       "category": "delivery",
       "parent_id": null,
       "session_ids": [
@@ -588,7 +588,8 @@
       "commit_shas": [],
       "created_at": "2026-09-20T13:01:26+00:00",
       "started_at": "2026-09-20T13:01:26+00:00",
-      "completed_at": null
+      "completed_at": "2026-09-20T13:16:15+00:00",
+      "actual_note": "Real example added: 2 new tests in BillingCustomerClientIntegrationTest asserting the outbound Authorization header (not just the response), closing the exact JWT-propagation bug class from BL-007. Caught a real API mistake during writing (withHeader is not a static WireMock method, verified against the real installed 3.10.0 jar via javap before it became a compile error). Full class run: 8/8 passing. Convention documented in a new docs/TESTING_ARCHITECTURE_V1.md section, also fixed a stale open-item entry (PIT mutation testing was already added by BL-006, doc said otherwise)."
     },
     {
       "id": "BL-020",

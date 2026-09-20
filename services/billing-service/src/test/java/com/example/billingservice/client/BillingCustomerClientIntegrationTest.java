@@ -16,6 +16,7 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.client.RestClient;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.notFound;
@@ -109,6 +110,46 @@ class BillingCustomerClientIntegrationTest {
         wireMock.stubFor(get(urlPathEqualTo("/customers/" + CUSTOMER_ID)).willReturn(aResponse().withStatus(200)));
 
         assertThat(billingCustomerClient.checkCustomerExists(CUSTOMER_ID, "Bearer test-token")).isEqualTo(CustomerLookupOutcome.FOUND);
+    }
+
+    /**
+     * BL-019 (2026-09-20): asserts on the OUTBOUND REQUEST, not just the
+     * response -- the real defect class this closes (docs/AI_NATIVE_TESTING_RESEARCH.md
+     * finding 3b) is a missing-header-propagation bug that a response-only
+     * assertion structurally cannot catch: a mocked downstream returns 200
+     * regardless of whether the Authorization header was actually sent, so
+     * a test that only checks "did checkCustomerExists() return FOUND"
+     * would pass identically whether or not the real bearer token was
+     * forwarded. This is exactly the real bug BL-007's own smoke test found
+     * (missing JWT propagation billing-service -> customer-service) --
+     * proven here as a permanent regression test, not just a one-off fix.
+     */
+    @Test
+    void customerExists_forwardsTheRealCallerBearerToken_onTheOutboundRequest() {
+        wireMock.stubFor(get(urlPathEqualTo("/customers/" + CUSTOMER_ID)).willReturn(aResponse().withStatus(200)));
+
+        billingCustomerClient.checkCustomerExists(CUSTOMER_ID, "Bearer real-caller-token-xyz");
+
+        wireMock.verify(1, getRequestedFor(urlPathEqualTo("/customers/" + CUSTOMER_ID))
+                .withHeader("Authorization", equalTo("Bearer real-caller-token-xyz")));
+    }
+
+    /**
+     * Companion negative case: a DIFFERENT caller token must produce a
+     * DIFFERENT outbound header, not a stale/cached/hardcoded one -- proves
+     * the propagation is real (the actual per-call value flows through),
+     * not just present.
+     */
+    @Test
+    void customerExists_forwardsTheActualPerCallToken_notAHardcodedOne() {
+        wireMock.stubFor(get(urlPathEqualTo("/customers/" + CUSTOMER_ID)).willReturn(aResponse().withStatus(200)));
+
+        billingCustomerClient.checkCustomerExists(CUSTOMER_ID, "Bearer second-distinct-token-abc");
+
+        wireMock.verify(1, getRequestedFor(urlPathEqualTo("/customers/" + CUSTOMER_ID))
+                .withHeader("Authorization", equalTo("Bearer second-distinct-token-abc")));
+        wireMock.verify(0, getRequestedFor(urlPathEqualTo("/customers/" + CUSTOMER_ID))
+                .withHeader("Authorization", equalTo("Bearer real-caller-token-xyz")));
     }
 
     @Test

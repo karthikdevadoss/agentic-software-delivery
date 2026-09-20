@@ -332,14 +332,45 @@ this task's own "prefer change-aware execution where technically safe...
 ensure there is still a deliberate path for full regression" guidance —
 not a replacement).
 
+## §S. Outbound-request-assertion convention (added 2026-09-20, BL-019)
+
+Real defect class this closes (docs/AI_NATIVE_TESTING_RESEARCH.md finding
+3b): a mocked/WireMock-based integration test that only asserts on the
+*response* (e.g. "did the call return 200/FOUND") structurally cannot
+catch a header/credential-propagation bug — a mocked downstream returns
+the stubbed response regardless of whether the real caller's
+Authorization header, correlation id, or any other required header was
+actually forwarded. This is exactly the class of bug BL-007's own real
+end-to-end smoke test found (a missing JWT-propagation gap between
+billing-service and customer-service) that no WireMock-based test at the
+time would have caught.
+
+**Convention, mandatory for every new outbound service-to-service call:**
+1. Assert on the *outbound request itself* (`wireMock.verify(n,
+   getRequestedFor(...).withHeader("Authorization", equalTo(...)))`),
+   never only on the response.
+2. Use a distinct, per-call value in the assertion (not a fixed/shared
+   constant across tests) to prove the *actual per-call value* is
+   propagated, not a hardcoded/stale one.
+
+**Real example**: `services/billing-service/src/test/java/com/example/billingservice/client/BillingCustomerClientIntegrationTest.java`'s
+`customerExists_forwardsTheRealCallerBearerToken_onTheOutboundRequest`
+and `customerExists_forwardsTheActualPerCallToken_notAHardcodedOne` —
+both real, run, passing tests (8/8 in that class as of this commit).
+
 ## Open items (tracked in docs/ACTION_QUEUE.json's TESTING-ARCH-V1-GAPS)
 
 1. No dedicated Playwright spec for the Customer App's own frontend — the
-   single most valuable next addition (§F/§I).
+   single most valuable next addition (§F/§I). **Partially closed
+   2026-09-20** — see docs/BACKLOG.json's BL-012.
 2. Python Test Impact Analysis not yet built (§C) — Python changes are
    flagged, not auto-selected.
 3. No CI wiring yet (§R) — deliberate, awaiting explicit approval.
-4. No mutation/property/fuzz/performance/chaos tooling (§G/§K) —
-   deliberately deferred, not mandatory per-change.
+4. No property/fuzz/performance/chaos tooling (§G/§K) — deliberately
+   deferred, not mandatory per-change. **Correction 2026-09-20**: mutation
+   testing (PIT) specifically is NOT still open — it was added to
+   `app/pom.xml` by BL-006 the same night this doc was first written; this
+   item's original wording was stale and is corrected here rather than
+   left standing.
 5. No cross-run economics aggregation yet (§Q) — evidence capture starts
    now; aggregation is future work.
