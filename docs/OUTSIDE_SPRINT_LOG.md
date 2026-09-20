@@ -48,3 +48,12 @@ to-self, e.g. memory files — background housekeeping, not project work),
   technology, deployment, production support, architecture. Full content
   in the private repo (`karthik-ai-context/coaching/REALISTIC_PROFILE_DEEP_RESEARCH.md`)
   — personal career-fact content, stays there.
+- **discussion** — interactive follow-up: 11 open questions from the
+  deep-research doc answered, real detail confirmed across NRG/BCBSA/
+  Marsh (billing-as-façade, real messaging hands-on work, BCBSA/Marsh
+  role-scope differences). Full content in the private repo's
+  `context/CAREER_HISTORY.md`.
+- **discussion** — Chase/Northern Trust tech timeline corrected and
+  verified against real public Spring Boot release history. Private repo.
+- **research** — real database-usage research across the whole career,
+  per-project list confirmed. Private repo.
