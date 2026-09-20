@@ -54,7 +54,7 @@
       "safe_to_auto_execute": false,
       "verification_required": "DONE: a real HTTP-based MCP client (separate OS process, real TCP/HTTP, not in-process) discovered and invoked tools successfully, and the security boundary held over real HTTP too. Re-verified independently a second time (BL-028), no regressions found.",
       "created_at_commit": "d312dd1",
-      "resolved_at_commit": null
+      "resolved_at_commit": "b175086"
     },
     {
       "id": "ACT-006",
