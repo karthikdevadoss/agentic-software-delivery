@@ -221,6 +221,92 @@ trivial observations.
 - Do not move to another feature while unresolved P0/P1 stabilization defects
   remain.
 
+## AI-characteristic defect discipline
+Traditional QA is designed around how humans get things wrong. These rules
+are designed around how *this* agent actually got things wrong (see the
+2026-09-20 audit, docs/AI_NATIVE_TESTING_RESEARCH.md). Research basis: LLM
+self-correction degrades without external feedback; same-family models
+share correlated blind spots; coverage does not predict fault detection on
+buggy code.
+
+- **Never write against a remembered API.** Before calling any external
+  library/framework API this repository does not already use somewhere,
+  resolve the real symbol against the *actually installed artifact* and
+  record the real output: Python -- `inspect.signature` / `dir()` / the
+  real file under site-packages; Java -- the resolved dependency's real
+  class or version-exact docs matching `pom.xml`, never generic docs.
+  Grounding, not prompting, is what fixes phantom symbols/signatures. When
+  what's uncertain is an API's *semantics* (routing, load balancing,
+  transaction/filter ordering), a correct signature proves nothing -- it
+  requires a real runtime exercise before it counts as verified.
+- **A new `@Bean` of a framework-owned, auto-configured type is
+  HIGH/CROSS_MODULE** (`RestClient.Builder`, `RestTemplate`,
+  `WebClient.Builder`, `ObjectMapper`, `TaskExecutor`, `SecurityFilterChain`,
+  any `*Customizer`), regardless of which directory it lives in, and
+  requires a real full-context boot of every service sharing that context
+  -- not a slice test. `@ConditionalOnMissingBean` matches by TYPE, so an
+  unqualified consumer elsewhere silently takes your bean.
+- **First-of-its-kind multi-process work must be verified multi-process.**
+  The backlog rubric already defaults a first integration of a given kind
+  to LARGE; verification must match. A mocked integration test never
+  satisfies an integration acceptance criterion. Real registry + 2+ real
+  instances + one real end-to-end request with a real token, asserted at
+  the far end.
+- **Cross-service calls require propagation and negative assertions.** For
+  every new outbound service-to-service call: (a) assert the *outbound
+  request* actually carries required headers (Authorization, correlation
+  id) -- assert on the recorded request, never the response; (b) assert
+  the downstream rejects the call when the credential is absent. A 200
+  happy-path assertion cannot fail on a propagation bug.
+- **SKIPPED is not PASSED.** Every verification report states pass/fail/
+  skip counts. A HIGH or CRITICAL change whose mandatory suite was skipped
+  (Docker absent, profile absent, tag excluded) is `UNVERIFIED` -- never
+  `PASSED` -- and must name which gate did not execute and where it will.
+- **A new test is not trusted until it has been observed failing.** Every
+  new regression/acceptance test is run once against the unfixed code or a
+  deliberately seeded mutation, observed to FAIL for the intended reason,
+  and that real failure output recorded next to the pass. A passing new
+  test proves nothing on its own.
+- **Non-source artifact properties get a deterministic gate, never a
+  judgment.** File mode bits, shebangs, line endings, encoding: a zero-LLM
+  script in the STATIC tier. Minimum: every file with a `#!` shebang or
+  under `scripts/` is mode 100755 in `git ls-files --stage`.
+- **Any rule this project states as a number must be computed, not
+  judged.** Tolerance ratios, size-vs-actual, coverage/mutation
+  thresholds, cost-per-verified-outcome: the verdict is the real output of
+  the real script (e.g. `agent/backlog.py`), quoted. The agent may
+  interpret a computed table; it may not produce the classification. A
+  narrative classification of a numeric rule is invalid by construction.
+- **Write-capable subagents run in an isolated git worktree.** Pass
+  `isolation: "worktree"` on every Agent call whose agent can Write/Edit.
+  Read-only agents (Explore, qa-evaluator) may share the working directory
+  because they cannot mutate it. Never run a write-capable background
+  agent in the directory the main session is editing.
+- **Independent evaluation is mandatory before "done" when any of these
+  hold** -- invoke the `qa-evaluator` subagent:
+  1. change classification is HIGH/CRITICAL, or blast radius is
+     CROSS_MODULE/SYSTEM;
+  2. acceptance criteria include the SECURITY or PRODUCTION category;
+  3. the work was performed by a background/autonomous subagent -- i.e.
+     the only account of what happened is another agent's self-report;
+  4. any mandatory gate was skipped, degraded, or could not run locally;
+  5. the backlog item is sized LARGE or XLARGE.
+  May be skipped for SMALL/MEDIUM LOW-risk items where the implementer ran
+  the real deterministic gate and the evidence JSON exists -- there the
+  evidence is already independent of the claim, because an exit code is
+  not an opinion.
+  **Honest limit, stated so it is not oversold:** a second instance of the
+  same model is not an independent mind, it is an independent *evidence
+  path*. Expect it to catch unverified claims, skipped gates, and absent
+  observable effects; do not expect it to catch subtle logic errors the
+  implementer made, because same-family models share blind spots. Genuine
+  model-diversity review would require a different model family or the
+  Owner; neither is currently in the loop, and that is a known residual
+  risk, not a solved problem.
+- **The implementer never gets the last word on its own production
+  success.** This already exists as a rule inside qa-evaluator; it belongs
+  here too, because tonight it existed and was never invoked.
+
 ## Durable-state rules
 - Repository files and Git are authoritative; conversation history is supplementary.
 - Never guess what an earlier session did. Verify filesystem and Git.

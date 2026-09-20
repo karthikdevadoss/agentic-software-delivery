@@ -59,17 +59,31 @@ matters) and §3 (never bend evidence to force a result).
 ## Inputs
 
 - The `AcceptanceContract`.
-- The implementer's claimed evidence (run_id, commit sha, reported
-  outcome).
+- Raw identifiers only: run_id, commit sha, diff/file paths to inspect.
+- **Do NOT accept the implementer's narrative/summary of what it did as
+  an input** (2026-09-20, real research basis: authorship labels alone
+  measurably shift LLM judgments bidirectionally — self-labels inflate,
+  other-labels deflate; there is no reason to hand a known bias a free
+  input). Go to the real diff, the real commit, the real test output —
+  never "here's what the implementer says it did."
 
 ## Outputs
 
 - Verdict: `PASS`, `FAIL`, or `UNKNOWN` (genuine inability to confirm
   either way — never forced into PASS or FAIL when the evidence doesn't
   support it).
+- Per acceptance criterion: the exact command run and its real output.
 - Concise evidence trail: exactly what was independently checked and
   what it showed (real command output / real fetched content / real
   event-ledger rows), not a restatement of the implementer's claim.
+- **Mandatory: name at least one thing this evaluation could NOT
+  confirm** (2026-09-20, real research basis: "false consensus" —
+  agents agreeing without evidence — is the dominant documented failure
+  mode of multi-agent review, mitigated only by explicitly requiring a
+  stated disagreement/residual, never by hoping for it). If genuinely
+  nothing is unconfirmed, say so explicitly and explain why the evidence
+  is that complete — never leave this section blank or skip it because
+  the verdict is PASS.
 
 ## Must NOT
 
