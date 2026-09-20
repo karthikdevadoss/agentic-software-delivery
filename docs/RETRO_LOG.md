@@ -191,6 +191,25 @@ ready"). Pre-sprint estimates (given to the Owner before work started):
 | BL-014: Microservices distributed tracing | LARGE | 30–50 min | LOW |
 | BL-015: Metering-to-billing integration | MEDIUM | 20–35 min | MEDIUM |
 
-*Total estimated: ~2h35m–3h55m. Actuals + verdicts + evidence to be
-filled in below once the sprint completes, per the same table structure
-as BL-007's retro above.*
+*Total estimated: ~2h35m–3h55m.*
+
+### Actuals so far (BL-009–BL-013 done; BL-014/BL-015 in progress in an isolated worktree fork)
+
+| Item | Size given | Actual size | Verdict | Real evidence |
+|---|---|---|---|---|
+| BL-009 | MEDIUM, 15–25 min | MEDIUM | Matched — no gap | Committed together with BL-010 (`7a29928`, 06:19:33 UTC, 25m22s combined from sprint start 05:54:11 — no clean split between the two since worked sequentially before one commit); existing usage-rendering pattern reused throughout, no real surprises |
+| BL-010 | SMALL, 15–20 min | SMALL | Matched — no gap | Same commit as BL-009 (see above); 12/12 new tests passing first run except one wrong test assumption (POSIX vs Windows `is_absolute()` behavior) caught and fixed immediately |
+| BL-011 | SMALL, 10–15 min, MEDIUM confidence | SMALL | Matched — no gap | `1a4f35c`, 06:24:36 UTC — 5m03s isolated delta from BL-009/010's commit. Real friction that justified the MEDIUM (not HIGH) confidence: 2 real SDK API mismatches hit and fixed (3-tuple vs 2-tuple unpack, camelCase vs snake_case result attributes) — genuinely untested code path was genuinely slightly wrong, as flagged going in |
+| BL-012 | MEDIUM, 20–30 min | SMALL | **Estimation wrong** — not a difficulty misjudgment, a cross-task synergy the estimate couldn't see: BL-013 (running in parallel) built the actual Playwright spec as a side effect of proving its own feature, so BL-012's real remaining work was only wiring it into `test_impact_analysis.py` + updating one outdated test + docs, not writing a spec from scratch as scoped | `87a2ef6`, 06:26:45 UTC — 2m09s isolated delta from BL-011's commit |
+| BL-013 | LARGE, 45–75 min, MEDIUM confidence | MEDIUM | **Estimation wrong** — the estimate assumed a green-field build (Controller/Service/Repository/validation from scratch, per its own description), but the feature skeleton already existed from an earlier session with only the uniqueness check missing; real narrower scope, not a difficulty misjudgment | Fork's own report: ~22 min wall-clock (05:54:11→06:16:21 UTC), corroborated independently by commit `f3ecbc6` at 06:16:14 UTC (7s apart). 152/152 real `app/` tests, 0 failures (baseline 148); first-ever Playwright spec for the Customer App frontend, run for real against a locally started server |
+| BL-014 | LARGE, 30–50 min, LOW confidence | *pending* | *pending* | Dispatched as an isolated-worktree fork ~06:20 UTC, in progress |
+| BL-015 | MEDIUM, 20–35 min, MEDIUM confidence | *pending* | *pending* | Same fork as BL-014, in progress |
+
+**New lesson surfacing already (to fold into `_calibration_process` once
+the sprint retro is finalized):** when two sprint items run concurrently
+and one plausibly produces a reusable artifact for the other (here:
+BL-013's Playwright spec covering ground BL-012 also needed), the later
+item's original estimate should be flagged as provisional at plan time,
+not silently kept as if the items were fully independent — this project's
+docs/BACKLOG.json sizing rubric doesn't yet have a rule for this
+cross-item dependency case specifically.
