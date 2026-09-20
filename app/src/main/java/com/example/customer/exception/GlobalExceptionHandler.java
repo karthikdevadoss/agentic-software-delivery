@@ -71,4 +71,15 @@ public class GlobalExceptionHandler {
         body.put("error", ex.getMessage());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
     }
+
+    /** 409 for a real concurrent-enrollment collision (see
+     * EnrollmentLockService) -- a clean, actionable "retry" signal instead
+     * of the raw 500 a caller would otherwise see if two requests both
+     * reached the database's partial-unique-index safety net at once. */
+    @ExceptionHandler(EnrollmentInProgressException.class)
+    public ResponseEntity<Map<String, String>> handleEnrollmentInProgress(EnrollmentInProgressException ex) {
+        Map<String, String> body = new LinkedHashMap<>();
+        body.put("error", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+    }
 }

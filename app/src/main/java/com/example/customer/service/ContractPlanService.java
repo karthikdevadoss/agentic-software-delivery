@@ -1,7 +1,9 @@
 package com.example.customer.service;
 
+import com.example.customer.cache.EnrollmentLockService;
 import com.example.customer.dto.ContractPlanEnrollRequest;
 import com.example.customer.event.ContractPlanEnrolledEvent;
+import com.example.customer.exception.EnrollmentInProgressException;
 import com.example.customer.model.ContractPlan;
 import com.example.customer.model.ContractPlanStatus;
 import com.example.customer.outbox.OutboxEvent;
@@ -9,6 +11,8 @@ import com.example.customer.outbox.OutboxEventRepository;
 import com.example.customer.repository.ContractPlanRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.time.Instant;
@@ -33,16 +37,19 @@ public class ContractPlanService {
     private final CustomerService customerService;
     private final OutboxEventRepository outboxEventRepository;
     private final JsonMapper jsonMapper;
+    private final EnrollmentLockService enrollmentLockService;
 
     public ContractPlanService(
             ContractPlanRepository contractPlanRepository,
             CustomerService customerService,
             OutboxEventRepository outboxEventRepository,
-            JsonMapper jsonMapper) {
+            JsonMapper jsonMapper,
+            EnrollmentLockService enrollmentLockService) {
         this.contractPlanRepository = contractPlanRepository;
         this.customerService = customerService;
         this.outboxEventRepository = outboxEventRepository;
         this.jsonMapper = jsonMapper;
+        this.enrollmentLockService = enrollmentLockService;
     }
 
     public ContractPlan getActivePlan(Long customerId) {
@@ -50,8 +57,35 @@ public class ContractPlanService {
                 .orElseThrow(() -> new NoSuchElementException(NO_ACTIVE_PLAN_MESSAGE + ": " + customerId));
     }
 
+    /**
+     * LAYERED CONCURRENCY CONTROL, fast path + last-resort safety net: an
+     * app-level Redis lock (see EnrollmentLockService's Javadoc) is
+     * acquired FIRST, before any check-then-act business logic runs. A
+     * request that loses the race fails fast and cleanly with a 409
+     * (EnrollmentInProgressException) instead of racing a concurrent
+     * request all the way down to the database, where
+     * uq_contract_plan_one_active_per_customer would reject the loser with
+     * an unguided 500. The lock is released only AFTER this transaction
+     * actually commits (registerLockReleaseAfterTransaction) -- releasing
+     * it any earlier (e.g. a plain try/finally around the method body)
+     * would reopen the exact race this exists to close: a second request
+     * could acquire the freed lock and read "no active plan yet" before
+     * the first request's write is durably visible.
+     */
     @Transactional
     public ContractPlan enroll(Long customerId, ContractPlanEnrollRequest request) {
+        EnrollmentLockService.LockResult lockResult = enrollmentLockService.tryAcquire(customerId);
+        if (lockResult instanceof EnrollmentLockService.LockResult.NotAcquired) {
+            throw new EnrollmentInProgressException(
+                    "Enrollment already in progress for customer " + customerId + " -- please retry");
+        }
+        if (lockResult instanceof EnrollmentLockService.LockResult.Acquired acquired) {
+            registerLockReleaseAfterTransaction(customerId, acquired.token());
+        }
+        // RedisUnavailable: no lock was taken, nothing to release -- proceed
+        // relying solely on the database constraint, exactly as this method
+        // always has.
+
         customerService.getById(customerId); // 404s if the customer itself does not exist
 
         Optional<ContractPlan> currentlyActive =
@@ -114,5 +148,20 @@ public class ContractPlanService {
         return existing.getPlanName().equals(request.planName())
                 && existing.getRatePerKwh().compareTo(request.ratePerKwh()) == 0
                 && existing.getEffectiveStartDate().equals(request.effectiveStartDate());
+    }
+
+    private void registerLockReleaseAfterTransaction(Long customerId, String token) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            // Should never happen inside a @Transactional-proxied call, but
+            // release immediately rather than leak the lock for its full TTL.
+            enrollmentLockService.release(customerId, token);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                enrollmentLockService.release(customerId, token);
+            }
+        });
     }
 }

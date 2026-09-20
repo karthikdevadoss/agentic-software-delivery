@@ -1,6 +1,8 @@
 package com.example.customer.service;
 
+import com.example.customer.cache.EnrollmentLockService;
 import com.example.customer.dto.ContractPlanEnrollRequest;
+import com.example.customer.exception.EnrollmentInProgressException;
 import com.example.customer.model.ContractPlan;
 import com.example.customer.model.ContractPlanStatus;
 import com.example.customer.model.Customer;
@@ -35,11 +37,24 @@ class ContractPlanServiceTest {
     private CustomerRepository customerRepository;
     @Mock
     private OutboxEventRepository outboxEventRepository;
+    @Mock
+    private EnrollmentLockService enrollmentLockService;
     private final JsonMapper jsonMapper = JsonMapper.builder().build();
 
     private ContractPlanService service(Customer existingCustomer) {
         when(customerRepository.findById(1L)).thenReturn(Optional.ofNullable(existingCustomer));
-        return new ContractPlanService(contractPlanRepository, new CustomerService(customerRepository), outboxEventRepository, jsonMapper);
+        lenientLockAcquired();
+        return new ContractPlanService(contractPlanRepository, new CustomerService(customerRepository), outboxEventRepository, jsonMapper, enrollmentLockService);
+    }
+
+    /** Default every test to "lock acquired" (real Redis behavior for the
+     * normal, uncontended case) unless a test overrides it -- lenient
+     * because not every test path actually calls tryAcquire's stubbed
+     * return value (e.g. the customer-not-found test still acquires the
+     * lock before the 404 check runs). */
+    private void lenientLockAcquired() {
+        org.mockito.Mockito.lenient().when(enrollmentLockService.tryAcquire(1L))
+                .thenReturn(new EnrollmentLockService.LockResult.Acquired("test-token"));
     }
 
     private Customer existingCustomer() {
@@ -51,11 +66,37 @@ class ContractPlanServiceTest {
     @Test
     void getActivePlan_whenNoneExists_throwsWithClearMessage() {
         when(contractPlanRepository.findByCustomerIdAndStatus(1L, ContractPlanStatus.ACTIVE)).thenReturn(Optional.empty());
-        ContractPlanService service = new ContractPlanService(contractPlanRepository, new CustomerService(customerRepository), outboxEventRepository, jsonMapper);
+        ContractPlanService service = new ContractPlanService(contractPlanRepository, new CustomerService(customerRepository), outboxEventRepository, jsonMapper, enrollmentLockService);
 
         assertThatThrownBy(() -> service.getActivePlan(1L))
                 .isInstanceOf(NoSuchElementException.class)
                 .hasMessageContaining(ContractPlanService.NO_ACTIVE_PLAN_MESSAGE);
+    }
+
+    /**
+     * Regression test for the real "raw 500 under concurrency" gap this
+     * session's Redis lock closes: when a second request for the same
+     * customer loses the lock race, it must fail FAST and CLEANLY with
+     * EnrollmentInProgressException (mapped to 409, see
+     * GlobalExceptionHandler) -- never reaching the repository at all,
+     * and never surfacing whatever raw exception a real concurrent
+     * database write would have produced.
+     */
+    @Test
+    void enroll_whenLockNotAcquired_throwsCleanlyWithoutTouchingPlanRepository() {
+        // Deliberately no customerRepository stub: the lock check happens
+        // BEFORE the customer-existence lookup, so asserting that never
+        // happens either is part of what this test proves.
+        when(enrollmentLockService.tryAcquire(1L)).thenReturn(new EnrollmentLockService.LockResult.NotAcquired());
+        ContractPlanService service = new ContractPlanService(
+                contractPlanRepository, new CustomerService(customerRepository), outboxEventRepository, jsonMapper, enrollmentLockService);
+        ContractPlanEnrollRequest request = new ContractPlanEnrollRequest("Basic", BigDecimal.TEN, LocalDate.now());
+
+        assertThatThrownBy(() -> service.enroll(1L, request))
+                .isInstanceOf(EnrollmentInProgressException.class);
+        verify(contractPlanRepository, org.mockito.Mockito.never()).findByCustomerIdAndStatus(any(), any());
+        verify(contractPlanRepository, org.mockito.Mockito.never()).save(any());
+        verify(customerRepository, org.mockito.Mockito.never()).findById(any());
     }
 
     @Test
