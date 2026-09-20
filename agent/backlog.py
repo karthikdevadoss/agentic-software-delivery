@@ -180,6 +180,32 @@ def suggest_estimate(size: str, confidence: str, pattern_type: str, raw_estimate
     return result
 
 
+def record_deviation(item_id: str, suggestion: dict, chosen_midpoint_min: float, reason: str) -> None:
+    """Real, honest accountability for overriding a COMPUTED suggestion --
+    built 2026-09-20 after the first real use of suggest_estimate()
+    produced a COMPUTED suggestion of 4.0 min, was overridden upward to a
+    15-20 min estimate on a plausible-sounding risk argument, and the real
+    actual time (~3 min) landed almost exactly on the ORIGINAL computed
+    suggestion, not the override. One data point proves nothing on its
+    own; this records every such deviation on the item itself so a future
+    retro can compute, from real data across many sprints, whether
+    deviating from a COMPUTED suggestion is ever net-positive -- rather
+    than trusting either 'always follow the tool' or 'my judgment is
+    fine' without evidence either way."""
+    data = load_backlog()
+    item = next((i for i in data["items"] if i["id"] == item_id), None)
+    if item is None:
+        raise ValueError(f"no such item: {item_id}")
+    item["deviated_from_suggestion"] = True
+    item["deviation"] = {
+        "suggestion_status": suggestion.get("status"),
+        "suggested_midpoint_min": suggestion.get("suggested_midpoint_min"),
+        "chosen_midpoint_min": chosen_midpoint_min,
+        "reason": reason,
+    }
+    save_backlog(data)
+
+
 if __name__ == "__main__":
     import sys
 

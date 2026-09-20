@@ -1104,7 +1104,14 @@
       "actual_note": "DONE, and a real finding: 5 of 6 services (api-gateway, customer-service, billing-service, metering-service, notification-service) ALREADY had logging.structured.format.console=ecs configured (Spring Boot native structured logging, no extra dependency needed) from an earlier sprint -- only eureka-server was missing it. Verified with real, live proof, not assumed: booted both customer-service (already had it) and eureka-server (newly added) and confirmed real, valid ECS-format JSON log lines on real stdout for both, correct service.name field, real @timestamp/log.level/logger fields. Added the one missing line to eureka-server/src/main/resources/application.properties. Real actual time: a few minutes, not the estimated 15-20 -- for a legitimate reason (5/6 already done), not a sizing miss on a genuinely new task.",
       "pattern_type": "apply_known_pattern",
       "actual_ratio": null,
-      "contaminated": false
+      "contaminated": false,
+      "deviated_from_suggestion": true,
+      "deviation": {
+        "suggestion_status": "COMPUTED",
+        "suggested_midpoint_min": 4.0,
+        "chosen_midpoint_min": 17.5,
+        "reason": "Deviated upward from the computed 4.0 min suggestion, reasoning the reference class (single-file wiring/doc changes) did not represent a first-time config+dependency change applied across 6 services. Real actual time was ~3 minutes -- almost exactly the ORIGINAL computed suggestion, not the override. The deviation reasoning sounded plausible and was empirically wrong."
+      }
     },
     {
       "id": "BL-037",

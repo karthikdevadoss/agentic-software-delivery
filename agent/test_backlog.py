@@ -136,5 +136,37 @@ class SuggestEstimateTestCase(unittest.TestCase):
         self.assertGreaterEqual(result["n"], 0)
 
 
+class RecordDeviationTestCase(unittest.TestCase):
+    """Real accountability mechanism for overriding a COMPUTED suggestion
+    -- built after the first real deviation (BL-036) made an estimate
+    worse, not better. This records the deviation on the item so future
+    retros can compute, from real data, whether deviating is ever
+    net-positive."""
+
+    def test_records_a_real_deviation_on_the_item(self):
+        items = [_item("BL-999", actual_ratio=None)]
+        fake = _fake_backlog(items)
+        with patch.object(backlog, "load_backlog", return_value=fake), \
+             patch.object(backlog, "save_backlog") as mock_save:
+            backlog.record_deviation(
+                "BL-999",
+                {"status": "COMPUTED", "suggested_midpoint_min": 4.0},
+                15.0,
+                "test reason",
+            )
+        mock_save.assert_called_once()
+        saved_data = mock_save.call_args[0][0]
+        saved_item = saved_data["items"][0]
+        self.assertTrue(saved_item["deviated_from_suggestion"])
+        self.assertEqual(saved_item["deviation"]["suggested_midpoint_min"], 4.0)
+        self.assertEqual(saved_item["deviation"]["chosen_midpoint_min"], 15.0)
+        self.assertEqual(saved_item["deviation"]["reason"], "test reason")
+
+    def test_raises_on_unknown_item_id_rather_than_silently_no_op(self):
+        with patch.object(backlog, "load_backlog", return_value=_fake_backlog([])):
+            with self.assertRaises(ValueError):
+                backlog.record_deviation("BL-DOES-NOT-EXIST", {}, 10.0, "reason")
+
+
 if __name__ == "__main__":
     unittest.main()

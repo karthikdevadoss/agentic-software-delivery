@@ -14,15 +14,25 @@ locally, deterministically, before it ever reaches CI.
 Rule (CLAUDE.md's "AI-characteristic defect discipline"): every file with
 a real `#!` shebang, or any file under scripts/, must be git mode 100755.
 
+Second real check, added 2026-09-20 after the SAME AI hit the SAME
+documented bug a third time in one session: a literal `--` inside an
+XML/HTML comment (`<!-- ... -- ... -->`) breaks Maven's POM parser and
+any other real XML parser, with a misleading error pointing at the
+*closing* `-->`. Writing this down twice in docs/LESSONS.md did not
+prevent a third real occurrence -- this is the mechanical gate instead.
+
 Usage:
     python agent/static_gate.py        # check the whole real repo
 """
 
+import re
 import subprocess
 import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+_XML_LIKE_SUFFIXES = (".xml", ".pom", ".html", ".htm", ".xsd", ".svg")
+_XML_COMMENT_RE = re.compile(r"<!--(.*?)-->", re.DOTALL)
 
 # Cheap, real candidate filters -- avoids reading every tracked file's
 # content (slow across a whole repo); covers the real, known cases in
@@ -91,17 +101,56 @@ def check() -> list[dict]:
     return violations
 
 
-def main():
-    violations = check()
-    if not violations:
-        print("STATIC gate (file-mode/shebang): PASS -- no violations found.")
-        sys.exit(0)
+def check_xml_comments() -> list[dict]:
+    """Returns real violations: any tracked .xml/.pom/.html/.xsd/.svg file
+    with a literal '--' inside an XML/HTML comment body. Reads real
+    tracked-file content via `git show HEAD:<path>` (so it checks what's
+    actually committed, not stray working-tree noise), scans the whole
+    comment body (not a single-line grep, which misses a '--' sitting at
+    the very end of a line -- the exact way this bug bit multiple times
+    already, see docs/LESSONS.md)."""
+    violations = []
+    proc = subprocess.run(
+        ["git", "ls-files"], cwd=str(REPO_ROOT), capture_output=True, text=True, check=True,
+    )
+    for path in proc.stdout.splitlines():
+        if not path.endswith(_XML_LIKE_SUFFIXES):
+            continue
+        show = subprocess.run(
+            ["git", "show", f"HEAD:{path}"], cwd=str(REPO_ROOT),
+            capture_output=True, text=True,
+        )
+        if show.returncode != 0:
+            continue
+        for match in _XML_COMMENT_RE.finditer(show.stdout):
+            if "--" in match.group(1):
+                line_no = show.stdout.count("\n", 0, match.start()) + 1
+                violations.append({"path": path, "line": line_no})
+    return violations
 
-    print(f"STATIC gate (file-mode/shebang): FAIL -- {len(violations)} violation(s):")
-    for v in violations:
-        print(f"  {v['path']}: mode={v['mode']} (expected {v['expected_mode']})")
-    print("\nFix with: git update-index --chmod=+x <path>")
-    sys.exit(1)
+
+def main():
+    mode_violations = check()
+    comment_violations = check_xml_comments()
+    all_clean = not mode_violations and not comment_violations
+
+    if mode_violations:
+        print(f"STATIC gate (file-mode/shebang): FAIL -- {len(mode_violations)} violation(s):")
+        for v in mode_violations:
+            print(f"  {v['path']}: mode={v['mode']} (expected {v['expected_mode']})")
+        print("Fix with: git update-index --chmod=+x <path>")
+    else:
+        print("STATIC gate (file-mode/shebang): PASS -- no violations found.")
+
+    if comment_violations:
+        print(f"STATIC gate (XML/HTML comment '--'): FAIL -- {len(comment_violations)} violation(s):")
+        for v in comment_violations:
+            print(f"  {v['path']} (comment starting near line {v['line']}): contains a literal '--'")
+        print("Fix: replace '--' with ':' or a real em dash inside the comment.")
+    else:
+        print("STATIC gate (XML/HTML comment '--'): PASS -- no violations found.")
+
+    sys.exit(0 if all_clean else 1)
 
 
 if __name__ == "__main__":

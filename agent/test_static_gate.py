@@ -48,5 +48,39 @@ class RealRepoCheckTestCase(unittest.TestCase):
             self.assertEqual(mode, "100755", f"{path} lost its executable bit")
 
 
+class XmlCommentCheckTestCase(unittest.TestCase):
+    """Real regression coverage for a real bug the SAME AI hit three times
+    in one session (docs/LESSONS.md) -- a literal '--' inside an XML/HTML
+    comment breaks Maven's POM parser. Writing the rule down twice did not
+    prevent a third real occurrence; this is the mechanical gate instead."""
+
+    def test_regex_catches_a_real_offending_pattern(self):
+        sample = "<!-- BL-037: confirmed, not remembered -- 1.6.3 is current -->"
+        matches = list(static_gate._XML_COMMENT_RE.finditer(sample))
+        self.assertEqual(len(matches), 1)
+        self.assertIn("--", matches[0].group(1))
+
+    def test_regex_does_not_false_positive_on_a_clean_comment(self):
+        sample = "<!-- a perfectly normal comment: no offending punctuation here -->"
+        matches = list(static_gate._XML_COMMENT_RE.finditer(sample))
+        self.assertEqual(len(matches), 1)
+        self.assertNotIn("--", matches[0].group(1))
+
+    def test_catches_a_dash_pair_split_across_lines_not_just_same_line(self):
+        # The real historical bug hid a '--' at the very end of a line,
+        # which a naive single-line grep misses entirely (see
+        # docs/LESSONS.md's own note on this exact failure mode).
+        sample = "<!-- some real text --\n     continues on the next line -->"
+        matches = list(static_gate._XML_COMMENT_RE.finditer(sample))
+        self.assertEqual(len(matches), 1)
+        self.assertIn("--", matches[0].group(1))
+
+    def test_real_repo_currently_has_no_xml_comment_violations(self):
+        # Regression test for the real, current state -- all 3 historical
+        # occurrences this session were fixed before this gate existed.
+        violations = static_gate.check_xml_comments()
+        self.assertEqual(violations, [], f"real XML comment violations found: {violations}")
+
+
 if __name__ == "__main__":
     unittest.main()
