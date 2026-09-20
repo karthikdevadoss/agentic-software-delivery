@@ -1506,7 +1506,29 @@ before it.
   independent coverage-floor gap (both the structural "a partial
   `-Dtest=` run can never reach a bundle-wide floor" case AND the real
   0.77-vs-0.80 regression on the full suite) is tracked separately as
-  `ACT-015`, not conflated with this item.
+  `ACT-016`, not conflated with this item.
+  **Independently re-verified by the parent session before accepting this
+  correction** (rather than trusting the fork's self-report alone, per
+  this project's own qa-evaluator discipline): ran the exact
+  `-Dtest=ContractPlanServiceTest,TriageScenarioAIntegrationTest` command
+  directly (not through the isolated-workspace harness) — real elapsed
+  time 73s, real exit code 1, a real `[ERROR] Failed to execute goal
+  org.jacoco:jacoco-maven-plugin:0.8.13:check ... Coverage checks have
+  not been met` line read directly from raw Maven output. Then ran the
+  full, unscoped `app/` suite directly — real elapsed time 116s, 152/152
+  real tests passing (0 failures, 0 errors, confirmed via
+  `target/surefire-reports/*.txt`), same `jacoco:check` failure, and the
+  real measured ratio read directly from `target/site/jacoco/jacoco.csv`:
+  827/1069 lines = **0.7736**, matching the fork's claimed 0.77 exactly.
+  **One claim not independently re-verified**: whether 0.8.12 (with a
+  valid, non-broken POM) produces the identical ~100-240s durations the
+  fork reports — the parent session did not re-test the 0.8.12 case
+  directly, so that specific comparative claim rests on the fork's own
+  report, not on independent confirmation. The core, actionable finding
+  (0.8.13 is the correct fix for `ACT-012`; the coverage-floor gap is
+  real, current, and version-independent; `ACT-016` is real) is solid and
+  independently confirmed; the exact historical timing comparison is not,
+  and does not change the decision either way.
 
 - **SUPERSEDED BY THE CORRECTION ABOVE (kept for the record, not deleted,
   per this project's own "don't let a bad size prediction silently

@@ -422,7 +422,7 @@
       "resolved_at_commit": null
     },
     {
-      "id": "ACT-015",
+      "id": "ACT-016",
       "source": "verification",
       "title": "app/'s canonical `mvnw test` currently returns BUILD FAILURE via jacoco:check -- real coverage has drifted to 0.77, below the checked-in 0.80 floor, plus a separate structural gap for any partial -Dtest run",
       "priority": "medium",
