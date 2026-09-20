@@ -1349,3 +1349,32 @@ surprising verified behavior would otherwise get rediscovered later.
   treating as a reflex to check before writing any pom.xml/CI-YAML
   comment with prose in it, not something to keep discovering via a
   failed build each time.
+
+- **A bare-named `src/test/resources/application.properties` SHADOWS
+  (does not layer with) `src/main/resources/application.properties` in a
+  Maven+Spring Boot module — a real, silent config-loss bug, not a
+  theory.** Hit while building `services/billing-service` (2026-09-20,
+  microservices decomposition, BL-007): added
+  `src/test/resources/application.properties` containing only 3
+  Eureka-disabling lines for tests, expecting Spring Boot to merge it
+  with the main file the way profile-specific files do. Instead every
+  `@SpringBootTest` failed context startup with `PlaceholderResolutionException:
+  Could not resolve placeholder 'app.security.jwt.secret'` — a property
+  that genuinely exists, with a real default, in the main file. Root
+  cause: Maven's test classpath puts `target/test-classes` BEFORE
+  `target/classes`, and Spring Boot's `classpath:/application.properties`
+  config-data lookup resolves to exactly ONE resource (the first one
+  `ClassLoader.getResource()` finds), not a merge across every matching
+  classpath entry — the 3-line test file completely replaced the real
+  one for every test in the module, not just for the properties it meant
+  to override. A stale copy of the old (correct) file left behind in
+  `target/test-classes` from a prior build additionally masked this for
+  one run (deleting `target/` and rebuilding exposed the real failure
+  again) — `mvn clean` before trusting a "now it works" result after
+  editing test resources. **General rule:** a test-only properties file
+  must be profile-specific (`application-test.properties` +
+  `@ActiveProfiles("test")` on the test classes that need it), never a
+  same-named `application.properties` under `src/test/resources` — that
+  filename always shadows, never layers. Worth checking for on every new
+  Spring Boot service in this decomposition (customer-service,
+  notification-service, metering-service), not just this one.

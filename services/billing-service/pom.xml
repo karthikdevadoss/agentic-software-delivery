@@ -113,6 +113,33 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- WireMock: exercises the REAL RestClient/CircuitBreaker/Retry
+             stack in BillingCustomerClientIntegrationTest over real
+             (loopback) HTTP, same pattern as app/'s
+             AppointmentAvailabilityIntegrationTest. Version verified
+             against Maven Central before adding (real, current stable
+             release, matching the exact version app/'s own pom.xml
+             already uses successfully). -->
+        <dependency>
+            <groupId>org.wiremock</groupId>
+            <artifactId>wiremock-standalone</artifactId>
+            <version>3.10.0</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- Testcontainers: backs the Redis-based integration tests
+             (EnrollmentLockConcurrencyIntegrationTest, ContractPlanCacheIntegrationTest),
+             disabledWithoutDocker = true, so they skip cleanly here (no
+             Docker on this dev machine, same as app/), same pattern. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>

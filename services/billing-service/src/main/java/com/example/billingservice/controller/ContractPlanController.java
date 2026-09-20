@@ -1,0 +1,55 @@
+package com.example.billingservice.controller;
+
+import com.example.billingservice.cache.ContractPlanCacheService;
+import com.example.billingservice.dto.ContractPlanEnrollRequest;
+import com.example.billingservice.dto.ContractPlanResponse;
+import com.example.billingservice.service.ContractPlanService;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+/**
+ * Ported from app/'s ContractPlanController, with one deliberate
+ * simplification: no WorkspaceAccessGuard call here. The monolith's guard
+ * enforces per-persona workspace isolation using a "cid" claim minted by
+ * its own DemoJwtIssuer/DemoLoginController -- login/persona issuance is
+ * explicitly customer-service's responsibility in this decomposition
+ * (see docs/MICROSERVICES_ARCHITECTURE.md's "Why Customer Service owns
+ * auth"), and porting that guard here was not part of this service's
+ * scoped file list. This service's real security boundary is SecurityConfig's
+ * scope-based authorization (SCOPE_contract:read / SCOPE_contract:write) --
+ * every request still requires a valid, correctly-signed JWT from the
+ * shared issuer; only the finer-grained per-customer workspace check is
+ * out of scope for this port.
+ */
+@RestController
+@RequestMapping("/customers/{customerId}/plan")
+public class ContractPlanController {
+
+    private final ContractPlanService contractPlanService;
+    private final ContractPlanCacheService contractPlanCacheService;
+
+    public ContractPlanController(ContractPlanService contractPlanService, ContractPlanCacheService contractPlanCacheService) {
+        this.contractPlanService = contractPlanService;
+        this.contractPlanCacheService = contractPlanCacheService;
+    }
+
+    @GetMapping
+    public ContractPlanResponse getActivePlan(@PathVariable Long customerId) {
+        return contractPlanCacheService.getActivePlan(customerId);
+    }
+
+    @PostMapping
+    public ResponseEntity<ContractPlanResponse> enroll(
+            @PathVariable Long customerId, @Valid @RequestBody ContractPlanEnrollRequest request) {
+        ContractPlanResponse response = ContractPlanResponse.from(contractPlanService.enroll(customerId, request));
+        contractPlanCacheService.evict(customerId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+}
