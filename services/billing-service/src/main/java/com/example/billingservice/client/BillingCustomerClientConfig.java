@@ -9,11 +9,13 @@ import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
 import io.github.resilience4j.retry.RetryRegistry;
 import io.micrometer.core.instrument.MeterRegistry;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.client.loadbalancer.LoadBalanced;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
@@ -30,15 +32,36 @@ import java.time.Duration;
  * already found and documented; unchanged by moving to a separate service.
  *
  * THE REAL, NEW PIECE vs. the monolith's AppointmentAvailabilityConfig:
- * the RestClient.Builder here is @LoadBalanced. billing-service does not
- * know or care which concrete host:port customer-service is actually
- * running on -- "http://customer-service" is a logical Eureka service-id,
- * and spring-cloud-starter-loadbalancer's interceptor resolves it to a
- * real registered instance on every call. This is genuine service
- * independence: no hardcoded downstream URL anywhere in this service.
+ * the RestClient.Builder used by BillingCustomerClient is @LoadBalanced.
+ * billing-service does not know or care which concrete host:port
+ * customer-service is actually running on -- "http://customer-service"
+ * is a logical Eureka service-id, and spring-cloud-starter-loadbalancer's
+ * interceptor resolves it to a real registered instance on every call.
+ *
+ * REAL BUG FOUND during the first genuine multi-service smoke test (not
+ * caught by any unit/WireMock test, since those never run a real Eureka
+ * server): defining ONLY a @LoadBalanced RestClient.Builder bean
+ * suppresses Spring Boot's own auto-configured default RestClient.Builder
+ * bean (@ConditionalOnMissingBean matches by TYPE, not by qualifier) --
+ * with no unqualified candidate left in the context, Spring Cloud
+ * Netflix Eureka's OWN internal registration client (which requests a
+ * plain, unqualified RestClient.Builder) received the only bean that
+ * existed: mine, load-balanced. Eureka then tried to resolve
+ * "eureka.client.service-url.defaultZone"'s host ("localhost") as if it
+ * were a logical service-id through the load balancer -- "No instances
+ * available for localhost" -- and could never actually register. Fixed
+ * by explicitly providing a @Primary plain builder for every unqualified
+ * consumer (Eureka's client included) and reserving the @LoadBalanced
+ * one for the one place that actually asks for it by name.
  */
 @Configuration
 public class BillingCustomerClientConfig {
+
+    @Bean
+    @Primary
+    public RestClient.Builder restClientBuilder() {
+        return RestClient.builder();
+    }
 
     @Bean
     @LoadBalanced
@@ -64,7 +87,7 @@ public class BillingCustomerClientConfig {
     @Bean
     @Lazy
     public BillingCustomerClient billingCustomerClient(
-            RestClient.Builder loadBalancedCustomerRestClientBuilder,
+            @Qualifier("loadBalancedCustomerRestClientBuilder") RestClient.Builder loadBalancedCustomerRestClientBuilder,
             @Value("${customer-service.base-url}") String baseUrl,
             CircuitBreaker customerServiceCircuitBreaker,
             Retry customerServiceRetry) {

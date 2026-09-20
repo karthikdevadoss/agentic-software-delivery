@@ -96,6 +96,49 @@ Spring Cloud version: `2025.1.2` (verified compatible with Spring Boot
 the Spring Cloud BOM in each service needing it (Gateway, Eureka client)
 rather than pinning individual artifact versions by hand.
 
+## Real end-to-end smoke test (2026-09-20) — genuinely proven, not assumed
+
+All 6 services started together on this dev machine (no Docker needed —
+that's only for the Testcontainers-backed unit tests) and a full real
+flow was run through the gateway: `POST /auth/demo-token` ->
+`POST /customers` -> `POST /customers/{id}/plan` (the real
+billing-service -> customer-service REST call) ->
+`POST /customers/{id}/meter-readings` -> `GET /customers/{id}/plan`.
+Every step succeeded for real, with real Eureka service discovery, real
+load-balanced routing through the gateway, and a real cross-service
+authenticated call. Three genuine bugs were found this way — none of
+them catchable by any unit or WireMock test, since none of those run a
+real Eureka registry with multiple real service instances together:
+
+1. **A single `@LoadBalanced RestClient.Builder` bean silently hijacked
+   Eureka's own registration client.** Defining only a `@LoadBalanced`
+   builder suppresses Spring Boot's default unqualified one
+   (`@ConditionalOnMissingBean` matches by type, not qualifier) — Eureka's
+   internal client then received the only candidate in the context and
+   tried to load-balance its OWN connection to itself, failing with "No
+   instances available for localhost." Fixed with an explicit `@Primary`
+   plain builder for unqualified consumers, and a named `@Qualifier` at
+   `BillingCustomerClient`'s own injection point.
+2. **`.before(uri("http://service-name"))` alone does not load-balance
+   through Eureka** in Spring Cloud Gateway Server WebMVC's functional
+   routing API — it makes a literal HTTP call to a host literally named
+   "service-name" (`UnknownHostException`). The actual mechanism is
+   `LoadBalancerFilterFunctions.lb(serviceId)`, added as its own
+   `.filter(...)`.
+3. **`eureka.instance.prefer-ip-address=true` broke same-machine
+   self-connections** — every service registered under this machine's
+   real LAN IP, which local firewall/network-profile rules refused for
+   inbound self-connections even though it was the same machine. Fixed
+   with `eureka.instance.hostname=localhost` for this local multi-service
+   setup (a real multi-host deployment would go back to
+   `prefer-ip-address=true` or a real DNS name).
+4. **A real, substantive gap, not just config**: billing-service's call
+   to customer-service got a real 401 — the original design never
+   propagated the caller's JWT downstream. Fixed by threading the
+   inbound `Authorization` header through `ContractPlanController` ->
+   `ContractPlanService.enroll()` -> `BillingCustomerClient`, a real,
+   standard microservices identity-propagation (token relay) pattern.
+
 ## What's explicitly deferred
 
 - Metering data feeding into real billing calculations (a real future

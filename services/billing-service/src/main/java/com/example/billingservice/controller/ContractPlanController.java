@@ -5,12 +5,14 @@ import com.example.billingservice.dto.ContractPlanEnrollRequest;
 import com.example.billingservice.dto.ContractPlanResponse;
 import com.example.billingservice.service.ContractPlanService;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -47,8 +49,13 @@ public class ContractPlanController {
 
     @PostMapping
     public ResponseEntity<ContractPlanResponse> enroll(
-            @PathVariable Long customerId, @Valid @RequestBody ContractPlanEnrollRequest request) {
-        ContractPlanResponse response = ContractPlanResponse.from(contractPlanService.enroll(customerId, request));
+            @PathVariable Long customerId, @Valid @RequestBody ContractPlanEnrollRequest request,
+            @RequestHeader(HttpHeaders.AUTHORIZATION) String authorizationHeader) {
+        // Propagated to customer-service's own JWT validation via
+        // BillingCustomerClient -- see its Javadoc for why this identity-
+        // propagation call is necessary, not optional.
+        ContractPlanResponse response = ContractPlanResponse.from(
+                contractPlanService.enroll(customerId, request, authorizationHeader));
         contractPlanCacheService.evict(customerId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }

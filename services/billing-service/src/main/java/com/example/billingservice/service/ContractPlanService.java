@@ -88,7 +88,7 @@ public class ContractPlanService {
      * the first request's write is durably visible.
      */
     @Transactional
-    public ContractPlan enroll(Long customerId, ContractPlanEnrollRequest request) {
+    public ContractPlan enroll(Long customerId, ContractPlanEnrollRequest request, String callerBearerToken) {
         EnrollmentLockService.LockResult lockResult = enrollmentLockService.tryAcquire(customerId);
         if (lockResult instanceof EnrollmentLockService.LockResult.NotAcquired) {
             throw new EnrollmentInProgressException(
@@ -107,7 +107,7 @@ public class ContractPlanService {
         // genuine network call, honestly distinguishing "customer does not
         // exist" (404) from "we could not find out" (503) -- see
         // CustomerLookupOutcome's Javadoc.
-        CustomerLookupOutcome lookup = billingCustomerClient.checkCustomerExists(customerId);
+        CustomerLookupOutcome lookup = billingCustomerClient.checkCustomerExists(customerId, callerBearerToken);
         if (lookup == CustomerLookupOutcome.NOT_FOUND) {
             throw new NoSuchElementException(CUSTOMER_NOT_FOUND_MESSAGE + ": " + customerId);
         }

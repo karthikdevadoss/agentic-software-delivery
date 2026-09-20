@@ -9,7 +9,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -37,12 +36,21 @@ import static org.assertj.core.api.Assertions.assertThat;
  * PRODUCTION uses a @LoadBalanced RestClient.Builder (see
  * BillingCustomerClientConfig) resolved via Eureka -- there is no Eureka
  * server or real customer-service instance in this test, so
- * TestRestClientOverride below replaces that bean with a PLAIN, @Primary
- * RestClient.Builder pointed directly at WireMock's real loopback base
- * URL (customer-service.base-url, set via @DynamicPropertySource). This is
- * a legitimate, standard way to test a load-balanced client in isolation
- * from Eureka/Ribbon-style discovery: BillingCustomerClient itself does
- * not care whether the builder it was given is load-balanced or not.
+ * TestRestClientOverride below REPLACES that exact bean (same bean name,
+ * "loadBalancedCustomerRestClientBuilder") with a PLAIN RestClient.Builder
+ * pointed directly at WireMock's real loopback base URL
+ * (customer-service.base-url, set via @DynamicPropertySource).
+ *
+ * REAL BUG this replaced an earlier, broken approach for (found during
+ * the first genuine multi-service smoke test, see
+ * BillingCustomerClientConfig's Javadoc for the full story): an
+ * @Primary-based override under a DIFFERENT bean name worked here in
+ * isolation, but the production fix for that same bug (adding a
+ * @Primary plain builder so Eureka's own unqualified client stops
+ * getting load-balanced by accident) needs billingCustomerClient()'s
+ * OWN injection point to be qualified BY NAME, not by @Primary -- so
+ * this test must override by that same name to still take effect,
+ * not introduce a second, differently-named @Primary competitor.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
@@ -60,9 +68,13 @@ class BillingCustomerClientIntegrationTest {
 
     @TestConfiguration
     static class TestRestClientOverride {
-        @Bean
-        @Primary
-        RestClient.Builder plainRestClientBuilder() {
+        // Same bean NAME as BillingCustomerClientConfig's real
+        // @LoadBalanced builder -- Spring Boot's test bean overriding
+        // replaces that exact definition, which is what
+        // billingCustomerClient()'s @Qualifier("loadBalancedCustomerRestClientBuilder")
+        // actually resolves against (not @Primary -- see class Javadoc).
+        @Bean("loadBalancedCustomerRestClientBuilder")
+        RestClient.Builder loadBalancedCustomerRestClientBuilder() {
             SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
             factory.setConnectTimeout(1000);
             factory.setReadTimeout(1000);
@@ -96,14 +108,14 @@ class BillingCustomerClientIntegrationTest {
     void customerExists_returnsFound() {
         wireMock.stubFor(get(urlPathEqualTo("/customers/" + CUSTOMER_ID)).willReturn(aResponse().withStatus(200)));
 
-        assertThat(billingCustomerClient.checkCustomerExists(CUSTOMER_ID)).isEqualTo(CustomerLookupOutcome.FOUND);
+        assertThat(billingCustomerClient.checkCustomerExists(CUSTOMER_ID, "Bearer test-token")).isEqualTo(CustomerLookupOutcome.FOUND);
     }
 
     @Test
     void customerNotFound_returnsNotFound_notServiceUnavailable() {
         wireMock.stubFor(get(urlPathEqualTo("/customers/" + CUSTOMER_ID)).willReturn(notFound()));
 
-        assertThat(billingCustomerClient.checkCustomerExists(CUSTOMER_ID)).isEqualTo(CustomerLookupOutcome.NOT_FOUND);
+        assertThat(billingCustomerClient.checkCustomerExists(CUSTOMER_ID, "Bearer test-token")).isEqualTo(CustomerLookupOutcome.NOT_FOUND);
         // A 404 is a real, healthy answer -- never retried (see
         // BillingCustomerClientConfig's retry predicate).
         wireMock.verify(1, getRequestedFor(urlPathEqualTo("/customers/" + CUSTOMER_ID)));
@@ -113,7 +125,7 @@ class BillingCustomerClientIntegrationTest {
     void downstream500_retriesThenReturnsServiceUnavailable_neverFabricatesAnAnswer() {
         wireMock.stubFor(get(urlPathEqualTo("/customers/" + CUSTOMER_ID)).willReturn(serverError()));
 
-        assertThat(billingCustomerClient.checkCustomerExists(CUSTOMER_ID)).isEqualTo(CustomerLookupOutcome.SERVICE_UNAVAILABLE);
+        assertThat(billingCustomerClient.checkCustomerExists(CUSTOMER_ID, "Bearer test-token")).isEqualTo(CustomerLookupOutcome.SERVICE_UNAVAILABLE);
         // maxAttempts=3 in BillingCustomerClientConfig -- a 500 is retryable.
         wireMock.verify(3, getRequestedFor(urlPathEqualTo("/customers/" + CUSTOMER_ID)));
     }
@@ -126,7 +138,7 @@ class BillingCustomerClientIntegrationTest {
         // Client read timeout is 1000ms (BillingCustomerClientConfig) --
         // this must time out and be treated the same as any other
         // downstream failure, never hang the caller or fabricate FOUND.
-        assertThat(billingCustomerClient.checkCustomerExists(CUSTOMER_ID)).isEqualTo(CustomerLookupOutcome.SERVICE_UNAVAILABLE);
+        assertThat(billingCustomerClient.checkCustomerExists(CUSTOMER_ID, "Bearer test-token")).isEqualTo(CustomerLookupOutcome.SERVICE_UNAVAILABLE);
     }
 
     @Test
@@ -138,7 +150,7 @@ class BillingCustomerClientIntegrationTest {
         // and each RETRY ATTEMPT is recorded as one call inside the
         // circuit breaker's sliding window.
         for (int i = 0; i < 4; i++) {
-            billingCustomerClient.checkCustomerExists(CUSTOMER_ID);
+            billingCustomerClient.checkCustomerExists(CUSTOMER_ID, "Bearer test-token");
         }
 
         int callsBeforeOpen = wireMock.getAllServeEvents().size();
@@ -147,7 +159,7 @@ class BillingCustomerClientIntegrationTest {
         // The honest business outcome stays SERVICE_UNAVAILABLE throughout
         // -- the actual contract that matters to a caller -- rather than
         // asserting brittle exact-open-state timing.
-        assertThat(billingCustomerClient.checkCustomerExists(CUSTOMER_ID)).isEqualTo(CustomerLookupOutcome.SERVICE_UNAVAILABLE);
+        assertThat(billingCustomerClient.checkCustomerExists(CUSTOMER_ID, "Bearer test-token")).isEqualTo(CustomerLookupOutcome.SERVICE_UNAVAILABLE);
     }
 
     @Test
@@ -160,11 +172,11 @@ class BillingCustomerClientIntegrationTest {
         // SERVICE_UNAVAILABLE just because 404s piled up in the window.
         wireMock.stubFor(get(urlPathEqualTo("/customers/" + CUSTOMER_ID)).willReturn(notFound()));
         for (int i = 0; i < 10; i++) {
-            assertThat(billingCustomerClient.checkCustomerExists(CUSTOMER_ID)).isEqualTo(CustomerLookupOutcome.NOT_FOUND);
+            assertThat(billingCustomerClient.checkCustomerExists(CUSTOMER_ID, "Bearer test-token")).isEqualTo(CustomerLookupOutcome.NOT_FOUND);
         }
 
         wireMock.resetAll();
         wireMock.stubFor(get(urlPathEqualTo("/customers/" + CUSTOMER_ID)).willReturn(aResponse().withStatus(200)));
-        assertThat(billingCustomerClient.checkCustomerExists(CUSTOMER_ID)).isEqualTo(CustomerLookupOutcome.FOUND);
+        assertThat(billingCustomerClient.checkCustomerExists(CUSTOMER_ID, "Bearer test-token")).isEqualTo(CustomerLookupOutcome.FOUND);
     }
 }

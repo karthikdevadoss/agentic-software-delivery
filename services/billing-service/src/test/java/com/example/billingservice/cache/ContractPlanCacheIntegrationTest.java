@@ -81,7 +81,7 @@ class ContractPlanCacheIntegrationTest {
     @BeforeEach
     void setUp() {
         restTemplate = AuthTestSupport.authenticatedRestTemplate(testJwtIssuer);
-        when(billingCustomerClient.checkCustomerExists(any())).thenReturn(CustomerLookupOutcome.FOUND);
+        when(billingCustomerClient.checkCustomerExists(any(), any())).thenReturn(CustomerLookupOutcome.FOUND);
     }
 
     private String url(String path) {

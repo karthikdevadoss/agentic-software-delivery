@@ -66,10 +66,26 @@ public class BillingCustomerClient {
      * NEVER throws for a healthy "not found" or downstream-unavailable
      * outcome -- both are honestly represented in the return value; only
      * a genuinely unexpected programming error would propagate.
+     *
+     * REAL BUG FOUND during the first genuine end-to-end smoke test (only
+     * catchable with a real second service, not WireMock): customer-service
+     * requires a valid JWT with SCOPE_customer:read (see its
+     * SecurityConfig) -- without forwarding the ORIGINAL caller's bearer
+     * token, this call got a real 401 from a real service, not a
+     * fabricated success. {@code callerBearerToken} is the exact
+     * Authorization header value the original inbound request carried
+     * (see ContractPlanController), propagated downstream so
+     * customer-service authorizes this call as the same identity that
+     * made the original request -- a real, standard microservices identity-
+     * propagation pattern (token relay), not a separate service-account
+     * credential (which would be a real, valid alternative design, just a
+     * larger scope than this pass covers).
      */
-    public CustomerLookupOutcome checkCustomerExists(Long customerId) {
+    public CustomerLookupOutcome checkCustomerExists(Long customerId, String callerBearerToken) {
         Supplier<Void> raw = () -> {
-            restClient.get().uri("/customers/{id}", customerId).retrieve().toBodilessEntity();
+            restClient.get().uri("/customers/{id}", customerId)
+                    .header("Authorization", callerBearerToken)
+                    .retrieve().toBodilessEntity();
             return null;
         };
         // Composition order matters: the circuit breaker wraps the retry

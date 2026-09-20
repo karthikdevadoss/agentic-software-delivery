@@ -40,6 +40,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class ContractPlanServiceTest {
 
+    private static final String TEST_BEARER_TOKEN = "Bearer test-token";
+
     @Mock
     private ContractPlanRepository contractPlanRepository;
     @Mock
@@ -51,7 +53,7 @@ class ContractPlanServiceTest {
     private final JsonMapper jsonMapper = JsonMapper.builder().build();
 
     private ContractPlanService service(CustomerLookupOutcome lookupOutcome) {
-        org.mockito.Mockito.lenient().when(billingCustomerClient.checkCustomerExists(1L)).thenReturn(lookupOutcome);
+        org.mockito.Mockito.lenient().when(billingCustomerClient.checkCustomerExists(1L, TEST_BEARER_TOKEN)).thenReturn(lookupOutcome);
         lenientLockAcquired();
         return newService();
     }
@@ -97,11 +99,11 @@ class ContractPlanServiceTest {
         ContractPlanService service = newService();
         ContractPlanEnrollRequest request = new ContractPlanEnrollRequest("Basic", BigDecimal.TEN, LocalDate.now());
 
-        assertThatThrownBy(() -> service.enroll(1L, request))
+        assertThatThrownBy(() -> service.enroll(1L, request, TEST_BEARER_TOKEN))
                 .isInstanceOf(EnrollmentInProgressException.class);
         verify(contractPlanRepository, org.mockito.Mockito.never()).findByCustomerIdAndStatus(any(), any());
         verify(contractPlanRepository, org.mockito.Mockito.never()).save(any());
-        verify(billingCustomerClient, org.mockito.Mockito.never()).checkCustomerExists(any());
+        verify(billingCustomerClient, org.mockito.Mockito.never()).checkCustomerExists(any(), any());
     }
 
     @Test
@@ -109,7 +111,7 @@ class ContractPlanServiceTest {
         ContractPlanService service = service(CustomerLookupOutcome.NOT_FOUND);
         ContractPlanEnrollRequest request = new ContractPlanEnrollRequest("Basic", BigDecimal.TEN, LocalDate.now());
 
-        assertThatThrownBy(() -> service.enroll(1L, request))
+        assertThatThrownBy(() -> service.enroll(1L, request, TEST_BEARER_TOKEN))
                 .isInstanceOf(NoSuchElementException.class)
                 .hasMessageContaining(ContractPlanService.CUSTOMER_NOT_FOUND_MESSAGE);
         verify(contractPlanRepository, org.mockito.Mockito.never()).findByCustomerIdAndStatus(any(), any());
@@ -126,7 +128,7 @@ class ContractPlanServiceTest {
         ContractPlanService service = service(CustomerLookupOutcome.SERVICE_UNAVAILABLE);
         ContractPlanEnrollRequest request = new ContractPlanEnrollRequest("Basic", BigDecimal.TEN, LocalDate.now());
 
-        assertThatThrownBy(() -> service.enroll(1L, request))
+        assertThatThrownBy(() -> service.enroll(1L, request, TEST_BEARER_TOKEN))
                 .isInstanceOf(CustomerServiceUnavailableException.class);
         verify(contractPlanRepository, org.mockito.Mockito.never()).findByCustomerIdAndStatus(any(), any());
     }
@@ -138,7 +140,7 @@ class ContractPlanServiceTest {
         when(contractPlanRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         ContractPlanEnrollRequest request = new ContractPlanEnrollRequest("Basic", new BigDecimal("0.15"), LocalDate.of(2026, 1, 1));
 
-        ContractPlan result = service.enroll(1L, request);
+        ContractPlan result = service.enroll(1L, request, TEST_BEARER_TOKEN);
 
         assertThat(result.getStatus()).isEqualTo(ContractPlanStatus.ACTIVE);
         assertThat(result.getPlanName()).isEqualTo("Basic");
@@ -155,7 +157,7 @@ class ContractPlanServiceTest {
         LocalDate newStart = LocalDate.of(2026, 6, 1);
         ContractPlanEnrollRequest request = new ContractPlanEnrollRequest("New", new BigDecimal("0.12"), newStart);
 
-        ContractPlan result = service.enroll(1L, request);
+        ContractPlan result = service.enroll(1L, request, TEST_BEARER_TOKEN);
 
         ArgumentCaptor<ContractPlan> flushedCaptor = ArgumentCaptor.forClass(ContractPlan.class);
         verify(contractPlanRepository, times(1)).saveAndFlush(flushedCaptor.capture());
@@ -182,7 +184,7 @@ class ContractPlanServiceTest {
         ContractPlanEnrollRequest duplicateRequest = new ContractPlanEnrollRequest(
                 "Green Energy 12mo", new BigDecimal("0.14"), LocalDate.of(2026, 9, 14));
 
-        ContractPlan result = service.enroll(1L, duplicateRequest);
+        ContractPlan result = service.enroll(1L, duplicateRequest, TEST_BEARER_TOKEN);
 
         assertThat(result).isSameAs(alreadyActive);
         assertThat(result.getStatus()).isEqualTo(ContractPlanStatus.ACTIVE);
@@ -208,7 +210,7 @@ class ContractPlanServiceTest {
         when(contractPlanRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         ContractPlanEnrollRequest request = new ContractPlanEnrollRequest("New", new BigDecimal("0.12"), LocalDate.of(2026, 6, 1));
 
-        service.enroll(1L, request);
+        service.enroll(1L, request, TEST_BEARER_TOKEN);
 
         org.mockito.InOrder order = org.mockito.Mockito.inOrder(contractPlanRepository);
         order.verify(contractPlanRepository).saveAndFlush(oldPlan);
@@ -226,7 +228,7 @@ class ContractPlanServiceTest {
         });
         ContractPlanEnrollRequest request = new ContractPlanEnrollRequest("Basic", new BigDecimal("0.15"), LocalDate.of(2026, 1, 1));
 
-        service.enroll(1L, request);
+        service.enroll(1L, request, TEST_BEARER_TOKEN);
 
         verify(outboxEventRepository, times(1)).save(any());
     }
