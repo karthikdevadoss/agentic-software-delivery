@@ -599,7 +599,7 @@
       "estimate_range": "15-20 min",
       "confidence": "MEDIUM",
       "size_rationale": "Bounded schema addition to an existing evidence-writing mechanism.",
-      "status": "active",
+      "status": "done",
       "category": "delivery",
       "parent_id": null,
       "session_ids": [
@@ -608,7 +608,8 @@
       "commit_shas": [],
       "created_at": "2026-09-20T13:01:26+00:00",
       "started_at": "2026-09-20T13:01:26+00:00",
-      "completed_at": null
+      "completed_at": "2026-09-20T13:18:34+00:00",
+      "actual_note": "independent_evaluation and escaped_defects fields added to every evidence JSON (real, honest defaults -- invoked:false, never fabricated as evaluated). record_independent_evaluation()/record_escaped_defects() helpers for post-hoc updates, aggregate_evidence() for real cross-run cost-per-verified-outcome measurement. 5 new tests, all real round-trips through temp files (aggregation test deliberately isolated from the real shared EVIDENCE_DIR to avoid the exact stale-data trap BL-017 caught)."
     },
     {
       "id": "BL-021",

@@ -177,6 +177,16 @@ def execute(paths, selection: tia.ImpactSelection, dry_run: bool) -> dict:
         "skipped": selection.skipped,
         "commands": [],
         "dry_run": dry_run,
+        # BL-020 (2026-09-20): populated later, out-of-band, by
+        # record_independent_evaluation() below -- verify_change.py itself
+        # cannot invoke the qa-evaluator subagent (that's a Claude Code
+        # Agent-tool call, not something a plain Python script can do).
+        # These fields exist so real cost-per-verified-outcome for
+        # independent review becomes measurable over time (the CLAUDE.md
+        # "AI-characteristic defect discipline" rule's own stated purpose),
+        # rather than left as an unmeasured assumption.
+        "independent_evaluation": {"invoked": False, "verdict": None, "findings_count": None},
+        "escaped_defects": None,  # real count filled in later if this item's "done" status is ever revisited
     }
 
     if dry_run:
@@ -275,6 +285,68 @@ def _save_evidence(evidence: dict) -> Path:
     path = EVIDENCE_DIR / f"{ts}.json"
     path.write_text(json.dumps(evidence, indent=2), encoding="utf-8")
     return path
+
+
+def record_independent_evaluation(evidence_path, verdict: str, findings_count: int) -> dict:
+    """BL-020: called out-of-band, after a real qa-evaluator pass on the
+    change this evidence file covers, to record what independent review
+    actually found -- real data for measuring whether the mandatory-
+    qa-evaluator rule is worth its real cost, per CLAUDE.md's own stated
+    purpose. Never called automatically; a human or a session invoking
+    qa-evaluator calls this afterward with the real verdict."""
+    path = Path(evidence_path)
+    evidence = json.loads(path.read_text(encoding="utf-8"))
+    evidence["independent_evaluation"] = {
+        "invoked": True, "verdict": verdict, "findings_count": findings_count,
+    }
+    path.write_text(json.dumps(evidence, indent=2), encoding="utf-8")
+    return evidence
+
+
+def record_escaped_defects(evidence_path, count: int) -> dict:
+    """BL-020: called if a "done" item is later found to have a real
+    defect that escaped both the original verification and (if invoked)
+    independent evaluation -- real signal for the cost-per-verified-
+    outcome measurement, never fabricated as 0 by default."""
+    path = Path(evidence_path)
+    evidence = json.loads(path.read_text(encoding="utf-8"))
+    evidence["escaped_defects"] = count
+    path.write_text(json.dumps(evidence, indent=2), encoding="utf-8")
+    return evidence
+
+
+def aggregate_evidence() -> dict:
+    """Real, honest aggregation across every evidence file ever written --
+    no cross-run tracking existed before BL-020. Never estimates a field
+    it can't compute; a run with independent_evaluation.invoked=False is
+    counted as "not evaluated", never silently treated as "evaluated and
+    clean"."""
+    runs = list(EVIDENCE_DIR.glob("*.json")) if EVIDENCE_DIR.is_dir() else []
+    total = len(runs)
+    evaluated = 0
+    evaluated_with_findings = 0
+    total_escaped_defects = 0
+    known_escaped_defect_runs = 0
+    for f in runs:
+        try:
+            e = json.loads(f.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            continue
+        ie = e.get("independent_evaluation") or {}
+        if ie.get("invoked"):
+            evaluated += 1
+            if (ie.get("findings_count") or 0) > 0:
+                evaluated_with_findings += 1
+        if e.get("escaped_defects") is not None:
+            known_escaped_defect_runs += 1
+            total_escaped_defects += e["escaped_defects"]
+    return {
+        "total_runs": total,
+        "independently_evaluated_runs": evaluated,
+        "evaluated_runs_with_findings": evaluated_with_findings,
+        "runs_with_known_escaped_defect_count": known_escaped_defect_runs,
+        "total_known_escaped_defects": total_escaped_defects,
+    }
 
 
 def main():

@@ -7,8 +7,11 @@ locally (no Docker), and Maven exits 0 regardless -- so "overall_exit_code
 Run: python agent/test_verify_change.py
 """
 
+import json
 import shutil
+import tempfile
 import unittest
+from pathlib import Path
 
 import verify_change as vc
 
@@ -105,6 +108,77 @@ class VerdictLogicTestCase(unittest.TestCase):
         # verdict must say UNVERIFIED once risk+skips are both present.
         would_be_unverified = is_high_risk and total_skipped and overall_rc == 0
         self.assertTrue(would_be_unverified, "a HIGH-risk change with skipped mandatory tests must never be silently PASSED")
+
+
+class EvidenceInstrumentationTestCase(unittest.TestCase):
+    """BL-020: real round-trip tests for the post-hoc evidence-update
+    helpers -- no fabricated defaults, no silent success."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.evidence_path = Path(self.tmpdir) / "fake_evidence.json"
+        self.evidence_path.write_text(json.dumps({
+            "timestamp_utc": "2026-09-20T00:00:00+00:00",
+            "independent_evaluation": {"invoked": False, "verdict": None, "findings_count": None},
+            "escaped_defects": None,
+        }), encoding="utf-8")
+        self.addCleanup(lambda: shutil.rmtree(self.tmpdir, ignore_errors=True))
+
+    def test_fresh_evidence_defaults_to_not_yet_evaluated(self):
+        raw = json.loads(self.evidence_path.read_text(encoding="utf-8"))
+        self.assertFalse(raw["independent_evaluation"]["invoked"])
+        self.assertIsNone(raw["escaped_defects"])
+
+    def test_record_independent_evaluation_real_round_trip(self):
+        vc.record_independent_evaluation(self.evidence_path, verdict="PASS", findings_count=0)
+        raw = json.loads(self.evidence_path.read_text(encoding="utf-8"))
+        self.assertEqual(raw["independent_evaluation"], {"invoked": True, "verdict": "PASS", "findings_count": 0})
+
+    def test_record_escaped_defects_real_round_trip(self):
+        vc.record_escaped_defects(self.evidence_path, count=2)
+        raw = json.loads(self.evidence_path.read_text(encoding="utf-8"))
+        self.assertEqual(raw["escaped_defects"], 2)
+
+
+class AggregateEvidenceTestCase(unittest.TestCase):
+    """Real, isolated aggregation test -- never reads the real (shared)
+    EVIDENCE_DIR, to avoid the exact stale-data trap BL-017's own test
+    already caught once tonight."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self._real_evidence_dir = vc.EVIDENCE_DIR
+        vc.EVIDENCE_DIR = Path(self.tmpdir)
+        self.addCleanup(self._restore)
+
+    def _restore(self):
+        vc.EVIDENCE_DIR = self._real_evidence_dir
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def _write(self, name, independent_evaluation=None, escaped_defects=None):
+        data = {
+            "independent_evaluation": independent_evaluation or {"invoked": False, "verdict": None, "findings_count": None},
+            "escaped_defects": escaped_defects,
+        }
+        (vc.EVIDENCE_DIR / name).write_text(json.dumps(data), encoding="utf-8")
+
+    def test_no_evidence_files_gives_real_zero_not_an_error(self):
+        result = vc.aggregate_evidence()
+        self.assertEqual(result["total_runs"], 0)
+        self.assertEqual(result["independently_evaluated_runs"], 0)
+
+    def test_mixed_real_evidence_aggregates_correctly(self):
+        self._write("a.json", independent_evaluation={"invoked": True, "verdict": "PASS", "findings_count": 0})
+        self._write("b.json", independent_evaluation={"invoked": True, "verdict": "FAIL", "findings_count": 2})
+        self._write("c.json")  # never independently evaluated
+        self._write("d.json", escaped_defects=1)
+
+        result = vc.aggregate_evidence()
+        self.assertEqual(result["total_runs"], 4)
+        self.assertEqual(result["independently_evaluated_runs"], 2)
+        self.assertEqual(result["evaluated_runs_with_findings"], 1)
+        self.assertEqual(result["runs_with_known_escaped_defect_count"], 1)
+        self.assertEqual(result["total_known_escaped_defects"], 1)
 
 
 if __name__ == "__main__":
