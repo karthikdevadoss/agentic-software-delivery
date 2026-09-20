@@ -1467,3 +1467,39 @@ before it.
   configurable, non-default ports/resources and must scope any
   force-kill strictly to verified descendants of PIDs the harness itself
   launched.
+
+- **A version bump that fixes one real error can trade it for a worse
+  one — verify the fix with the SAME real tests, not just the absence of
+  the original error message.** Investigating `ACT-012` (JaCoCo 0.8.12
+  can't instrument this machine's JDK 24, "Unsupported class file major
+  version 68"): bumping to JaCoCo 0.8.13 (the first release with real
+  Java 23/24 class-file support, confirmed via the project's real change
+  history) did genuinely fix the instrumentation crash — the same 3 real
+  isolated-workspace tests that used to fail at the `compile` step in
+  5-12s now compile successfully. But the SAME tests, re-run against the
+  bumped version, then failed or timed out at the `test` step instead —
+  222s, a 240s timeout, and 184s respectively (`agent/test_triage_execution.py`'s
+  `ApplyAndVerifyCandidate*` cases), roughly 20-50x slower than before.
+  Real cause not fully root-caused given this task's scope, but strongly
+  implicated by the captured output: Mockito's dynamic self-attaching
+  inline-mock-maker agent (`byte-buddy-agent`) loading via the JDK Attach
+  API appears to interact badly with JaCoCo 0.8.13's instrumentation on
+  JDK 24 — trading a fast, clear failure for a slow, sometimes-timing-out
+  one is a net regression for this narrow test suite's actual purpose
+  (verifying candidate-patch compile/test outcomes, not measuring
+  coverage). **Decision: reverted the version bump** rather than ship a
+  "fix" that makes this exact suite 20-50x slower and occasionally
+  flaky — `ACT-012` stays open with this real trade-off documented, real
+  options for the Owner to weigh: pin the isolated test-compile
+  subprocess's own `JAVA_HOME` to JDK 21 (narrower blast radius, likely
+  side-effect-free for just this one call site) vs. accepting the
+  original 3-test gap as-is vs. spending more investigation time on the
+  JaCoCo/Mockito/JDK24 interaction itself. **General rule:** never
+  declare a dependency-version fix verified from the absence of the
+  original error alone — re-run the exact real tests it was meant to fix
+  and compare BOTH pass/fail AND real wall-clock time against the
+  baseline; a fix that trades a fast failure for a slow, flaky pass is
+  not obviously an improvement, and this project's own environment-vs-
+  platform-strategy boundary means a narrow, reversible fix should be
+  preferred over a version bump with distant, hard-to-predict side
+  effects whenever both are genuinely on the table.
