@@ -11,10 +11,12 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -78,6 +80,65 @@ public class AdminCustomerController {
         return contractPlanRepository.findByCustomerIdAndStatus(customerId, ContractPlanStatus.ACTIVE)
                 .map(plan -> plan.getPlanName() + " (ACTIVE)")
                 .orElse("NO ACTIVE PLAN");
+    }
+
+    /**
+     * REAL SCALE pagination -- deliberately UNSCOPED (every Customer row,
+     * not just the ~5 demo-identity-bound ones {@link #listCustomers}
+     * returns), for demonstrating genuine pagination/sorting behavior at
+     * real row counts (see {@link #seedDemoData} for how to generate
+     * enough rows to make that real, and idx_customer_email in
+     * V10__add_customer_email_index.sql for the index sorting/filtering
+     * by email actually uses). ADMIN-only, same as every other endpoint
+     * in this controller -- ordinary customer data, just unfiltered by
+     * workspace, so it stays behind the same authority.
+     */
+    @GetMapping("/all")
+    public AdminCustomerPage listAllCustomers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "id") String sortBy) {
+        Sort.Direction direction = Sort.Direction.ASC;
+        String sortField = List.of("id", "name", "email").contains(sortBy) ? sortBy : "id"; // never trust a raw client-supplied field name straight into ORDER BY
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), MAX_PAGE_SIZE), Sort.by(direction, sortField));
+
+        Page<Customer> result = customerRepository.findAll(pageable);
+        List<AdminCustomerRow> rows = result.getContent().stream()
+                .map(c -> new AdminCustomerRow(c.getId(), c.getName(), c.getEmail(), activePlanStatus(c.getId())))
+                .toList();
+        return new AdminCustomerPage(rows, result.getNumber(), result.getSize(), result.getTotalElements(), result.getTotalPages());
+    }
+
+    private static final int MAX_SEED_COUNT = 5000;
+
+    public record SeedResult(int created, long totalCustomersNow) {
+    }
+
+    /**
+     * Bulk-generates clearly-synthetic customers (name/email both
+     * unambiguously marked "Load Test") for demonstrating real pagination
+     * and query performance at real row counts -- not a hidden or
+     * accidental data-quality risk, since every row this creates is
+     * trivially identifiable and filterable back out.
+     *
+     * REAL BULK-INSERT PERFORMANCE, not saveAll()'s naive default: plain
+     * JpaRepository.saveAll() issues one INSERT per row even for a list
+     * -- application.properties' hibernate.jdbc.batch_size +
+     * order_inserts settings are what make this actually batch at the
+     * JDBC level. capped at MAX_SEED_COUNT so this stays a real demo
+     * tool, not an accidental resource-exhaustion vector on a public
+     * ADMIN-authenticated endpoint.
+     */
+    @PostMapping("/seed-demo-data")
+    public SeedResult seedDemoData(@RequestParam(defaultValue = "1000") int count) {
+        int toCreate = Math.min(Math.max(count, 1), MAX_SEED_COUNT);
+        long seed = System.currentTimeMillis();
+        List<Customer> batch = new ArrayList<>(toCreate);
+        for (int i = 0; i < toCreate; i++) {
+            batch.add(new Customer("Load Test Customer " + seed + "-" + i, "load-test-" + seed + "-" + i + "@example.com"));
+        }
+        customerRepository.saveAll(batch);
+        return new SeedResult(toCreate, customerRepository.count());
     }
 
     /** Pre-builds the full "%value%" LIKE pattern, already lowercased, so

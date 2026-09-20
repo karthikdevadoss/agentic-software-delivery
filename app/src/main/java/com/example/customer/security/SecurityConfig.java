@@ -115,6 +115,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/auth/personas").permitAll()
                         .requestMatchers(HttpMethod.GET, "/admin/customers", "/admin/customers/*").hasAuthority("SCOPE_admin:read")
+                        .requestMatchers(HttpMethod.POST, "/admin/customers/seed-demo-data").hasAuthority("SCOPE_admin:read")
                         .requestMatchers(HttpMethod.GET, "/customers/*/preferences").hasAuthority("SCOPE_preference:read")
                         .requestMatchers(HttpMethod.PUT, "/customers/*/preferences").hasAuthority("SCOPE_preference:write")
                         .requestMatchers(HttpMethod.GET, "/customers/*/plan").hasAuthority("SCOPE_contract:read")
