@@ -928,7 +928,7 @@
       "estimate_range": "15-25 min",
       "confidence": "MEDIUM",
       "size_rationale": "Bounded, real web research task, same shape as BL-023.",
-      "status": "active",
+      "status": "done",
       "category": "scrum_process",
       "parent_id": null,
       "session_ids": [
@@ -937,8 +937,8 @@
       "commit_shas": [],
       "created_at": "2026-09-20T14:23:11+00:00",
       "started_at": "2026-09-20T14:23:11+00:00",
-      "completed_at": null,
-      "actual_note": null
+      "completed_at": "2026-09-20T14:52:00+00:00",
+      "actual_note": "Real web research done (2026-09-20). New dated entry added to docs/RETRO_LOG.md's \"Standing Scrum-process research\" section, below BL-023's first pass. Headline: this pass CHALLENGES rather than confirms the project's own \"rubric is too slow\" conclusion -- Faros 2026 telemetry (bugs/dev +54%, code churn +861%, incident-to-PR +242.7%) plus Forrester's finding that unmeasured rework absorbs 22-38% of self-reported time savings in mature programs and 50%+ in early-stage ones means every 0.06-0.42x ratio in RETRO_LOG was measured inside a window too short for a rework tail to appear. Rubric split (a) got real but indirect support (AI speedup multiplier compresses on hard PRs) -- source checked directly and does NOT make the stronger estimate-accuracy claim, stated honestly rather than overclaimed. Rework ratio gap (b) now has concrete definitions (30-day AI code turnover: healthy <12%, critical >25%; AI-vs-human rewrite ratio >1.5x as investigation trigger; 40-20-40 split) and a real in-project owner: BL-029, active this same sprint, verified in-flight with no commit yet at time of writing. One genuinely new idea flagged for a future rubric decision: token budget as a second, independent pre-sprint capacity constraint alongside hours. 4 real cited sources. Research overlapped with waiting on concurrent sprint work, so commit-to-commit duration is a floor, not a clean isolated measurement (same caveat class as BL-023)."
     },
     {
       "id": "BL-035",
@@ -948,7 +948,7 @@
       "estimate_range": "20-35 min",
       "confidence": "MEDIUM",
       "size_rationale": "Bounded analysis of an already-existing transcript, same shape as the earlier out-of-sprint baseline assessment, now sized and pulled into a sprint per the Owner's own deferral.",
-      "status": "active",
+      "status": "done",
       "category": "scrum_process",
       "parent_id": null,
       "session_ids": [
@@ -957,8 +957,8 @@
       "commit_shas": [],
       "created_at": "2026-09-20T14:23:11+00:00",
       "started_at": "2026-09-20T14:23:11+00:00",
-      "completed_at": null,
-      "actual_note": null
+      "completed_at": "2026-09-20T14:52:00+00:00",
+      "actual_note": "Real feedback delivered, see private repo (karthik-ai-context, coaching/PROMPTING_STYLE_LOG.md, Entry 2) -- personal content deliberately kept out of this public file. Method: 143 real typed Owner messages extracted from this session's own transcript, every finding quoted verbatim with real line number and timestamp, built on the existing baseline entry rather than repeating it. Committed and pushed to the private repo separately."
     }
   ],
   "_calibration_process": {

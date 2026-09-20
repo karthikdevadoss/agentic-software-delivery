@@ -65,6 +65,98 @@ This project's CLAUDE.md governance file already reads this way (durable
 rules and guardrails, not a literal task script) — noted as validation,
 not a required change.
 
+### 2026-09-20 — second pass (BL-034): the rework tail this project cannot yet see
+
+Second run of the standing commitment, scoped specifically to look for
+material published since the first pass that either **confirms or
+challenges** this project's own two current headline findings.
+
+**The headline finding is a CHALLENGE, not a confirmation — and it is
+the most important thing this pass found.** This project's last three
+retros all read the same way: nearly every item finished at 0.06–0.42×
+its estimate, and the conclusion drawn each time was "the rubric is
+calibrated too slow for this context." The 2026 industry telemetry says
+that reading is premature, because the speed is real but the cost of it
+lands *outside the sprint window*. Faros AI's 2026 data: epics completed
+per developer **+66%**, task throughput **+33.7%** — alongside bugs per
+developer **+54%** (versus +9% the prior year), code churn **+861%**,
+incident-to-PR ratio **+242.7%**, and **31.3%** of PRs merged with no
+review at all. The report attributes the churn explicitly to rework:
+developers "accept AI-generated code quickly, then come back to replace
+it when it proves insufficient in practice"
+([Mneme HQ on the Faros 2026
+data](https://mnemehq.com/insights/ai-coding-productivity-gains-rework/)).
+Forrester's companion figure is the sharper one for this project:
+**unmeasured rework absorbs 22–38% of self-reported time savings in
+mature programs, and 50%+ in early-stage ones** ([Developer Productivity
+Benchmarks
+2026](https://larridin.com/developer-productivity-hub/developer-productivity-benchmarks-2026)).
+By any definition this project is early-stage — four sprints old, with
+zero elapsed calendar distance between any item's "done" and its retro.
+**Every 0.06–0.42× ratio in this file was measured inside a window too
+short for a rework tail to have appeared in it.** That does not
+invalidate the ratios; it means the rubric-is-too-slow conclusion is
+currently unfalsifiable, and will stay so until something measures
+correction-after-done. Recorded here as a real, named limitation of this
+project's own existing conclusions, not as a reason to change the rubric
+again.
+
+**Confirmation of (a), the apply-a-known-pattern vs. genuine-first-of-
+its-kind split — real, but weaker than it first looked, so stated
+honestly.** The same benchmarks report finds "the multiplier compresses
+at higher absolute CAT levels because hard PRs benefit less from current
+AI tools than easy and medium ones" (ibid.). That is the same
+*directional* shape as this project's own sprint-3 finding (BL-021 at
+0.73 and BL-014 at 0.82 landing inside tolerance while the eight
+apply-a-known-pattern items ran 0.06–0.42×), but it is measured as an
+AI-speedup multiplier by PR complexity, **not** as estimate accuracy by
+work type — the source was checked directly for the stronger claim and
+does not make it. So: real independent support for the rubric split
+added last sprint, via a different measure; not a direct external
+replication of it. Worth saying plainly rather than overclaiming a match.
+
+**(b) The "rework ratio" gap flagged last pass now has both a concrete
+definition and a live owner inside this project.** Last pass could only
+name rework ratio as a missing metric with no definition attached. Two
+real, usable definitions now exist: **AI code turnover at 30 days** —
+healthy <12%, watch 12–18%, warning 18–25%, critical >25% — with an
+**AI-vs-human rewrite ratio above 1.5× as the team-level investigation
+trigger** (ibid.); and the **40-20-40 split** (40% new feature work /
+20% rework / 40% maintenance) as the sustainable-distribution frame,
+with the warning that "if new feature work rises while change failure
+rate also rises, the team may be generating debt faster than the system
+can absorb it" ([Oobeya — Engineering Metrics in the AI
+Era](https://oobeya.io/blog/engineering-metrics-in-the-ai-era)). On the
+owner: **`BL-029`, active in this same sprint, is exactly this work** —
+its own description commits to aggregating `agent/.verify_change_evidence/*.json`
+into "first-pass-yield/rework/cost metrics across runs," and cites BL-023
+(last pass's research) as the reason it exists. Verified honestly at the
+time of writing: BL-029 is sized, started, and in-flight in a sibling
+worktree, with **no commit yet** — the connection is real and traceable,
+the delivery is not yet proven. The 30-day-window definition above is the
+piece BL-029's scope does *not* currently cover, since evidence JSON is
+per-run and carries no later-correction linkage; flagged for whoever
+picks up the follow-up, not silently added to BL-029's scope here.
+
+**One genuinely new process idea, not previously considered here:
+capacity as two independent constraints, not one.** The argument is that
+an agent team is bounded by both effort/velocity *and* a token budget,
+while traditional planning tracks only the first, and that token budget
+functions simultaneously as a computational resource constraint and a
+financial governance mechanism ([Scrum.org — From Velocity to Agent
+Efficiency](https://www.scrum.org/resources/blog/velocity-agent-efficiency-evidence-based-management-ai-era);
+[AI Agent Token Budget Enforcement
+2026](https://waxell.ai/blog/ai-agent-token-budget-enforcement)). This
+project sizes exclusively in hours. It already *captures* real token
+data (the `SessionEnd` hook, the event ledger, per-fork transcripts) and
+it already has a hard-won institutional reason to care — the real €40
+burn incident in CLAUDE.md — but it has never once used tokens as a
+*pre-sprint capacity constraint*, only as post-hoc accounting. Noted as a
+real candidate for a future `_sizing_rubric` addition; deliberately not
+built this pass (out of scope for a 15–25 min research item, and it needs
+the Owner's judgment on whether a second sizing axis is worth the
+process overhead the Phase 3 category work exists to measure).
+
 ---
 
 ## Section 1 — Learnings from wrong ESTIMATION
