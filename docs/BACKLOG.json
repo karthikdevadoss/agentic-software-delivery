@@ -425,13 +425,16 @@
       "estimate_range": "45-75 min",
       "confidence": "MEDIUM",
       "size_rationale": "Real breadth (backend+UI+E2E+content-gen) but extends an existing, well-understood CRUD pattern (CustomerController/Service/Repository already exist) with a fully pre-specified acceptance contract -- MEDIUM confidence, not LOW, since ambiguity is low even though scope is real.",
-      "status": "active",
+      "status": "done",
       "parent_id": null,
       "session_ids": [],
-      "commit_shas": [],
+      "commit_shas": [
+        "f3ecbc6"
+      ],
       "created_at": "2026-09-20T05:54:11+00:00",
       "started_at": "2026-09-20T05:54:11+00:00",
-      "completed_at": null
+      "completed_at": "2026-09-20T06:16:21+00:00",
+      "actual_note": "Real pre-existing gap found: Update Email backend/tests/UI already existed but had zero uniqueness enforcement against its own acceptance contract. Fix: DuplicateEmailException + existsByEmailAndIdNot + 409 mapping, 4 new tests (152 total, 0 failures, 0 errors, 21 skipped), first-ever Playwright spec for the Customer App frontend run for real against a locally started server, interview writeup. Deliberately did NOT use agent/main.py (advisory-only, produces a plan not code) or the heavier execution_tools.py Workbench pipeline (web-server-orchestrated, not built for ad hoc invocation) -- hand-coded directly following existing patterns instead, per the task directive's own discretion. No Railway deploy (held for Owner review, per standing policy)."
     },
     {
       "id": "BL-014",
