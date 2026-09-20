@@ -71,6 +71,17 @@
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-tracing-bridge-brave</artifactId>
         </dependency>
+        <!-- BL-014 investigation finding: micrometer-tracing-bridge-brave
+             alone gives real Brave classes on the classpath, but not
+             Spring Boot's own autoconfiguration glue that turns that into
+             an active Tracer bean wired into the Observation pipeline.
+             In Boot 4's modular split that glue lives in its own module,
+             mirroring the already-present spring-boot-micrometer-metrics/
+             spring-boot-micrometer-observation siblings. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-micrometer-tracing</artifactId>
+        </dependency>
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>

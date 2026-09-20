@@ -3,8 +3,11 @@ package com.example.billingservice.controller;
 import com.example.billingservice.cache.ContractPlanCacheService;
 import com.example.billingservice.dto.ContractPlanEnrollRequest;
 import com.example.billingservice.dto.ContractPlanResponse;
+import com.example.billingservice.dto.EstimatedUsageCostResponse;
 import com.example.billingservice.service.ContractPlanService;
+import com.example.billingservice.service.UsageEstimationService;
 import jakarta.validation.Valid;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,7 +17,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.time.LocalDate;
 
 /**
  * Ported from app/'s ContractPlanController, with one deliberate
@@ -36,15 +42,33 @@ public class ContractPlanController {
 
     private final ContractPlanService contractPlanService;
     private final ContractPlanCacheService contractPlanCacheService;
+    private final UsageEstimationService usageEstimationService;
 
-    public ContractPlanController(ContractPlanService contractPlanService, ContractPlanCacheService contractPlanCacheService) {
+    public ContractPlanController(
+            ContractPlanService contractPlanService,
+            ContractPlanCacheService contractPlanCacheService,
+            UsageEstimationService usageEstimationService) {
         this.contractPlanService = contractPlanService;
         this.contractPlanCacheService = contractPlanCacheService;
+        this.usageEstimationService = usageEstimationService;
     }
 
     @GetMapping
     public ContractPlanResponse getActivePlan(@PathVariable Long customerId) {
         return contractPlanCacheService.getActivePlan(customerId);
+    }
+
+    /**
+     * BL-015: real metering-to-billing integration -- see
+     * UsageEstimationService for the actual combination logic.
+     */
+    @GetMapping("/usage-estimated-cost")
+    public EstimatedUsageCostResponse getEstimatedUsageCost(
+            @PathVariable Long customerId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestHeader(HttpHeaders.AUTHORIZATION) String authorizationHeader) {
+        return usageEstimationService.estimateCost(customerId, from, to, authorizationHeader);
     }
 
     @PostMapping

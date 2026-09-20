@@ -11,6 +11,7 @@ import io.github.resilience4j.retry.RetryRegistry;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.restclient.autoconfigure.RestClientBuilderConfigurer;
 import org.springframework.cloud.client.loadbalancer.LoadBalanced;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -57,19 +58,35 @@ import java.time.Duration;
 @Configuration
 public class BillingCustomerClientConfig {
 
+    /**
+     * BL-014 fix: both builders below now go through Spring Boot's own
+     * RestClientBuilderConfigurer instead of the bare static
+     * RestClient.builder() factory. A REAL gap found investigating tracing
+     * correlation across services: RestClient.builder() alone bypasses
+     * RestClientAutoConfiguration's own customizer pipeline entirely --
+     * including the ObservationRestClientCustomizer that wires each call
+     * into the active ObservationRegistry/Tracer (present on the
+     * classpath via micrometer-tracing-bridge-brave), which is what
+     * actually propagates B3 trace-context headers on an outbound call.
+     * Without this, billing-service's real REST call to customer-service
+     * would silently start a brand-new, disconnected trace on the other
+     * side rather than continuing the one the gateway started -- correct
+     * per-service in isolation, but not a single correlatable trace
+     * across the real call chain, which is the actual point of this task.
+     */
     @Bean
     @Primary
-    public RestClient.Builder restClientBuilder() {
-        return RestClient.builder();
+    public RestClient.Builder restClientBuilder(RestClientBuilderConfigurer configurer) {
+        return configurer.configure(RestClient.builder());
     }
 
     @Bean
     @LoadBalanced
-    public RestClient.Builder loadBalancedCustomerRestClientBuilder() {
+    public RestClient.Builder loadBalancedCustomerRestClientBuilder(RestClientBuilderConfigurer configurer) {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(1000);
         factory.setReadTimeout(1000);
-        return RestClient.builder().requestFactory(factory);
+        return configurer.configure(RestClient.builder().requestFactory(factory));
     }
 
     /**

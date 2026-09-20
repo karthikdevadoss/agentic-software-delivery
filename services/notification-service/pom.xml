@@ -71,6 +71,15 @@
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-tracing-bridge-brave</artifactId>
         </dependency>
+        <!-- BL-014 real finding: micrometer-tracing-bridge-brave alone
+             gives Brave classes on the classpath but not the Spring Boot
+             autoconfiguration glue that creates an active Tracer bean
+             wired into the Observation pipeline. In Boot 4's modular
+             split that glue is this separate module. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-micrometer-tracing</artifactId>
+        </dependency>
         <!-- Needed for the durable processed_event idempotency ledger
              (real DB row, not an in-memory set), same reasoning as
              app's own ProcessedEvent: see its Javadoc. -->
