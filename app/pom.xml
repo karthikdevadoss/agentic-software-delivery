@@ -269,7 +269,50 @@
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.12</version>
+                <!-- BL-032/ACT-012 (2026-09-20, corrected after a more precise
+                     re-investigation): bumped 0.8.12 to 0.8.13. This dev
+                     machine's default JDK is 24 (class file major version
+                     68); dynamically-loaded JDK-internal classes touched
+                     during test execution (java.sql.ParameterMetaData,
+                     com.sun.tools.attach.VirtualMachine, the Attach API
+                     Mockito's inline mock maker uses) are themselves
+                     major-version-68 classes, and 0.8.12's ASM-based
+                     ClassReader throws "IllegalArgumentException: Unsupported
+                     class file major version 68" trying to instrument them
+                     (see docs/LESSONS.md and docs/ACTION_QUEUE.json's
+                     ACT-012). 0.8.13 (released 2025-04-02, verified via the
+                     real, current JaCoCo change history at
+                     https://www.jacoco.org/jacoco/trunk/doc/changes.html) is
+                     the first release to add official Java 23/24 class-file
+                     support: a drop-in version bump, same prepare-agent,
+                     report and check goals and configuration, no config
+                     changes needed. Verified fix, not just a documented
+                     recommendation: re-run against a real, untruncated
+                     `mvnw test` log, the exact "Unsupported class file major
+                     version 68" crash is genuinely gone (0 occurrences,
+                     confirmed by direct grep). An earlier same-day attempt at
+                     this exact bump was reverted, on the mistaken belief that
+                     the 3 known-affected isolated-workspace tests then
+                     "timed out" ~20-50x slower due to a Mockito/JaCoCo/JDK24
+                     interaction; a closer, full-log re-investigation found
+                     the real cause of that second failure is unrelated to
+                     JaCoCo/JDK entirely: those 3 tests each run only ONE
+                     focused Java test class via `-Dtest=...`, and this
+                     plugin's own `check` execution (below) is bound to the
+                     `test` phase with a real, intentional whole-BUNDLE 0.80
+                     line-coverage floor: a single focused class can never
+                     reach that floor alone, so `mvn test -Dtest=X` always
+                     fails jacoco:check's coverage gate, regardless of JaCoCo
+                     version. That is a real, separate, pre-existing
+                     structural gap (tracked as ACT-015), not a reason to
+                     avoid this version bump, which does exactly what it is
+                     meant to do: app/'s own java.version stays 21, CI is
+                     unaffected either way (GitHub Actions pins JDK 21), and
+                     the real full app/ test suite (java.version 21 target,
+                     no -Dtest scoping, genuinely above the 0.80 floor) is
+                     unaffected by which JaCoCo release parses class files
+                     during instrumentation. -->
+                <version>0.8.13</version>
                 <executions>
                     <execution>
                         <id>prepare-agent</id>
