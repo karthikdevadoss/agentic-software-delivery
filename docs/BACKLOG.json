@@ -64,6 +64,29 @@
       ]
     },
     {
+      "id": "BL-007",
+      "title": "EPIC: Microservices decomposition matching the Owner's real NRG architecture (Customer/Billing/Notification/Metering + Gateway + Eureka)",
+      "description": "Owner directive 2026-09-20: the app should demonstrate real microservices architecture matching the Owner's actual NRG experience (real services: billing/metering/notifications/customer, REST communication, API gateway, service discovery; Owner designed the service boundaries there, reviewed by lead). Built alongside app/ (the existing monolith), not replacing it. See docs/MICROSERVICES_ARCHITECTURE.md for the full design and exactly what's confirmed-from-NRG vs. Claude's own defensible choice (the async-messaging question for Notification Service specifically was unconfirmed when the Owner went to sleep).",
+      "size": "XLARGE",
+      "size_rationale": "Sized live in conversation before starting, then retro'd on request: cross-cutting (new deployment topology, not extending an existing pattern), genuinely novel for this repo, high ambiguity (open messaging question, new metering domain, real hosting/cost implications), no comparable entry exists anywhere in this backlog. Rough range given: 12-20 hours, LOW confidence (first-of-its-kind, no historical anchor).",
+      "status": "active",
+      "parent_id": null,
+      "session_ids": [],
+      "commit_shas": [],
+      "created_at": "2026-09-20T01:53:00+00:00",
+      "started_at": "2026-09-20T01:53:00+00:00",
+      "completed_at": null,
+      "checklist": [
+        {"step": "Architecture design doc (docs/MICROSERVICES_ARCHITECTURE.md)", "status": "done", "size": "MEDIUM"},
+        {"step": "Scaffold 6 service skeletons (eureka-server, api-gateway, customer/billing/notification/metering-service) -- all compile clean", "status": "done", "size": "LARGE"},
+        {"step": "Build out customer-service (Customer, CustomerPreference, auth/JWT issuance, ported+adapted from app/)", "status": "not_started", "size": "LARGE"},
+        {"step": "Build out billing-service (ContractPlan, enrollment, Redis lock, real REST call to customer-service via Resilience4j)", "status": "not_started", "size": "LARGE"},
+        {"step": "Build out notification-service (senders, Kafka consumption, ported+adapted from app/)", "status": "not_started", "size": "MEDIUM"},
+        {"step": "Build out metering-service (NEW domain: MeterReading, usage aggregation -- no existing code to port)", "status": "not_started", "size": "LARGE"},
+        {"step": "End-to-end integration test: Eureka + Gateway + all 4 services running together, a real request routed through the gateway to the right service", "status": "not_started", "size": "MEDIUM"}
+      ]
+    },
+    {
       "id": "BL-005",
       "title": "EPIC: Make the Customer App interview-realistic across every backend engineering discipline (not just feature development)",
       "description": "Owner directive 2026-09-19/20: the app should let the Owner answer real Senior Backend interview questions on Kafka, Redis, microservices patterns, design patterns, and production-support/debugging by explaining the app alone -- 'realistic level' means an interviewer's follow-up on that topic should already be answered. Explicitly spans testing, DevOps/release engineering, observability/SRE, security, data governance, and incident management, not only new features. Retroactively backlog-entered per LESSONS.md's sizing-discipline finding (this epic's own first two children were built and sized only in chat, not here, until this correction).",

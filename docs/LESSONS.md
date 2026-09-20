@@ -1335,3 +1335,17 @@ surprising verified behavior would otherwise get rediscovered later.
   chat), and only then derive a secondary rough time range — explicitly
   labeled low-confidence whenever no comparable historical entry exists
   in BACKLOG.json to check against.
+
+- **XML comments cannot contain a literal `--` anywhere in the text, and
+  this keeps recurring.** Hit three separate times in one session
+  (2026-09-19/20): twice in `app/pom.xml` (already noted informally),
+  once more in `services/api-gateway/pom.xml` while writing a fresh
+  explanatory comment using `--` as an em-dash substitute mid-sentence
+  ("...throughout (see app's own pom.xml) -- mixing in..."). Each time
+  the failure mode is identical: `[FATAL] Non-parseable POM ... in
+  comment after two dashes (--) next character must be > not`. **General
+  rule:** never use `--` as punctuation inside an XML/HTML comment in
+  this codebase — use `:` or a real em-dash character instead. Worth
+  treating as a reflex to check before writing any pom.xml/CI-YAML
+  comment with prose in it, not something to keep discovering via a
+  failed build each time.
