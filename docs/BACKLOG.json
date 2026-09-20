@@ -638,7 +638,7 @@
       "estimate_range": "20-35 min",
       "confidence": "MEDIUM",
       "size_rationale": "Bounded -- uses the qa-evaluator subagent against already-known, already-shipped work.",
-      "status": "active",
+      "status": "done",
       "category": "delivery",
       "parent_id": null,
       "session_ids": [
@@ -647,7 +647,8 @@
       "commit_shas": [],
       "created_at": "2026-09-20T13:01:26+00:00",
       "started_at": "2026-09-20T13:01:26+00:00",
-      "completed_at": null
+      "completed_at": "2026-09-20T13:35:53+00:00",
+      "actual_note": "Real qa-evaluator retroactive pass, both items PASS on their real acceptance criteria (re-ran every test suite itself, re-read the real diffs, checked real CI status -- never trusted the implementer's self-report). BL-007: PASS, but found ONE REAL, CURRENTLY-LIVE ESCAPED DEFECT not previously recorded -- eureka-server and api-gateway (2 of the 5 architecturally central pieces named in the original acceptance criteria) have ZERO automated tests (no src/test directory in either) and are excluded from the CI matrix (.github/workflows/ci.yml only covers [customer-service, billing-service, notification-service, metering-service]). Logged as ACT-014. BL-013: PASS, no real gaps found against stated acceptance criteria; independently reproduced 152/152 tests passing (0 failures) both locally with -Djacoco.skip=true (re-confirming ACT-012's real JaCoCo/JDK24 incompatibility) and via real, current GitHub CI (unmodified command, clean environment). Could not confirm: live gateway->Eureka runtime exercise for BL-007 (read-only pass, no Docker/live-port verification in scope); actual Playwright browser execution for BL-013 (verified by static read only)."
     },
     {
       "id": "ACT-013",

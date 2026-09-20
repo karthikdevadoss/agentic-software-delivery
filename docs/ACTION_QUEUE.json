@@ -406,6 +406,20 @@
       "resolution": "Built LegacyBillingSystemClient + LegacyBillingSystemClientConfig (RestClient + Resilience4j circuit-breaker/retry, deliberately plain/non-@LoadBalanced -- a real legacy system is not a modern Eureka-registered peer, see the class Javadoc). ContractPlanService.enroll() now confirms the authoritative rate via this client instead of trusting the caller-submitted rate outright; the legacy call is placed after the existing idempotency no-op check so a duplicate submission never pays its cost. 10 new tests (7 WireMock-backed in LegacyBillingSystemClientIntegrationTest incl. an explicit outbound-request assertion and a negative unavailable-fallback test; 3 in ContractPlanServiceTest). Full billing-service suite: 28->38 tests, 0 failures both before and after. pom.xml/tracing config untouched (BL-014 owns that in a separate worktree).",
       "created_at_commit": null,
       "resolved_at_commit": "5903183"
+    },
+    {
+      "id": "ACT-014",
+      "source": "verification",
+      "title": "eureka-server and api-gateway have zero automated tests and are excluded from CI",
+      "priority": "medium",
+      "status": "open",
+      "scope": "services/eureka-server (no src/test at all), services/api-gateway (no src/test at all), .github/workflows/ci.yml's microservices matrix (currently [customer-service, billing-service, notification-service, metering-service] only)",
+      "reason": "Real escaped defect found by the new mandatory qa-evaluator retroactive-review rule (BL-022, 2026-09-20), independently re-verifying BL-007. These are 2 of the 5 architecturally central pieces the original BL-007 acceptance criteria explicitly named (\"an API gateway, service discovery (Eureka)\"), yet neither has a single automated test, and the CI matrix job never covers them -- a change that breaks routing or service registration would currently ship with a fully green CI run.",
+      "evidence": "ls services/eureka-server/src and services/api-gateway/src show no test/ directory in either; ./mvnw test in each reports 'No tests to run.'; .github/workflows/ci.yml's microservices matrix strategy.matrix.service list omits both eureka-server and api-gateway.",
+      "safe_to_auto_execute": false,
+      "verification_required": "Real test coverage needs to be added for at least: api-gateway's routing/load-balancer config (a real multi-instance test, per BL-021's new real-topology tier once it lands, is the natural home for this) and eureka-server's basic registry health. Both need real CI matrix entries added once tests exist. Sizeable enough to be its own real sprint item, not auto-executed here.",
+      "created_at_commit": null,
+      "resolved_at_commit": null
     }
   ]
 }
