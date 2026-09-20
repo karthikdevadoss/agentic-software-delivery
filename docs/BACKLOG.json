@@ -786,7 +786,7 @@
       "estimate_range": "30-50 min",
       "confidence": "MEDIUM",
       "size_rationale": "Playwright is already an established, proven pattern in this project's e2e/ suite (PLAYWRIGHT-E2E-P0) -- extending it to a new target page, not introducing new tooling.",
-      "status": "active",
+      "status": "done",
       "category": "delivery",
       "parent_id": null,
       "session_ids": [
@@ -795,8 +795,8 @@
       "commit_shas": [],
       "created_at": "2026-09-20T14:23:11+00:00",
       "started_at": "2026-09-20T14:23:11+00:00",
-      "completed_at": null,
-      "actual_note": null
+      "completed_at": "2026-09-20T14:37:01+00:00",
+      "actual_note": "Read the real current app/src/main/resources/static/index.html first (not assumed from docs) -- confirmed the current Overview/Plan/Account/Preferences/Appointments card structure, the login-gate/#app-view/#admin-view split, and the #app-heading/#admin-heading-text/#user-heading-text single-source-of-truth ids from AEQ-025. New file e2e/customer-app-frontend.spec.js (8 tests, matches e2e/customer-app-update-email.spec.js's existing CUSTOMER_APP_URL-env-var pattern rather than playwright.config.js's baseURL, which points at the platform backend): (1) anonymous visitor sees only the login gate; (2) USER login reveals #app-view and logout returns to the login gate; (3) ADMIN login reveals the distinct #admin-view; (4) all 5 USER cards render real data, not stuck loading; (5) a real appointment-availability request/response round trip, logged to Activity; (6) a real Preferences write survives a page reload (write/read flow, distinct from the pre-existing spec's Update Email flow); (7) ADMIN can navigate list -> a real customer's detail view -> back; (8) ADMIN search narrows the real list by name. Ran for real against a real local `cd app && ./mvnw spring-boot:run` instance (JDK 24 satisfies the >=21 toolchain check): 8/8 passing serially, and 9/9 passing together with the pre-existing e2e/customer-app-update-email.spec.js. A real default-parallel-worker run first surfaced 2 genuine timeouts from 4 concurrent browser contexts overloading the single dev Tomcat thread pool (not an app defect -- confirmed by an immediate clean serial re-run) -- fixed by adding `test.describe.configure({ mode: \"serial\" })` with an explanatory comment, then reconfirmed clean under default parallel worker settings. OBSERVED-FAILURE CHECK DONE (CLAUDE.md AI-characteristic defect discipline): deliberately seeded a wrong expected value into the Preferences reload assertion, re-ran, confirmed it failed for the intended reason (Received: \"EMAIL\", Expected: \"DELIBERATELY_WRONG_SEEDED_VALUE\" -- i.e. it genuinely read the real persisted server value and correctly rejected the wrong expectation), then reverted and reconfirmed all 8 passing. Also updated agent/test_impact_analysis.py's FRONTEND_PATH_TO_SPECS to map index.html to both specs (agent/test_test_impact_analysis.py's 16 tests re-run clean; a real `python verify_change.py --dry-run` against this exact diff returned risk=LOW/blast_radius=LOCAL, exit code 0) and docs/TESTING_ARCHITECTURE_V1.md + docs/ACTION_QUEUE.json's TESTING-ARCH-V1-GAPS item 1 (only item 1 -- items 2/3/4/5 untouched) to record this as closed. Not run in this sandbox: the full Java/Python/Node regression suite (out of this task's scope; this change touches only e2e/ and one Python test-impact-mapping file, both independently verified above) and a real GitHub Actions CI execution (verify_change.py remains deliberately not wired into CI, per TESTING-ARCH-V1-GAPS item 3)."
     },
     {
       "id": "BL-028",
