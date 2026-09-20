@@ -451,6 +451,20 @@
       "verification_required": "Owner decision needed on both sub-issues (may share one fix or need two): (1) for the structural partial-run gap, options include moving `check`'s execution to the `verify` phase (so a plain `-Dtest=... test` invocation, like every Triage isolated-workspace run, never triggers it, while a full `mvn verify` still does), or passing `-Djacoco.skip=true`/`-Dmaven.test.skip.exec=true`-style flags specifically for isolated-workspace subset runs; (2) for the real 0.77-vs-0.80 regression, options are writing enough new tests to restore >=0.80 real coverage (the historically-intended fix) or deliberately lowering the checked-in floor with a documented reason -- silently lowering it without either would defeat the check's own stated purpose ('a floor just above the real current value catches genuine regressions'). Until resolved, `app/`'s own documented canonical build command in CLAUDE.md ('cd app && .\\mvnw.cmd test') does not actually succeed on this machine -- worth flagging prominently, not silently worked around.",
       "created_at_commit": null,
       "resolved_at_commit": null
+    },
+    {
+      "id": "ACT-017",
+      "source": "career_alignment",
+      "title": "A real, confirmed BCBSA-era technology (HL7/SMART FHIR healthcare APIs) has no representation anywhere in this app -- a genuinely different domain, not a small addition",
+      "priority": "medium",
+      "status": "open",
+      "scope": "Would require a new domain concept (a healthcare/FHIR-adjacent scenario), not an addition to the existing energy-billing domain -- likely its own service or a clearly-separated module, real FHIR resource modeling, and its own real test suite.",
+      "reason": "Found during Sprint 5 (BL-036/BL-037, NRG-technology gap-closing work) while checking whether a comparable gap existed for BCBSA/Marsh per the Owner's own request. BCBSA's real, confirmed distinguishing technical work (private career-context repo, context/CAREER_HISTORY.md) is Java/Spring Boot healthcare integration using HL7/SMART FHIR standards -- a patient/member health-data access API and a payer-to-payer data exchange API. This app's current domain (energy customer/billing) has nothing comparable. Marsh's own confirmed stack (Eureka/Hystrix/Zuul-family service discovery, heavy Spring Boot microservices) is ALREADY well-represented by the existing eureka-server/api-gateway architecture -- no gap there.",
+      "evidence": "Direct read of the private karthik-ai-context repo, context/CAREER_HISTORY.md lines 137-172 (BCBSA section) and 105-136 (Marsh section), 2026-09-20.",
+      "safe_to_auto_execute": false,
+      "verification_required": "A real, properly-sized sprint of its own -- this is first-of-its-kind (a new domain, new resource modeling, likely new FHIR-library dependencies) and was deliberately NOT started in Sprint 5 despite time remaining in that sprint's 1-hour cap, to avoid either rushing a shallow/unconvincing implementation or blowing the explicit time cap on a LARGE-class item. Needs the Owner's explicit scoping decision on how deep to go before sizing it for real.",
+      "created_at_commit": null,
+      "resolved_at_commit": null
     }
   ]
 }
