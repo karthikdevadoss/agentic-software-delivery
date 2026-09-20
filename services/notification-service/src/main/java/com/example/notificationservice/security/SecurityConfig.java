@@ -3,6 +3,7 @@ package com.example.notificationservice.security;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
@@ -47,8 +48,23 @@ import java.util.Collection;
  * tokens -- a worse, dishonest-looking trade-off than simply requiring
  * "any valid, correctly-signed token," which every real demo token
  * already satisfies.
+ *
+ * REAL BUG FOUND in CI (not catchable locally -- this test's Testcontainers
+ * Kafka container skips without Docker, so its Spring context was never
+ * actually built on this dev machine until CI, with real Docker,
+ * finally did): ContractPlanEventFlowIntegrationTest deliberately uses
+ * @SpringBootTest(webEnvironment = WebEnvironment.NONE) (it drives a raw
+ * Kafka producer and checks repository state, no HTTP calls needed) --
+ * but securityFilterChain() unconditionally required an HttpSecurity
+ * bean, which Spring Security only auto-configures for a real servlet
+ * web application context. @ConditionalOnWebApplication is the correct,
+ * standard fix: this whole class simply does not activate for a non-web
+ * context, rather than forcing every test (even ones that genuinely
+ * never touch HTTP) to pay for starting an embedded server just to
+ * satisfy this bean.
  */
 @Configuration
+@ConditionalOnWebApplication
 public class SecurityConfig {
 
     @Bean
