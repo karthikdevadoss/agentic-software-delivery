@@ -56,7 +56,6 @@
   ],
   "missing_capabilities": [
     "MCP write/build/deploy tool exposure (only read-only tools exposed so far, by design)",
-    "MCP Streamable HTTP transport exercised for real (documented/coded path, not yet run over real HTTP — only stdio and in-process Client have been tested; tracked as ACTION_QUEUE ACT-005)",
     "production-grade code embeddings (Voyage AI voyage-code-4 implemented but unusable without VOYAGE_API_KEY; local fastembed is what's actually verified)",
     "vector DB at scale (current local-JSON+numpy index is sized for this repo; would need Qdrant/pgvector for a much larger one)",
     "any actual ticket implemented through V4/V4.1 (Update Email remains the planned first proof, still deliberately untouched)",
