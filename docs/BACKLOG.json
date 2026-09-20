@@ -1114,7 +1114,7 @@
       "estimate_range": "20-35 min",
       "confidence": "LOW_MEDIUM",
       "size_rationale": "Existence-checked first (grep confirmed no org.mapstruct dependency anywhere) -- real gap. suggest_estimate() returned INSUFFICIENT_HISTORY (n=0 for SMALL/LOW_MEDIUM/first_of_kind) -- correctly falls back to the raw rubric band unadjusted, per the tool's own honesty design. First real use of MapStruct's annotation-processor build-time codegen in this codebase -- first-of-its-kind for this specific tool, even though the general pattern (a mapper layer) is common.",
-      "status": "active",
+      "status": "done",
       "category": "delivery",
       "parent_id": null,
       "session_ids": [
@@ -1123,8 +1123,8 @@
       "commit_shas": [],
       "created_at": "2026-09-20T16:49:23+00:00",
       "started_at": "2026-09-20T16:49:23+00:00",
-      "completed_at": null,
-      "actual_note": null,
+      "completed_at": "2026-09-20T16:59:20+00:00",
+      "actual_note": "DONE. Real MapStruct 1.6.3 dependency + annotation processor added to customer-service/pom.xml (version verified against the real, current Maven Central listing via WebSearch, not remembered). New CustomerPreferenceMapper interface (componentModel=spring, confirmed empirically that Mappers.getMapper() still works with this component model despite it not being the default pattern) replaces CustomerPreferenceResponse.from()s hand-written static factory -- the dead method was deleted, not left behind, after confirming via grep it was no longer called anywhere. Real generated code inspected directly at target/generated-sources/annotations/.../CustomerPreferenceMapperImpl.java -- correctly maps all 4 real fields via the records canonical constructor. 3 new tests, proven non-vacuous by deliberately breaking the mapping (a @Mapping(ignore=true) on notificationChannel), confirming 2 tests failed for exactly that reason, then reverting. Full customer-service suite re-run clean: 46/46 passing, 0 failures, 0 errors. Also hit and fixed the exact --in-XML-comment bug already documented in docs/LESSONS.md, in my own new pom.xml comment -- caught immediately by the real Maven parse failure, not silently.",
       "pattern_type": "first_of_kind",
       "actual_ratio": null,
       "contaminated": false

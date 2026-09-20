@@ -2,6 +2,7 @@ package com.example.customerservice.controller;
 
 import com.example.customerservice.dto.CustomerPreferenceResponse;
 import com.example.customerservice.dto.CustomerPreferenceUpdateRequest;
+import com.example.customerservice.mapper.CustomerPreferenceMapper;
 import com.example.customerservice.security.WorkspaceAccessGuard;
 import com.example.customerservice.service.CustomerPreferenceService;
 import jakarta.validation.Valid;
@@ -20,16 +21,18 @@ public class CustomerPreferenceController {
 
     private final CustomerPreferenceService preferenceService;
     private final WorkspaceAccessGuard workspaceAccessGuard;
+    private final CustomerPreferenceMapper preferenceMapper;
 
-    public CustomerPreferenceController(CustomerPreferenceService preferenceService, WorkspaceAccessGuard workspaceAccessGuard) {
+    public CustomerPreferenceController(CustomerPreferenceService preferenceService, WorkspaceAccessGuard workspaceAccessGuard, CustomerPreferenceMapper preferenceMapper) {
         this.preferenceService = preferenceService;
         this.workspaceAccessGuard = workspaceAccessGuard;
+        this.preferenceMapper = preferenceMapper;
     }
 
     @GetMapping
     public CustomerPreferenceResponse getPreferences(@PathVariable Long customerId, @AuthenticationPrincipal Jwt jwt) {
         workspaceAccessGuard.assertAccessible(customerId, jwt);
-        return CustomerPreferenceResponse.from(preferenceService.getOrCreateDefault(customerId));
+        return preferenceMapper.toResponse(preferenceService.getOrCreateDefault(customerId));
     }
 
     @PutMapping
@@ -37,7 +40,7 @@ public class CustomerPreferenceController {
             @PathVariable Long customerId, @Valid @RequestBody CustomerPreferenceUpdateRequest request,
             @AuthenticationPrincipal Jwt jwt) {
         workspaceAccessGuard.assertAccessible(customerId, jwt);
-        return CustomerPreferenceResponse.from(
+        return preferenceMapper.toResponse(
                 preferenceService.update(customerId, request.paperlessBilling(), request.notificationChannel()));
     }
 }
