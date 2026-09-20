@@ -1468,41 +1468,77 @@ before it.
   force-kill strictly to verified descendants of PIDs the harness itself
   launched.
 
-- **A version bump that fixes one real error can trade it for a worse
-  one — verify the fix with the SAME real tests, not just the absence of
-  the original error message.** Investigating `ACT-012` (JaCoCo 0.8.12
-  can't instrument this machine's JDK 24, "Unsupported class file major
-  version 68"): bumping to JaCoCo 0.8.13 (the first release with real
-  Java 23/24 class-file support, confirmed via the project's real change
-  history) did genuinely fix the instrumentation crash — the same 3 real
-  isolated-workspace tests that used to fail at the `compile` step in
-  5-12s now compile successfully. But the SAME tests, re-run against the
-  bumped version, then failed or timed out at the `test` step instead —
-  222s, a 240s timeout, and 184s respectively (`agent/test_triage_execution.py`'s
-  `ApplyAndVerifyCandidate*` cases), roughly 20-50x slower than before.
-  Real cause not fully root-caused given this task's scope, but strongly
-  implicated by the captured output: Mockito's dynamic self-attaching
-  inline-mock-maker agent (`byte-buddy-agent`) loading via the JDK Attach
-  API appears to interact badly with JaCoCo 0.8.13's instrumentation on
-  JDK 24 — trading a fast, clear failure for a slow, sometimes-timing-out
-  one is a net regression for this narrow test suite's actual purpose
-  (verifying candidate-patch compile/test outcomes, not measuring
-  coverage). **Decision: reverted the version bump** rather than ship a
-  "fix" that makes this exact suite 20-50x slower and occasionally
-  flaky — `ACT-012` stays open with this real trade-off documented, real
-  options for the Owner to weigh: pin the isolated test-compile
-  subprocess's own `JAVA_HOME` to JDK 21 (narrower blast radius, likely
-  side-effect-free for just this one call site) vs. accepting the
-  original 3-test gap as-is vs. spending more investigation time on the
-  JaCoCo/Mockito/JDK24 interaction itself. **General rule:** never
-  declare a dependency-version fix verified from the absence of the
-  original error alone — re-run the exact real tests it was meant to fix
-  and compare BOTH pass/fail AND real wall-clock time against the
-  baseline; a fix that trades a fast failure for a slow, flaky pass is
-  not obviously an improvement, and this project's own environment-vs-
-  platform-strategy boundary means a narrow, reversible fix should be
-  preferred over a version bump with distant, hard-to-predict side
-  effects whenever both are genuinely on the table.
+- **CORRECTED (2026-09-20, same night): the entry below this one
+  originally attributed a real second failure to the wrong mechanism
+  ("Mockito/JaCoCo 0.8.13/JDK24 interaction, ~20-50x slower, occasional
+  timeout") from truncated evidence (only each command's last 2000 chars
+  of captured output, per `agent/triage_execution.py`'s own
+  `output_tail = compile_output[-2000:]`), and reverted a genuinely safe,
+  correct fix as a result. A follow-up pass re-ran the SAME real tests
+  against a real, untruncated `mvnw test` log (not the 2000-char tail)
+  and found the true, exact, deterministic cause: `jacoco:check`'s
+  BUNDLE-level 0.80 line-coverage floor (below), unrelated to Mockito,
+  JaCoCo version, or JDK speed at all. Worse: a real, DIRECTLY-COMPARABLE
+  side-by-side run (same machine, same commit, only `jacoco-maven-plugin`
+  version changed) proved the *full* `app/` suite fails this exact same
+  coverage-check gate identically under BOTH 0.8.12 (today's baseline)
+  and 0.8.13 (`lines covered ratio is 0.77` in both, `Analyzed bundle
+  customer-app with 90 classes` in both) — meaning `cd app && .\mvnw.cmd
+  test`, this project's own documented canonical build command, is
+  ALREADY returning a non-zero exit code (`BUILD FAILURE`) on this
+  machine today, independent of JaCoCo version and independent of
+  anything this session changed. The earlier "20-50x slower" duration
+  read was also a real misread, not a real slowdown: the SAME durations
+  (~100-240s) occur in the ORIGINAL (0.8.12, pre-bump) failures too, once
+  measured directly rather than assumed — real Spring-context-boot
+  integration tests simply take that long regardless of which JaCoCo
+  version instruments them. **General, corrected rule: never diagnose a
+  build-tool failure from a deliberately-truncated evidence field (a
+  `[-2000:]` tail, a summary dict) when the full, untruncated real
+  process output is available by re-running the same real command
+  directly** — a truncated tail can cut off the actual `[ERROR]` line
+  entirely while still showing enough surrounding text to look like a
+  plausible, wrong explanation. The JaCoCo 0.8.13 bump is the right,
+  verified, narrowly-scoped fix for `ACT-012`'s actual documented defect
+  (confirmed via a full log: zero "Unsupported class file major version
+  68" occurrences after the bump, versus dozens under 0.8.12 across the
+  same full suite) and re-applied; the pre-existing, JaCoCo-version-
+  independent coverage-floor gap (both the structural "a partial
+  `-Dtest=` run can never reach a bundle-wide floor" case AND the real
+  0.77-vs-0.80 regression on the full suite) is tracked separately as
+  `ACT-016`, not conflated with this item.
+  **Independently re-verified by the parent session before accepting this
+  correction** (rather than trusting the fork's self-report alone, per
+  this project's own qa-evaluator discipline): ran the exact
+  `-Dtest=ContractPlanServiceTest,TriageScenarioAIntegrationTest` command
+  directly (not through the isolated-workspace harness) — real elapsed
+  time 73s, real exit code 1, a real `[ERROR] Failed to execute goal
+  org.jacoco:jacoco-maven-plugin:0.8.13:check ... Coverage checks have
+  not been met` line read directly from raw Maven output. Then ran the
+  full, unscoped `app/` suite directly — real elapsed time 116s, 152/152
+  real tests passing (0 failures, 0 errors, confirmed via
+  `target/surefire-reports/*.txt`), same `jacoco:check` failure, and the
+  real measured ratio read directly from `target/site/jacoco/jacoco.csv`:
+  827/1069 lines = **0.7736**, matching the fork's claimed 0.77 exactly.
+  **One claim not independently re-verified**: whether 0.8.12 (with a
+  valid, non-broken POM) produces the identical ~100-240s durations the
+  fork reports — the parent session did not re-test the 0.8.12 case
+  directly, so that specific comparative claim rests on the fork's own
+  report, not on independent confirmation. The core, actionable finding
+  (0.8.13 is the correct fix for `ACT-012`; the coverage-floor gap is
+  real, current, and version-independent; `ACT-016` is real) is solid and
+  independently confirmed; the exact historical timing comparison is not,
+  and does not change the decision either way.
+
+- **SUPERSEDED BY THE CORRECTION ABOVE (kept for the record, not deleted,
+  per this project's own "don't let a bad size prediction silently
+  vanish" convention applied here to a bad root-cause call): the original
+  same-night investigation of `ACT-012` reverted a correct fix, believing
+  bumping JaCoCo 0.8.12 -> 0.8.13 traded a fast instrumentation crash for
+  a ~20-50x slower/timing-out test step, "most likely" a Mockito-dynamic-
+  agent/JaCoCo-0.8.13/JDK24 interaction. That specific causal claim was
+  wrong — see the corrected entry immediately above for the real
+  mechanism and real evidence.**
 
 - **The `D:foo`-style Windows pathlib blind spot is not confined to one
   function — any other absolute-path check via `Path(...).is_absolute()`
