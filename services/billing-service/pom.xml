@@ -71,6 +71,15 @@
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
         </dependency>
+        <!-- Eureka alone only resolves WHICH instances exist for a
+             service-id; this is what actually picks one and lets a
+             @LoadBalanced RestClient/RestTemplate turn "http://customer-service"
+             into a real resolved URL: needed for BillingCustomerClient's
+             real call to customer-service. -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-loadbalancer</artifactId>
+        </dependency>
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-registry-prometheus</artifactId>
