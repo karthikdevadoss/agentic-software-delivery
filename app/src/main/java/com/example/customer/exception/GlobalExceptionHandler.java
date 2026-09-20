@@ -83,6 +83,15 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     }
 
+    /** 409 for Update Email being asked to reuse another customer's email
+     * -- same clean-conflict-signal reasoning as EnrollmentInProgressException. */
+    @ExceptionHandler(DuplicateEmailException.class)
+    public ResponseEntity<Map<String, String>> handleDuplicateEmail(DuplicateEmailException ex) {
+        Map<String, String> body = new LinkedHashMap<>();
+        body.put("error", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+    }
+
     /** 429 for a caller that exceeded RateLimiterService's limit -- a
      * clean, standard signal instead of the endpoint just refusing or
      * degrading unexplained. */

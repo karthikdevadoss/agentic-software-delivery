@@ -101,4 +101,33 @@ class CustomerServiceTest {
                 .isInstanceOf(NoSuchElementException.class)
                 .hasMessageContaining("999");
     }
+
+    @Test
+    void updateEmail_whenAnotherCustomerAlreadyHasThatEmail_throwsDuplicateEmailException() {
+        Customer stored = new Customer("Grace Hopper", "old@example.com");
+        stored.setId(1L);
+        when(customerRepository.findById(1L)).thenReturn(Optional.of(stored));
+        when(customerRepository.existsByEmailAndIdNot("taken@example.com", 1L)).thenReturn(true);
+
+        CustomerService service = new CustomerService(customerRepository);
+
+        assertThatThrownBy(() -> service.updateEmail(1L, "taken@example.com"))
+                .isInstanceOf(com.example.customer.exception.DuplicateEmailException.class)
+                .hasMessageContaining("taken@example.com");
+        verify(customerRepository, org.mockito.Mockito.never()).save(stored);
+    }
+
+    @Test
+    void updateEmail_reSubmittingOwnCurrentEmail_isNotTreatedAsADuplicate() {
+        Customer stored = new Customer("Grace Hopper", "same@example.com");
+        stored.setId(1L);
+        when(customerRepository.findById(1L)).thenReturn(Optional.of(stored));
+        when(customerRepository.existsByEmailAndIdNot("same@example.com", 1L)).thenReturn(false);
+        when(customerRepository.save(stored)).thenReturn(stored);
+
+        CustomerService service = new CustomerService(customerRepository);
+        Customer result = service.updateEmail(1L, "same@example.com");
+
+        assertThat(result.getEmail()).isEqualTo("same@example.com");
+    }
 }

@@ -25,9 +25,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * Real integration tests against the actual running Spring context (real
  * embedded servlet container + real H2 database) — the exact real HTTP
  * behavior this project's Customer API has TODAY (GET by id, POST
- * create, 404 for a missing id). Does not test Update Email or any
- * other not-yet-implemented feature — see docs/PROJECT_STATE.json:
- * Update Email remains unimplemented.
+ * create, PUT update-email, 404/409 handling). Corrected 2026-09-20
+ * (BL-013): this comment previously said Update Email was untested here,
+ * which was already stale — the tests below prove otherwise.
  *
  * Uses a plain org.springframework.web.client.RestTemplate rather than
  * TestRestTemplate/MockMvc: empirically confirmed (via the resolved
@@ -187,5 +187,44 @@ class CustomerControllerIntegrationTest {
 
         assertThatThrownBy(() -> restTemplate.exchange(url("/customers/999999999"), HttpMethod.PUT, request, Map.class))
                 .isInstanceOf(HttpClientErrorException.NotFound.class);
+    }
+
+    /**
+     * REAL FIX (2026-09-20, BL-013): the original Update Email
+     * implementation had no uniqueness check at all — a second customer
+     * could silently take over a first customer's email. Proven here
+     * against the real database, not just a mocked unit test.
+     */
+    @Test
+    void updateEmail_toAnotherRealCustomersEmail_returns409AndLeavesBothUnchanged() {
+        Customer first = restTemplate.postForObject(
+                url("/customers"), new Customer("First Customer", "first@example.com"), Customer.class);
+        Customer second = restTemplate.postForObject(
+                url("/customers"), new Customer("Second Customer", "second@example.com"), Customer.class);
+
+        HttpEntity<CustomerEmailUpdateRequest> request = new HttpEntity<>(new CustomerEmailUpdateRequest("first@example.com"));
+
+        assertThatThrownBy(() -> restTemplate.exchange(url("/customers/" + second.getId()), HttpMethod.PUT, request, Map.class))
+                .isInstanceOf(HttpClientErrorException.Conflict.class)
+                .satisfies(ex -> {
+                    String body = ((HttpClientErrorException) ex).getResponseBodyAsString();
+                    assertThat(body).contains("\"error\"").contains("first@example.com");
+                });
+
+        ResponseEntity<Customer> stillSecond = restTemplate.getForEntity(url("/customers/" + second.getId()), Customer.class);
+        assertThat(stillSecond.getBody().getEmail()).isEqualTo("second@example.com"); // unchanged after the rejected update
+    }
+
+    @Test
+    void updateEmail_reSubmittingOwnCurrentEmail_stillReturns200() {
+        Customer created = restTemplate.postForObject(
+                url("/customers"), new Customer("Self Resubmit Tester", "self@example.com"), Customer.class);
+        HttpEntity<CustomerEmailUpdateRequest> request = new HttpEntity<>(new CustomerEmailUpdateRequest("self@example.com"));
+
+        ResponseEntity<Customer> response = restTemplate.exchange(
+                url("/customers/" + created.getId()), HttpMethod.PUT, request, Customer.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().getEmail()).isEqualTo("self@example.com");
     }
 }

@@ -1,5 +1,6 @@
 package com.example.customer.service;
 
+import com.example.customer.exception.DuplicateEmailException;
 import com.example.customer.model.Customer;
 import com.example.customer.repository.CustomerRepository;
 import org.springframework.stereotype.Service;
@@ -36,9 +37,16 @@ public class CustomerService {
 
     /** REAL IMPLEMENTATION (this was the project's original, long-deferred
      * first ticket -- "Update Email"). Deliberately email-only: name is
-     * not part of this operation's scope. */
+     * not part of this operation's scope. Uniqueness added 2026-09-20
+     * (BL-013): the original implementation let a customer take over
+     * another customer's email address with no rejection at all -- a
+     * real gap against the ticket's own acceptance contract, not just a
+     * hardening afterthought. */
     public Customer updateEmail(Long id, String newEmail) {
         Customer customer = getById(id);
+        if (customerRepository.existsByEmailAndIdNot(newEmail, id)) {
+            throw new DuplicateEmailException("Email already in use: " + newEmail);
+        }
         customer.setEmail(newEmail);
         return customerRepository.save(customer);
     }

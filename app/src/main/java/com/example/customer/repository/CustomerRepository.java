@@ -9,6 +9,12 @@ import org.springframework.data.repository.query.Param;
 
 public interface CustomerRepository extends JpaRepository<Customer, Long> {
 
+    /** True if some OTHER customer (id != the one being updated) already
+     * has this email -- used by Update Email's uniqueness check. Excludes
+     * the customer's own current row so re-submitting an unchanged email
+     * (or the same value twice) is never flagged as a false collision. */
+    boolean existsByEmailAndIdNot(String email, Long id);
+
     /**
      * ADMIN "All Customers" backing query -- real server-side pagination
      * and search (never fetch-everything-and-filter-in-JavaScript). The
