@@ -122,20 +122,34 @@ the incident that motivated it.
   done before the work, using the rubric in docs/BACKLOG.json's
   `_sizing_rubric` -- never skipped, never assigned after the fact to
   match how it went.
-- **A "sprint" here is one sized item, start to finish** -- not a fixed
-  clock. There is exactly one executor working sequentially, so there is
-  no multi-person sync problem a fixed timebox exists to solve.
+- **A "sprint" here is one or more sized items approved together for one
+  work session, start to finish** -- not a fixed clock (corrected
+  2026-09-20: real practice diverged from this doc's original "one sized
+  item" definition the first time a multi-item sprint actually ran --
+  the Owner approved a 7-item batch as one sprint, bounded by a real
+  elapsed-time target like "2 hours," not by finishing exactly one item).
+  A single-item sprint is still the common case for a large XLARGE epic;
+  a batch of smaller items sharing one approval/work session is equally
+  valid and is what "sprint" means going forward. There is exactly one
+  executor working sequentially, so there is no multi-person sync
+  problem a fixed timebox exists to solve.
 - **Ad-hoc work still gets sized**, just at the moment it's requested
   rather than planned days ahead -- "ad-hoc" changes when something is
   planned, never whether it's sized.
 - **Plan changes are the Owner's prerogative, always** -- if a backlog
   item is abandoned or paused mid-way, mark it `descoped` with a reason;
   never let it silently vanish or count as a bad size prediction later.
-- **Size vs. actual comparison exists (agent/backlog.py) but retro is not
-  yet automated** -- this is a deliberate Phase 1 scope limit: prove the
-  simple version adds real value before building a scheduled retro
-  subagent, to avoid the measurement system itself becoming the waste it
-  exists to prevent.
+- **Size vs. actual comparison (agent/backlog.py) pulls real cost/tokens/
+  wall-clock from the event ledger via a backlog item's `session_ids`** --
+  every item worked in a session must have that session's real session_id
+  recorded (Claude Code's own SessionEnd hook, agent/claude_code_hook.py,
+  captures the real usage automatically once the session ends; a backlog
+  item created without its session_id wired in cannot be retroactively
+  cost-compared later even though the ledger data exists). Retro itself
+  is real and manual (Phase 2, docs/RETRO_LOG.md) -- proven to add value
+  across BL-007 and a real 7-item sprint before any scheduled/automated
+  retro subagent is considered, per the Owner's own 'don't build the
+  waste-risk before proving the simple version' call.
 
 ### Phase 2: the estimation-calibration loop (added 2026-09-18/20, Owner directive)
 Every sprint (one sized item, start to finish) runs a closed loop:
