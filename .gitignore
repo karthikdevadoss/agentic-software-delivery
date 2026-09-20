@@ -25,6 +25,12 @@ agent/dev_sessions.json
 agent/event_spool.jsonl
 agent/event_spool_test*.jsonl
 
+# Per-test throwaway spool files from test_claude_code_hook.py's
+# SpoolIsolatedTestCase (uuid-named, normally deleted in tearDown() — this
+# covers the rare case a run is killed before teardown runs, e.g. a
+# memory-pressure-killed full suite; see docs/LESSONS.md)
+agent/claude_hook_test_spool_*.jsonl
+
 # Event ledger portable logical backups (derived data, on-demand only — see agent/event_ledger_backup.py)
 agent/event_ledger_backups/
 
