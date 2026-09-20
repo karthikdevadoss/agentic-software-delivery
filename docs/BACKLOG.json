@@ -79,7 +79,7 @@
       "checklist": [
         {"step": "BL-003: Kafka ContractPlanEnrolled fan-out event", "status": "done", "size": "LARGE"},
         {"step": "BL-004: Redis distributed lock for enrollment concurrency", "status": "done", "size": "LARGE"},
-        {"step": "Redis rate limiting on a public endpoint", "status": "not_started", "size": "MEDIUM", "range_min_max": "30-50 min", "confidence": "LOW-MED", "sizing_note": "Structurally close to the lock pattern just built -- real reuse lowers novelty."},
+        {"step": "Redis rate limiting on a public endpoint", "status": "done", "size": "MEDIUM"},
         {"step": "New Triage Lab Scenario D (fan-out idempotency bug replay)", "status": "not_started", "size": "MEDIUM", "range_min_max": "25-40 min", "confidence": "LOW-MED", "sizing_note": "Close copy of Scenario A's proven structure; no verified actual for A exists to anchor against."},
         {"step": "Design-patterns catalog (what's already genuinely in the code) + 1 new pattern (Saga-style compensation)", "status": "not_started", "size": "MEDIUM", "range_min_max": "30-50 min", "confidence": "LOW-MED", "sizing_note": "Doc half is fast/low-risk; the Saga compensation code half has real design ambiguity."},
         {"step": "Dockerfile for the Customer App", "status": "not_started", "size": "SMALL", "range_min_max": "10-20 min", "confidence": "MED", "sizing_note": "Standard, well-known pattern, one file. Was already flagged NOT_STARTED/P1 in docs/FLAGSHIP_MARKET_COVERAGE.md."},
