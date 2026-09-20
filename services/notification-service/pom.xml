@@ -88,6 +88,32 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-kafka-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- The modern (2.x) module is testcontainers-kafka, not the legacy
+             "kafka" artifactId (never released past 1.21.x, pulls an
+             incompatible testcontainers-core transitively). Not covered by
+             Spring Boot's managed Testcontainers BOM entries, so pinned
+             explicitly, matching the version app/pom.xml resolved to. -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-kafka</artifactId>
+            <version>2.0.5</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
