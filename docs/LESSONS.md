@@ -1422,3 +1422,48 @@ the earlier number standing. **General rule:** "verified locally" and
 its own CI coverage exists AND has run green, not just until local
 testing passes; `completed_at` should be captured at that point, not
 before it.
+
+- **`git worktree` isolates git state between parallel background agents,
+  but not the operating system's process table — a port-based "kill
+  whatever is listening here" cleanup fallback in one worktree can force-
+  kill a completely different worktree's live, unrelated service
+  processes on the same machine.** Real incident (2026-09-20, sprint
+  BL-016..BL-023): the BL-021 fork (building a real-topology multi-
+  instance test harness under `services/real-topology-tests/`) shipped a
+  first cleanup design that, when its own tracked-PID dict came back
+  empty, fell back to force-killing whatever process currently held its
+  target ports (8080/8081/8082/8761). Those are also this project's
+  documented default service ports (`services/README.md`), and a
+  concurrently-running sibling worktree (the BL-014 Brave-tracing fork,
+  `agent-a9bae3d773be58f1e`) happened to have its own real dev instances
+  of `eureka-server`/`api-gateway` bound to those exact same default
+  ports at that moment — confirmed via `git worktree list` plus live
+  process inspection, not assumed. The BL-021 harness's fallback killed
+  them, around 2026-09-20 13:11-13:17 UTC. This is almost certainly the
+  real root cause of a separately-reported, at-the-time-unexplained
+  "environment gotcha" from the BL-014 fork's own session
+  ("eureka-server/api-gateway repeatedly died mid-test while other
+  services survived") — the two forks' reports were never explicitly
+  cross-referenced until this entry. **Fix, applied by BL-021 itself
+  before merge:** the port-based kill fallback was removed outright, not
+  hardened — cleanup now only kills PIDs proven to be real descendants of
+  processes the run itself started (walked via a PowerShell CIM
+  process-tree query); a port still occupied after cleanup is only ever
+  reported, never touched. A second, related fix in the same pass: a
+  `--port-offset` CLI option lets the whole topology run on alternate
+  ports entirely, so two worktrees can genuinely run real multi-service
+  topologies concurrently without contending for the same ports at all.
+  **General rule, extending the existing git-isolation lesson (see
+  `feedback_fork_git_isolation` in Claude's own memory system) to the
+  process level:** `git worktree` prevents two parallel agents from
+  corrupting each other's *git* state, but says nothing about the shared
+  *machine* — any cleanup/teardown logic that identifies "what to kill"
+  by an ambient signal (a port currently bound, a process name, a fixed
+  PID file) rather than by a proven parent-child relationship to
+  processes it itself started is unsafe the moment more than one
+  worktree/session can be running real services on the same host at the
+  same time. Real multi-process integration-test harnesses on a
+  worktree-isolated, potentially-concurrent machine must default to
+  configurable, non-default ports/resources and must scope any
+  force-kill strictly to verified descendants of PIDs the harness itself
+  launched.
