@@ -221,7 +221,7 @@ def generate_candidate_patch(reproduction_result: dict, api_key: str | None = No
     model's proposed complete file content, to be applied and verified
     in an isolated workspace by apply_and_verify_candidate() below,
     never written to the real repository directly."""
-    text, unavailable = _call_model_text(
+    text, unavailable, usage = _call_model_text(
         CANDIDATE_PATCH_SYSTEM_PROMPT,
         f"Real database evidence after submitting the identical enrollment request twice:\n"
         f"{json.dumps(reproduction_result, indent=2)}\n\n"
@@ -230,9 +230,9 @@ def generate_candidate_patch(reproduction_result: dict, api_key: str | None = No
     )
     if unavailable is not None:
         return {"generated": False, "candidate_source": None,
-                "explanation": unavailable["explanation"]}
+                "explanation": unavailable["explanation"], "usage": usage}
     candidate_source = text + "\n"
-    return {"generated": True, "candidate_source": candidate_source, "target_file": FIX_FILE}
+    return {"generated": True, "candidate_source": candidate_source, "target_file": FIX_FILE, "usage": usage}
 
 
 def apply_and_verify_candidate(candidate_source: str) -> dict:
@@ -249,12 +249,14 @@ def apply_and_verify_candidate(candidate_source: str) -> dict:
 
 def _call_model_text(system_prompt: str, user_message: str, max_tokens: int,
                       api_key: str | None, create_fn, effort: str | None = None,
-                      purpose: str = "NOVEL_ROOT_CAUSE_HYPOTHESES") -> tuple[str | None, dict | None]:
+                      purpose: str = "NOVEL_ROOT_CAUSE_HYPOTHESES") -> tuple[str | None, dict | None, dict | None]:
     """Shared low-level model call + response-text extraction, reused by
     all three scenarios' diagnose()/generate_candidate_patch() functions
     -- the SAME engine, not a parallel implementation per scenario.
-    Returns (stripped_text, None) on success, or (None,
-    honest_unavailable_dict) when denied/unavailable.
+    Returns (stripped_text, None, usage) on success, or (None,
+    honest_unavailable_dict, None) when denied/unavailable. usage is the
+    real token/cost/time dict from reasoning_gateway.call() (BL-009) --
+    None only when no real API response was obtained.
 
     Base Architecture V3 Phase 3: delegates to reasoning_gateway.call()
     (agent/reasoning_gateway.py) -- the one sanctioned boundary for a
@@ -285,8 +287,8 @@ def _call_model_text(system_prompt: str, user_message: str, max_tokens: int,
         max_tokens=max_tokens, api_key=api_key, create_fn=create_fn, effort=effort,
     )
     if result["text"] is None:
-        return None, {"explanation": result["denial_reason"]}
-    return result["text"], None
+        return None, {"explanation": result["denial_reason"]}, result["usage"]
+    return result["text"], None, result["usage"]
 
 
 def _isolated_compile_java_candidate(
@@ -410,7 +412,7 @@ def diagnose(reproduction_result: dict, api_key: str | None = None, create_fn=No
         f"request twice):\n{json.dumps(reproduction_result, indent=2)}\n\n"
         f"Defective method source:\n{DEFECTIVE_SOURCE_EXCERPT}"
     )
-    text, unavailable = _call_model_text(
+    text, unavailable, usage = _call_model_text(
         DIAGNOSIS_SYSTEM_PROMPT, evidence, 512, api_key, create_fn,
         purpose="NOVEL_ROOT_CAUSE_HYPOTHESES",
     )
@@ -418,16 +420,18 @@ def diagnose(reproduction_result: dict, api_key: str | None = None, create_fn=No
         return {
             "hypothesis": None, "root_cause": None, "affected_component": None,
             "confidence": None, "model_called": False,
-            "explanation": unavailable["explanation"],
+            "explanation": unavailable["explanation"], "usage": usage,
         }
     try:
         parsed = json.loads(text)
         parsed["model_called"] = True
+        parsed["usage"] = usage
         return parsed
     except json.JSONDecodeError:
         return {
             "hypothesis": None, "root_cause": None, "affected_component": None, "confidence": None,
             "model_called": True, "explanation": f"model did not return valid JSON: {text[:300]!r}",
+            "usage": usage,
         }
 
 
@@ -815,7 +819,7 @@ def diagnose_b(reproduction_result: dict, api_key: str | None = None, create_fn=
         f"{json.dumps(reproduction_result, indent=2)}\n\n"
         f"Current retry predicate source:\n{DEFECTIVE_SOURCE_EXCERPT_B}"
     )
-    text, unavailable = _call_model_text(
+    text, unavailable, usage = _call_model_text(
         DIAGNOSIS_SYSTEM_PROMPT_B, evidence, 512, api_key, create_fn,
         purpose="NOVEL_ROOT_CAUSE_HYPOTHESES",
     )
@@ -823,16 +827,18 @@ def diagnose_b(reproduction_result: dict, api_key: str | None = None, create_fn=
         return {
             "hypothesis": None, "root_cause": None, "affected_component": None,
             "confidence": None, "model_called": False,
-            "explanation": unavailable["explanation"],
+            "explanation": unavailable["explanation"], "usage": usage,
         }
     try:
         parsed = json.loads(text)
         parsed["model_called"] = True
+        parsed["usage"] = usage
         return parsed
     except json.JSONDecodeError:
         return {
             "hypothesis": None, "root_cause": None, "affected_component": None, "confidence": None,
             "model_called": True, "explanation": f"model did not return valid JSON: {text[:300]!r}",
+            "usage": usage,
         }
 
 
@@ -854,7 +860,7 @@ def generate_candidate_patch_b(reproduction_result: dict, api_key: str | None = 
     """A SECOND real, on-demand Claude call (distinct from diagnose_b()),
     same shape as generate_candidate_patch() (Scenario A) -- reuses
     _call_model_text()."""
-    text, unavailable = _call_model_text(
+    text, unavailable, usage = _call_model_text(
         CANDIDATE_PATCH_SYSTEM_PROMPT_B,
         f"Real evidence: the buggy predicate made {reproduction_result.get('attemptCount', '?')} attempts "
         f"against a non-retryable HTTP 400 (expected: {reproduction_result.get('expectedAttemptCount', 1)}).\n"
@@ -865,9 +871,9 @@ def generate_candidate_patch_b(reproduction_result: dict, api_key: str | None = 
     )
     if unavailable is not None:
         return {"generated": False, "candidate_source": None,
-                "explanation": unavailable["explanation"]}
+                "explanation": unavailable["explanation"], "usage": usage}
     candidate_source = text + "\n"
-    return {"generated": True, "candidate_source": candidate_source, "target_file": FIX_FILE_B}
+    return {"generated": True, "candidate_source": candidate_source, "target_file": FIX_FILE_B, "usage": usage}
 
 
 def apply_and_verify_candidate_b(candidate_source: str) -> dict:
@@ -1118,7 +1124,7 @@ def diagnose_c(reproduction_result: dict, api_key: str | None = None, create_fn=
         f"{json.dumps(reproduction_result, indent=2)}\n\n"
         f"Current query source:\n{DEFECTIVE_SOURCE_EXCERPT_C}"
     )
-    text, unavailable = _call_model_text(
+    text, unavailable, usage = _call_model_text(
         DIAGNOSIS_SYSTEM_PROMPT_C, evidence, 512, api_key, create_fn,
         purpose="NOVEL_ROOT_CAUSE_HYPOTHESES",
     )
@@ -1126,16 +1132,18 @@ def diagnose_c(reproduction_result: dict, api_key: str | None = None, create_fn=
         return {
             "hypothesis": None, "root_cause": None, "affected_component": None,
             "confidence": None, "model_called": False,
-            "explanation": unavailable["explanation"],
+            "explanation": unavailable["explanation"], "usage": usage,
         }
     try:
         parsed = json.loads(text)
         parsed["model_called"] = True
+        parsed["usage"] = usage
         return parsed
     except json.JSONDecodeError:
         return {
             "hypothesis": None, "root_cause": None, "affected_component": None, "confidence": None,
             "model_called": True, "explanation": f"model did not return valid JSON: {text[:300]!r}",
+            "usage": usage,
         }
 
 
@@ -1154,7 +1162,7 @@ def get_reference_c() -> dict:
 def generate_candidate_patch_c(reproduction_result: dict, api_key: str | None = None, create_fn=None) -> dict:
     """A SECOND real, on-demand Claude call, same shape as Scenarios A/B --
     reuses _call_model_text()."""
-    text, unavailable = _call_model_text(
+    text, unavailable, usage = _call_model_text(
         CANDIDATE_PATCH_SYSTEM_PROMPT_C,
         f"Real evidence: the buggy query {'succeeded' if reproduction_result.get('querySucceeded') else 'failed'} "
         f"(querySucceeded={reproduction_result.get('querySucceeded')}).\n"
@@ -1165,9 +1173,9 @@ def generate_candidate_patch_c(reproduction_result: dict, api_key: str | None = 
     )
     if unavailable is not None:
         return {"generated": False, "candidate_source": None,
-                "explanation": unavailable["explanation"]}
+                "explanation": unavailable["explanation"], "usage": usage}
     candidate_source = text + "\n"
-    return {"generated": True, "candidate_source": candidate_source, "target_file": FIX_FILE_C}
+    return {"generated": True, "candidate_source": candidate_source, "target_file": FIX_FILE_C, "usage": usage}
 
 
 def apply_and_verify_candidate_c(candidate_source: str) -> dict:

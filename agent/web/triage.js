@@ -12,6 +12,19 @@ function esc(s) {
 function show(id) { document.getElementById(id).hidden = false; }
 function hide(id) { document.getElementById(id).hidden = true; }
 
+// Real tokens/cost/time for the AI call just made, from
+// reasoning_gateway.call()'s own usage dict (BL-009) -- these are real,
+// billed Triage Lab calls; this project's own cost-transparency rule is
+// "if you mention time, mention tokens, mention cost" on every page that
+// makes one, not just Usage/Dashboard.
+function renderUsageNote(usage) {
+  if (!usage) return "";
+  const cost = usage.available ? `$${usage.total_usd.toFixed(4)}` : "cost n/a";
+  return `<p class="hint">Real AI call: ${(usage.input_tokens ?? 0).toLocaleString()} in / ` +
+    `${(usage.output_tokens ?? 0).toLocaleString()} out tokens · ${cost} · ` +
+    `${(usage.duration_ms / 1000).toFixed(1)}s</p>`;
+}
+
 let lastReproduction = null;
 
 async function postJson(path, body) {
@@ -80,11 +93,11 @@ public ContractPlan enroll(Long customerId, ContractPlanEnrollRequest request) {
 function renderDiagnosis(d) {
   const el = document.getElementById("diagnose-body");
   if (!d.model_called) {
-    el.innerHTML = `<p class="hint">AI diagnosis unavailable: ${esc(d.explanation || "model not called")}</p>`;
+    el.innerHTML = `<p class="hint">AI diagnosis unavailable: ${esc(d.explanation || "model not called")}</p>` + renderUsageNote(d.usage);
     return;
   }
   if (!d.hypothesis) {
-    el.innerHTML = `<p class="hint">Model responded but not in the expected format: ${esc(d.explanation || "")}</p>`;
+    el.innerHTML = `<p class="hint">Model responded but not in the expected format: ${esc(d.explanation || "")}</p>` + renderUsageNote(d.usage);
     return;
   }
   el.innerHTML = `<div class="diagnosis-card">
@@ -92,7 +105,7 @@ function renderDiagnosis(d) {
     <div class="diagnosis-row"><span class="k">Root cause</span><span>${esc(d.root_cause)}</span></div>
     <div class="diagnosis-row"><span class="k">Affected component</span><span>${esc(d.affected_component)}</span></div>
     <div class="diagnosis-row"><span class="k">Confidence</span><span>${esc(d.confidence)}</span></div>
-  </div>`;
+  </div>` + renderUsageNote(d.usage);
 }
 
 function renderPatch(p) {
@@ -126,10 +139,10 @@ function renderCandidate(result) {
   const el = document.getElementById("candidate-body");
   const g = result.generation, v = result.verification;
   if (!g.generated) {
-    el.innerHTML = `<p class="hint">Candidate generation unavailable: ${esc(g.explanation || "model not called")}</p>`;
+    el.innerHTML = `<p class="hint">Candidate generation unavailable: ${esc(g.explanation || "model not called")}</p>` + renderUsageNote(g.usage);
     return;
   }
-  let html = `<p class="hint">PROPOSED LIVE PATCH — written by the model just now, from the real defective file and real evidence, applied and compiled in an isolated workspace.</p>`;
+  let html = `<p class="hint">PROPOSED LIVE PATCH — written by the model just now, from the real defective file and real evidence, applied and compiled in an isolated workspace.</p>` + renderUsageNote(g.usage);
   if (v && v.status === "ENVIRONMENT_INVALID") {
     html += `<div class="verdict defect">ENVIRONMENT_INVALID — cannot verify (wrong JDK), not a code defect</div>`;
   } else if (v) {

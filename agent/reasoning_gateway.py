@@ -37,6 +37,9 @@ Non-negotiable rules enforced here (Phase 3 of the directive):
 """
 
 import os
+import time
+
+import pricing_config
 
 # The 6 categories the directive names as POSSIBLE candidates for real
 # semantic/generative value -- listed, not automatically allowed; every
@@ -87,6 +90,14 @@ def call(
         thinking consumed the whole max_tokens budget -- a known real
         failure mode, see agent/triage_execution.py's own prior fix for
         this exact case).
+      usage: dict | None -- real token/cost/time for this call (input_tokens,
+        output_tokens, cache_*_tokens, duration_ms, plus calculate_cost()'s
+        own available/total_usd/pricing_version fields), or None whenever no
+        real API response was obtained (every denial path). Added 2026-09-20
+        (BL-009) so callers can surface real cost/time to their own UI
+        instead of the usage dict being computed here and then discarded --
+        real finding: agent/triage_execution.py's Incident Triage Lab made
+        real, billed calls but showed zero tokens/cost/time anywhere.
 
     create_fn (optional): injectable, mirrors every existing call site's
     own testing pattern -- create_fn(model=..., max_tokens=..., system=...,
@@ -100,11 +111,13 @@ def call(
                 f"purpose {purpose!r} is not in ADVISORY_PURPOSES -- "
                 f"default-denied per this gateway's Phase 3 model-access policy"
             ),
+            "usage": None,
         }
     if llm_mode_disabled():
         return {
             "text": None, "authority": "ADVISORY", "model_called": False,
             "denial_reason": "LLM_MODE=DISABLED -- zero-LLM mode active, no network call made",
+            "usage": None,
         }
 
     # AEQ-028: whether THIS call goes through the real Anthropic client is
@@ -128,6 +141,7 @@ def call(
             return {
                 "text": None, "authority": "ADVISORY", "model_called": False,
                 "denial_reason": "ANTHROPIC_API_KEY not set -- cannot run a live model call",
+                "usage": None,
             }
         from anthropic import Anthropic
         create_fn = Anthropic(api_key=api_key).messages.create
@@ -135,21 +149,40 @@ def call(
     kwargs = {}
     if effort is not None:
         kwargs["output_config"] = {"effort": effort}
+    call_start = time.monotonic()
     response = create_fn(
         model=model, max_tokens=max_tokens, system=system_prompt,
         messages=[{"role": "user", "content": user_message}],
         **kwargs,
     )
+    duration_ms = round((time.monotonic() - call_start) * 1000, 1)
 
     usage = getattr(response, "usage", None)
-    if usage is not None and real_client_call:
-        import metrics
-        metrics.record_model_usage(
-            provider="anthropic", model=model,
+    usage_summary = None
+    if usage is not None:
+        cache_write = getattr(usage, "cache_creation_input_tokens", None)
+        cache_read = getattr(usage, "cache_read_input_tokens", None)
+        cost = pricing_config.calculate_cost(
+            "anthropic", model,
             input_tokens=usage.input_tokens, output_tokens=usage.output_tokens,
-            cache_creation_input_tokens=getattr(usage, "cache_creation_input_tokens", None),
-            cache_read_input_tokens=getattr(usage, "cache_read_input_tokens", None),
+            cache_write_tokens=cache_write or 0, cache_read_tokens=cache_read or 0,
         )
+        usage_summary = {
+            "input_tokens": usage.input_tokens,
+            "output_tokens": usage.output_tokens,
+            "cache_creation_input_tokens": cache_write,
+            "cache_read_input_tokens": cache_read,
+            "duration_ms": duration_ms,
+            **cost,
+        }
+        if real_client_call:
+            import metrics
+            metrics.record_model_usage(
+                provider="anthropic", model=model,
+                input_tokens=usage.input_tokens, output_tokens=usage.output_tokens,
+                cache_creation_input_tokens=cache_write,
+                cache_read_input_tokens=cache_read,
+            )
 
     text = "".join(b.text for b in response.content if getattr(b, "type", None) == "text")
     stripped = text.strip()
@@ -168,6 +201,10 @@ def call(
                 f"likely extended thinking consumed the entire max_tokens budget before "
                 f"any answer text; retry with a larger max_tokens"
             ),
+            "usage": usage_summary,
         }
 
-    return {"text": stripped, "authority": "ADVISORY", "model_called": True, "denial_reason": None}
+    return {
+        "text": stripped, "authority": "ADVISORY", "model_called": True, "denial_reason": None,
+        "usage": usage_summary,
+    }

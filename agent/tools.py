@@ -79,6 +79,18 @@ def _resolve_safe_path(user_path: str) -> Path:
         raise RepoToolError(f"absolute paths are not allowed: {raw!r}")
 
     joined = REPO_ROOT / raw
+    # BL-010 / ACT-001: on Windows, a drive-letter path like "D:foo" is
+    # relative-to-that-drive, not absolute (Path.is_absolute() is False for
+    # it, so the absolute-path check above never catches it) -- and
+    # PurePath.__truediv__ discards REPO_ROOT entirely once the right
+    # operand carries its own drive, silently anchoring `joined` on the
+    # OTHER drive instead of under the repo. That used to fall through to
+    # the symlink-mismatch check below and get reported as "symlinks are
+    # not allowed", which is factually wrong even though the rejection
+    # itself was always correct. Name the real reason instead.
+    if joined.drive and REPO_ROOT.drive and joined.drive.upper() != REPO_ROOT.drive.upper():
+        raise RepoToolError(f"path resolves to a different drive than the repository root: {raw!r}")
+
     lexical = Path(os.path.normpath(str(joined)))
     resolved = joined.resolve()
 
