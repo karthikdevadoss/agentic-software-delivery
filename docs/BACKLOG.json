@@ -559,7 +559,7 @@
       "estimate_range": "10-15 min",
       "confidence": "HIGH",
       "size_rationale": "Small, deterministic, no model involved -- closes the real mvnw-executable-bit bug class from tonight.",
-      "status": "active",
+      "status": "done",
       "category": "delivery",
       "parent_id": null,
       "session_ids": [
@@ -568,7 +568,8 @@
       "commit_shas": [],
       "created_at": "2026-09-20T13:01:26+00:00",
       "started_at": "2026-09-20T13:01:26+00:00",
-      "completed_at": null
+      "completed_at": "2026-09-20T13:12:56+00:00",
+      "actual_note": "First inhabitant of the previously-empty STATIC tier. Real bug caught on its very first run: scripts/deploy_customer_app.sh had mode 100644 despite a real shebang -- fixed immediately (git update-index --chmod=+x). 6 new tests, all real (one is a live regression test against the current repo state, not a synthetic fixture)."
     },
     {
       "id": "BL-019",
