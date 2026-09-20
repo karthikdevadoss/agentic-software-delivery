@@ -339,16 +339,16 @@
     {
       "id": "AEQ-025-SINGLE-SOURCE-APP-NAME",
       "source": "product",
-      "title": "OPEN: the Customer App hardcodes its display name/heading in 3+ separate places (anonymous login view, USER dashboard, ADMIN dashboard) with no single source of truth",
+      "title": "RESOLVED 2026-09-20 (option b, Owner-approved): the Customer App hardcodes its display name/heading in 3+ separate places (anonymous login view, USER dashboard, ADMIN dashboard) with no single source of truth",
       "priority": "low",
-      "status": "open",
+      "status": "verified",
       "scope": "app/src/main/resources/static/index.html (and/or a small server-side templating change) -- touches real, live, authenticated-dashboard UI copy, not just the login screen",
       "reason": "Found while root-causing AEQ-025 (a real Owner-observed production-verification contradiction): the demo heading_text/subtitle_text operations were scoped and re-labeled to be honest about only reaching the login view, but the deeper product question -- should the app name/heading be one templated value instead of 3 independently-hardcoded copies -- was deliberately NOT resolved unilaterally tonight, since it touches live authenticated USER/ADMIN dashboard markup that was never part of the reported defect and carries real blast radius for a change made without Owner review.",
       "evidence": "docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml AEQ-025; grep of agent/demo_baseline/index.html shows \"Energy Customer Platform\" hardcoded at minimum in the login view (id=app-heading), the USER dashboard header, and the ADMIN dashboard header",
       "safe_to_auto_execute": false,
-      "verification_required": "Owner decision: (a) leave as-is (3 independently-maintained copies, each demo operation explicitly scoped to just the login view, as fixed tonight), or (b) refactor to one templated/JS-driven source of truth for the app name so a future heading change is atomic across every view-state -- a real architecture change to a live, working page, not a bug fix.",
+      "verification_required": "RESOLVED 2026-09-20 (docs/BACKLOG.json's AEQ-025B): a single APP_NAME JS constant in app/src/main/resources/static/index.html now drives document.title + all 3 view headings via applyAppName(). Real found-along-the-way note: agent/demo_baseline/index.html has the same hardcoded pattern, but is a deliberate FROZEN SNAPSHOT for the demo-diff pipeline (agent/demo_catalogue.py/web_server.py), already intentionally out of sync with the live file in other ways -- not touched, not in scope, not the same bug.",
       "created_at_commit": null,
-      "resolved_at_commit": null
+      "resolved_at_commit": "343831e"
     },
     {
       "id": "ACT-010",
