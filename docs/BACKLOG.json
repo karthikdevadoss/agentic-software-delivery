@@ -621,7 +621,7 @@
       "estimate_range": "40-70 min",
       "confidence": "LOW_MEDIUM",
       "size_rationale": "First-of-its-kind real-topology test harness in this codebase -- per the updated sizing rubric, defaults to LARGE regardless of apparent simplicity.",
-      "status": "completed",
+      "status": "done",
       "category": "delivery",
       "parent_id": null,
       "session_ids": [
