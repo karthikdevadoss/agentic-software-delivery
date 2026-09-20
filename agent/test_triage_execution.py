@@ -2,6 +2,7 @@ import json
 import unittest
 from unittest.mock import patch, MagicMock
 
+import pricing_config
 import triage_execution as te
 
 _VALID_PREFLIGHT = {
@@ -16,6 +17,52 @@ def _fake_http_response(payload: dict):
     cm.__enter__.return_value.read.return_value = body
     cm.__exit__.return_value = False
     return cm
+
+
+class _FakeUsage:
+    """A real-shaped anthropic Usage object (mirrors
+    test_reasoning_gateway.py's own _FakeUsage), used here to prove BL-009/
+    ACT-011's usage dict actually survives the trip from
+    reasoning_gateway.call() through _call_model_text() and out through
+    diagnose()/generate_candidate_patch() (all 3 scenarios) -- every OTHER
+    test in this file sets fake_response.usage = None, which never
+    exercises this exact propagation path."""
+
+    def __init__(self, input_tokens=1234, output_tokens=321):
+        self.input_tokens = input_tokens
+        self.output_tokens = output_tokens
+        self.cache_creation_input_tokens = None
+        self.cache_read_input_tokens = None
+
+
+def _fake_response_with_real_usage(text: str):
+    fake_block = MagicMock()
+    fake_block.type = "text"
+    fake_block.text = text
+    fake_response = MagicMock()
+    fake_response.content = [fake_block]
+    fake_response.usage = _FakeUsage()
+    return fake_response
+
+
+def _assert_real_usage_propagated(test_case, usage):
+    """Shared assertion, reused by every ACT-011 propagation test below:
+    usage must be present, must never be a fabricated number, and its
+    cost must be the REAL output of pricing_config.calculate_cost() for
+    the exact tokens _FakeUsage() carries -- never a hand-typed constant
+    that could silently drift from the real pricing table."""
+    test_case.assertIsNotNone(usage, "a real model response must never leave usage as None")
+    test_case.assertEqual(usage["input_tokens"], 1234)
+    test_case.assertEqual(usage["output_tokens"], 321)
+    test_case.assertIsInstance(usage["duration_ms"], float)
+    test_case.assertGreaterEqual(usage["duration_ms"], 0.0)
+    expected_cost = pricing_config.calculate_cost(
+        "anthropic", "claude-sonnet-5", input_tokens=1234, output_tokens=321,
+        cache_read_tokens=0, cache_write_tokens=0,
+    )
+    test_case.assertTrue(expected_cost["available"], "claude-sonnet-5 must have a real priced entry")
+    test_case.assertEqual(usage["total_usd"], expected_cost["total_usd"])
+    test_case.assertEqual(usage["available"], True)
 
 
 class RequestHelperTestCase(unittest.TestCase):
@@ -126,6 +173,23 @@ class DiagnoseTestCase(unittest.TestCase):
         result = te.diagnose({}, create_fn=create_fn)
         self.assertEqual(result["confidence"], "MEDIUM")
 
+    def test_diagnose_without_api_key_leaves_usage_honestly_none(self):
+        """ACT-011: never a fabricated zero when no real API response was
+        obtained -- usage must be None, not $0.00 / 0 tokens."""
+        with patch.dict("os.environ", {}, clear=True):
+            result = te.diagnose({"defectReproduced": True}, api_key=None, create_fn=None)
+        self.assertIsNone(result["usage"])
+
+    def test_diagnose_propagates_the_real_usage_dict_act_011(self):
+        """ACT-011/BL-009: the real usage dict reasoning_gateway.call()
+        computes must reach diagnose()'s own returned dict, not be
+        discarded at _call_model_text()."""
+        create_fn = MagicMock(return_value=_fake_response_with_real_usage(json.dumps({
+            "hypothesis": "h", "root_cause": "r", "affected_component": "c", "confidence": "HIGH",
+        })))
+        result = te.diagnose({"defectReproduced": True}, create_fn=create_fn)
+        _assert_real_usage_propagated(self, result.get("usage"))
+
     def test_diagnose_handles_non_json_response_honestly(self):
         fake_block = MagicMock()
         fake_block.type = "text"
@@ -210,6 +274,16 @@ class GenerateCandidatePatchTestCase(unittest.TestCase):
         self.assertFalse(result["generated"])
         self.assertIsNone(result["candidate_source"])
         self.assertIn("ANTHROPIC_API_KEY", result["explanation"])
+        self.assertIsNone(result["usage"])
+
+    def test_generate_candidate_patch_propagates_the_real_usage_dict_act_011(self):
+        """ACT-011/BL-009: same propagation proof as diagnose()'s, for the
+        SECOND real call site (candidate-patch generation)."""
+        create_fn = MagicMock(return_value=_fake_response_with_real_usage(
+            "package com.example.customer.service;\n\npublic class ContractPlanService {}\n"))
+        result = te.generate_candidate_patch({"defectReproduced": True}, create_fn=create_fn)
+        self.assertTrue(result["generated"])
+        _assert_real_usage_propagated(self, result.get("usage"))
 
     def test_with_injected_create_fn_returns_the_models_full_file_content(self):
         fake_block = MagicMock()
@@ -416,6 +490,15 @@ class DiagnoseBTestCase(unittest.TestCase):
         create_fn.assert_called_once()
         self.assertEqual(create_fn.call_args.kwargs["model"], "claude-sonnet-5")
 
+    def test_diagnose_b_propagates_the_real_usage_dict_act_011(self):
+        """ACT-011/BL-009: same propagation proof as diagnose()'s, for
+        Scenario B."""
+        create_fn = MagicMock(return_value=_fake_response_with_real_usage(json.dumps({
+            "hypothesis": "h", "root_cause": "r", "affected_component": "c", "confidence": "HIGH",
+        })))
+        result = te.diagnose_b({"attemptCount": 3}, create_fn=create_fn)
+        _assert_real_usage_propagated(self, result.get("usage"))
+
 
 class GetReferenceBTestCase(unittest.TestCase):
     def test_get_reference_b_is_honest_about_not_being_a_historical_commit(self):
@@ -447,6 +530,15 @@ class GenerateCandidatePatchBTestCase(unittest.TestCase):
         self.assertTrue(result["generated"])
         self.assertIn("public class TriageScenarioBService", result["candidate_source"])
         self.assertEqual(result["target_file"], te.FIX_FILE_B)
+
+    def test_generate_candidate_patch_b_propagates_the_real_usage_dict_act_011(self):
+        """ACT-011/BL-009: same propagation proof as generate_candidate_patch()'s,
+        for Scenario B."""
+        create_fn = MagicMock(return_value=_fake_response_with_real_usage(
+            "package com.example.customer.triage;\n\npublic class TriageScenarioBService {}\n"))
+        result = te.generate_candidate_patch_b({"attemptCount": 3}, create_fn=create_fn)
+        self.assertTrue(result["generated"])
+        _assert_real_usage_propagated(self, result.get("usage"))
 
 
 class ApplyAndVerifyCandidateBTestCase(unittest.TestCase):
@@ -553,6 +645,15 @@ class DiagnoseCTestCase(unittest.TestCase):
         self.assertEqual(result["confidence"], "HIGH")
         create_fn.assert_called_once()
 
+    def test_diagnose_c_propagates_the_real_usage_dict_act_011(self):
+        """ACT-011/BL-009: same propagation proof as diagnose()'s, for
+        Scenario C."""
+        create_fn = MagicMock(return_value=_fake_response_with_real_usage(json.dumps({
+            "hypothesis": "h", "root_cause": "r", "affected_component": "c", "confidence": "HIGH",
+        })))
+        result = te.diagnose_c({"defectReproduced": True}, create_fn=create_fn)
+        _assert_real_usage_propagated(self, result.get("usage"))
+
 
 class GetReferenceCTestCase(unittest.TestCase):
     def test_get_reference_c_is_honest_about_the_real_source(self):
@@ -584,6 +685,15 @@ class GenerateCandidatePatchCTestCase(unittest.TestCase):
         self.assertTrue(result["generated"])
         self.assertIn("public class TriageScenarioCService", result["candidate_source"])
         self.assertEqual(result["target_file"], te.FIX_FILE_C)
+
+    def test_generate_candidate_patch_c_propagates_the_real_usage_dict_act_011(self):
+        """ACT-011/BL-009: same propagation proof as generate_candidate_patch()'s,
+        for Scenario C -- the 6th and last of the 6 named call sites."""
+        create_fn = MagicMock(return_value=_fake_response_with_real_usage(
+            "package com.example.customer.triage;\n\npublic class TriageScenarioCService {}\n"))
+        result = te.generate_candidate_patch_c({"querySucceeded": False}, create_fn=create_fn)
+        self.assertTrue(result["generated"])
+        _assert_real_usage_propagated(self, result.get("usage"))
 
 
 class ApplyAndVerifyCandidateCTestCase(unittest.TestCase):
