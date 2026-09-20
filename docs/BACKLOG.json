@@ -717,6 +717,246 @@
       "started_at": "2026-09-20T13:01:26+00:00",
       "completed_at": "2026-09-20T13:24:50+00:00",
       "actual_note": "Real, cited finding: industry research independently confirms this project own calibration-loop conclusions tonight (story points/velocity broken for AI-agent work; defect-escape-rate and rework-ratio as better metrics) -- this project had already moved to numeric estimates and escaped_defects tracking (BL-020) before this research ran. One real gap flagged for a future sprint: rework ratio is not yet tracked. Full writeup in docs/RETRO_LOG.md."
+    },
+    {
+      "id": "BL-024",
+      "title": "ACT-014: real tests for eureka-server + api-gateway, add to CI matrix",
+      "description": "eureka-server and api-gateway are 2 of the 5 architecturally central microservices pieces and currently have zero automated tests and are excluded from the CI matrix. Add real tests for both and add both to .github/workflows/ci.yml's microservices matrix.",
+      "size": "MEDIUM",
+      "estimate_range": "30-50 min",
+      "confidence": "MEDIUM",
+      "size_rationale": "Follows the existing per-service test pattern already proven for customer-service/billing-service/metering-service/notification-service -- not first-of-its-kind, but 2 real new services plus a CI matrix change.",
+      "status": "active",
+      "category": "delivery",
+      "parent_id": null,
+      "session_ids": [
+        "da166cc9-854a-47c3-8b06-8d2034e4b8fc"
+      ],
+      "commit_shas": [],
+      "created_at": "2026-09-20T14:23:11+00:00",
+      "started_at": "2026-09-20T14:23:11+00:00",
+      "completed_at": null,
+      "actual_note": null
+    },
+    {
+      "id": "BL-025",
+      "title": "Wire BL-021's real-topology multi-instance test tier into CI",
+      "description": "BL-021's real-topology harness (services/real-topology-tests/) is proven locally (3 consecutive clean runs) but not yet wired into .github/workflows/ci.yml. Deliberately bundled with BL-024 as ONE task/session (not a parallel fork) since both touch ci.yml -- avoids repeating last sprint's TESTING_ARCHITECTURE_V1.md section-collision mistake.",
+      "size": "SMALL",
+      "estimate_range": "20-35 min",
+      "confidence": "MEDIUM",
+      "size_rationale": "The harness itself is already built and proven; this is CI wiring plus verifying it runs clean in GitHub's runner environment, not new harness design.",
+      "status": "active",
+      "category": "delivery",
+      "parent_id": null,
+      "session_ids": [
+        "da166cc9-854a-47c3-8b06-8d2034e4b8fc"
+      ],
+      "commit_shas": [],
+      "created_at": "2026-09-20T14:23:11+00:00",
+      "started_at": "2026-09-20T14:23:11+00:00",
+      "completed_at": null,
+      "actual_note": null
+    },
+    {
+      "id": "BL-026",
+      "title": "ACT-011: propagate Triage Lab's real token/cost/time to the UI",
+      "description": "triage_execution.py's shared _call_model_text() discards the real usage dict reasoning_gateway.call() already returns internally, across 6 call sites (diagnose/diagnose_b/diagnose_c, generate_candidate_patch/_b/_c). Propagate it through to agent/web_server.py's 6 routes and agent/web/triage.js + triage-b.js + triage-c.js so real billed model calls show real tokens/cost/time in the UI, matching this project's own standing cost-transparency rule.",
+      "size": "MEDIUM",
+      "estimate_range": "30-50 min",
+      "confidence": "MEDIUM",
+      "size_rationale": "Reuses an already-established pattern (Usage page already surfaces real token/cost data from the same reasoning_gateway) across 6 call sites and 3 frontend files -- plumbing, not new design.",
+      "status": "active",
+      "category": "delivery",
+      "parent_id": null,
+      "session_ids": [
+        "da166cc9-854a-47c3-8b06-8d2034e4b8fc"
+      ],
+      "commit_shas": [],
+      "created_at": "2026-09-20T14:23:11+00:00",
+      "started_at": "2026-09-20T14:23:11+00:00",
+      "completed_at": null,
+      "actual_note": null
+    },
+    {
+      "id": "BL-027",
+      "title": "Playwright spec for the Customer App's own frontend",
+      "description": "TESTING_ARCHITECTURE_V1.md's own open-items list names this the single most valuable next addition -- no dedicated Playwright spec exists for app/src/main/resources/static/index.html; verify_change.py already honestly surfaces this as a skip reason rather than silently passing.",
+      "size": "MEDIUM",
+      "estimate_range": "30-50 min",
+      "confidence": "MEDIUM",
+      "size_rationale": "Playwright is already an established, proven pattern in this project's e2e/ suite (PLAYWRIGHT-E2E-P0) -- extending it to a new target page, not introducing new tooling.",
+      "status": "active",
+      "category": "delivery",
+      "parent_id": null,
+      "session_ids": [
+        "da166cc9-854a-47c3-8b06-8d2034e4b8fc"
+      ],
+      "commit_shas": [],
+      "created_at": "2026-09-20T14:23:11+00:00",
+      "started_at": "2026-09-20T14:23:11+00:00",
+      "completed_at": null,
+      "actual_note": null
+    },
+    {
+      "id": "BL-028",
+      "title": "ACT-005: actually run MCP over real Streamable HTTP",
+      "description": "mcp_server.py documents transport='streamable-http' as the path for future hosted multi-tenant use, but only stdio (via an in-process Client) has ever actually been exercised. Start the server with streamable-http and confirm a real HTTP-based MCP client can discover and invoke tools for real.",
+      "size": "MEDIUM",
+      "estimate_range": "30-50 min",
+      "confidence": "LOW_MEDIUM",
+      "size_rationale": "First real exercise of a coded-but-never-run transport path -- per the sizing rubric, a first-of-its-kind real exercise defaults to a wider band even though the code already exists.",
+      "status": "active",
+      "category": "delivery",
+      "parent_id": null,
+      "session_ids": [
+        "da166cc9-854a-47c3-8b06-8d2034e4b8fc"
+      ],
+      "commit_shas": [],
+      "created_at": "2026-09-20T14:23:11+00:00",
+      "started_at": "2026-09-20T14:23:11+00:00",
+      "completed_at": null,
+      "actual_note": null
+    },
+    {
+      "id": "BL-029",
+      "title": "Aggregate verify_change.py's evidence JSON across runs",
+      "description": "TESTING_ARCHITECTURE_V1.md gap item 5: agent/.verify_change_evidence/*.json is real per-run evidence but never aggregated into first-pass-yield/rework/cost metrics across runs, which is exactly the kind of metric the Scrum-for-AI calibration loop and its own research (BL-023) flagged as more meaningful than story points.",
+      "size": "SMALL",
+      "estimate_range": "20-35 min",
+      "confidence": "MEDIUM",
+      "size_rationale": "Reads and aggregates already-real, already-structured JSON files -- a small, well-scoped aggregation script, no new capture mechanism needed.",
+      "status": "active",
+      "category": "delivery",
+      "parent_id": null,
+      "session_ids": [
+        "da166cc9-854a-47c3-8b06-8d2034e4b8fc"
+      ],
+      "commit_shas": [],
+      "created_at": "2026-09-20T14:23:11+00:00",
+      "started_at": "2026-09-20T14:23:11+00:00",
+      "completed_at": null,
+      "actual_note": null
+    },
+    {
+      "id": "BL-030",
+      "title": "ACT-002: direct test file for tools.py's security boundary",
+      "description": "tools.py's traversal/absolute/symlink/secret-name checks are currently only exercised indirectly via test_write_tools.py and test_mcp_server.py. Add a direct test_tools.py calling tools.read_file/list_repository_files/search_code/_resolve_safe_path directly, including redaction verification against tools.read_file itself (currently only verified via rag_index's wrapper).",
+      "size": "SMALL",
+      "estimate_range": "15-25 min",
+      "confidence": "HIGH",
+      "size_rationale": "Well-scoped, one new test file, follows the exact existing test patterns already used for the same boundary via other consumers.",
+      "status": "active",
+      "category": "delivery",
+      "parent_id": null,
+      "session_ids": [
+        "da166cc9-854a-47c3-8b06-8d2034e4b8fc"
+      ],
+      "commit_shas": [],
+      "created_at": "2026-09-20T14:23:11+00:00",
+      "started_at": "2026-09-20T14:23:11+00:00",
+      "completed_at": null,
+      "actual_note": null
+    },
+    {
+      "id": "BL-031",
+      "title": "ACT-001: fix the misleading error message for foreign-drive-letter paths",
+      "description": "tools._resolve_safe_path('D:foo') correctly rejects the path but reports 'symlinks are not allowed', which is factually wrong even though the security boundary holds. Fix the error message to accurately describe the rejection reason.",
+      "size": "SMALL",
+      "estimate_range": "10-15 min",
+      "confidence": "HIGH",
+      "size_rationale": "One-line-scale error-message fix in a single function, already root-caused, no ambiguity.",
+      "status": "active",
+      "category": "delivery",
+      "parent_id": null,
+      "session_ids": [
+        "da166cc9-854a-47c3-8b06-8d2034e4b8fc"
+      ],
+      "commit_shas": [],
+      "created_at": "2026-09-20T14:23:11+00:00",
+      "started_at": "2026-09-20T14:23:11+00:00",
+      "completed_at": null,
+      "actual_note": null
+    },
+    {
+      "id": "BL-032",
+      "title": "ACT-012: investigate JaCoCo/JDK68 incompatibility, document a real decision",
+      "description": "JaCoCo 0.8.12 cannot instrument this machine's current JDK (class file major version 68). Investigate real options (JaCoCo version bump, JDK pinning for the isolated test-compile workspace, or explicitly accepting the gap) and document a real decision -- not necessarily a fix, since forcing a JDK downgrade is a platform-strategy change needing its own separate approval per the proactive-action policy.",
+      "size": "SMALL",
+      "estimate_range": "15-25 min",
+      "confidence": "MEDIUM",
+      "size_rationale": "Investigation-and-decision scope, not a guaranteed fix -- environment-specific compatibility issues carry real uncertainty about what's actually fixable without a platform-strategy change.",
+      "status": "active",
+      "category": "delivery",
+      "parent_id": null,
+      "session_ids": [
+        "da166cc9-854a-47c3-8b06-8d2034e4b8fc"
+      ],
+      "commit_shas": [],
+      "created_at": "2026-09-20T14:23:11+00:00",
+      "started_at": "2026-09-20T14:23:11+00:00",
+      "completed_at": null,
+      "actual_note": null
+    },
+    {
+      "id": "BL-033",
+      "title": "Sync docs/PROJECT_STATE.json to real current state",
+      "description": "PROJECT_STATE.json's completed_capabilities/verification_state/last_verified_code_commit predate the entire microservices decomposition, the AI-native testing discipline, and the Scrum-for-AI system -- 3 sprints stale. Update it to reflect real, verified current state. Runs last in this sprint, after every other item lands, so it captures the sprint's own real output too.",
+      "size": "MEDIUM",
+      "estimate_range": "25-40 min",
+      "confidence": "HIGH",
+      "size_rationale": "Mechanical documentation-sync task against already-verified real state -- no ambiguity, just needs careful real verification of each claim against actual repo/git state before writing it.",
+      "status": "active",
+      "category": "scrum_process",
+      "parent_id": null,
+      "session_ids": [
+        "da166cc9-854a-47c3-8b06-8d2034e4b8fc"
+      ],
+      "commit_shas": [],
+      "created_at": "2026-09-20T14:23:11+00:00",
+      "started_at": "2026-09-20T14:23:11+00:00",
+      "completed_at": null,
+      "actual_note": null
+    },
+    {
+      "id": "BL-034",
+      "title": "Standing Scrum-process research (once per sprint)",
+      "description": "Real web research on current AI-assisted Scrum/estimation practice, the standing recurring commitment repeated every sprint since BL-023.",
+      "size": "SMALL",
+      "estimate_range": "15-25 min",
+      "confidence": "MEDIUM",
+      "size_rationale": "Bounded, real web research task, same shape as BL-023.",
+      "status": "active",
+      "category": "scrum_process",
+      "parent_id": null,
+      "session_ids": [
+        "da166cc9-854a-47c3-8b06-8d2034e4b8fc"
+      ],
+      "commit_shas": [],
+      "created_at": "2026-09-20T14:23:11+00:00",
+      "started_at": "2026-09-20T14:23:11+00:00",
+      "completed_at": null,
+      "actual_note": null
+    },
+    {
+      "id": "BL-035",
+      "title": "Prompting-style coaching check-in",
+      "description": "Real analysis of the Owner's own prompting patterns from this session's transcript, with honest feedback delivered at this sprint's retro -- explicitly deferred by the Owner to 'next sprint' during the prior sprint's approval message.",
+      "size": "SMALL",
+      "estimate_range": "20-35 min",
+      "confidence": "MEDIUM",
+      "size_rationale": "Bounded analysis of an already-existing transcript, same shape as the earlier out-of-sprint baseline assessment, now sized and pulled into a sprint per the Owner's own deferral.",
+      "status": "active",
+      "category": "scrum_process",
+      "parent_id": null,
+      "session_ids": [
+        "da166cc9-854a-47c3-8b06-8d2034e4b8fc"
+      ],
+      "commit_shas": [],
+      "created_at": "2026-09-20T14:23:11+00:00",
+      "started_at": "2026-09-20T14:23:11+00:00",
+      "completed_at": null,
+      "actual_note": null
     }
   ],
   "_calibration_process": {
