@@ -62,6 +62,68 @@
         {"step": "Personal PDF draft generated (private, local-only)", "status": "done", "note": "All four content sections merged with the existing 396-topic tree plus new self-introduction/NRG-deep-dive/behavioral sections (written directly, never sent to a subagent, using confirmed CAREER_HISTORY.md facts only) into a LOCAL-ONLY draft tree, using the real unmodified agent/learn_pdf.py rendering pipeline via a path override -- agent/web/learn-tree.json itself was never touched. Output: C:\\Users\\Hemapriya\\Downloads\\docsforclaude\\Master_Interview_Book_DRAFT_v2.pdf (39 domains, 474 topics, 1.53MB, verified valid %PDF-1.4). Owner reviewing; corrections expected in a follow-up session."},
         {"step": "Merge technical content into the real public learn-tree.json, verify, deploy, live-check", "status": "deferred", "note": "Deliberately NOT done -- explicit Owner instruction (2026-09-19): don't update the live Learn page for now, this is personal-use only until further notice. Revisit only when the Owner decides to (also note: Owner is now reconsidering whether /learn should stay public at all -- open question, not to be resolved unilaterally)."}
       ]
+    },
+    {
+      "id": "BL-005",
+      "title": "EPIC: Make the Customer App interview-realistic across every backend engineering discipline (not just feature development)",
+      "description": "Owner directive 2026-09-19/20: the app should let the Owner answer real Senior Backend interview questions on Kafka, Redis, microservices patterns, design patterns, and production-support/debugging by explaining the app alone -- 'realistic level' means an interviewer's follow-up on that topic should already be answered. Explicitly spans testing, DevOps/release engineering, observability/SRE, security, data governance, and incident management, not only new features. Retroactively backlog-entered per LESSONS.md's sizing-discipline finding (this epic's own first two children were built and sized only in chat, not here, until this correction).",
+      "size": "XLARGE",
+      "size_rationale": "Cross-cutting across every engineering discipline in the rubric's own XLARGE definition, genuinely spans multiple sessions, real ambiguity resolved through direct Owner clarification across many messages (Kafka/Redis depth first, then microservices/patterns/prod-support, then 'every area', then testing-tooling depth).",
+      "status": "active",
+      "parent_id": null,
+      "session_ids": [],
+      "commit_shas": [],
+      "created_at": "2026-09-19T00:00:00+00:00",
+      "started_at": "2026-09-19T00:00:00+00:00",
+      "completed_at": null,
+      "checklist": [
+        {"step": "BL-003: Kafka ContractPlanEnrolled fan-out event", "status": "done", "size": "LARGE"},
+        {"step": "BL-004: Redis distributed lock for enrollment concurrency", "status": "done", "size": "LARGE"},
+        {"step": "Redis rate limiting on a public endpoint", "status": "not_started", "size": "MEDIUM", "range_min_max": "30-50 min", "confidence": "LOW-MED", "sizing_note": "Structurally close to the lock pattern just built -- real reuse lowers novelty."},
+        {"step": "New Triage Lab Scenario D (fan-out idempotency bug replay)", "status": "not_started", "size": "MEDIUM", "range_min_max": "25-40 min", "confidence": "LOW-MED", "sizing_note": "Close copy of Scenario A's proven structure; no verified actual for A exists to anchor against."},
+        {"step": "Design-patterns catalog (what's already genuinely in the code) + 1 new pattern (Saga-style compensation)", "status": "not_started", "size": "MEDIUM", "range_min_max": "30-50 min", "confidence": "LOW-MED", "sizing_note": "Doc half is fast/low-risk; the Saga compensation code half has real design ambiguity."},
+        {"step": "Dockerfile for the Customer App", "status": "not_started", "size": "SMALL", "range_min_max": "10-20 min", "confidence": "MED", "sizing_note": "Standard, well-known pattern, one file. Was already flagged NOT_STARTED/P1 in docs/FLAGSHIP_MARKET_COVERAGE.md."},
+        {"step": "OWASP dependency-check wired into CI", "status": "not_started", "size": "MEDIUM", "range_min_max": "20-35 min", "confidence": "LOW-MED", "sizing_note": "Standard plugin, but real risk of noisy false positives needing tuning. Was already flagged NOT_STARTED/P1 in docs/FLAGSHIP_MARKET_COVERAGE.md."},
+        {"step": "k6 load-test baseline (real measured p95/throughput)", "status": "not_started", "size": "LARGE", "range_min_max": "40-70 min", "confidence": "LOW", "sizing_note": "Genuinely new to this repo, no pattern to extend; k6 itself doesn't need Docker, but whether it's installable/runnable here is unverified. Was already flagged NOT_STARTED/P1 in docs/FLAGSHIP_MARKET_COVERAGE.md."},
+        {"step": "Local Prometheus + Grafana dashboard on real /actuator/prometheus metrics", "status": "not_started", "size": "LARGE", "range_min_max": "45-75 min", "confidence": "LOW", "sizing_note": "New to this repo AND needs Docker to actually run/verify live -- Docker isn't installed locally (same gap as Testcontainers). Will be written as best-effort static config, clearly labeled unverified, per Owner's 2026-09-20 delegated decision."},
+        {"step": "Incident runbook/postmortem doc", "status": "not_started", "size": "SMALL", "range_min_max": "15-25 min", "confidence": "MED-HIGH", "sizing_note": "Pure writing, reusing material already read in full (Triage Lab pattern + the real Kafka log-flooding incident)."},
+        {"step": "OWASP Top 10 self-assessment note", "status": "not_started", "size": "SMALL-MEDIUM", "range_min_max": "20-30 min", "confidence": "MED", "sizing_note": "Pure writing, needs real per-category thinking against the actual code."},
+        {"step": "GDPR/data-retention note + outbox-as-audit-trail documentation", "status": "not_started", "size": "SMALL", "range_min_max": "15-25 min", "confidence": "MED-HIGH", "sizing_note": "Pure writing."},
+        {"step": "Final verify + update coverage docs + commit/push wrap-up", "status": "not_started", "size": "MEDIUM-LARGE", "range_min_max": "30-50 min", "confidence": "MED", "sizing_note": "Includes a real CI run once pushed -- familiar process now from BL-003/BL-004."}
+      ],
+      "sizing_meta": {
+        "sized_on": "2026-09-20",
+        "total_range_min_max": "280-470 min",
+        "note": "Owner-requested retro (2026-09-19/20, see LESSONS.md) found the original chat-only minute estimates for BL-003/BL-004 undersold real LARGE-sized work. This checklist's ranges replace point-estimates with size-first, range-second, confidence-labeled figures per the corrected discipline. Owner authorized proceeding 2026-09-20 without further approval for ~8 hours; GitHub push for CI verification approved, Railway production deploy explicitly NOT approved tonight (held for Owner review)."
+      }
+    },
+    {
+      "id": "BL-003",
+      "title": "Kafka: ContractPlanEnrolled event with real fan-out to 2 independent consumers",
+      "description": "Second real event type through the existing transactional-outbox/Kafka infrastructure (see docs/FLAGSHIP_MARKET_COVERAGE.md's Eventing row for the first). Generalized OutboxPublisher/KafkaMessagingConfig from one hardcoded topic to an eventType->topic registry. Fanned out to 2 independent consumer groups (Notification, BillingSync) -- Kafka delivers each group its own full copy of the topic. Found and fixed a real bug this exposed: ProcessedEvent's idempotency ledger was keyed by eventId alone, correct only when exactly one consumer processes a given event; moved to a composite (consumerName, eventId) key (V7 migration).",
+      "size": "LARGE",
+      "size_rationale": "17 files touched across event/messaging/outbox/service layers; genuinely new logic (topic-routing generalization, composite-key idempotency redesign), not just pattern-following; real ambiguity required investigation (how to scope idempotency correctly, whether to generalize DLT routing too) before implementation -- not MEDIUM. Sized in retrospect (see LESSONS.md's sizing-discipline entry) after the fact but using the same rubric as if sized up front.",
+      "status": "done",
+      "parent_id": "BL-005",
+      "session_ids": [],
+      "commit_shas": ["4f7d16e"],
+      "created_at": "2026-09-19T00:00:00+00:00",
+      "started_at": "2026-09-19T00:00:00+00:00",
+      "completed_at": "2026-09-19T21:17:46+02:00"
+    },
+    {
+      "id": "BL-004",
+      "title": "Redis: distributed lock for contract-plan enrollment concurrency",
+      "description": "Layered defense-in-depth over the existing uq_contract_plan_one_active_per_customer DB constraint: a short-TTL Redis lock (SETNX + Lua-script token-owned release, avoiding the classic 'delete someone else's lock after my TTL expired' bug) acquired before ContractPlanService.enroll()'s critical section, released only after the transaction commits (TransactionSynchronizationManager.afterCompletion, not a plain finally -- releasing earlier would reopen the exact race the lock exists to close). A losing request gets a clean 409 (EnrollmentInProgressException) instead of racing to the database and surfacing a raw 500. Graceful fallback when Redis is unreachable: proceed without app-level locking, relying solely on the DB constraint, same philosophy as ContractPlanCacheService.",
+      "size": "LARGE",
+      "size_rationale": "New service (EnrollmentLockService) with a genuinely novel-to-this-codebase pattern (token-owned Lua-script release, transaction-synchronization-timed release), new exception + GlobalExceptionHandler mapping, 2 new test files including a real concurrent-threads integration test -- meaningful new design decisions, not pattern-following. Sized in retrospect, same caveat as BL-003.",
+      "status": "done",
+      "parent_id": "BL-005",
+      "session_ids": [],
+      "commit_shas": ["1ca4705"],
+      "created_at": "2026-09-19T00:00:00+00:00",
+      "started_at": "2026-09-19T00:00:00+00:00",
+      "completed_at": "2026-09-20T02:12:47+02:00"
     }
   ]
 }

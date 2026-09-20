@@ -1279,3 +1279,59 @@ surprising verified behavior would otherwise get rediscovered later.
   entirely. Any server serving static JS/CSS/HTML with only
   ETag/Last-Modified and no Cache-Control has this same latent defect,
   not just this project.
+
+- **JaCoCo 0.8.12 cannot instrument Mockito's runtime-generated mock
+  classes when the active local JDK is newer than the project's target
+  (Java 21) and new enough that its class file major version exceeds what
+  that JaCoCo release understands.** Found 2026-09-19/20: this dev
+  machine's default `java -version` is OpenJDK 24 (major version 68);
+  `mvnw test` failed with `jacoco-maven-plugin:check` throwing
+  `IllegalArgumentException: Unsupported class file major version 68`
+  while instrumenting a Mockito `$MockitoMock$...` class, even though the
+  actual test logic was correct — confirmed by rerunning with
+  `-Djacoco.skip=true`, which passed cleanly (134/134, then 137/137 after
+  a second feature). Real root cause: Mockito's inline mock maker defines
+  mock classes at runtime using the *invoking* JVM's own bytecode version,
+  and JaCoCo 0.8.12's ASM-based `ClassReader` has a fixed ceiling on which
+  class file versions it can parse — it was never in the picture for the
+  project's own real target JDK (21), only for whatever JDK happens to be
+  first on this machine's PATH. **General rule:** treat a JaCoCo
+  instrumentation failure that names a Mockito-generated class (not your
+  own source) as a local-JDK/tooling-version mismatch first, not a real
+  test regression — verify with `-Djacoco.skip=true` before concluding
+  anything about the actual test outcomes. CI is unaffected (GitHub
+  Actions' `setup-java` pins the real JDK 21), so this is a local-only
+  friction, not a production-relevant defect. Not yet fixed at the pom.xml
+  level (e.g. pinning a local JDK via toolchains, or bumping the JaCoCo
+  version) — flagged here so a future session doesn't re-diagnose it from
+  scratch.
+
+- **A time-estimate given in chat is not the same thing as following this
+  project's own sizing discipline, even when the numbers are honest.**
+  Real incident (2026-09-19/20, Owner-requested retro): asked for "rough
+  estimate time" on an 11-item plan, Claude gave raw minute estimates
+  in a chat table and never created the corresponding docs/BACKLOG.json
+  entries CLAUDE.md's own "Backlog and sizing discipline" section
+  requires before non-trivial work starts. Two compounding real gaps this
+  caused: (1) no calibration anchor — the estimates were pure guesses
+  with no comparable historical actual to check against, when one
+  existed and had already been read minutes earlier
+  (docs/FLAGSHIP_MARKET_COVERAGE.md describes the original, comparable-
+  density Kafka+Redis+Postgres+Security+Observability build as a
+  "MASTER OVERNIGHT ENGINEERING PHASE" — hours, not tens of minutes — a
+  signal that went unused); (2) no honesty label on confidence — the
+  platform's own `agent/estimation.py` already distinguishes
+  MEDIUM/HIGH-confidence estimates (>=3 comparable historical runs) from
+  explicitly-flagged LOW-confidence ones, but that same discipline wasn't
+  applied to these self-estimates, which read as more confident than
+  they were. Actual outcome: two features sized as if SMALL/40-45min
+  each were genuinely LARGE by the project's own rubric (new cross-layer
+  logic — a topic-routing registry, a composite-key idempotency redesign,
+  a Lua-script token-owned distributed lock — not just pattern-following),
+  and took meaningfully longer. **General rule:** size with the project's
+  own SMALL/MEDIUM/LARGE/XLARGE rubric FIRST (a real, calibrated,
+  pattern-based judgment), write the docs/BACKLOG.json entry AT THE SAME
+  TIME as presenting any estimate to the Owner (not after, not only in
+  chat), and only then derive a secondary rough time range — explicitly
+  labeled low-confidence whenever no comparable historical entry exists
+  in BACKLOG.json to check against.
