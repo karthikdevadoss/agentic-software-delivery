@@ -842,11 +842,12 @@
         "da166cc9-854a-47c3-8b06-8d2034e4b8fc"
       ],
       "commit_shas": [
-        "34d25b3"
+        "34d25b3",
+        "c4e5626"
       ],
       "created_at": "2026-09-20T14:23:11+00:00",
       "started_at": "2026-09-20T14:23:11+00:00",
-      "completed_at": "2026-09-20T15:35:00+00:00",
+      "completed_at": "2026-09-20T15:11:29+00:00",
       "actual_note": "DONE. agent/aggregate_evidence.py (real cross-run aggregation over agent/.verify_change_evidence/*.json) + agent/test_aggregate_evidence.py, 19/19 tests passing. Real, honest metrics: first-pass-yield (clean PASSED runs, excluding dry-runs from the denominator, correctly requiring zero escaped_defects AND zero independent_evaluation findings for 'clean'), a heuristic rework-candidate indicator (same-path runs after a flagged run -- explicitly labeled heuristic, not authoritative), time rollup from real duration fields. Cost and an authoritative rework ratio are correctly reported as insufficient_data rather than fabricated -- the real evidence JSON schema doesn't carry those fields yet. Wired into agent/dev_check.py as 'aggregate-evidence'. Directly answers a gap BL-023's own Scrum-process research flagged (rework ratio not yet tracked) and BL-034's research (this same sprint) confirmed is still the real, live owner of that gap."
     },
     {
@@ -864,7 +865,8 @@
         "da166cc9-854a-47c3-8b06-8d2034e4b8fc"
       ],
       "commit_shas": [
-        "b22296d"
+        "b22296d",
+        "5efe658"
       ],
       "created_at": "2026-09-20T14:23:11+00:00",
       "started_at": "2026-09-20T14:23:11+00:00",
@@ -886,7 +888,8 @@
         "da166cc9-854a-47c3-8b06-8d2034e4b8fc"
       ],
       "commit_shas": [
-        "b22296d"
+        "b22296d",
+        "5efe658"
       ],
       "created_at": "2026-09-20T14:23:11+00:00",
       "started_at": "2026-09-20T14:23:11+00:00",
@@ -908,11 +911,12 @@
         "da166cc9-854a-47c3-8b06-8d2034e4b8fc"
       ],
       "commit_shas": [
-        "34d25b3"
+        "34d25b3",
+        "c4e5626"
       ],
       "created_at": "2026-09-20T14:23:11+00:00",
       "started_at": "2026-09-20T14:23:11+00:00",
-      "completed_at": "2026-09-20T15:35:00+00:00",
+      "completed_at": "2026-09-20T15:11:29+00:00",
       "actual_note": "DONE -- investigated, a real fix was tried and then deliberately reverted after real evidence showed it was a net regression, not a silent close. JaCoCo 0.8.13 (the first release with real Java 23/24 class-file support) does fix the original instrumentation crash -- the same 3 real isolated-workspace tests that failed at compile in 5-12s now compile successfully. But re-run against the SAME real tests, the bumped version then failed/timed out at the test step instead (222s, a 240s timeout, 184s -- ~20-50x slower), most likely from Mockito's dynamic self-attaching agent colliding with JaCoCo 0.8.13's instrumentation on JDK 24 (not fully root-caused, captured honestly as a real, strong hypothesis, not a certainty). Verified this by re-running the exact failing tests before declaring anything fixed -- never just trusted the absence of the original error message. Decision: reverted app/pom.xml's version bump rather than ship a fix that makes this suite 20-50x slower and occasionally flaky. ACT-012 stays open with the real trade-off and options documented for the Owner. Full writeup in docs/LESSONS.md."
     },
     {
