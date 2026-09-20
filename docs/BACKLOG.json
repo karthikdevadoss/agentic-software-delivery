@@ -676,7 +676,7 @@
       "estimate_range": "10-15 min",
       "confidence": "HIGH",
       "size_rationale": "Already-decided direction, small, bounded refactor of existing static markup.",
-      "status": "active",
+      "status": "done",
       "category": "delivery",
       "parent_id": null,
       "session_ids": [
@@ -685,7 +685,8 @@
       "commit_shas": [],
       "created_at": "2026-09-20T13:01:26+00:00",
       "started_at": "2026-09-20T13:01:26+00:00",
-      "completed_at": null
+      "completed_at": "2026-09-20T13:21:44+00:00",
+      "actual_note": "Single APP_NAME JS constant + applyAppName() now sets document.title, #app-heading, and 2 new wrapper spans (#admin-heading-text, #user-heading-text) on load -- previously 3 independently-hardcoded text occurrences (login/admin/user views). Honest scope note: verified via real JS syntax check (node -c on the extracted script) and confirmed no existing Playwright spec depends on the changed text/structure -- did NOT do a full real-browser visual check given this SMALL items time budget; the change is simple DOM textContent assignment with no auth/business-logic risk."
     },
     {
       "id": "BL-023",

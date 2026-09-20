@@ -320,7 +320,7 @@
     <span class="brand-mark small" aria-hidden="true">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/></svg>
     </span>
-    Energy Customer Platform <span class="admin-tag">Admin</span>
+    <span id="admin-heading-text"></span> <span class="admin-tag">Admin</span>
   </div>
   <nav class="topbar-actions">
     <span class="identity-chip">Signed in as <strong id="admin-header-username">&mdash;</strong><span class="role-tag">Admin</span></span>
@@ -410,7 +410,7 @@
     <span class="brand-mark small" aria-hidden="true">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/></svg>
     </span>
-    Energy Customer Platform
+    <span id="user-heading-text"></span>
   </div>
   <nav class="topbar-actions">
     <span class="identity-chip">Signed in as <strong id="user-username">&mdash;</strong><span class="role-tag">User</span></span>
@@ -492,6 +492,26 @@
 <script>
 (function () {
   'use strict';
+
+  // AEQ-025 (2026-09-20): single source of truth for the app's display
+  // name -- previously hardcoded independently in 3 places (login view,
+  // USER dashboard, ADMIN dashboard), which meant a future rename needed
+  // 3 separate edits kept in sync by hand. The HTML keeps a static
+  // fallback string in #app-heading/<title> for the case JS hasn't run
+  // yet; this always overwrites it immediately on load, so this constant
+  // is the one place a real rename would need to happen.
+  var APP_NAME = 'Energy Customer Platform';
+
+  function applyAppName() {
+    document.title = APP_NAME;
+    var heading = document.getElementById('app-heading');
+    if (heading) heading.textContent = APP_NAME;
+    var adminHeading = document.getElementById('admin-heading-text');
+    if (adminHeading) adminHeading.textContent = APP_NAME;
+    var userHeading = document.getElementById('user-heading-text');
+    if (userHeading) userHeading.textContent = APP_NAME;
+  }
+  applyAppName();
 
   var STORAGE = {
     token: 'demo_access_token',
