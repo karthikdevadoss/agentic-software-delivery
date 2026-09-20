@@ -144,12 +144,19 @@ Implemented (see §C/D): security -> `SecurityIntegrationTest`; Flyway ->
 `ContractPlanCacheIntegrationTest`; frontend -> mapped Playwright specs
 where one exists (`agent/web/**` -> the matching `e2e/*.spec.js`).
 
-**Open, honestly-recorded gap:** the Customer App's own frontend
-(`app/src/main/resources/static/index.html`) has **no dedicated
-Playwright spec at all** — `verify_change.py` explicitly surfaces this as
-a skip reason every time that file changes, rather than silently passing.
-This is the single most valuable next addition to this architecture (see
-`docs/ACTION_QUEUE.json`'s `TESTING-ARCH-V1-GAPS`).
+**Partially closed 2026-09-20 (BL-012, following BL-013's real Update Email
+work the same day):** the Customer App's own frontend
+(`app/src/main/resources/static/index.html`) used to have **no dedicated
+Playwright spec at all** — `verify_change.py` used to surface this as a
+skip reason every time that file changed. `e2e/customer-app-update-email.spec.js`
+(login -> edit email -> save -> reload, added as a real side effect of
+proving BL-013's Update Email uniqueness fix works in a real browser) is
+now mapped in `agent/test_impact_analysis.py`'s `FRONTEND_PATH_TO_SPECS`,
+so the acute "zero coverage, silently unselected" gap is closed. **Still
+honestly open:** this one spec covers only the login/edit-email flow, not
+every control on the page (customer creation, preferences, admin views) —
+broader golden-path coverage for this page remains real, separate future
+work, not claimed as done here.
 
 RAG/MCP/prompt changes already route to `agent/eval_runner.py`'s evals
 (pre-existing, unchanged by this task) — not yet cross-wired into

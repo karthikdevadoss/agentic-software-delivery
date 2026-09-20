@@ -400,7 +400,9 @@
       "status": "done",
       "parent_id": null,
       "session_ids": [],
-      "commit_shas": [],
+      "commit_shas": [
+        "1a4f35c"
+      ],
       "created_at": "2026-09-20T05:54:11+00:00",
       "started_at": "2026-09-20T05:54:11+00:00",
       "completed_at": "2026-09-20T06:24:19+00:00"
@@ -413,13 +415,14 @@
       "estimate_range": "20-30 min",
       "confidence": "MEDIUM",
       "size_rationale": "Follows the existing e2e/ Playwright pattern from other specs, but this is the first spec for this specific page, real but bounded ambiguity in selectors/flows.",
-      "status": "active",
+      "status": "done",
       "parent_id": null,
       "session_ids": [],
       "commit_shas": [],
       "created_at": "2026-09-20T05:54:11+00:00",
       "started_at": "2026-09-20T05:54:11+00:00",
-      "completed_at": null
+      "completed_at": "2026-09-20T06:26:23+00:00",
+      "actual_note": "Real scope discovered mid-sprint (self-realized, not Owner-driven -- per the calibration loop, finished as planned rather than pausing to re-estimate): BL-013 (running in parallel) already built e2e/customer-app-update-email.spec.js as a real side effect of proving its own feature in a browser -- the first-ever Playwright spec for the Customer App frontend. BL-012s actual remaining work was wiring that spec into agent/test_impact_analysis.py FRONTEND_PATH_TO_SPECS, updating the now-outdated gap test, and updating docs/TESTING_ARCHITECTURE_V1.md -- not writing a spec from scratch as originally scoped."
     },
     {
       "id": "BL-013",

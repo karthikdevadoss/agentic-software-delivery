@@ -58,8 +58,22 @@ class AnalyzeTestCase(unittest.TestCase):
         self.assertEqual(selection.java_tests, [])
         self.assertFalse(selection.fail_closed)
 
-    def test_frontend_change_with_no_dedicated_customer_app_spec_is_honestly_flagged(self):
+    def test_customer_app_frontend_change_now_maps_to_its_real_spec(self):
+        """BL-012 (2026-09-20): this used to be an honest gap (skipped, no
+        spec existed) -- e2e/customer-app-update-email.spec.js now covers
+        this page (added by BL-013 as a real side effect of proving Update
+        Email works in a browser), so a change here is no longer silently
+        unselected."""
         selection = tia.analyze(["app/src/main/resources/static/index.html"])
+        self.assertIn("e2e/customer-app-update-email.spec.js", selection.playwright_specs)
+        self.assertFalse(any("no dedicated Playwright spec" in s for s in selection.skipped))
+
+    def test_frontend_change_still_honestly_flagged_when_truly_no_spec_maps_to_it(self):
+        """The skip-reason machinery itself is still real, not deleted --
+        exercised here via a hypothetical static/** file this repo has no
+        mapping for, so the honest-gap behavior stays covered even though
+        index.html itself is no longer an example of it."""
+        selection = tia.analyze(["app/src/main/resources/static/some-other-page-nothing-covers.html"])
         self.assertEqual(selection.playwright_specs, [])
         self.assertTrue(any("no dedicated Playwright spec" in s for s in selection.skipped))
 

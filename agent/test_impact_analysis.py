@@ -111,11 +111,22 @@ MANDATORY_TRIGGERS = [
 ]
 
 # Playwright specs that exercise the deployed agentic-platform-backend
-# pages this project actually has E2E coverage for today. NOTE (honest
-# gap, not hidden): the Customer App's OWN frontend
-# (app/src/main/resources/static/index.html) has no dedicated Playwright
-# spec at all as of this writing — see docs/TESTING_ARCHITECTURE_V1.md's
-# open gaps and docs/ACTION_QUEUE.json.
+# pages this project actually has E2E coverage for today.
+#
+# BL-012 (2026-09-20): the Customer App's OWN frontend
+# (app/src/main/resources/static/index.html) used to have NO dedicated
+# Playwright spec at all -- see docs/TESTING_ARCHITECTURE_V1.md's open
+# gaps and docs/ACTION_QUEUE.json's TESTING-ARCH-V1-GAPS item. BL-013
+# (same day) added the first one, e2e/customer-app-update-email.spec.js,
+# as a real side effect of proving the Update Email feature works in a
+# real browser -- mapped here so that origin is now closed, not left
+# undiscovered by this file's own skip-reason logic below. Honest scope
+# note: this spec covers the login -> edit-email -> save -> reload flow
+# specifically, not every page/control on index.html -- a future change
+# to an unrelated part of the page (customer creation, preferences, admin
+# views) would still only be covered by this one spec's incidental
+# overlap, not a purpose-built one. Broader golden-path coverage for this
+# page remains real, separate future work, not claimed as done here.
 FRONTEND_PATH_TO_SPECS = {
     "agent/web/workbench.html": ["e2e/workbench-catalogue.spec.js"],
     "agent/web/workbench.js": ["e2e/workbench-catalogue.spec.js"],
@@ -124,6 +135,7 @@ FRONTEND_PATH_TO_SPECS = {
     "agent/web/usage.js": ["e2e/usage.spec.js"],
     "agent/web/learn.html": ["e2e/learn.spec.js"],
     "agent/web/learn.js": ["e2e/learn.spec.js"],
+    "app/src/main/resources/static/index.html": ["e2e/customer-app-update-email.spec.js"],
 }
 
 # Paths that, if changed, mean "this cannot be confidently bounded by V1's
