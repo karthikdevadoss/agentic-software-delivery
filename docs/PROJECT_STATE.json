@@ -533,6 +533,7 @@
     }
   ],
   "next_phase": "Sprint 4 retro (real git-commit-timestamp-verified data, 3 action-item sections, Owner approval before acting on them) -- then next sprint scoping. Real open items surfaced this sprint, not yet scheduled: ACT-015 (real-topology tier's billing-service stub gap), the JaCoCo/JDK68 gap (ACT-012, still open with a documented real trade-off), and two agents stalling mid-task waiting on long-running local test runs without returning a final report (BL-029+032, BL-030+031) -- a real, sprint-level implementation-process finding for the retro.",
-  "next_action": "Prepare and present the Sprint 4 retro (docs/RETRO_LOG.md), covering all 11 items plus the sprint-level agent-stalling finding, then await Owner discussion/approval before scoping the next sprint.",
-  "blocked_on": null
+  "next_action": "RESUME 2026-09-22: (1) Owner-directed, out-of-sprint NRG-career-facts finalisation is mid-task -- full handoff lives in the PRIVATE karthik-ai-context repo, coaching/NRG_SESSION_2026-09-21_HANDOFF.md (read its §0 and §6 first; rule: propose wording, get Owner's yes, then write). It carries pending public-repo consequences: relabel docs/MICROSERVICES_ARCHITECTURE.md's NRG 'Confirmed' rows and Kafka row, retitle BL-007, add an ACT-018 note -- all awaiting Owner approval. (2) Then the Owner's queued task: connect Yahoo Mail + Gmail and build a small tool. (3) Then Sprint 6 scoping (candidates ACT-015 + ACT-016 stabilisation; ACT-017; an aggregator/BFF + serverless representation of the Owner's real NRG layer). Also still pending: this file's current_ticket/next_phase are stale (Sprint 4 wording; Sprint 5 retro is complete, see docs/RETRO_LOG.md) -- resync when next touched; 5 untracked personal files at repo root must never be committed.",
+  "blocked_on": null,
+  "last_updated": "2026-09-21"
 }

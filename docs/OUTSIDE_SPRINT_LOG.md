@@ -92,3 +92,21 @@ item — e.g. a one-off external-facing document).
   directly rather than a human reading it start to end. Not tracked in
   `docs/BACKLOG.json` — no sizing, no retro entry, per the Owner's
   explicit "not part of any sprint" instruction.
+
+## 2026-09-21 — "Finalise NRG" research (out of sprint, Owner-directed)
+
+- **research** — Owner asked, before scoping Sprint 6, to finish the NRG
+  project picture: what is known, what is missing technically/
+  architecturally. Passive reads of NRG's public consumer/business web
+  pages (hostnames, analytics tags, app-store listings — no probing, no
+  login) plus public case studies, cross-checked against the private
+  career-context repo. Output: a 31-question prioritised gap list (v2) in
+  the private repo's `coaching/NRG_STACK_GAP_ANALYSIS.md`, plus a dated
+  CONFIRMED block of new Owner-stated facts in `context/CAREER_HISTORY.md`
+  (no Kafka at NRG at all, SOAP to SAP/Salesforce, legacy Java apps
+  behind the new Spring Boot layer, Tealium from backend, React frontend
+  not his, DE East brand, Reliant-first feature rollout, prod support
+  across many apps, recent heavy AWS, Azure hedged). Public-repo
+  follow-up (not yet done): `docs/MICROSERVICES_ARCHITECTURE.md`'s Kafka
+  row should be relabelled "NOT used at NRG (confirmed 2026-09-21)".
+  Explicitly out of sprint per the Owner's "before we start next sprint".
