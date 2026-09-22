@@ -19,6 +19,12 @@
 
     <properties>
         <java.version>21</java.version>
+        <!-- BL-057 / ACT-016: the whole-BUNDLE coverage floor is only meaningful for a
+             FULL test run. A scoped run (mvn test -Dtest=OneClass, what Triage's
+             isolated verification does) can never reach it from a subset, so those
+             callers pass -Djacoco.check.skip=true explicitly. Default false: every
+             plain `mvnw test` (CI, local) still enforces the floor. -->
+        <jacoco.check.skip>false</jacoco.check.skip>
     </properties>
 
     <dependencies>
@@ -334,6 +340,7 @@
                             <goal>check</goal>
                         </goals>
                         <configuration>
+                            <skip>${jacoco.check.skip}</skip>
                             <rules>
                                 <rule>
                                     <element>BUNDLE</element>

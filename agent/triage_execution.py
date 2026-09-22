@@ -389,7 +389,7 @@ def _isolated_compile_java_candidate(
             test_start = time.monotonic()
             try:
                 test_proc = subprocess.run(
-                    [str(workspace_mvnw), "-q", f"-Dtest={','.join(test_classes)}", "test"],
+                    [str(workspace_mvnw), "-q", f"-Dtest={','.join(test_classes)}", "-Djacoco.check.skip=true", "test"],  # BL-057: scoped run, bundle floor not applicable
                     cwd=str(workspace_app), capture_output=True, text=True, timeout=240, shell=False,
                 )
                 test_success = test_proc.returncode == 0
@@ -587,7 +587,7 @@ def _run_focused_maven_tests(test_classes: list[str]) -> dict:
     start = time.monotonic()
     try:
         proc = subprocess.run(
-            [str(MVNW), "-q", f"-Dtest={','.join(test_classes)}", "test"],
+            [str(MVNW), "-q", f"-Dtest={','.join(test_classes)}", "-Djacoco.check.skip=true", "test"],  # BL-057: scoped run, bundle floor not applicable
             cwd=str(APP_DIR), capture_output=True, text=True, timeout=180, shell=False,
         )
         success = proc.returncode == 0
