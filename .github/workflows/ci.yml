@@ -22,6 +22,12 @@ jobs:
       # Postgres container actually runs here -- unlike local development
       # on this project's current Windows machine, which has no Docker
       # installed (see docs/DECISIONS.md).
+      # RA-1 (retro action 2026-09-20, wired 2026-09-22): the deterministic
+      # STATIC gate -- file modes/shebangs and the twice-recurring "--"
+      # inside an XML/HTML comment bug -- now BLOCKS CI. A rule written in
+      # docs/LESSONS.md twice still recurred; a gate cannot be forgotten.
+      - name: STATIC gate (file modes, XML/HTML comment "--")
+        run: python agent/static_gate.py
       - name: mvn test
         working-directory: app
         run: ./mvnw test -B
@@ -275,6 +281,7 @@ jobs:
             services/customer-service/pom.xml
             services/billing-service/pom.xml
             services/api-gateway/pom.xml
+            services/legacy-billing-stub/pom.xml
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'

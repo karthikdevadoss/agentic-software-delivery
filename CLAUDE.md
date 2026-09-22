@@ -63,6 +63,15 @@ which numbers, which incidents) lives outside this public repository.
   transforms) for genuinely mechanical work. Never downgrade a difficult
   task to save cost; never spend a strong model's capacity on work
   software or a lighter model performs equally reliably.
+- **Duty to propose the cheaper path, even against the Owner's own
+  instruction (2026-09-22).** If a requested task or plan would spend model
+  tokens where a deterministic script, a grep, an existing summary, a
+  lighter model or a single agent would do, say so first with a rough
+  cost comparison and let the Owner decide -- never silently comply, never
+  silently substitute. Bulk material is reduced by zero-LLM extraction
+  before any model reads it. Top-tier models in subagents and concurrent
+  agents are opt-in per prompt only. Full text and rationale:
+  docs/CONSTITUTION.md §7.
 - **Parallel agents are a deliberate choice, not a default.** Before
   running multiple model-heavy agents/subagents at once, the real
   question is: will parallelism materially reduce total time-to-VERIFIED-

@@ -478,7 +478,8 @@
       "safe_to_auto_execute": false,
       "verification_required": "Each of the 9 findings needs its own real Owner decision on whether/how deep to act -- several (1, 3) are genuine architecture-direction calls, not sized engineering tasks. Not actioned in the same sprint this was found, given a real external time constraint (a scheduled review meeting) -- logged durably rather than rushed or lost.",
       "created_at_commit": null,
-      "resolved_at_commit": null
+      "resolved_at_commit": null,
+      "note_2026_09_22": "Finding (1) re-examined against real NRG evidence (E:/NRG investigation, 2026-09-22): the app is a three-source composite, not a faithful replica of one employer -- domain boundaries, legacy-billing facade, aggregator/BFF (BL-039) and serverless = NRG; microservices + gateway + Eureka-style discovery = Marsh; Kafka = BCBSA (Owner directive 2026-09-22). The 'faithful replica' argument is replaced by 'evidence-backed representation of three real engagements'; finding (1) stays retracted. Findings (4) shared symmetric JWT secret and (7) advisory real-topology CI job were independently named as real blockers by an external trainer review on 2026-09-22 (private repo coaching/TRAINER_REVIEW_2026-09-22_agentic_delivery.md) -> candidates for the next sprint."
     }
   ]
 }
