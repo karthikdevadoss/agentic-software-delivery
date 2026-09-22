@@ -987,3 +987,47 @@ Full release-gate regression: 109 Java (0 failures), full Python suite
 See `docs/PROJECT_STATE.json`'s `next_phase`/`next_action` for the full
 summary and next priority (Usage page's own visual restructuring into an
 efficiency-first narrative).
+
+# Current Reality (2026-09-22): Sprint 6 -- external-review blockers closed, NRG patterns in the app
+
+Run unattended overnight on the Owner's authorisation, single session, no
+parallel agents. Nine items (RA-1, RA-2, BL-038, BL-056, BL-057, BL-046,
+BL-040, BL-039, BL-041), merged to master as 5cf817c, pushed, platform
+backend redeployed on Railway.
+
+**The three blockers named by an external reviewer are closed with
+evidence**: (1) the shared symmetric JWT secret is gone -- one issuer holds
+an RSA private key and publishes JWKS, every service validates with the
+public key, and a token signed with any other key is rejected (BL-046,
+independently QA-evaluated PASS 6/6); (2) the real-topology multi-instance
+tier is a blocking CI gate -- the missing legacy-billing dependency was
+built as a real stub service, three consecutive clean runs recorded, then
+`continue-on-error` removed (BL-038, BL-056); (3) the Customer app coverage
+floor is green again with real tests, not a lowered bar (0.7736 -> 0.9036,
+BL-057).
+
+**Two patterns taken from real NRG work**: a fixed-URL legacy-system
+stand-in keyed by plan family (404 is a healthy "not in catalog"), and an
+aggregator/BFF endpoint in api-gateway that fans out to three services in
+parallel with per-call timeouts and reports `partial=true` instead of
+failing the page (BL-039, verified across five real processes). A
+config-drift static gate now blocks a key present in one Spring profile
+file but missing from another (BL-041).
+
+**Real defects found by running, not by reading**: OpenSSL 3.5 emitted
+PKCS#1 where the decoder needed PKCS#8; a second Spring constructor needed
+`@Autowired`; a new `@LoadBalanced RestClient.Builder` silently took over
+the gateway's routing tests until a `@Primary` plain builder was added.
+
+**Post-merge CI was red in two jobs, neither caused by the sprint**:
+billing-service's Docker-gated Redis tests had never mocked the legacy
+pricing client ACT-013 added (red since before the sprint, invisible
+locally because those tests skip without Docker), and the Customer app's
+Kafka fan-out test took its duplicate-delivery baseline before both
+consumers had finished. Both fixed the same night (e4c0b86, CI run
+35781903501 green across all 10 jobs); lesson in `docs/LESSONS.md`.
+
+Sprint ratio 0.07 (about 35 min actual against an 8 h estimate). Retro
+DRAFT with computed ratios and four observations in `docs/RETRO_LOG.md`;
+the joint retro with the Owner is the next step, then Sprint 7 per
+`docs/BACKLOG.json`.

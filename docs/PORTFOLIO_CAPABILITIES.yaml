@@ -13,7 +13,7 @@
 # IMPORTANT_MISSING / NOT_WORTH_ADDING -> build a showcase manifest.
 
 registry_version: 1
-last_updated: "2026-09-14"
+last_updated: "2026-09-22"
 
 capabilities:
 
@@ -201,6 +201,66 @@ capabilities:
     relevant_modules: [agent/web_server.py, agent/web/workbench.html, agent/web/workbench.js]
     interview_topics: ["why SSE alone is not sufficient (a real Cloudflare tunnel silently dropped an entire stream) and polling as an always-on safety net, not a failure-triggered fallback", "authoritative backend state vs. assumed-healthy client stream"]
     job_market_tags: [real-time-ui, sse, developer-tools, observability]
+
+  - id: asymmetric-jwt-jwks
+    display_name: "RS256 JWT with a JWKS-published public key across microservices (no shared secret)"
+    engineering_problem_solved: "Replace one symmetric HMAC secret shared by six services with one issuer holding the private key and every service validating with the published public key, so a leaked service config can no longer mint tokens for the whole estate"
+    technology: [Spring Security OAuth2 Resource Server, NimbusJwtDecoder.withPublicKey, Nimbus JOSE RSASSASigner, JWKS endpoint (/.well-known/jwks.json), PKCS#8 key material via env]
+    business_scenario: "Any multi-service platform validating tokens issued by a central identity provider (the same shape as validating FusionAuth/Cognito RS256 tokens in a real utility's aggregator layer)"
+    implementation_state: IMPLEMENTED
+    test_state: TESTED
+    production_state: NOT_PRODUCTION_PROVISIONED
+    evidence_links:
+      - "services/customer-service/src/main/java/com/example/customerservice/security/JwksController.java"
+      - "docs/MICROSERVICES_ARCHITECTURE.md"
+    relevant_modules: [services/customer-service/src/main/java/com/example/customerservice/security/DemoJwtIssuer.java, services/billing-service/src/main/java/com/example/billingservice/security/SecurityConfig.java, services/real-topology-tests/run_real_topology_test.py]
+    interview_topics: ["why a shared symmetric secret across services is a real blast-radius problem, not a style issue", "key rotation via kid + JWKS", "the PKCS#1 vs PKCS#8 encoding slip that only a parse-before-use check catches", "negative tests: a token signed with any other RSA key is rejected"]
+    job_market_tags: [security, jwt, oauth2, microservices, spring-security]
+
+  - id: bff-aggregator-fan-out
+    display_name: "Aggregator / BFF endpoint with parallel fan-out, per-call timeouts and honest partial results"
+    engineering_problem_solved: "Serve one dashboard call from three backend services in parallel, bounded by a per-call timeout, and report which sections are missing instead of failing the whole page when one dependency is slow or down"
+    technology: [Spring Cloud Gateway (WebMVC), RestClient + @LoadBalanced builder, CompletableFuture.orTimeout, dedicated fan-out executor, Eureka service discovery]
+    business_scenario: "A customer dashboard that must render even when the usage/metering backend is unavailable (the same shape as a utility's brand aggregator reading profile, billing and usage in one round trip)"
+    implementation_state: IMPLEMENTED
+    test_state: TESTED
+    production_state: NOT_PRODUCTION_PROVISIONED
+    evidence_links:
+      - "services/api-gateway/src/main/java/com/example/apigateway/bff/DashboardAggregationService.java"
+      - "services/real-topology-tests/run_real_topology_test.py"
+    relevant_modules: [services/api-gateway/src/main/java/com/example/apigateway/bff/DashboardController.java, services/api-gateway/src/main/java/com/example/apigateway/bff/BffClientConfig.java, services/api-gateway/src/main/java/com/example/apigateway/bff/SectionOutcome.java]
+    interview_topics: ["partial=true as a first-class response field vs an all-or-nothing 502", "why a second RestClient.Builder bean needs @Primary (a real regression caught by the existing routing tests)", "fan-out thread pool sizing and timeout budgets", "verified multi-process: usage section UNAVAILABLE when metering-service is absent, 89 ms"]
+    job_market_tags: [bff, api-gateway, resilience, microservices, spring-cloud]
+
+  - id: real-topology-gating-tier
+    display_name: "Real multi-instance topology test tier as a blocking CI gate (with a legacy-system stand-in)"
+    engineering_problem_solved: "Prove cross-service behaviour with a real registry, real service instances and a real fixed-URL legacy dependency, then make that tier block merges instead of being informational"
+    technology: [Python harness (5 JVM processes, port offset), Eureka, Spring Boot stub service for the legacy billing system, GitHub Actions]
+    business_scenario: "Any estate where 4 of 7 real defects only show up with several live instances running together, and where a legacy system of record has no test environment"
+    implementation_state: IMPLEMENTED
+    test_state: TESTED
+    production_state: NOT_PRODUCTION_PROVISIONED
+    evidence_links:
+      - "services/legacy-billing-stub/"
+      - ".github/workflows/ci.yml"
+    relevant_modules: [services/real-topology-tests/run_real_topology_test.py, services/legacy-billing-stub/src/main/java/com/example/legacybilling/pricing/PlanPricingController.java]
+    interview_topics: ["why a mocked integration test cannot satisfy an integration acceptance criterion", "a stand-in keyed by plan family like a real rating engine, 404 as a healthy answer", "three consecutive clean runs before removing continue-on-error", "Docker-gated tests are verified only where Docker exists"]
+    job_market_tags: [integration-testing, ci, testcontainers, microservices, legacy-integration]
+
+  - id: deterministic-static-gates
+    display_name: "Zero-LLM deterministic CI gates for AI-characteristic defects (file modes, XML-comment double dash, Spring profile config drift)"
+    engineering_problem_solved: "Turn lessons that kept recurring as prose into blocking, scriptable checks: executable bits on scripts, a literal double dash inside XML comments, and a key present in one Spring profile file but missing from another"
+    technology: [Python, git ls-files --stage, GitHub Actions, allowlist JSON]
+    business_scenario: "Any team whose incidents include an environment-only outage caused by a property that existed in dev but not in prod"
+    implementation_state: IMPLEMENTED
+    test_state: TESTED
+    production_state: PRODUCTION_ACTIVE
+    evidence_links:
+      - "agent/check_config_drift.py"
+      - ".github/workflows/ci.yml"
+    relevant_modules: [agent/check_config_drift.py, agent/config_drift_allowlist.json, agent/test_check_config_drift.py]
+    interview_topics: ["a lesson written down three times still recurred; a gate did not", "what belongs in a deterministic gate vs a model judgment", "allowlisting intentional per-profile keys without hiding real drift"]
+    job_market_tags: [ci, devops, static-analysis, quality-gates, python]
 
 # ---------------------------------------------------------------------------
 # Fast future JD workflow (documented per the Owner's Priority 6 instruction)
