@@ -121,7 +121,9 @@ def _mvnw(service_dir: Path) -> Path:
 # (never a hardcoded port), so an offset topology behaves identically to
 # the default one.
 DEFAULT_EUREKA_PORT = 8761
-DEFAULT_PORTS = {"customer-service": 8081, "billing-service": 8082, "api-gateway": 8080}
+DEFAULT_PORTS = {"customer-service": 8081, "billing-service": 8082, "api-gateway": 8080,
+                 # BL-038: the legacy billing system stand-in (fixed URL, not Eureka-registered)
+                 "legacy-billing-stub": 9099}
 
 # Startup order matters only in the sense that eureka-server should be
 # reachable before the others bother registering (they'll retry anyway
@@ -133,6 +135,13 @@ def build_services(port_offset: int):
     eureka_port = DEFAULT_EUREKA_PORT + port_offset
     eureka = {"name": "eureka-server", "dir": SERVICES_DIR / "eureka-server", "port": eureka_port, "eureka_app_id": None}
     dependents = [
+        # BL-038 / ACT-015: billing-service's facade confirms every plan rate
+        # with this stand-in; without it every POST /customers/{id}/plan is a
+        # real 503 (the exact regression ACT-015 recorded). eureka_app_id is
+        # None on purpose: a legacy system is reached at a fixed URL, never
+        # through discovery, so it is not part of the registry convergence wait.
+        {"name": "legacy-billing-stub", "dir": SERVICES_DIR / "legacy-billing-stub",
+         "port": DEFAULT_PORTS["legacy-billing-stub"] + port_offset, "eureka_app_id": None},
         {"name": "customer-service", "dir": SERVICES_DIR / "customer-service",
          "port": DEFAULT_PORTS["customer-service"] + port_offset, "eureka_app_id": "CUSTOMER-SERVICE"},
         {"name": "billing-service", "dir": SERVICES_DIR / "billing-service",
@@ -198,6 +207,11 @@ def start_service(service: dict) -> subprocess.Popen:
     env["PORT"] = str(service["port"])
     if service["name"] != "eureka-server":
         env["EUREKA_URL"] = f"http://localhost:{EUREKA_PORT}/eureka"
+    if service["name"] == "billing-service":
+        # BL-038: point the facade at the stand-in started by this harness
+        # (respects --port-offset), overriding application.properties' default.
+        legacy = next(svc for svc in ALL_SERVICES if svc["name"] == "legacy-billing-stub")
+        env["LEGACY_BILLING_SYSTEM_BASE_URL"] = f"http://localhost:{legacy['port']}"
 
     # shell=False, explicit argv -- same pattern already proven correct
     # in this codebase (agent/build_tools.py's run_maven): no shell
@@ -621,7 +635,7 @@ def main():
             print(f"[OK] {svc['name']} UP after {up_s}s")
 
         # Phase 3: real Eureka registry convergence -- polled, never slept.
-        expected = [svc["eureka_app_id"] for svc in DEPENDENT_SERVICES]
+        expected = [svc["eureka_app_id"] for svc in DEPENDENT_SERVICES if svc["eureka_app_id"]]
         convergence_s = wait_for_eureka_registration(expected, args.registry_timeout)
         result["phases"]["eureka_registry_convergence_s"] = convergence_s
         print(f"[OK] Eureka registry shows {expected} all UP after {convergence_s}s")
