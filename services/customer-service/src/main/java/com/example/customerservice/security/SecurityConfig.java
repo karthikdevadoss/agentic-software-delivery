@@ -98,7 +98,8 @@ public class SecurityConfig {
     }
 
     /**
-     * Validates signature (via the shared HMAC secret), expiry, not-before,
+     * Validates signature (RS256 against this issuer's own public key -- the
+     * same key every other service validates with, BL-046), expiry, not-before,
      * issuer, and audience -- identical validation dimensions to the
      * monolith's own jwtDecoder, kept that way deliberately since every
      * service in this decomposition must agree on what makes a token valid.

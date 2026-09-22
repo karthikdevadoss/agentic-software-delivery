@@ -24,9 +24,9 @@ import java.util.Date;
  * issuer at all -- it is a resource server only (see SecurityConfig's
  * Javadoc), by real architectural design: token issuance lives in
  * customer-service in this decomposition. So this class exists
- * exclusively under src/test, signs with the same HMAC secret the
- * service's own JwtDecoder validates against (read from the same
- * app.security.jwt.* properties by the calling test), and mints only the
+ * exclusively under src/test, signs RS256 with the test-only dev private key
+ * (DevJwtKeys) whose public half the service's own JwtDecoder validates
+ * against (app.security.jwt.public-key), and mints only the
  * "role"/"cid" claims WorkspaceAccessGuard actually reads -- it is not,
  * and must never become, a second production token issuer.
  */

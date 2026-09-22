@@ -30,8 +30,8 @@ import java.util.Collection;
  * never issues JWTs (no DemoJwtIssuer, no login endpoint here) -- identity
  * issuance is customer-service's job (see
  * docs/MICROSERVICES_ARCHITECTURE.md's "Why Customer Service owns auth").
- * This service only VALIDATES tokens signed with the same shared HMAC
- * secret every service in this decomposition trusts (see
+ * This service only VALIDATES RS256 tokens with the issuer's PUBLIC key
+ * (BL-046: no shared secret anywhere; see
  * app.security.jwt.* in application.properties). The JwtDecoder below is
  * built directly from that shared secret property, not from an issuer
  * bean -- there is no local issuer to borrow key material from.

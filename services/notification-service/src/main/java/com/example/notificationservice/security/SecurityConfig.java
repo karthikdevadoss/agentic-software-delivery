@@ -27,13 +27,13 @@ import java.util.Collection;
 /**
  * RESOURCE SERVER ONLY -- unlike app/'s SecurityConfig (and
  * customer-service's), this service never issues tokens (no DemoJwtIssuer
- * equivalent here): it independently validates JWTs signed with the same
- * shared HMAC secret customer-service uses to mint them, per
+ * equivalent here): it independently validates the RS256 JWTs customer-service
+ * mints, using only customer-service's PUBLIC key (BL-046), per
  * docs/MICROSERVICES_ARCHITECTURE.md's Auth pattern ("every service
  * independently validates JWTs as its own OAuth2 resource server ...
  * stateless validation at every service"). The JwtDecoder below is built
- * directly from app.security.jwt.* properties (SecretKeySpec constructed
- * straight from the property, same approach as billing-service) rather
+ * directly from app.security.jwt.* properties (the public key parsed by
+ * RsaKeys, same approach as billing-service) rather
  * than borrowing key material from an issuer bean this service does not
  * have.
  *
@@ -89,7 +89,7 @@ public class SecurityConfig {
     }
 
     /**
-     * Validates signature (via the shared HMAC secret), expiry, not-before,
+     * Validates signature (RS256 against the issuer's public key), expiry, not-before,
      * issuer, and audience -- built directly from configuration, not from
      * an issuer bean, since this service never mints its own tokens.
      */

@@ -199,4 +199,17 @@ class SecurityIntegrationTest {
             throw new IllegalStateException(e);
         }
     }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void jwksEndpoint_isPublic_andPublishesTheSigningKeyIdAsAnRsaJwk() {
+        // BL-046: the discovery document a real resource server would point
+        // NimbusJwtDecoder.withJwkSetUri at. Public by definition, no token.
+        Map<String, Object> jwks = restTemplate.getForObject(url("/.well-known/jwks.json"), Map.class);
+
+        java.util.List<Map<String, Object>> keys = (java.util.List<Map<String, Object>>) jwks.get("keys");
+        assertThat(keys).hasSize(1);
+        assertThat(keys.get(0)).containsEntry("kty", "RSA").containsEntry("kid", demoJwtIssuer.keyId());
+        assertThat(keys.get(0)).containsKeys("n", "e").doesNotContainKeys("d", "p", "q");
+    }
 }

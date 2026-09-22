@@ -21,14 +21,15 @@ import java.util.Set;
  * PORTFOLIO DEMO TOKEN ISSUER -- explicitly NOT an enterprise identity
  * provider. This is the ONE service in the microservices decomposition
  * that issues tokens (see docs/MICROSERVICES_ARCHITECTURE.md's Auth
- * pattern section) -- every other service only validates them, using the
- * same shared HMAC secret. A real enterprise deployment of this
+ * pattern section) -- every other service only validates them with this
+ * issuer's PUBLIC key (BL-046: RS256, kid in the header, JWKS published at
+ * /.well-known/jwks.json). A real enterprise deployment of this
  * architecture would issue tokens from Cognito/Keycloak/FusionAuth/an
  * enterprise IdP; this class exists solely so an anonymous recruiter/
  * interviewer can experience the real secured APIs across every service
  * without a signup/login flow.
  *
- * Tokens are cryptographically signed (HS256), short-lived, and carry
+ * Tokens are cryptographically signed (RS256), short-lived, and carry
  * only a fixed, explicit set of business-scoped read/write authorities --
  * never admin/owner/deployment/infrastructure/shell capabilities, because
  * no such scope exists in {@link #DEMO_SCOPES} for a caller to be granted
