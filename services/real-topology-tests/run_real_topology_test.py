@@ -591,6 +591,30 @@ def run_real_flow(gateway_port: int) -> dict:
         "status_field": get_body.get("status"),
     }
 
+    # BL-039: the aggregator/BFF fan-out, verified MULTI-PROCESS (CLAUDE.md:
+    # first-of-its-kind multi-process work must be verified multi-process).
+    # customer-service and billing-service are real processes here, so those
+    # two sections must carry real data; metering-service is deliberately NOT
+    # part of this topology, so its section must come back UNAVAILABLE and
+    # the response must say partial=true -- a real dependency missing is the
+    # exact degradation the BFF exists to survive, never a fabricated section.
+    resp = _call_with_lb_warmup_retry("GET", f"{base}/bff/customers/{customer_id}/dashboard", headers=auth_header, timeout=20)
+    if resp.status_code != 200:
+        raise HarnessError(f"GET /bff/customers/{customer_id}/dashboard: expected 200, got {resp.status_code}: {resp.text[:300]}")
+    dash = resp.json()
+    sections = dash.get("sections", {})
+    if (sections.get("customer", {}).get("status") != "OK"
+            or sections.get("plan", {}).get("status") != "OK"
+            or sections.get("plan", {}).get("data", {}).get("planName") != plan_payload["planName"]
+            or sections.get("usage", {}).get("status") != "UNAVAILABLE"
+            or dash.get("partial") is not True):
+        raise HarnessError(f"GET /bff/customers/{customer_id}/dashboard: unexpected sections/partial: {dash}")
+    evidence["bff_dashboard"] = {
+        "status": resp.status_code, "partial": dash.get("partial"), "elapsedMs": dash.get("elapsedMs"),
+        "customer": sections["customer"]["status"], "plan": sections["plan"]["status"],
+        "usage": sections["usage"]["status"], "usage_reason": sections["usage"].get("reason"),
+    }
+
     return evidence
 
 
