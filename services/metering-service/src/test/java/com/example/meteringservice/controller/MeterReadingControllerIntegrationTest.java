@@ -35,9 +35,6 @@ class MeterReadingControllerIntegrationTest {
     @LocalServerPort
     private int port;
 
-    @Value("${app.security.jwt.secret}")
-    private String jwtSecret;
-
     @Value("${app.security.jwt.issuer}")
     private String jwtIssuer;
 
@@ -56,7 +53,7 @@ class MeterReadingControllerIntegrationTest {
     }
 
     private HttpHeaders authHeaders(String role, Long customerId) {
-        String token = TestJwtIssuer.issueToken(jwtSecret, jwtIssuer, jwtAudience, role, customerId);
+        String token = TestJwtIssuer.issueToken(jwtIssuer, jwtAudience, role, customerId);
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(token);
         return headers;

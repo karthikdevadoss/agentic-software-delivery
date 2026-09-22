@@ -62,11 +62,20 @@ credential issuance in this domain, and it avoids inventing a 6th
 ## Auth pattern
 
 Every service independently validates JWTs as its own OAuth2 resource
-server (same `NimbusJwtDecoder` config as `app/`'s `SecurityConfig`,
-same shared HMAC signing secret via env var). **Deliberate choice**:
-no central session, no single point of trust failure beyond the shared
-key itself — the Gateway passes the `Authorization` header straight
-through untouched; it does not re-issue or strip it. This is a real,
+server (`NimbusJwtDecoder`). **Since BL-046 (2026-09-22) tokens are RS256:**
+`customer-service` is the only issuer and the only holder of a private key
+(`app.security.jwt.private-key`, `kid` in every token header, public keys
+published at `GET /.well-known/jwks.json`); every resource server validates
+with the issuer's PUBLIC key from configuration (`app.security.jwt.public-key`)
+— the same shape the Owner's real NRG aggregator used to validate FusionAuth
+tokens (identity-provider public key in config, no shared secret). This
+replaced the earlier shared HMAC secret (ACT-018 finding 4, and the external
+trainer review's first blocker: one leaked service could mint tokens for all).
+The checked-in default key pair is DEV-ONLY and labelled so; real environments
+set `JWT_PUBLIC_KEY` / `JWT_DEMO_PRIVATE_KEY`. **Deliberate choice**: no
+central session, no shared trust surface — the Gateway passes the
+`Authorization` header straight through untouched; it does not re-issue or
+strip it. This is a real,
 defensible pattern (stateless validation at every service) versus the
 alternative (gateway validates once, passes a trusted header downstream)
 — the trade-off is worth naming explicitly in an interview: this

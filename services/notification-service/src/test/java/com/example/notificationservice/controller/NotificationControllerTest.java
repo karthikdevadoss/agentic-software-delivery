@@ -38,8 +38,6 @@ class NotificationControllerTest {
     @Autowired
     private MeterRegistry meterRegistry;
 
-    @Value("${app.security.jwt.secret}")
-    private String jwtSecret;
     @Value("${app.security.jwt.issuer}")
     private String jwtIssuer;
     @Value("${app.security.jwt.audience}")
@@ -49,7 +47,7 @@ class NotificationControllerTest {
 
     @BeforeEach
     void setUp() {
-        authenticatedRestTemplate = TestJwtSupport.authenticatedRestTemplate(jwtSecret, jwtIssuer, jwtAudience);
+        authenticatedRestTemplate = TestJwtSupport.authenticatedRestTemplate(jwtIssuer, jwtAudience);
     }
 
     private String url(String path) {

@@ -20,7 +20,6 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.access.AccessDeniedHandler;
 
-import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
@@ -96,11 +95,11 @@ public class SecurityConfig {
      */
     @Bean
     public JwtDecoder jwtDecoder(
-            @Value("${app.security.jwt.secret}") String secret,
+            @Value("${app.security.jwt.public-key}") String publicKeyBase64,
             @Value("${app.security.jwt.issuer}") String expectedIssuer,
             @Value("${app.security.jwt.audience}") String expectedAudience) {
         NimbusJwtDecoder decoder = NimbusJwtDecoder
-                .withSecretKey(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"))
+                .withPublicKey(RsaKeys.publicKey(publicKeyBase64))
                 .build();
 
         OAuth2TokenValidator<Jwt> withTimestamp = new JwtTimestampValidator();

@@ -14,7 +14,6 @@ import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 
-import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 
@@ -68,11 +67,11 @@ public class SecurityConfig {
      * decoder enforces, since this must accept the exact same tokens. */
     @Bean
     public JwtDecoder jwtDecoder(
-            @Value("${app.security.jwt.secret}") String secret,
+            @Value("${app.security.jwt.public-key}") String publicKeyBase64,
             @Value("${app.security.jwt.issuer}") String expectedIssuer,
             @Value("${app.security.jwt.audience}") String expectedAudience) {
         NimbusJwtDecoder decoder = NimbusJwtDecoder
-                .withSecretKey(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"))
+                .withPublicKey(RsaKeys.publicKey(publicKeyBase64))
                 .build();
 
         OAuth2TokenValidator<Jwt> withTimestamp = new JwtTimestampValidator();

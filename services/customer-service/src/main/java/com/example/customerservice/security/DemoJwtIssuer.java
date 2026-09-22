@@ -3,13 +3,14 @@ package com.example.customerservice.security;
 import com.example.customerservice.model.DemoIdentity;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.crypto.MACSigner;
+import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.nio.charset.StandardCharsets;
+import java.security.interfaces.RSAPrivateKey;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
@@ -66,17 +67,26 @@ public class DemoJwtIssuer {
      */
     public static final Set<String> ADMIN_SCOPES = Set.of("admin:read");
 
-    private final byte[] secretKeyBytes;
+    private final RSAPrivateKey privateKey;
+    private final String keyId;
     private final String issuer;
     private final String audience;
     private final Duration defaultTtl;
 
+    @Autowired // two constructors exist (the second is for tests signing with another key); Spring needs the choice made explicit
     public DemoJwtIssuer(
-            @Value("${app.security.jwt.secret}") String secret,
+            @Value("${app.security.jwt.private-key}") String privateKeyBase64,
+            @Value("${app.security.jwt.key-id}") String keyId,
             @Value("${app.security.jwt.issuer}") String issuer,
             @Value("${app.security.jwt.audience}") String audience,
             @Value("${app.security.jwt.demo-token-ttl-seconds}") long defaultTtlSeconds) {
-        this.secretKeyBytes = secret.getBytes(StandardCharsets.UTF_8);
+        this(RsaKeys.privateKey(privateKeyBase64), keyId, issuer, audience, defaultTtlSeconds);
+    }
+
+    /** Package-private: lets tests sign with a DIFFERENT key to prove rejection. */
+    DemoJwtIssuer(RSAPrivateKey privateKey, String keyId, String issuer, String audience, long defaultTtlSeconds) {
+        this.privateKey = privateKey;
+        this.keyId = keyId;
         this.issuer = issuer;
         this.audience = audience;
         this.defaultTtl = Duration.ofSeconds(defaultTtlSeconds);
@@ -148,8 +158,9 @@ public class DemoJwtIssuer {
 
     private String sign(JWTClaimsSet claims) {
         try {
-            SignedJWT signedJwt = new SignedJWT(new JWSHeader(JWSAlgorithm.HS256), claims);
-            signedJwt.sign(new MACSigner(secretKeyBytes));
+            // RS256 with a key id so validators can select the right public key (JWKS rotation-ready).
+            SignedJWT signedJwt = new SignedJWT(new JWSHeader.Builder(JWSAlgorithm.RS256).keyID(keyId).build(), claims);
+            signedJwt.sign(new RSASSASigner(privateKey));
             return signedJwt.serialize();
         } catch (com.nimbusds.jose.JOSEException e) {
             throw new IllegalStateException("Failed to sign demo JWT", e);
@@ -157,7 +168,7 @@ public class DemoJwtIssuer {
     }
 
     /** Exposed only for {@link SecurityConfig} to build the matching decoder from the same key material. */
-    byte[] secretKeyBytes() {
-        return secretKeyBytes;
+    public String keyId() {
+        return keyId;
     }
 }

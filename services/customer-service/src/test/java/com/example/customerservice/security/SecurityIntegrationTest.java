@@ -3,6 +3,7 @@ package com.example.customerservice.security;
 import com.example.customerservice.model.Customer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpEntity;
@@ -13,6 +14,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.interfaces.RSAPrivateKey;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Set;
@@ -87,8 +91,11 @@ class SecurityIntegrationTest {
         // Same claims/shape as a real demo token, but signed with a
         // completely different secret -- must be rejected on signature
         // alone, before any claim is even inspected.
+        // BL-046: a freshly generated RSA key nobody configured -- rejected on
+        // signature alone, before any claim is inspected.
         DemoJwtIssuer forgedIssuer = new DemoJwtIssuer(
-                "a-completely-different-signing-secret-that-does-not-match-production-at-all-32bytes",
+                (RSAPrivateKey) generateOtherKeyPair().getPrivate(),
+                "forged-kid",
                 "agentic-delivery-customer-service-demo-issuer",
                 "customer-service",
                 900);
@@ -109,7 +116,8 @@ class SecurityIntegrationTest {
     @Test
     void protectedEndpoint_withWrongIssuer_returns401() {
         DemoJwtIssuer wrongIssuer = new DemoJwtIssuer(
-                sameSecretAsProduction(),
+                sameKeyAsProduction(),
+                "prod-kid",
                 "some-other-issuer-nobody-configured",
                 "customer-service",
                 900);
@@ -122,7 +130,8 @@ class SecurityIntegrationTest {
     @Test
     void protectedEndpoint_withWrongAudience_returns401() {
         DemoJwtIssuer wrongAudience = new DemoJwtIssuer(
-                sameSecretAsProduction(),
+                sameKeyAsProduction(),
+                "prod-kid",
                 "agentic-delivery-customer-service-demo-issuer",
                 "some-other-app-entirely",
                 900);
@@ -171,11 +180,23 @@ class SecurityIntegrationTest {
         assertThat(restTemplate.getForEntity(url("/actuator/health"), String.class).getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
-    private String sameSecretAsProduction() {
-        // The default local/CI signing secret from application.properties
-        // -- reused here only to isolate issuer/audience as the SOLE
-        // variable under test, proving those checks fire independently of
-        // signature validity.
-        return "local-dev-only-insecure-demo-signing-secret-never-use-in-real-production-32-bytes-minimum";
+    @Value("${app.security.jwt.private-key}")
+    private String configuredPrivateKey;
+
+    private String sameKeyAsProduction() {
+        // The configured (dev-only) signing key -- reused here only to isolate
+        // issuer/audience as the SOLE variable under test, proving those checks
+        // fire independently of signature validity.
+        return configuredPrivateKey;
+    }
+
+    private static KeyPair generateOtherKeyPair() {
+        try {
+            KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
+            generator.initialize(2048);
+            return generator.generateKeyPair();
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
     }
 }

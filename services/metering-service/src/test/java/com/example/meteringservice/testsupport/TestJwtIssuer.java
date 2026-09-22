@@ -3,11 +3,14 @@ package com.example.meteringservice.testsupport;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.crypto.MACSigner;
+import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 
-import java.nio.charset.StandardCharsets;
+import java.security.KeyFactory;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.util.Base64;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
@@ -40,7 +43,7 @@ public final class TestJwtIssuer {
      * @param customerId if non-null, sets the "cid" claim binding this
      *                   token to exactly one customer.
      */
-    public static String issueToken(String secret, String issuer, String audience, String role, Long customerId) {
+    public static String issueToken(String issuer, String audience, String role, Long customerId) {
         Instant now = Instant.now();
         JWTClaimsSet.Builder builder = new JWTClaimsSet.Builder()
                 .subject("metering-service-test-user")
@@ -55,11 +58,20 @@ public final class TestJwtIssuer {
             builder.claim("cid", customerId);
         }
         try {
-            SignedJWT signedJwt = new SignedJWT(new JWSHeader(JWSAlgorithm.HS256), builder.build());
-            signedJwt.sign(new MACSigner(secret.getBytes(StandardCharsets.UTF_8)));
+            SignedJWT signedJwt = new SignedJWT(new JWSHeader.Builder(JWSAlgorithm.RS256).keyID(DevJwtKeys.KEY_ID).build(), builder.build());
+            signedJwt.sign(new RSASSASigner(devPrivateKey()));
             return signedJwt.serialize();
         } catch (JOSEException e) {
             throw new IllegalStateException("Failed to sign test JWT", e);
+        }
+    }
+
+    private static RSAPrivateKey devPrivateKey() {
+        try {
+            byte[] der = Base64.getDecoder().decode(DevJwtKeys.PRIVATE_KEY_BASE64);
+            return (RSAPrivateKey) KeyFactory.getInstance("RSA").generatePrivate(new PKCS8EncodedKeySpec(der));
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
         }
     }
 }

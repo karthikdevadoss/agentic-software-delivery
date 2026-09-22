@@ -2,13 +2,16 @@ package com.example.billingservice.testsupport;
 
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.crypto.MACSigner;
+import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.nio.charset.StandardCharsets;
+import java.security.KeyFactory;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.util.Base64;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
@@ -27,15 +30,14 @@ import java.util.Date;
 @Component
 public class TestJwtIssuer {
 
-    private final byte[] secretKeyBytes;
+    private final RSAPrivateKey privateKey;
     private final String issuer;
     private final String audience;
 
     public TestJwtIssuer(
-            @Value("${app.security.jwt.secret}") String secret,
             @Value("${app.security.jwt.issuer}") String issuer,
             @Value("${app.security.jwt.audience}") String audience) {
-        this.secretKeyBytes = secret.getBytes(StandardCharsets.UTF_8);
+        this.privateKey = devPrivateKey();
         this.issuer = issuer;
         this.audience = audience;
     }
@@ -51,11 +53,20 @@ public class TestJwtIssuer {
                 .claim("scope", String.join(" ", scopes))
                 .build();
         try {
-            SignedJWT signedJwt = new SignedJWT(new JWSHeader(JWSAlgorithm.HS256), claims);
-            signedJwt.sign(new MACSigner(secretKeyBytes));
+            SignedJWT signedJwt = new SignedJWT(new JWSHeader.Builder(JWSAlgorithm.RS256).keyID(DevJwtKeys.KEY_ID).build(), claims);
+            signedJwt.sign(new RSASSASigner(privateKey));
             return signedJwt.serialize();
         } catch (com.nimbusds.jose.JOSEException e) {
             throw new IllegalStateException("Failed to sign test JWT", e);
+        }
+    }
+
+    private static RSAPrivateKey devPrivateKey() {
+        try {
+            byte[] der = Base64.getDecoder().decode(DevJwtKeys.PRIVATE_KEY_BASE64);
+            return (RSAPrivateKey) KeyFactory.getInstance("RSA").generatePrivate(new PKCS8EncodedKeySpec(der));
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
         }
     }
 }

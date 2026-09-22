@@ -21,7 +21,6 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.access.AccessDeniedHandler;
 
-import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
@@ -71,20 +70,21 @@ public class SecurityConfig {
     }
 
     /**
-     * Built directly from app.security.jwt.secret -- deliberately NOT
-     * routed through a DemoJwtIssuer-equivalent bean (this service has
-     * none: it never signs tokens, only validates them). Validates
-     * signature (via the shared HMAC secret), expiry, not-before, issuer,
-     * and audience -- every dimension app/'s own JwtDecoder validates,
-     * unchanged.
+     * BL-046: built from app.security.jwt.public-key (the issuer's RSA
+     * public key) -- this service never signs tokens, only validates them,
+     * and holds NO secret at all. Validates signature (RS256 against the
+     * public key), expiry, not-before, issuer, and audience. Before BL-046
+     * every service shared one HMAC secret (ACT-018 finding 4, also the
+     * external trainer review's top blocker): any one leaked service could
+     * mint tokens for all the others.
      */
     @Bean
     public JwtDecoder jwtDecoder(
-            @Value("${app.security.jwt.secret}") String secret,
+            @Value("${app.security.jwt.public-key}") String publicKeyBase64,
             @Value("${app.security.jwt.issuer}") String expectedIssuer,
             @Value("${app.security.jwt.audience}") String expectedAudience) {
         NimbusJwtDecoder decoder = NimbusJwtDecoder
-                .withSecretKey(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"))
+                .withPublicKey(RsaKeys.publicKey(publicKeyBase64))
                 .build();
 
         OAuth2TokenValidator<Jwt> withTimestamp = new JwtTimestampValidator();
