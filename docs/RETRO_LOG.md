@@ -773,3 +773,9 @@ was not in CI.
    regression in BL-039.
 3. Sprint-level: total wall-clock ~35 min for work estimated at 8 h, with three background JVM runs overlapped. The
    binding constraint was not time but the usage limit (34% used at sprint start, per Owner).
+4. Post-merge CI on master (run 35780938679) was red in two jobs, neither caused by Sprint 6 code: billing-service's
+   Docker-gated Redis tests were already failing on the pre-sprint 11:06 run (unmocked `LegacyBillingSystemClient` from
+   ACT-013 -> 503), and the Customer app's Kafka fan-out test had a baseline race (`expected 5L but was 6L`). Both fixed
+   the same night as an in-scope proactive fix (see docs/LESSONS.md, 2026-09-22 entry); verification is CI-only because
+   neither test can run on the Docker-less dev machine. For the joint retro: "merged + pushed" was reported before the
+   post-merge CI result was known -- the sprint's own 'CI gating' work made that gap visible.

@@ -165,6 +165,17 @@ class ContractPlanEnrollmentEventFlowIntegrationTest {
                         .findFirst().orElse(null),
                 java.util.Objects::nonNull);
 
+        // The baseline must be taken only after BOTH fan-out consumers have
+        // finished the ORIGINAL delivery -- publishedAt != null only proves the
+        // outbox publisher sent it, not that the consumers are done. Taking the
+        // count earlier lets a late original-delivery row look like a duplicate
+        // (real CI failure 2026-09-22: expected 5 but was 6).
+        await().atMost(Duration.ofSeconds(40)).untilAsserted(() -> {
+            assertThat(processedEventRepository.existsByConsumerNameAndEventId("contract-plan-notification", event.getEventId())).isTrue();
+            assertThat(processedEventRepository.existsByConsumerNameAndEventId("contract-plan-billing-sync", event.getEventId())).isTrue();
+            assertThat(billingSyncRecordRepository.findAll())
+                    .anyMatch(r -> r.getPlanName().equals("Basic 6mo") && r.getCustomerId().equals(created.getId()));
+        });
         long processedCountBefore = processedEventRepository.count();
         long billingRecordsBefore = billingSyncRecordRepository.count();
 

@@ -2,6 +2,8 @@ package com.example.billingservice.cache;
 
 import com.example.billingservice.client.BillingCustomerClient;
 import com.example.billingservice.client.CustomerLookupOutcome;
+import com.example.billingservice.client.LegacyBillingSystemClient;
+import com.example.billingservice.client.LegacyPlanPricingOutcome;
 import com.example.billingservice.dto.ContractPlanEnrollRequest;
 import com.example.billingservice.testsupport.AuthTestSupport;
 import com.example.billingservice.testsupport.TestJwtIssuer;
@@ -74,6 +76,18 @@ class ContractPlanCacheIntegrationTest {
     @MockitoBean
     private BillingCustomerClient billingCustomerClient;
 
+    /**
+     * ACT-013 added a second outbound dependency to enrollment: the legacy
+     * billing system of record confirms the authoritative rate. Without this
+     * mock the real client dials localhost:9099, gets nothing, and every
+     * enrollment here is an honest 503 -- which is exactly what CI reported
+     * (this test is Docker-gated, so it never ran on the Docker-less dev
+     * machine). Same reasoning as the BillingCustomerClient mock above:
+     * this test is about Redis, not about either integration.
+     */
+    @MockitoBean
+    private LegacyBillingSystemClient legacyBillingSystemClient;
+
     private static final AtomicLong CUSTOMER_ID_SEQUENCE = new AtomicLong(200_000L);
 
     private org.springframework.web.client.RestTemplate restTemplate;
@@ -82,6 +96,8 @@ class ContractPlanCacheIntegrationTest {
     void setUp() {
         restTemplate = AuthTestSupport.authenticatedRestTemplate(testJwtIssuer);
         when(billingCustomerClient.checkCustomerExists(any(), any())).thenReturn(CustomerLookupOutcome.FOUND);
+        when(legacyBillingSystemClient.confirmPlanPricing(any(), any(), any()))
+                .thenReturn(new LegacyPlanPricingOutcome.Confirmed(new BigDecimal("0.15")));
     }
 
     private String url(String path) {
