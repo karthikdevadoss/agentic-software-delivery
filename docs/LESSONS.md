@@ -1563,3 +1563,29 @@ before it.
   security boundary — they share the same platform assumption and the same
   failure mode, and each one needs its own direct test (not just coverage
   via a downstream consumer) before it's trusted.
+
+- **A Docker-gated test that skips on the dev machine is a test that
+  only CI runs -- so any new outbound dependency added to a code path
+  those tests exercise is invisible locally until CI goes red.** Real
+  incident (2026-09-22): billing-service's two Redis Testcontainers tests
+  (`ContractPlanCacheIntegrationTest`, `EnrollmentLockConcurrencyIntegrationTest`,
+  both `disabledWithoutDocker = true`) mocked `BillingCustomerClient` but
+  not the `LegacyBillingSystemClient` that `ACT-013` later added to the
+  same enrollment path. Locally they skipped; in CI every enrollment
+  dialled `localhost:9099`, got nothing, and returned an honest 503 --
+  master CI had been red on billing-service since at least the 11:06 run
+  that morning, before Sprint 6, and only the post-sprint CI check
+  surfaced it. **Fixed:** `@MockitoBean LegacyBillingSystemClient` stubbed
+  to `Confirmed` in both tests. **Rule:** when adding a new outbound
+  client to a service path, grep every `@SpringBootTest` in that service
+  for `@MockitoBean` and add the new client there too -- and treat a
+  `disabledWithoutDocker` test as "verified only where Docker exists",
+  never as locally verified. The same audit found a second, unrelated CI
+  red in the Customer app: `ContractPlanEnrollmentEventFlowIntegrationTest`
+  captured its duplicate-delivery baseline after `publishedAt != null`
+  (proves only that the outbox publisher sent the event) instead of after
+  both consumers had recorded their own `processed_event` rows, so a late
+  original delivery looked like a duplicate (`expected: 5L but was: 6L`).
+  **Rule:** a "no-op on duplicate" assertion needs its baseline taken
+  after the ORIGINAL delivery is observably complete at every consumer,
+  not after it was sent.
