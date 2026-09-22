@@ -1157,7 +1157,7 @@
       "started_at": "2026-09-22T20:03:00+00:00",
       "completed_at": "2026-09-22T20:10:55+00:00",
       "actual_note": "DONE. New services/legacy-billing-stub (Spring Boot 4.1.1, web+actuator only, no Eureka/security by design: a legacy system is reached at a fixed URL). RateCard keyed by plan FAMILY (residential 0.1825 / business 0.1650 / prepay 0.1990 / green 0.2100); GET /legacy-billing/plans/{planName}/pricing?customerId= -> 200 {planName, ratePerKwh} matching billing-service's LegacyPlanRateResponse, 404 for unknown families, 400 without customerId. Test observed FAILING first (2 of 3 failed with 404/route-missing before the controller existed), then 3/3 PASS. Harness: stub added as a 5th process with eureka_app_id None (skipped in registry convergence), LEGACY_BILLING_SYSTEM_BASE_URL injected into billing-service respecting --port-offset. Real run 2026-09-22 ~20:15 UTC --port-offset 10000: exit 0, enroll_plan 201 ratePerKwh 0.1825 confirmed by the stand-in, get_plan 200 -- ACT-015's 503 is gone. CI: stub pom added to the real-topology cache list. Started 20:03 UTC, done at this timestamp.",
-      "actual_ratio": null,
+      "actual_ratio": 0.106,
       "contaminated": false,
       "sprint": "Sprint 6 (2026-09-22 night, Owner-authorised unattended: 'make our app use the new tools and tech we discovered as part of nrg', 2-3 h cap, no Fable, no parallel agents)",
       "sprint_candidate": "Sprint 6 proposal 2026-09-22 (awaiting Owner 'start')"
@@ -1182,7 +1182,7 @@
       "started_at": "2026-09-22T20:26:00+00:00",
       "completed_at": "2026-09-22T20:35:09+00:00",
       "actual_note": "DONE. api-gateway: BffClientConfig (@Primary plain RestClient.Builder for the gateway proxy + @LoadBalanced builder with per-call connect/read timeouts + dedicated bounded fan-out executor), SectionOutcome (OK|UNAVAILABLE + reason + elapsedMs), DashboardAggregationService (CompletableFuture fan-out to customer/billing/metering with orTimeout; bearer token propagated; partial flag), DashboardController GET /bff/customers/{id}/dashboard. Test observed FAILING first (3/3 404 before the controller existed), then 3/3 PASS; a real regression caught by the existing routing tests (500s: the gateway proxy picked up the @LoadBalanced builder) fixed with the @Primary plain builder -> gateway 6/6. Multi-process proof: harness step added and run at 20:31:30-20:33:08 UTC: bff_dashboard 200, customer OK, plan OK, usage UNAVAILABLE ('No instances available for metering-service' -- metering is not in the topology), partial=true, elapsedMs 89. Slow-dependency test: billing stub delayed 4 s vs 800 ms timeout -> only the plan section UNAVAILABLE, response < 3 s.",
-      "actual_ratio": null,
+      "actual_ratio": 0.108,
       "contaminated": false,
       "sprint": "Sprint 6 (2026-09-22 night, Owner-authorised unattended: 'make our app use the new tools and tech we discovered as part of nrg', 2-3 h cap, no Fable, no parallel agents)",
       "sprint_candidate": "Sprint 6 proposal 2026-09-22 (awaiting Owner 'start') -- stretch, only if time remains"
@@ -1207,7 +1207,7 @@
       "started_at": "2026-09-22T20:09:28+00:00",
       "completed_at": "2026-09-22T20:10:55+00:00",
       "actual_note": "DONE. docs/MICROSERVICES_ARCHITECTURE.md decision table relabelled with the real source per row (NRG / Marsh / BCBSA), 'Three-source map and NRG technology coverage' section added; BL-007 note field; ACT-018 2026-09-22 note; services/README row for the stand-in. Committed in 94b8960 (docs) + this commit (README).",
-      "actual_ratio": null,
+      "actual_ratio": 0.045,
       "contaminated": false,
       "sprint": "Sprint 6 (2026-09-22 night, Owner-authorised unattended: 'make our app use the new tools and tech we discovered as part of nrg', 2-3 h cap, no Fable, no parallel agents)",
       "sprint_candidate": "Sprint 6 proposal 2026-09-22 (awaiting Owner 'start')"
@@ -1232,7 +1232,7 @@
       "started_at": "2026-09-22T20:33:00+00:00",
       "completed_at": "2026-09-22T20:35:09+00:00",
       "actual_note": "DONE. agent/check_config_drift.py (properties + yml flattening, profile-vs-profile comparison, base-file exemption, allowlist agent/config_drift_allowlist.json with mandatory reasons), agent/test_check_config_drift.py 4 tests observed FAILING first (ImportError before the module existed; one test's own expectation was wrong and corrected: a non-allowlisted prod-only key is still drift). Real tree: 8/8 resource roots PASS. Wired into CI as a blocking step after the STATIC gate.",
-      "actual_ratio": null,
+      "actual_ratio": 0.057,
       "contaminated": false,
       "sprint": "Sprint 6 (2026-09-22 night, Owner-authorised unattended: 'make our app use the new tools and tech we discovered as part of nrg', 2-3 h cap, no Fable, no parallel agents)",
       "sprint_candidate": "Sprint 6 proposal 2026-09-22 (awaiting Owner 'start') -- stretch, only if time remains"
@@ -1342,7 +1342,7 @@
       "started_at": "2026-09-22T20:17:00+00:00",
       "completed_at": "2026-09-22T20:24:12+00:00",
       "actual_note": "DONE (pending qa-evaluator verdict, recorded separately). customer-service is the only issuer: DemoJwtIssuer signs RS256 with app.security.jwt.private-key (base64 PKCS#8, dev-only default, env JWT_DEMO_PRIVATE_KEY) and kid=app.security.jwt.key-id; new GET /.well-known/jwks.json (JwksController, permitAll). customer/billing/metering/notification decoders now NimbusJwtDecoder.withPublicKey(app.security.jwt.public-key) via a small RsaKeys helper; app.security.jwt.secret removed everywhere (grep-verified: no MACSigner/withSecretKey/secret remnants). Test issuers sign RS256 with a test-only DevJwtKeys private key (billing, metering, notification); customer SecurityIntegrationTest forges with a freshly generated RSA key -> 401, wrong issuer/audience/expired -> 401 (12/12). Two real defects found by running, fixed: (1) openssl 3.5 'pkey -outform DER' emitted PKCS#1, not PKCS#8 -> 'algid parse error'; re-encoded with pkcs8 -topk8; (2) two constructors on DemoJwtIssuer -> Spring 'No default constructor found'; @Autowired added. Results: customer 46/46, billing 40 (5 pre-existing Docker skips), metering 14/14, notification 13 (2 pre-existing skips); real-topology harness with RS256 across 5 processes exit 0 at 20:21:56-20:23:41 UTC (token minted by customer-service, validated by billing-service). Docs: auth-pattern section rewritten; ACT-018 finding (4) closed on merge. Started 20:17, done at this timestamp. QA-EVALUATOR (opus, 68k tokens, 23 tool uses): PASS 6/6; it re-ran customer-service itself (46/46), verified the cross-process RS256 acceptance in billing-service's own log, and found 8 stale HMAC/HS256 comment sites plus no executed JWKS test. Follow-ups DONE: comments cleaned, JWKS test added (200, kty RSA, kid matches, no private members) -> customer-service 47/47 at 20:33 UTC.",
-      "actual_ratio": null,
+      "actual_ratio": 0.048,
       "contaminated": false,
       "sprint_candidate": "Sprint 6 proposal 2026-09-22 (awaiting Owner 'start')"
     },
@@ -1437,7 +1437,7 @@
       "confidence": "LOW",
       "pattern_type": "first_of_kind",
       "title": "[BCBSA] HL7 FHIR R4 facade with HAPI FHIR: Patient + Coverage read API over the customer domain (closes ACT-017)",
-      "description": "Small healthcare-integration module or endpoint in customer-service exposing FHIR R4 Patient (from Customer) and Coverage (from ContractPlan) resources via hapi-fhir-structures-r4 + a RestfulServer or plain JSON parser; capability statement; validation test with HAPI's validator. Honest framing: same fa\u00e7ade-over-legacy pattern the Owner built at BCBSA, applied to the energy domain for demonstration.",
+      "description": "Small healthcare-integration module or endpoint in customer-service exposing FHIR R4 Patient (from Customer) and Coverage (from ContractPlan) resources via hapi-fhir-structures-r4 + a RestfulServer or plain JSON parser; capability statement; validation test with HAPI's validator. Honest framing: same façade-over-legacy pattern the Owner built at BCBSA, applied to the energy domain for demonstration.",
       "size_rationale": "ACT-017; first FHIR code; HAPI versions resolved against Maven Central. suggest_estimate(LARGE,LOW,first_of_kind,'2-3 h') -> INSUFFICIENT_HISTORY n=0",
       "parent_id": "BL-042",
       "status": "planned",
@@ -1555,7 +1555,7 @@
       "started_at": "2026-09-22T20:16:00+00:00",
       "completed_at": "2026-09-22T20:16:14+00:00",
       "actual_note": "DONE. Three consecutive clean local harness runs recorded (20:03-20:10, 20:10:58-20:13:14, 20:13:14-20:15:13 UTC; exit 0; enroll_plan 201 confirmed rate 0.1825; get_plan 200). .github/workflows/ci.yml: continue-on-error removed from the real-topology step, job renamed GATING. First real CI run of the gate happens on push of this branch; if it fails on the cold runner the failure is real evidence, not noise (timeouts were already raised for cold runners).",
-      "actual_ratio": null,
+      "actual_ratio": 0.009,
       "contaminated": false,
       "sprint_candidate": "Sprint 6 proposal 2026-09-22 (awaiting Owner 'start')"
     },
@@ -1579,7 +1579,7 @@
       "started_at": "2026-09-22T20:22:00+00:00",
       "completed_at": "2026-09-22T20:28:43+00:00",
       "actual_note": "DONE. Real coverage fix, no floor lowered, no exclusions: 10 new pure Mockito unit tests for the previously unmeasured Kafka-side classes (ContractPlanBillingSyncConsumerTest 3, NotificationConsumersTest 4, OutboxPublisherTest 3: idempotent duplicate skip, sync record, compensation path + email, channel selection, outbox publish/mark-published, broker failure leaves event unpublished, unmapped type never sent). Full `mvnw test` with the 0.80 BUNDLE check ENFORCED: exit 0, 162 tests, 0 failures, 0 errors, 21 skipped (Docker/Testcontainers, pre-existing), bundle line coverage 0.9036 (was 0.7736). Structural half of ACT-016: jacoco.check.skip property (default false) on the check execution; Triage's scoped -Dtest runs pass -Djacoco.check.skip=true. Observed-failing: OutboxPublisherTest run with a seeded wrong expectation -> 1 failure ('expected: 2.0'), restored -> pass; the same scoped run proved the skip switch.",
-      "actual_ratio": null,
+      "actual_ratio": 0.09,
       "contaminated": false,
       "sprint_candidate": "Sprint 6 proposal 2026-09-22 (awaiting Owner 'start')"
     },
@@ -1612,7 +1612,7 @@
       "pattern_type": "apply_known_pattern",
       "parent_id": null,
       "title": "[Trainer] Instrument real usage share: Workbench pipeline runs vs direct Claude Code sessions, from the event ledger, and reframe the showcase text accordingly",
-      "description": "Add a ledger query + a line on the Dashboard/Usage: count of delivery runs that went through the Workbench propose->approve->apply path vs work done in direct sessions over the last 30 days; update the showcase/\u00a702 wording to whatever the number says (CLI primary, Workbench demo surface, or the reverse).",
+      "description": "Add a ledger query + a line on the Dashboard/Usage: count of delivery runs that went through the Workbench propose->approve->apply path vs work done in direct sessions over the last 30 days; update the showcase/§02 wording to whatever the number says (CLI primary, Workbench demo surface, or the reverse).",
       "size_rationale": "Query + one UI line + text edit. suggest_estimate(SMALL,MEDIUM,apply_known_pattern,'30-45 min') -> COMPUTED n=3",
       "status": "planned",
       "category": "delivery",
