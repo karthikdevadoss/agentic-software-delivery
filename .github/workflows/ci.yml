@@ -28,6 +28,12 @@ jobs:
       # docs/LESSONS.md twice still recurred; a gate cannot be forgotten.
       - name: STATIC gate (file modes, XML/HTML comment "--")
         run: python agent/static_gate.py
+      # BL-041: config-drift gate -- a property key present in one Spring
+      # profile file but missing from another (the Owner's real NRG
+      # stage-vs-prod incident class). Deterministic, blocking; the tree
+      # was clean when wired (8/8 resource roots PASS on 2026-09-22).
+      - name: CONFIG-DRIFT gate (Spring profile files)
+        run: python agent/check_config_drift.py
       - name: mvn test
         working-directory: app
         run: ./mvnw test -B
