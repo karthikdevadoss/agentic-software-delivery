@@ -21,14 +21,14 @@ commitment to cut over.
 
 | Decision | Source |
 |---|---|
-| 4 domain services: Customer, Billing, Notification, Metering | **Confirmed** — Owner's real NRG service boundaries |
-| REST for synchronous inter-service calls | **Confirmed** — Owner's real recollection |
-| API Gateway present | **Confirmed** |
-| Service discovery present | **Confirmed** |
+| 4 domain services: Customer, Billing, Notification, Metering | **NRG** — the Owner's real per-domain service split (profile/billing/payment/preferences/history/usage "specialized" REST services behind brand aggregators; evidence-verified 2026-09-22 from his own project files) |
+| REST for synchronous inter-service calls | **NRG** — aggregator -> domain services was REST; only the last hop to SAP was SOAP (that SOAP hop is BL-043, not yet represented) |
+| API Gateway present | **Marsh** (Apigee-managed microservices) and **NRG** (AWS API Gateway in front of the 2025 Lambda layer); Spring Cloud Gateway here is the stand-in for both |
+| Service discovery present | **Marsh** — Eureka/Zuul/Hystrix-era Spring Cloud tooling was real there; NRG had NO discovery service (fixed URLs, Docker Swarm DNS, then API Gateway). Kept by Owner directive 2026-09-22 as the Marsh representation |
 | Owner designed service boundaries, reviewed by lead | **Confirmed** — informs how this is described (a real design responsibility, not just implementation) |
-| Whether NRG also used async messaging between services | **Unconfirmed** — Owner wasn't sure and went to sleep before answering. Not assumed either way for the NRG claim itself. |
-| Kafka used for the Notification service specifically, in THIS build | **Claude's architectural choice**, not a claim about NRG — notifications are a textbook async use case, and this codebase already has real, tested Kafka eventing (`ContractPlanEnrolled` -> fan-out consumers) to build on rather than re-invent. If the Owner confirms NRG used REST-only, this one integration point can be switched to a REST call with no other redesign needed. |
-| Spring Cloud Gateway + Netflix Eureka specifically | Claude's choice — the standard, real Spring Cloud tools for this (not the only valid choice; Consul/Kubernetes-native discovery are real alternatives, Eureka is the most common Spring-ecosystem default and keeps this consistent with the app's existing all-Spring stack) |
+| Whether NRG also used async messaging between services | **Resolved 2026-09-22 from source**: no Kafka anywhere at NRG; async there = SQS queues with dead-letter queues feeding Lambdas (to be represented by BL-045). |
+| Kafka used for the Notification service specifically, in THIS build | **BCBSA** — the Owner's real hands-on Kafka-family producer/consumer work (FHIR event streaming) lives at BCBSA, NOT NRG; kept here by Owner directive 2026-09-22 as the BCBSA representation. Originally Claude's architectural choice — notifications are a textbook async use case, and this codebase already has real, tested Kafka eventing (`ContractPlanEnrolled` -> fan-out consumers) to build on rather than re-invent. If the Owner confirms NRG used REST-only, this one integration point can be switched to a REST call with no other redesign needed. |
+| Spring Cloud Gateway + Netflix Eureka specifically | Stand-ins for Marsh's real Spring Cloud Netflix stack (exact tools not recalled by name) — Claude's choice — the standard, real Spring Cloud tools for this (not the only valid choice; Consul/Kubernetes-native discovery are real alternatives, Eureka is the most common Spring-ecosystem default and keeps this consistent with the app's existing all-Spring stack) |
 
 ## Service boundaries
 
@@ -62,11 +62,20 @@ credential issuance in this domain, and it avoids inventing a 6th
 ## Auth pattern
 
 Every service independently validates JWTs as its own OAuth2 resource
-server (same `NimbusJwtDecoder` config as `app/`'s `SecurityConfig`,
-same shared HMAC signing secret via env var). **Deliberate choice**:
-no central session, no single point of trust failure beyond the shared
-key itself — the Gateway passes the `Authorization` header straight
-through untouched; it does not re-issue or strip it. This is a real,
+server (`NimbusJwtDecoder`). **Since BL-046 (2026-09-22) tokens are RS256:**
+`customer-service` is the only issuer and the only holder of a private key
+(`app.security.jwt.private-key`, `kid` in every token header, public keys
+published at `GET /.well-known/jwks.json`); every resource server validates
+with the issuer's PUBLIC key from configuration (`app.security.jwt.public-key`)
+— the same shape the Owner's real NRG aggregator used to validate FusionAuth
+tokens (identity-provider public key in config, no shared secret). This
+replaced the earlier shared HMAC secret (ACT-018 finding 4, and the external
+trainer review's first blocker: one leaked service could mint tokens for all).
+The checked-in default key pair is DEV-ONLY and labelled so; real environments
+set `JWT_PUBLIC_KEY` / `JWT_DEMO_PRIVATE_KEY`. **Deliberate choice**: no
+central session, no shared trust surface — the Gateway passes the
+`Authorization` header straight through untouched; it does not re-issue or
+strip it. This is a real,
 defensible pattern (stateless validation at every service) versus the
 alternative (gateway validates once, passes a trusted header downstream)
 — the trade-off is worth naming explicitly in an interview: this
@@ -138,6 +147,27 @@ real Eureka registry with multiple real service instances together:
    inbound `Authorization` header through `ContractPlanController` ->
    `ContractPlanService.enroll()` -> `BillingCustomerClient`, a real,
    standard microservices identity-propagation (token relay) pattern.
+
+## Three-source map and NRG technology coverage (2026-09-22)
+
+This app is an **evidence-backed composite of three real engagements**, not
+a replica of one employer. Source of truth: the Owner's private career
+record, rebuilt on 2026-09-22 from his own NRG project files (git history
+of 8 repositories, build files, configuration, an on-call knowledge-transfer
+document and a Lambda-platform walkthrough).
+
+| Source | What it contributed here | Status in this app |
+|---|---|---|
+| NRG (2021–present) | per-domain services behind an aggregation layer; a legacy billing system of record reached at a fixed URL; JWT-secured APIs; JSON logging; MapStruct; Resilience4j-style timeouts/retries; Docker | represented: domain services, `billing-service` facade + `legacy-billing-stub` (BL-038), JWT filter, structured logging, MapStruct, circuit breaker/retry |
+| NRG, not yet represented | aggregator/BFF parallel fan-out (BL-039), GraphQL on the aggregator (BL-044), SOAP hop to the system of record (BL-043), Java Lambdas behind API Gateway with SQS/DLQ/DynamoDB/SAM (BL-045, after SAM CLI + Docker are installed), FusionAuth-style RS256 tokens validated via JWKS (BL-046), Togglz/ConfigCat feature flags incl. the maintenance-window switch (BL-047/BL-073), opaque encoded document ids (BL-048), Lucene address search (BL-050), multi-brand context (BL-070), Oracle-style RDBMS (out of scope: Postgres stands in) | backlog epic BL-042 / BL-060 |
+| Marsh (2016–2019) | microservices with an API management layer and Spring Cloud Netflix discovery; Apache Camel integration routes; MongoDB as a minor store; OAuth/JWT/HMAC | represented: gateway + Eureka; pending: Camel (BL-052), Mongo (BL-053), HMAC/AES (BL-054) |
+| BCBSA (2019–2021) | Kafka-family event streaming (real producer/consumer code); FHIR/HL7 facade APIs; AES-256 + HMAC payload security | represented: Kafka fan-out in `notification-service`; pending: FHIR facade (BL-051), payload security (BL-054) |
+
+Interview framing that follows from this map: "domain-separated backend
+services behind an aggregation layer, later moved to serverless" for NRG;
+"microservices with API management and discovery" for Marsh; "event
+streaming and FHIR facades" for BCBSA — never unqualified "microservices
+with Kafka" attributed to NRG.
 
 ## What's explicitly deferred
 

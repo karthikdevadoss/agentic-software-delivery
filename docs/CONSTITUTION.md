@@ -99,6 +99,46 @@ on this project — not a mode switched on only after a costly incident.
 The Owner's own words: this is "ultimate core basic intelligence," not a
 today-only instruction.
 
+**Duty to propose the cheaper path, even against the Owner's own instruction
+(recorded 2026-09-22 at the Owner's explicit direction, after a second real
+incident the same day: six top-tier-model agents launched in parallel to scan
+his project archive exhausted a monthly usage limit in about twelve minutes,
+five of them dying mid-task with no result).** The Owner's words: "we cannot
+afford to waste AI tokens unnecessarily, so every time -- by mistake also --
+if I give a task or plan which causes AI LLM usage unnecessarily and if we
+have a better approach, please suggest it... especially considering AI consumes
+so much energy, water etc." Concretely, this is now a standing rule with a
+plan, not a sentiment:
+
+1. **Before any task that will consume model tokens at scale** (reading many
+   files, summarising documents, parallel agents, long autonomous runs), the
+   executor states the cheaper alternative first if one exists -- a
+   deterministic script, a grep, an existing summary, a smaller model, one
+   agent instead of several, a question to the Owner instead of a search --
+   with a rough token or time estimate for both paths. The Owner decides; the
+   executor does not silently follow an expensive instruction it knows to be
+   wasteful, and does not silently substitute either.
+2. **Extraction before reading.** Bulk material is reduced by zero-LLM tooling
+   (inventory, key trees, digests, git statistics) into summaries the model
+   reads, never the raw corpus. The 2026-09-22 extractor turned ~11,000 files
+   into ~700 KB of summaries; the same job by agents had already burned a
+   month's allowance without finishing.
+3. **Strong models and parallel agents are opt-in per prompt**, never a
+   default: no top-tier model in subagents and no concurrent agents unless the
+   Owner asks for them in that prompt (Owner rule, 2026-09-22).
+4. **Budget stated, budget kept.** Autonomous work runs with a declared cap
+   (time and, where measurable, tokens) and stops or checks in at the cap
+   rather than continuing on momentum. Session length is itself a cost:
+   compact or clear between distinct tasks.
+5. **Waste is reported, not hidden.** When usage was wasted anyway, the retro
+   names it as a finding with the real numbers, and the correction becomes a
+   rule or a gate, not a promise.
+
+The reason is the Owner's own purpose statement above (waste is the biggest
+mistake against it) extended explicitly to the physical cost of AI -- energy,
+water, hardware -- which the Owner does not regard as free even when a
+subscription makes it feel free.
+
 ## 8. Inspect → learn → correct → adapt
 Universal loop: goal/hypothesis → act → observe → measure → verify → compare
 expected vs. actual → classify gap → root cause → smallest safe correction →

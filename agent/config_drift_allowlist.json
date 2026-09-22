@@ -1,0 +1,5 @@
+{
+  "_purpose": "BL-041: keys that are legitimately present in only some Spring profile files. Keyed by resources root (relative to the repo) or '*' for all roots. Glob '*' allowed inside a key. Every entry needs a reason in the sibling _reasons map -- an unexplained allowlist entry is drift with a blindfold on.",
+  "_reasons": {},
+  "*": []
+}

@@ -1,0 +1,17 @@
+package com.example.billingservice.testsupport;
+
+/**
+ * Test-only copy of the DEV RSA private key whose public half is the default
+ * app.security.jwt.public-key in application.properties. INSECURE BY
+ * DESIGN and labelled so: it exists only so tests can sign tokens this
+ * service will accept; real environments override the public key via
+ * JWT_PUBLIC_KEY and never see this key. A wrong-key test proves any other
+ * key is rejected.
+ */
+public final class DevJwtKeys {
+    public static final String KEY_ID = "dev-2026-09";
+    public static final String PRIVATE_KEY_BASE64 = "MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCuSC6KuVJyjJCd0ZCQYS09GpoXC1vXy+uNc6Tqyl2mp9SDE5Okks5h/7ps5O7ef1rYxn+ogEK4tKh7wLZ+46h+ENcaAUazgcu01g7zPKNYDsXQ4J3kLiU3c9T7DtwMRVoBttYZkMMgYsHmJQy3yAcPzDuPUOF53UJOFMUcfJL+ed2k/HtD6i5IISPbVI/bEYlutDfJztybdpxihu85udrlP6pDMC0h4/3xoAJGm+VXuPi+6/0Ge5dWDm405z4JgXkxMmXi6bUdEGVpQJq1JrfcR1S29NpMOgZtVVYL2cpjNLajD+yXIhyK+GSRpvZT1Lu8G6JltAX20jTJjzht2PedAgMBAAECggEABbiLL+auN6kqWBvfkHW4KGKaN7n9Vk5fJ8yw13TexuWlVyDRcGNgLQ8Ei99RD8fm/gWqDBo3gSOoHqBFxG2Jrm6Xo6pH1j2jNeq2BM9zCPpXKeFmjzSoy8Ejr8ueBTTgB28naCFR3mlzC2lZYJSSZIxrGE+HMsyaCPoAyNoZxrVrK8bmargQ4i0yN4cfUNs1yLf8kh7SEOg0/XuLI/64mZKhGCaI8bk5UfEthj7TQ6ccdfZS282aCLE+tg9dAfm6Z/hOxo6b9p00UuplpcIAsKADEkFHSNolOGxCYhx9I5JXZao8RfyxJc9Lb1Z306u2FxkijLY2toLbRoSTYSC1SwKBgQDbf4AwXxrzuIVIPcY7P8DGwuk2tskIhmc7A9ympQkX/VY4DufUk3IGu1sSH+ewNWr8yyGYP188UkHeC+C6YxNQ11Sy+rWlF40cyG+3J0eP36ypwhQ/JdsrzB5dxRgepniXQxfE/Imdtzwk8vhn5K3r6Nv4S14Cf3peyociva6GwwKBgQDLQ7xiLwA2Cw+TyT273gteBrPWcKlYEJW/xeEuKJAwywHtQyD+A4AZ/isIiQjtVyzDaZQ7EsdvoE1xp1Ii/uyfFPdwhYwKRRCW17HL0mdlgCqo43mgpC/yUM6NKNtRg/szzxQvsh84J5jMH0PoM9N33H2XrR9+lxgoO56rn2BiHwKBgQC5xXiN+ABMpDARy066GKQk1RQi3aLZ1z8JgKRAWk+PATf2rA7kKIKKVgmnFl+2EA/jslxVidUlrYzXzH+/4FiZxBWIgY45Euy4np+GiPUVPL7a0krmgzizIcfVnxlh340SoJM+gmpKlKmPsCAzdiUJFAUQaWFAhfngvlKPQbCzlwKBgHbv769T6T+2QSssuh7P0r72FQ0JZ03MhpNsalLkEVs7rqjyer+ntLGA9BVOehbGx76gbMgUOPasSiSSz5ECsdp0HkWNH2BzAT4CgFrPhwjxcgTY9jZ1XEjh17rpiUuterPaG+m8xF/La7ElKksY6EhekG7MMn2UU+JW4IV0AKXpAoGBAKidL0r9l2QCQU1yNnNgQVnRsqNgPX/tTA2TuPiPHIus6hV70M8jtL0PLPVH1OX7cs0ZKAxOCtKBqa1vDgC30LroekP425oJcioexQ6G4nD5re3OMo9vF4rugBfaPamLFLyiSyTANBYA+JX79+Z4Fxv1+wYt2aL/yg3iAEW0+c6i";
+
+    private DevJwtKeys() {
+    }
+}

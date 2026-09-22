@@ -722,3 +722,54 @@ using `suggest_estimate()` for real.
 2. Marsh's confirmed technical stack (Eureka/Hystrix/Zuul-family service discovery) was checked too and found to be **already well-represented** by the existing microservices architecture — a real, positive confirmation, not a gap, worth recording so it isn't re-investigated later as if it were still open.
 
 Retro prepared 2026-09-20, ~19:01–19:08 CEST, within the sprint's own 1-hour cap (used: ~19 minutes total, including this retro). Both items merged to `master` and pushed. Next sprint scoping awaits the Owner.
+
+
+## Sprint 6 retro: RA-1, RA-2, BL-038, BL-056, BL-057, BL-046, BL-040, BL-039, BL-041 (DRAFT -- numbers computed 2026-09-22 night; diagnosis and action items to be done WITH the Owner when he is awake, per his instruction)
+
+Sprint approved 2026-09-22 ~21:50 CEST by the Owner ("start... test end to end and commit and make sure the app and the ai
+system in prod is deployed... dont wait for any of my approval"), unattended, single session, no Fable subagents, no
+parallel agents (one sequential qa-evaluator run on opus for the security item). Branch `sprint-6/trainer-blockers-nrg-tech`.
+
+### Estimate vs actual (computed from docs/BACKLOG.json started_at/completed_at; wall-clock, includes test/harness runs)
+
+| Item | Size | Estimate | Actual | Ratio actual/mid | Verdict (computed) |
+|---|---|---|---|---|---|
+| BL-038 | MEDIUM | 60-90 min (mid 75 min) | 7.9 min | 0.11 | outside band [0.7, 1.3] |
+| BL-039 | MEDIUM | 70-100 min (mid 85 min) | 9.2 min | 0.11 | outside band [0.7, 1.3] |
+| BL-040 | SMALL | 25-40 min (mid 32 min) | 1.4 min | 0.04 | outside band [0.7, 1.3] |
+| BL-041 | SMALL | 30-45 min (mid 38 min) | 2.1 min | 0.06 | outside band [0.7, 1.3] |
+| BL-046 | LARGE | 2-3 h (mid 150 min) | 7.2 min | 0.05 | outside band [0.7, 1.3] |
+| BL-056 | SMALL | 20-30 min (mid 25 min) | 0.2 min | 0.01 | outside band [0.7, 1.3] |
+| BL-057 | MEDIUM | 60-90 min (mid 75 min) | 6.7 min | 0.09 | outside band [0.7, 1.3] |
+| **SPRINT** | 7 sized items | mid 480 min (8.0 h) | **35 min** | **0.07** | outside band |
+
+Retro actions RA-1 (XML-comment gate wired blocking in CI) and RA-2 (N-target existence count in the sizing checklist) were
+done first, unsized per the Owner's carve-out; RA-1's gate already existed in agent/static_gate.py from a prior session but
+was not in CI.
+
+### Evidence per item (real, quoted)
+- BL-038: stub tests observed failing (2/3) then 3/3; harness runs 20:03-20:10, 20:10:58-20:13:14, 20:13:14-20:15:13 UTC exit 0.
+- BL-056: continue-on-error removed after the three runs; first real CI run happens on push.
+- BL-057: full `mvnw test` with the 0.80 gate enforced: exit 0, 162 tests, bundle 0.9036 (was 0.7736); seeded-mutation run
+  showed 'expected: 2.0' failure then pass; -Djacoco.check.skip proven on a scoped run.
+- BL-046: 47/46/40/14/13 tests across services; harness with RS256 across 5 processes exit 0; qa-evaluator PASS 6/6 with
+  two follow-ups done (8 stale comments, JWKS test). Two real defects found by running: PKCS#1 vs PKCS#8 key encoding from
+  OpenSSL 3.5; ambiguous constructors -> @Autowired.
+- BL-039: BFF test observed failing (404 x3) then 3/3; a real regression in the existing routing tests (500) caught and fixed
+  with a @Primary plain RestClient.Builder; harness BFF step: partial=true, usage UNAVAILABLE for the absent metering-service,
+  89 ms.
+- BL-041: unit tests observed failing (ImportError) then 4/4 after correcting one wrong test expectation; real tree 8/8 PASS;
+  CI step blocking.
+
+### Observations for the joint retro (not yet verdicts)
+1. Every item landed at 0.01-0.11 of its estimate midpoint -- the same direction as sprints 1-5, now on a sprint that
+   included a LARGE security change and a first-of-its-kind BFF. The raw rubric bands are still human-calibrated;
+   suggest_estimate() had n=0 for every combination, so nothing could correct them. This sprint adds 7 ratios to the
+   history: the next sizing for (MEDIUM, MEDIUM, apply_known_pattern) and (LARGE, LOW_MEDIUM, first_of_kind) will have
+   real reference classes for the first time.
+2. Implementation findings worth a rule: (a) generated key material must be verified by parsing before use (the PKCS#1/#8
+   slip cost one extra test cycle across four services); (b) adding a second Spring constructor needs @Autowired --
+   caught by tests, cheap, but the same class of 'framework wiring assumed' mistake as the RestClient.Builder @Primary
+   regression in BL-039.
+3. Sprint-level: total wall-clock ~35 min for work estimated at 8 h, with three background JVM runs overlapped. The
+   binding constraint was not time but the usage limit (34% used at sprint start, per Owner).

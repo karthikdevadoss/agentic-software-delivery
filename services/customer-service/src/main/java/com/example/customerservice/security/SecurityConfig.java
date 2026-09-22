@@ -23,7 +23,6 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.AuthenticationEntryPoint;
 
-import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
 import java.util.Collection;
 
@@ -65,6 +64,8 @@ public class SecurityConfig {
                         // this system to further restrict it to, but raw metrics/env
                         // detail should not be fully anonymous either.
                         .requestMatchers("/actuator/**").authenticated()
+                        // BL-046: public key discovery (JWKS) is public by definition.
+                        .requestMatchers(HttpMethod.GET, "/.well-known/jwks.json").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/demo-token").permitAll()
                         // Real login: credentials are checked server-side
                         // (BCrypt + enabled-state, see DemoLoginController)
@@ -97,18 +98,19 @@ public class SecurityConfig {
     }
 
     /**
-     * Validates signature (via the shared HMAC secret), expiry, not-before,
+     * Validates signature (RS256 against this issuer's own public key -- the
+     * same key every other service validates with, BL-046), expiry, not-before,
      * issuer, and audience -- identical validation dimensions to the
      * monolith's own jwtDecoder, kept that way deliberately since every
      * service in this decomposition must agree on what makes a token valid.
      */
     @Bean
     public JwtDecoder jwtDecoder(
-            DemoJwtIssuer demoJwtIssuer,
+            @Value("${app.security.jwt.public-key}") String publicKeyBase64,
             @Value("${app.security.jwt.issuer}") String expectedIssuer,
             @Value("${app.security.jwt.audience}") String expectedAudience) {
         NimbusJwtDecoder decoder = NimbusJwtDecoder
-                .withSecretKey(new SecretKeySpec(demoJwtIssuer.secretKeyBytes(), "HmacSHA256"))
+                .withPublicKey(RsaKeys.publicKey(publicKeyBase64))
                 .build();
 
         OAuth2TokenValidator<Jwt> withTimestamp = new JwtTimestampValidator();

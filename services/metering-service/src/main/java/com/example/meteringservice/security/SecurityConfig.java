@@ -14,7 +14,6 @@ import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 
-import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 
@@ -23,13 +22,12 @@ import java.util.Collection;
  * Per docs/MICROSERVICES_ARCHITECTURE.md's Auth pattern, identity/token
  * issuance is customer-service's job (the natural home for credential
  * issuance); every OTHER service, this one included, independently
- * validates the same shared-secret-signed tokens as its own stateless
- * OAuth2 resource server -- no central session, no single point of trust
- * failure beyond the shared HMAC key itself.
+ * validates the issuer's RS256-signed tokens as its own stateless OAuth2
+ * resource server -- no central session, no shared secret at all (BL-046).
  *
  * The JwtDecoder below is therefore built directly from the raw
- * app.security.jwt.* properties (constructing the SecretKeySpec straight
- * from the configured secret), NOT from a DemoJwtIssuer bean the way the
+ * app.security.jwt.* properties (the issuer's public key parsed by
+ * RsaKeys), NOT from a DemoJwtIssuer bean the way the
  * monolith's SecurityConfig does -- there is no local token-issuing
  * component here to source key material from, since this service is a
  * pure validator, matching the "other non-issuing services" pattern used
@@ -63,16 +61,16 @@ public class SecurityConfig {
         return http.build();
     }
 
-    /** Validates signature (via the shared HMAC secret), expiry, not-before,
+    /** Validates signature (RS256 against the issuer's public key), expiry, not-before,
      * issuer, and audience -- same validation dimensions the monolith's
      * decoder enforces, since this must accept the exact same tokens. */
     @Bean
     public JwtDecoder jwtDecoder(
-            @Value("${app.security.jwt.secret}") String secret,
+            @Value("${app.security.jwt.public-key}") String publicKeyBase64,
             @Value("${app.security.jwt.issuer}") String expectedIssuer,
             @Value("${app.security.jwt.audience}") String expectedAudience) {
         NimbusJwtDecoder decoder = NimbusJwtDecoder
-                .withSecretKey(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"))
+                .withPublicKey(RsaKeys.publicKey(publicKeyBase64))
                 .build();
 
         OAuth2TokenValidator<Jwt> withTimestamp = new JwtTimestampValidator();

@@ -22,6 +22,18 @@ jobs:
       # Postgres container actually runs here -- unlike local development
       # on this project's current Windows machine, which has no Docker
       # installed (see docs/DECISIONS.md).
+      # RA-1 (retro action 2026-09-20, wired 2026-09-22): the deterministic
+      # STATIC gate -- file modes/shebangs and the twice-recurring "--"
+      # inside an XML/HTML comment bug -- now BLOCKS CI. A rule written in
+      # docs/LESSONS.md twice still recurred; a gate cannot be forgotten.
+      - name: STATIC gate (file modes, XML/HTML comment "--")
+        run: python agent/static_gate.py
+      # BL-041: config-drift gate -- a property key present in one Spring
+      # profile file but missing from another (the Owner's real NRG
+      # stage-vs-prod incident class). Deterministic, blocking; the tree
+      # was clean when wired (8/8 resource roots PASS on 2026-09-22).
+      - name: CONFIG-DRIFT gate (Spring profile files)
+        run: python agent/check_config_drift.py
       - name: mvn test
         working-directory: app
         run: ./mvnw test -B
@@ -261,7 +273,7 @@ jobs:
   # (continue-on-error removed) as a deliberate follow-up decision, not a
   # silent default.
   real-topology:
-    name: Real-topology multi-instance tier (BL-021/BL-025, informational only)
+    name: Real-topology multi-instance tier (BL-021/BL-025; GATING since BL-056)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -275,6 +287,7 @@ jobs:
             services/customer-service/pom.xml
             services/billing-service/pom.xml
             services/api-gateway/pom.xml
+            services/legacy-billing-stub/pom.xml
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -295,15 +308,20 @@ jobs:
       # real service startup take well over 90s under real concurrent
       # CPU load -- a cold CI runner is a similarly real, not
       # theoretical, slow-start case.
-      - name: Real-topology multi-instance test (informational -- see comments above)
+      # BL-056 (2026-09-22): now a REAL GATE. continue-on-error was removed
+      # after BL-038 fixed the ACT-015 regression (the legacy billing
+      # stand-in is now part of the topology) and three consecutive clean
+      # local runs were recorded the same night: 2026-09-22 ~20:03-20:10,
+      # 20:10:58-20:13:14 and 20:13:14-20:15:13 UTC, each exit 0 with
+      # enroll_plan 201 / get_plan 200 (services/real-topology-tests/logs/
+      # run2_summary.json, run3_summary.json). The external trainer review
+      # (2026-09-22) named the advisory-only status of this tier -- the one
+      # that catches multi-instance bugs -- as a real blocker; ACT-018 (7).
+      - name: Real-topology multi-instance test (gating)
         id: topology
-        continue-on-error: true
         run: python services/real-topology-tests/run_real_topology_test.py --port-offset 10000 --startup-timeout 180 --registry-timeout 120
-      # NOTE: continue-on-error:true above means the job-level `failure()`
-      # function never sees this step fail (it reports conclusion=success
-      # regardless of real outcome) -- checking the step's own `outcome`
-      # output directly is the only way to still upload real logs on a
-      # real failure.
+      # The step's own `outcome` is checked (not the job-level failure())
+      # so the real per-service logs are uploaded whenever the harness fails.
       - name: Upload real per-service logs (only runs if the harness failed)
         if: steps.topology.outcome == 'failure'
         uses: actions/upload-artifact@v4

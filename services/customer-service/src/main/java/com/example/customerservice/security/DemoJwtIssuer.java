@@ -3,13 +3,14 @@ package com.example.customerservice.security;
 import com.example.customerservice.model.DemoIdentity;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.crypto.MACSigner;
+import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.nio.charset.StandardCharsets;
+import java.security.interfaces.RSAPrivateKey;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
@@ -20,14 +21,15 @@ import java.util.Set;
  * PORTFOLIO DEMO TOKEN ISSUER -- explicitly NOT an enterprise identity
  * provider. This is the ONE service in the microservices decomposition
  * that issues tokens (see docs/MICROSERVICES_ARCHITECTURE.md's Auth
- * pattern section) -- every other service only validates them, using the
- * same shared HMAC secret. A real enterprise deployment of this
+ * pattern section) -- every other service only validates them with this
+ * issuer's PUBLIC key (BL-046: RS256, kid in the header, JWKS published at
+ * /.well-known/jwks.json). A real enterprise deployment of this
  * architecture would issue tokens from Cognito/Keycloak/FusionAuth/an
  * enterprise IdP; this class exists solely so an anonymous recruiter/
  * interviewer can experience the real secured APIs across every service
  * without a signup/login flow.
  *
- * Tokens are cryptographically signed (HS256), short-lived, and carry
+ * Tokens are cryptographically signed (RS256), short-lived, and carry
  * only a fixed, explicit set of business-scoped read/write authorities --
  * never admin/owner/deployment/infrastructure/shell capabilities, because
  * no such scope exists in {@link #DEMO_SCOPES} for a caller to be granted
@@ -66,17 +68,26 @@ public class DemoJwtIssuer {
      */
     public static final Set<String> ADMIN_SCOPES = Set.of("admin:read");
 
-    private final byte[] secretKeyBytes;
+    private final RSAPrivateKey privateKey;
+    private final String keyId;
     private final String issuer;
     private final String audience;
     private final Duration defaultTtl;
 
+    @Autowired // two constructors exist (the second is for tests signing with another key); Spring needs the choice made explicit
     public DemoJwtIssuer(
-            @Value("${app.security.jwt.secret}") String secret,
+            @Value("${app.security.jwt.private-key}") String privateKeyBase64,
+            @Value("${app.security.jwt.key-id}") String keyId,
             @Value("${app.security.jwt.issuer}") String issuer,
             @Value("${app.security.jwt.audience}") String audience,
             @Value("${app.security.jwt.demo-token-ttl-seconds}") long defaultTtlSeconds) {
-        this.secretKeyBytes = secret.getBytes(StandardCharsets.UTF_8);
+        this(RsaKeys.privateKey(privateKeyBase64), keyId, issuer, audience, defaultTtlSeconds);
+    }
+
+    /** Package-private: lets tests sign with a DIFFERENT key to prove rejection. */
+    DemoJwtIssuer(RSAPrivateKey privateKey, String keyId, String issuer, String audience, long defaultTtlSeconds) {
+        this.privateKey = privateKey;
+        this.keyId = keyId;
         this.issuer = issuer;
         this.audience = audience;
         this.defaultTtl = Duration.ofSeconds(defaultTtlSeconds);
@@ -148,8 +159,9 @@ public class DemoJwtIssuer {
 
     private String sign(JWTClaimsSet claims) {
         try {
-            SignedJWT signedJwt = new SignedJWT(new JWSHeader(JWSAlgorithm.HS256), claims);
-            signedJwt.sign(new MACSigner(secretKeyBytes));
+            // RS256 with a key id so validators can select the right public key (JWKS rotation-ready).
+            SignedJWT signedJwt = new SignedJWT(new JWSHeader.Builder(JWSAlgorithm.RS256).keyID(keyId).build(), claims);
+            signedJwt.sign(new RSASSASigner(privateKey));
             return signedJwt.serialize();
         } catch (com.nimbusds.jose.JOSEException e) {
             throw new IllegalStateException("Failed to sign demo JWT", e);
@@ -157,7 +169,7 @@ public class DemoJwtIssuer {
     }
 
     /** Exposed only for {@link SecurityConfig} to build the matching decoder from the same key material. */
-    byte[] secretKeyBytes() {
-        return secretKeyBytes;
+    public String keyId() {
+        return keyId;
     }
 }

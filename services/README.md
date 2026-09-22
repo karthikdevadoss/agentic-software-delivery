@@ -13,6 +13,7 @@ replacing it. `app/` stays exactly as-is: live, deployed, CI-verified.
 | `billing-service` | 8082 | Scaffolded, compiles — business logic in progress |
 | `notification-service` | 8083 | Scaffolded, compiles — business logic in progress |
 | `metering-service` | 8084 | Scaffolded, compiles — business logic in progress |
+| `legacy-billing-stub` | 9099 | BL-038: legacy billing system stand-in (fixed URL, NOT Eureka-registered) that billing-service's facade confirms plan rates with; started by the real-topology harness |
 
 Each is a fully independent Spring Boot Maven project — its own
 `pom.xml`, own `mvnw`, own database (H2 locally). Not deployed anywhere
