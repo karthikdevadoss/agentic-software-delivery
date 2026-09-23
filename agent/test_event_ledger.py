@@ -656,6 +656,35 @@ class UsageEconomicsTestCase(unittest.TestCase):
         self.assertEqual(result["this_hour"]["window_kind"], "ROLLING")
         self.assertEqual(result["today"]["window_kind"], "CALENDAR")
 
+    def test_get_usage_economics_breaks_down_cost_by_real_outcome_class(self):
+        """BL-058: the Usage page needs cost-per-VERIFIED-outcome broken
+        out per real outcome class, not just a single lifetime headline
+        number -- a FAILED run's cost must appear under FAILED, never
+        folded into or hidden from the COMPLETED bucket, and a class with
+        no captured cost must say so honestly rather than show $0."""
+        completed_id = _unique("test-econ-outcome-completed")
+        failed_id = _unique("test-econ-outcome-failed")
+        el.record_event(
+            "run_usage_summary", run_id=completed_id, source="test_suite", status="COMPLETED",
+            payload={"captured": True, "input_tokens": 10, "output_tokens": 5, "cost_usd": 0.02, "pricing_version": "test-v1"},
+        )
+        el.record_event(
+            "run_usage_summary", run_id=failed_id, source="test_suite", status="FAILED",
+            payload={"captured": True, "input_tokens": 4, "output_tokens": 1, "cost_usd": 0.005, "pricing_version": "test-v1"},
+        )
+        result = el.get_usage_economics()
+        self.assertIn("cost_by_outcome_class", result)
+        by_class = {row["outcome_class"]: row for row in result["cost_by_outcome_class"]}
+        self.assertIn("COMPLETED", by_class)
+        self.assertIn("FAILED", by_class)
+        self.assertGreaterEqual(by_class["COMPLETED"]["run_count"], 1)
+        self.assertGreaterEqual(by_class["FAILED"]["run_count"], 1)
+        # The two classes' totals must stay distinct -- FAILED's real cost
+        # must never be absorbed into COMPLETED's bucket.
+        self.assertIsNotNone(by_class["COMPLETED"]["total_cost_usd"])
+        self.assertIsNotNone(by_class["FAILED"]["total_cost_usd"])
+        self.assertIn("ACTUAL", by_class["COMPLETED"]["cost_provenance"])
+
     def test_captured_false_row_is_not_counted_as_zero_cost(self):
         """A run where no real API call happened must never be counted
         as if it cost $0 — it should be excluded from the token/cost

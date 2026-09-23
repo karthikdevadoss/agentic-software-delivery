@@ -79,8 +79,28 @@ function renderEfficiencySummary(d) {
     <p class="hint" style="margin-top:1.2rem;">Recent windows:</p>
     ${windowsHtml}
     ${renderEfficiencyChart(e)}
+    ${renderCostByOutcomeClass(e)}
     <p class="hint" style="margin-top:0.9rem;">Full per-window consumption breakdown (this hour/last 24h/this month, tokens by category, pricing versions): see <a href="/dashboard">Dashboard</a>'s Economics / Consumption section.</p>
   `);
+}
+
+// BL-058: lifetime cost broken out per real terminal outcome class (COMPLETED, FAILED,
+// NO_CHANGE_NEEDED, DEPLOYMENT_STATUS_UNKNOWN, or whatever the ledger actually holds) --
+// answers "what does a FAILED run cost us" as its own, never-hidden-inside-COMPLETED number.
+function renderCostByOutcomeClass(e) {
+  const rows = e.cost_by_outcome_class;
+  if (!rows || rows.length === 0) return "";
+  const body = rows.map(r => `<tr>
+    <td>${esc(r.outcome_class)}</td>
+    <td>${r.run_count}</td>
+    <td>${r.total_cost_usd != null ? fmtUsd(r.total_cost_usd) : "unknown"}</td>
+    <td>${r.avg_cost_usd != null ? fmtUsd(r.avg_cost_usd) : "unknown"}</td>
+    <td class="hint">${esc(r.cost_provenance)}</td>
+  </tr>`).join("");
+  return `<p class="hint" style="margin-top:1.2rem;">Lifetime cost by real outcome class — a failed run's cost is never folded into or hidden by the COMPLETED total:</p>
+  <table class="cap-table"><thead><tr>
+    <th>Outcome class</th><th>Runs</th><th>Total cost</th><th>Avg cost/run</th><th>Cost provenance</th>
+  </tr></thead><tbody>${body}</tbody></table>`;
 }
 
 // Real gap found 2026-09-18 (the 40 EUR overnight-session incident): no
