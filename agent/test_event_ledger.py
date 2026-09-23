@@ -850,6 +850,51 @@ class DevSessionCostSummaryTestCase(unittest.TestCase):
                 el.delete_event_for_test_cleanup(event_id)
 
 
+class DeliveryPathShareTestCase(unittest.TestCase):
+    """BL-059: which real delivery path is actually used -- Workbench
+    pipeline runs vs direct Claude Code sessions -- counted from real
+    ledger identifiers, not asserted from the showcase's own prose. Real
+    rows inserted and cleaned up via delete_event_for_test_cleanup(), same
+    discipline as DevSessionCostSummaryTestCase above, so this test proves
+    the real counting logic without leaving any trace in the shared
+    production ledger."""
+
+    def test_reachable_shape(self):
+        result = el.get_delivery_path_share()
+        self.assertEqual(result["status"], "REACHABLE")
+        self.assertIn("workbench_runs", result)
+        self.assertIn("direct_claude_code_sessions", result)
+        self.assertIn("canonical_source", result)
+
+    def test_a_real_run_and_a_real_session_are_both_counted_distinctly(self):
+        run_id = _unique("test-delivery-path-run")
+        session_id = str(uuid.uuid4())
+        run_event_id = None
+        session_event_id = None
+        try:
+            before = el.get_delivery_path_share()
+            run_result = el.record_event(
+                "run_usage_summary", run_id=run_id, source="test_suite", status="COMPLETED",
+                payload={"captured": True, "input_tokens": 1, "output_tokens": 1, "cost_usd": 0.0001, "pricing_version": "test-v1"},
+            )
+            run_event_id = run_result["event_id"]
+            session_result = el.record_event(
+                "model_usage", session_id=session_id, source="claude_code",
+                activity_class=el.ACTIVITY_CLASS_PRODUCT_DEVELOPMENT,
+                provider="anthropic", model="claude-sonnet-5",
+                input_tokens=1, output_tokens=1, cache_read_tokens=0, cache_write_tokens=0,
+            )
+            session_event_id = session_result["event_id"]
+            after = el.get_delivery_path_share()
+            self.assertEqual(after["workbench_runs"], before["workbench_runs"] + 1)
+            self.assertEqual(after["direct_claude_code_sessions"], before["direct_claude_code_sessions"] + 1)
+        finally:
+            if run_event_id:
+                el.delete_event_for_test_cleanup(run_event_id)
+            if session_event_id:
+                el.delete_event_for_test_cleanup(session_event_id)
+
+
 class SessionIncidentWindowTestCase(unittest.TestCase):
     """Real feature requested by the Owner (2026-09-18): a session's own
     detail page only ever showed the WHOLE session's total cost, even when

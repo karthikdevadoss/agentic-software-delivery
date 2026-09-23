@@ -1064,6 +1064,73 @@ def get_dev_session_cost_summary() -> dict:
     }
 
 
+# Real, direct session_id shape kept in sync with get_dev_session_cost_summary()'s own
+# _SESSIONS_CTE-equivalent allowlist above -- one regex, defined once, never duplicated
+# ad hoc (see that function's own comment for the real 2026-09-18 test-fixture-inflation
+# incident this pattern exists to prevent).
+_CLAUDE_CODE_SESSION_ID_RE = (
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    r"|^claude-code-session-[0-9a-f-]+-p0-eventledger-task$"
+)
+
+
+def get_delivery_path_share(days: int = 30) -> dict:
+    """BL-059: which real delivery path is actually being used -- the
+    Workbench propose->approve->apply pipeline, or direct Claude Code
+    development sessions -- over a real trailing window. Counts DISTINCT
+    real identifiers from two already-separate, already-real ledger event
+    types (run_usage_summary for Workbench runs, model_usage/source=
+    claude_code for direct sessions), never a synthetic or estimated
+    figure. Answers a real, previously-unmeasured question this project's
+    own showcase text asserted an answer to without ever counting it."""
+    try:
+        conn = _connect()
+    except Exception as exc:  # noqa: BLE001 - Usage page must never break because the ledger is unreachable
+        return {"status": "UNREACHABLE", "error": str(exc)}
+    try:
+        ensure_schema()
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT COUNT(DISTINCT run_id)
+                FROM delivery_events
+                WHERE event_type = 'run_usage_summary'
+                  AND timestamp_utc >= now() - (%s || ' days')::interval
+                """,
+                (days,),
+            )
+            workbench_runs = cur.fetchone()[0]
+            cur.execute(
+                f"""
+                SELECT COUNT(DISTINCT session_id)
+                FROM delivery_events
+                WHERE event_type = 'model_usage' AND source = 'claude_code'
+                  AND timestamp_utc >= now() - (%s || ' days')::interval
+                  AND (session_id ~ %s)
+                """,
+                (days, _CLAUDE_CODE_SESSION_ID_RE),
+            )
+            direct_sessions = cur.fetchone()[0]
+    finally:
+        conn.close()
+
+    total = workbench_runs + direct_sessions
+    return {
+        "status": "REACHABLE",
+        "window_days": days,
+        "canonical_source": "event ledger: DISTINCT run_id from run_usage_summary (Workbench) vs DISTINCT session_id from model_usage/source=claude_code (direct sessions) -- real counts, never estimated",
+        "workbench_runs": workbench_runs,
+        "direct_claude_code_sessions": direct_sessions,
+        "workbench_share_pct": round(100.0 * workbench_runs / total, 1) if total else None,
+        "direct_session_share_pct": round(100.0 * direct_sessions / total, 1) if total else None,
+        "note": "INSUFFICIENT DATA" if total == 0 else (
+            "direct Claude Code sessions are the primary real delivery path; Workbench is a demo/showcase surface"
+            if direct_sessions > workbench_runs else
+            "Workbench pipeline runs are the primary real delivery path"
+        ),
+    }
+
+
 if __name__ == "__main__":
     import sys
     # Entrypoint for trigger_background_sync()'s detached subprocess only —

@@ -449,4 +449,8 @@ def build_sessions_snapshot(include_test_data: bool = False) -> dict:
         # confusing via the Owner's own screenshot. Shown as an explicitly
         # separate, equally-real sibling, never merged into one number.
         "dev_session_economics": event_ledger.get_dev_session_cost_summary(),
+        # BL-059: which real delivery path is actually used -- Workbench pipeline runs vs
+        # direct Claude Code sessions -- counted from real ledger identifiers over a real
+        # trailing window, not asserted from the showcase's own prose.
+        "delivery_path_share": event_ledger.get_delivery_path_share(),
     }
