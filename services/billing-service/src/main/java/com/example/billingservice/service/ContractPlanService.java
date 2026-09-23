@@ -10,16 +10,20 @@ import com.example.billingservice.event.ContractPlanEnrolledEvent;
 import com.example.billingservice.exception.CustomerServiceUnavailableException;
 import com.example.billingservice.exception.EnrollmentInProgressException;
 import com.example.billingservice.exception.LegacyBillingSystemUnavailableException;
+import com.example.billingservice.feature.BillingFeature;
 import com.example.billingservice.model.ContractPlan;
 import com.example.billingservice.model.ContractPlanStatus;
 import com.example.billingservice.outbox.OutboxEvent;
 import com.example.billingservice.outbox.OutboxEventRepository;
 import com.example.billingservice.repository.ContractPlanRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.togglz.core.manager.FeatureManager;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.math.BigDecimal;
@@ -74,6 +78,8 @@ public class ContractPlanService {
     private final OutboxEventRepository outboxEventRepository;
     private final JsonMapper jsonMapper;
     private final EnrollmentLockService enrollmentLockService;
+    private final FeatureManager featureManager;
+    private static final Logger log = LoggerFactory.getLogger(ContractPlanService.class);
 
     public ContractPlanService(
             ContractPlanRepository contractPlanRepository,
@@ -81,13 +87,15 @@ public class ContractPlanService {
             @Lazy LegacyBillingSystemClient legacyBillingSystemClient,
             OutboxEventRepository outboxEventRepository,
             JsonMapper jsonMapper,
-            EnrollmentLockService enrollmentLockService) {
+            EnrollmentLockService enrollmentLockService,
+            FeatureManager featureManager) {
         this.contractPlanRepository = contractPlanRepository;
         this.billingCustomerClient = billingCustomerClient;
         this.legacyBillingSystemClient = legacyBillingSystemClient;
         this.outboxEventRepository = outboxEventRepository;
         this.jsonMapper = jsonMapper;
         this.enrollmentLockService = enrollmentLockService;
+        this.featureManager = featureManager;
     }
 
     public ContractPlan getActivePlan(Long customerId) {
@@ -218,6 +226,17 @@ public class ContractPlanService {
      * BillingCustomerClient's checkCustomerExists() handling above.
      */
     private BigDecimal confirmAuthoritativeRate(Long customerId, ContractPlanEnrollRequest request, String callerBearerToken) {
+        // BL-047: the real NRG on-call maintenance-window switch. When active, treat the
+        // legacy system as unavailable WITHOUT calling it -- the exact outcome shape a real
+        // timeout would produce (LegacyPlanPricingOutcome.Unavailable), so no caller-visible
+        // failure mode changes; only the (slow, expensive) network round-trip is skipped.
+        if (featureManager.isActive(BillingFeature.LEGACY_PRICING_BYPASS)) {
+            log.info("LEGACY_PRICING_BYPASS active -- skipping legacy billing system call for plan '{}', customer {}",
+                    request.planName(), customerId);
+            throw new LegacyBillingSystemUnavailableException(
+                    "legacy billing system bypassed (maintenance window) while pricing plan '" + request.planName()
+                            + "' for customer " + customerId + " -- please retry");
+        }
         LegacyPlanPricingOutcome pricing =
                 legacyBillingSystemClient.confirmPlanPricing(request.planName(), customerId, callerBearerToken);
         if (pricing instanceof LegacyPlanPricingOutcome.Confirmed confirmed) {

@@ -9,6 +9,7 @@ import com.example.billingservice.dto.ContractPlanEnrollRequest;
 import com.example.billingservice.exception.CustomerServiceUnavailableException;
 import com.example.billingservice.exception.EnrollmentInProgressException;
 import com.example.billingservice.exception.LegacyBillingSystemUnavailableException;
+import com.example.billingservice.feature.BillingFeature;
 import com.example.billingservice.model.ContractPlan;
 import com.example.billingservice.model.ContractPlanStatus;
 import com.example.billingservice.outbox.OutboxEventRepository;
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.togglz.core.manager.FeatureManager;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.math.BigDecimal;
@@ -65,6 +67,8 @@ class ContractPlanServiceTest {
     private OutboxEventRepository outboxEventRepository;
     @Mock
     private EnrollmentLockService enrollmentLockService;
+    @Mock
+    private FeatureManager featureManager;
     private final JsonMapper jsonMapper = JsonMapper.builder().build();
 
     private ContractPlanService service(CustomerLookupOutcome lookupOutcome) {
@@ -76,12 +80,15 @@ class ContractPlanServiceTest {
         // none of them assert on the persisted rate.
         org.mockito.Mockito.lenient().when(legacyBillingSystemClient.confirmPlanPricing(any(), any(), any()))
                 .thenReturn(new LegacyPlanPricingOutcome.Confirmed(DEFAULT_LEGACY_CONFIRMED_RATE));
+        // BL-047: real default is "off" -- the legacy system is called normally unless the
+        // maintenance-window switch is explicitly flipped, which the one test below does.
+        org.mockito.Mockito.lenient().when(featureManager.isActive(BillingFeature.LEGACY_PRICING_BYPASS)).thenReturn(false);
         lenientLockAcquired();
         return newService();
     }
 
     private ContractPlanService newService() {
-        return new ContractPlanService(contractPlanRepository, billingCustomerClient, legacyBillingSystemClient, outboxEventRepository, jsonMapper, enrollmentLockService);
+        return new ContractPlanService(contractPlanRepository, billingCustomerClient, legacyBillingSystemClient, outboxEventRepository, jsonMapper, enrollmentLockService, featureManager);
     }
 
     /** Default every test to "lock acquired" (real Redis behavior for the
@@ -347,6 +354,28 @@ class ContractPlanServiceTest {
         assertThatThrownBy(() -> service.enroll(1L, request, TEST_BEARER_TOKEN))
                 .isInstanceOf(LegacyBillingSystemUnavailableException.class);
         verify(contractPlanRepository, never()).saveAndFlush(any());
+        verify(contractPlanRepository, never()).save(any());
+        verify(outboxEventRepository, never()).save(any());
+    }
+
+    /**
+     * BL-047: when the real on-call maintenance-window switch is flipped, a new enrollment must
+     * fail exactly the same way a real legacy-system timeout would (Unavailable ->
+     * LegacyBillingSystemUnavailableException) WITHOUT ever calling the legacy system -- verified
+     * here by asserting confirmPlanPricing is never invoked, not just by checking the exception type.
+     */
+    @Test
+    void enroll_whenLegacyPricingBypassActive_throwsWithoutCallingLegacySystem() {
+        ContractPlanService service = newService();
+        when(billingCustomerClient.checkCustomerExists(1L, TEST_BEARER_TOKEN)).thenReturn(CustomerLookupOutcome.FOUND);
+        lenientLockAcquired();
+        when(contractPlanRepository.findByCustomerIdAndStatus(1L, ContractPlanStatus.ACTIVE)).thenReturn(Optional.empty());
+        when(featureManager.isActive(BillingFeature.LEGACY_PRICING_BYPASS)).thenReturn(true);
+        ContractPlanEnrollRequest request = new ContractPlanEnrollRequest("Basic", new BigDecimal("0.20"), LocalDate.of(2026, 1, 1));
+
+        assertThatThrownBy(() -> service.enroll(1L, request, TEST_BEARER_TOKEN))
+                .isInstanceOf(LegacyBillingSystemUnavailableException.class);
+        verify(legacyBillingSystemClient, never()).confirmPlanPricing(any(), any(), any());
         verify(contractPlanRepository, never()).save(any());
         verify(outboxEventRepository, never()).save(any());
     }
