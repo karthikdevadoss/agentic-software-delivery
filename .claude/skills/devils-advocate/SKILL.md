@@ -23,7 +23,7 @@ most recent standing decision this session made about itself."
    decision]. Here are the real source files: [paths]. Independently determine PROCEED / STOP AND
    REVERIFY / GENUINELY UNCERTAIN." Never include the reasoning that led to the original decision, never
    include "I think this is fine," never pre-frame the expected answer.
-4. **Dispatch via the Agent tool** with `subagent_type: "devils-advocate"` (a real, separate, fresh agent
+4. **Dispatch via the Agent tool** with `subagent_type: "shiva"` (a real, separate, fresh agent
    — never `"fork"`, which would inherit this conversation's context and defeat the whole point) and the
    neutral prompt from step 3, including the file paths from step 2.
 5. **Relay the verdict to the Owner plainly, in full**, including the mandatory "could not resolve"
