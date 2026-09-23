@@ -21,6 +21,23 @@ any other real XML parser, with a misleading error pointing at the
 *closing* `-->`. Writing this down twice in docs/LESSONS.md did not
 prevent a third real occurrence -- this is the mechanical gate instead.
 
+Third real check, added 2026-09-23 (Sprint 6 retro action item) after
+the SAME framework-owned-`@Bean` collision recurred a third time in this
+project (BL-007 item 7, then BL-039's api-gateway `RestClient.Builder`
+collision, neither previously logged in docs/LESSONS.md until now) --
+see CLAUDE.md's own rule: "a new @Bean of a framework-owned,
+auto-configured type is HIGH/CROSS_MODULE... @ConditionalOnMissingBean
+matches by TYPE, so an unqualified consumer elsewhere silently takes
+your bean." This is a deterministic, regex-based HEURISTIC, not full
+Java semantic analysis: it flags a `@Bean` method whose declared return
+type is one of a known list of framework-owned auto-configured types
+and which has no `@Primary`/`@Qualifier` annotation in its own
+annotation block. A flag here means "review this bean for a possible
+autoconfiguration collision," not "this is definitely broken" -- real
+false positives are possible (e.g. the only bean of that type in the
+whole application context), so this stays advisory-only in CI, the same
+posture V1 already uses for the risk-classifier annotation.
+
 Usage:
     python agent/static_gate.py        # check the whole real repo
 """
@@ -33,6 +50,20 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 _XML_LIKE_SUFFIXES = (".xml", ".pom", ".html", ".htm", ".xsd", ".svg")
 _XML_COMMENT_RE = re.compile(r"<!--(.*?)-->", re.DOTALL)
+
+# Framework-owned, auto-configured bean types named explicitly in CLAUDE.md's
+# defect discipline -- a new @Bean of one of these is the real, recurring risk.
+_FRAMEWORK_OWNED_BEAN_TYPES = (
+    "RestClient.Builder", "RestTemplate", "WebClient.Builder", "ObjectMapper",
+    "TaskExecutor", "SecurityFilterChain",
+)
+# Matches a `@Bean` annotation, optionally other annotations/comments in between,
+# then a method declaration whose return type is captured in group 1.
+_BEAN_METHOD_RE = re.compile(
+    r"@Bean\b(?P<between>(?:(?!\n\s*(?:public|protected|private|static)\b).)*?)"
+    r"\n\s*(?:public|protected|private|static)[\w\s<>,]*?\s(\w[\w.<>]*)\s+\w+\s*\(",
+    re.DOTALL,
+)
 
 # Cheap, real candidate filters -- avoids reading every tracked file's
 # content (slow across a whole repo); covers the real, known cases in
@@ -129,6 +160,42 @@ def check_xml_comments() -> list[dict]:
     return violations
 
 
+def check_unqualified_framework_beans() -> list[dict]:
+    """Returns real, heuristic HEURISTIC findings (not proofs): any tracked
+    .java file declaring a @Bean method whose return type is a known
+    framework-owned auto-configured type, with no @Primary or @Qualifier
+    annotation in the same annotation block. Reads real tracked-file content
+    via `git show HEAD:<path>`. Advisory-only -- a real false positive is
+    possible when a bean type has only one real instance in the whole
+    application context, so this is reported, never gated, same posture as
+    V1's risk-classifier CI annotation."""
+    findings = []
+    proc = subprocess.run(
+        ["git", "ls-files", "*.java"], cwd=str(REPO_ROOT), capture_output=True, text=True, check=True,
+    )
+    for path in proc.stdout.splitlines():
+        show = subprocess.run(
+            ["git", "show", f"HEAD:{path}"], cwd=str(REPO_ROOT),
+            capture_output=True, text=True,
+        )
+        if show.returncode != 0:
+            continue
+        content = show.stdout
+        for match in _BEAN_METHOD_RE.finditer(content):
+            between, return_type = match.group("between"), match.group(2)
+            is_flagged_type = (
+                return_type in _FRAMEWORK_OWNED_BEAN_TYPES
+                or return_type.endswith("Customizer")
+            )
+            if not is_flagged_type:
+                continue
+            if "@Primary" in between or "@Qualifier" in between:
+                continue
+            line_no = content.count("\n", 0, match.start()) + 1
+            findings.append({"path": path, "line": line_no, "type": return_type})
+    return findings
+
+
 def main():
     mode_violations = check()
     comment_violations = check_xml_comments()
@@ -149,6 +216,15 @@ def main():
         print("Fix: replace '--' with ':' or a real em dash inside the comment.")
     else:
         print("STATIC gate (XML/HTML comment '--'): PASS -- no violations found.")
+
+    bean_findings = check_unqualified_framework_beans()
+    if bean_findings:
+        print(f"STATIC gate (unqualified framework @Bean, ADVISORY-ONLY): {len(bean_findings)} finding(s):")
+        for v in bean_findings:
+            print(f"  {v['path']}:{v['line']} -- @Bean returning {v['type']}, no @Primary/@Qualifier found")
+        print("Review each for a possible autoconfiguration collision (see docs/LESSONS.md, 2026-09-23).")
+    else:
+        print("STATIC gate (unqualified framework @Bean): PASS -- no findings.")
 
     sys.exit(0 if all_clean else 1)
 

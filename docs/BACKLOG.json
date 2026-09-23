@@ -1160,7 +1160,14 @@
       "actual_ratio": 0.106,
       "contaminated": false,
       "sprint": "Sprint 6 (2026-09-22 night, Owner-authorised unattended: 'make our app use the new tools and tech we discovered as part of nrg', 2-3 h cap, no Fable, no parallel agents)",
-      "sprint_candidate": "Sprint 6 proposal 2026-09-22 (awaiting Owner 'start')"
+      "sprint_candidate": "Sprint 6 proposal 2026-09-22 (awaiting Owner 'start')",
+      "deviated_from_suggestion": true,
+      "deviation": {
+        "suggestion_status": "COMPUTED",
+        "suggested_midpoint_min": 30.4,
+        "chosen_midpoint_min": 75.0,
+        "reason": "No contemporaneous reason was recorded when this COMPUTED suggestion was overridden -- found retroactively 2026-09-23 via independent Shiva review. The silent override is itself the retro finding: the suggestion was closer to the real outcome than the estimate used."
+      }
     },
     {
       "id": "BL-039",
@@ -1210,7 +1217,14 @@
       "actual_ratio": 0.045,
       "contaminated": false,
       "sprint": "Sprint 6 (2026-09-22 night, Owner-authorised unattended: 'make our app use the new tools and tech we discovered as part of nrg', 2-3 h cap, no Fable, no parallel agents)",
-      "sprint_candidate": "Sprint 6 proposal 2026-09-22 (awaiting Owner 'start')"
+      "sprint_candidate": "Sprint 6 proposal 2026-09-22 (awaiting Owner 'start')",
+      "deviated_from_suggestion": true,
+      "deviation": {
+        "suggestion_status": "COMPUTED",
+        "suggested_midpoint_min": 11.7,
+        "chosen_midpoint_min": 32.5,
+        "reason": "No contemporaneous reason was recorded when this COMPUTED suggestion was overridden -- found retroactively 2026-09-23 via independent Shiva review. The silent override is itself the retro finding: the suggestion was closer to the real outcome than the estimate used."
+      }
     },
     {
       "id": "BL-041",
@@ -1437,7 +1451,7 @@
       "confidence": "LOW",
       "pattern_type": "first_of_kind",
       "title": "[BCBSA] HL7 FHIR R4 facade with HAPI FHIR: Patient + Coverage read API over the customer domain (closes ACT-017)",
-      "description": "Small healthcare-integration module or endpoint in customer-service exposing FHIR R4 Patient (from Customer) and Coverage (from ContractPlan) resources via hapi-fhir-structures-r4 + a RestfulServer or plain JSON parser; capability statement; validation test with HAPI's validator. Honest framing: same façade-over-legacy pattern the Owner built at BCBSA, applied to the energy domain for demonstration.",
+      "description": "Small healthcare-integration module or endpoint in customer-service exposing FHIR R4 Patient (from Customer) and Coverage (from ContractPlan) resources via hapi-fhir-structures-r4 + a RestfulServer or plain JSON parser; capability statement; validation test with HAPI's validator. Honest framing: same fa\u00e7ade-over-legacy pattern the Owner built at BCBSA, applied to the energy domain for demonstration.",
       "size_rationale": "ACT-017; first FHIR code; HAPI versions resolved against Maven Central. suggest_estimate(LARGE,LOW,first_of_kind,'2-3 h') -> INSUFFICIENT_HISTORY n=0",
       "parent_id": "BL-042",
       "status": "planned",
@@ -1612,7 +1626,7 @@
       "pattern_type": "apply_known_pattern",
       "parent_id": null,
       "title": "[Trainer] Instrument real usage share: Workbench pipeline runs vs direct Claude Code sessions, from the event ledger, and reframe the showcase text accordingly",
-      "description": "Add a ledger query + a line on the Dashboard/Usage: count of delivery runs that went through the Workbench propose->approve->apply path vs work done in direct sessions over the last 30 days; update the showcase/§02 wording to whatever the number says (CLI primary, Workbench demo surface, or the reverse).",
+      "description": "Add a ledger query + a line on the Dashboard/Usage: count of delivery runs that went through the Workbench propose->approve->apply path vs work done in direct sessions over the last 30 days; update the showcase/\u00a702 wording to whatever the number says (CLI primary, Workbench demo surface, or the reverse).",
       "size_rationale": "Query + one UI line + text edit. suggest_estimate(SMALL,MEDIUM,apply_known_pattern,'30-45 min') -> COMPUTED n=3",
       "status": "planned",
       "category": "delivery",

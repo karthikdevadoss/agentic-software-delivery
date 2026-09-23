@@ -724,7 +724,7 @@ using `suggest_estimate()` for real.
 Retro prepared 2026-09-20, ~19:01–19:08 CEST, within the sprint's own 1-hour cap (used: ~19 minutes total, including this retro). Both items merged to `master` and pushed. Next sprint scoping awaits the Owner.
 
 
-## Sprint 6 retro: RA-1, RA-2, BL-038, BL-056, BL-057, BL-046, BL-040, BL-039, BL-041 (DRAFT -- numbers computed 2026-09-22 night; diagnosis and action items to be done WITH the Owner when he is awake, per his instruction)
+## Sprint 6 retro: RA-1, RA-2, BL-038, BL-056, BL-057, BL-046, BL-040, BL-039, BL-041 (CLOSED 2026-09-23, corrected same day after an independent Shiva review of the DRAFT found the diagnosis itself was wrong -- see the correction note before the diagnosis section)
 
 Sprint approved 2026-09-22 ~21:50 CEST by the Owner ("start... test end to end and commit and make sure the app and the ai
 system in prod is deployed... dont wait for any of my approval"), unattended, single session, no Fable subagents, no
@@ -761,18 +761,98 @@ was not in CI.
 - BL-041: unit tests observed failing (ImportError) then 4/4 after correcting one wrong test expectation; real tree 8/8 PASS;
   CI step blocking.
 
-### Observations for the joint retro (not yet verdicts)
+### Correction, made 2026-09-23 after an independent Shiva review of the DRAFT above
+
+The DRAFT's own Observation 1 (kept below, not deleted) claimed "suggest_estimate() had n=0 for every
+combination, so nothing could correct them." **That claim is false**, and false in the direction that
+excused the estimation gap rather than diagnosing it. The real `size_rationale` fields recorded in
+docs/BACKLOG.json BEFORE the work show three of the seven items had a real COMPUTED suggestion available:
+
+| Item | Chosen estimate (mid) | COMPUTED suggestion | Real actual | Suggestion vs. chosen: closer to actual? |
+|---|---|---|---|---|
+| BL-038 | 75 min | 30.4 min (n=4) | 7.9 min | Suggestion off by 22.5 vs chosen off by 67.1 |
+| BL-040 | 32.5 min | 11.7 min (n=3) | 1.4 min | Suggestion off by 10.3 vs chosen off by 31.1 |
+| BL-056 | 25 min | n=3 (no midpoint recorded) | 0.2 min | -- |
+
+`docs/BACKLOG.json`'s own `_calibration_process` states: "A deviation from a COMPUTED suggestion must be
+stated explicitly with a real reason, never silently overridden." Neither BL-038 nor BL-040 recorded a
+deviation at the time -- both have now been recorded retroactively via `record_deviation()`, 2026-09-23,
+with an honest note that no contemporaneous reason exists. The ONE other time in this project's history
+this exact situation occurred (BL-036, prior retro), the retro's own conclusion was that the override was
+wrong and the original computed suggestion was right. The correct diagnosis is therefore not "the rubric
+needs recalibrating someday" -- a working, evidence-based correction mechanism exists and was silently
+bypassed.
+
+The DRAFT's sprint-level figure ("total wall-clock ~35 min") was the SUM of the seven items' individual
+`started_at`/`completed_at` spans, not the commit-to-commit wall-clock figure prior sprints (2-5) used --
+it excluded the merge, the post-merge CI-fix cycle, and the final state-sync merge. Recomputed on the same
+basis as prior sprints: first real work evidence at 2026-09-22T20:03 UTC (BL-038 started) to the final
+Sprint-6 state-sync merge at 2026-09-22T22:55:22 CEST (20:55:22 UTC) = **~52 minutes** commit-to-commit,
+not 35. Both figures are given, explicitly labeled, per `_calibration_process`'s own requirement.
+
+### Diagnosis (corrected 2026-09-23)
+
+- **ESTIMATION WRONG, with a real, named mechanism, not just "rubric miscalibrated."** All 7 items landed
+  outside tolerance, same direction as sprints 1-5. But 3 of 7 had a real COMPUTED suggestion available and
+  it was silently overridden without the required deviation record, and in the one historical case this
+  project can check, the override was empirically wrong. The action is enforcement/accountability of
+  `suggest_estimate()` output, not another rubric-recalibration item written down and not applied.
+- **IMPLEMENTATION ISSUES, real and separate from estimation.** (a) generated key material (PKCS#1 vs
+  PKCS#8, OpenSSL 3.5) must be verified by parsing before use -- cost one extra test cycle across four
+  services. (b) BL-039's `@LoadBalanced` bean collision (the gateway proxy silently picked up the wrong
+  `RestClient.Builder`) is **not a new finding** -- it is a RECURRENCE of a pattern this project already
+  named explicitly (CLAUDE.md's own AI-characteristic-defect-discipline section: "a new `@Bean` of a
+  framework-owned, auto-configured type is HIGH/CROSS_MODULE... `@ConditionalOnMissingBean` matches by TYPE")
+  and already logged once before (BL-007 item 7, this same RETRO_LOG.md). It was never written into
+  `docs/LESSONS.md` either of the first two times. That absence, not the bug itself, is the real finding.
+- **Neither, but still needed.** "Merged + pushed" was reported as sprint-complete before post-merge CI
+  status was known -- two jobs did come back red (neither caused by Sprint 6 code; both real, root-caused,
+  fixed the same night, see the note below). Sprint completion should not be declared until post-merge CI
+  result is known, not just "merged and pushed."
+- **Sprint-level finding.** The real binding constraint was never wall-clock time (52 min commit-to-commit
+  for 8h of estimated work) -- it was the API usage budget (34% used at sprint start, per Owner). Future
+  sprint planning and reporting should track against usage budget explicitly, not only estimated hours.
+
+### Action items (three buckets, per CLAUDE.md's required structure)
+
+1. **Estimation-mistake improvements**: treat an unrecorded override of a COMPUTED (n>=3) `suggest_estimate()`
+   suggestion as a real process violation -- require `record_deviation()` at estimation time, not
+   retroactively. Record this sprint's two now-populated reference classes (MEDIUM/MEDIUM/apply_known_pattern;
+   LARGE/LOW_MEDIUM/first_of_kind) so the next sizing for either combination uses real history. Re-run
+   `suggest_estimate()` for every Sprint 7 candidate now that this sprint's 7 new ratios exist, before using
+   any previously-computed estimate range.
+2. **Implementation-mistake improvements**: add a `docs/LESSONS.md` entry for the framework-owned-`@Bean`
+   recurrence (its third occurrence, never previously logged there) and add a deterministic STATIC-tier
+   check flagging a new `@Bean` method whose return type is a framework-owned auto-configured type without
+   an explicit qualifier/`@Primary` review note -- same precedent as RA-1's XML-comment gate. Add: generated
+   cryptographic key material must be verified by parsing before being wired into config.
+3. **Neither, but still needed**: sprint completion reporting must wait for, or explicitly flag, post-merge
+   CI status before being declared done. Fix `docs/PROJECT_STATE.json`'s stale `next_phase` (was still
+   reading "Sprint 4 retro" two sprints later). Also: Sprint 5's own retro (above in this file) omitted the
+   required sprint-level finding entirely -- the "one finding every sprint" rule has already drifted once
+   before this correction; worth a standing reminder, not a one-off fix.
+
+### Post-merge CI note
+Post-merge CI on master (run 35780938679) was red in two jobs, neither caused by Sprint 6 code: billing-service's
+Docker-gated Redis tests were already failing on the pre-sprint 11:06 run (unmocked `LegacyBillingSystemClient` from
+ACT-013 -> 503), and the Customer app's Kafka fan-out test had a baseline race (`expected 5L but was 6L`). Both fixed
+the same night as an in-scope proactive fix (see docs/LESSONS.md, 2026-09-22 entry); verification is CI-only because
+neither test can run on the Docker-less dev machine.
+
+### Original DRAFT observations (kept, not deleted, per this project's own record-keeping convention -- superseded above where they conflict)
 1. Every item landed at 0.01-0.11 of its estimate midpoint -- the same direction as sprints 1-5, now on a sprint that
-   included a LARGE security change and a first-of-its-kind BFF. The raw rubric bands are still human-calibrated;
-   suggest_estimate() had n=0 for every combination, so nothing could correct them. This sprint adds 7 ratios to the
-   history: the next sizing for (MEDIUM, MEDIUM, apply_known_pattern) and (LARGE, LOW_MEDIUM, first_of_kind) will have
-   real reference classes for the first time.
+   included a LARGE security change and a first-of-its-kind BFF. ~~The raw rubric bands are still human-calibrated;
+   suggest_estimate() had n=0 for every combination, so nothing could correct them.~~ **CORRECTED above: false -- 3 of
+   7 items had real COMPUTED suggestions, silently overridden.** This sprint adds 7 ratios to the history: the next
+   sizing for (MEDIUM, MEDIUM, apply_known_pattern) and (LARGE, LOW_MEDIUM, first_of_kind) will have real reference
+   classes for the first time.
 2. Implementation findings worth a rule: (a) generated key material must be verified by parsing before use (the PKCS#1/#8
    slip cost one extra test cycle across four services); (b) adding a second Spring constructor needs @Autowired --
    caught by tests, cheap, but the same class of 'framework wiring assumed' mistake as the RestClient.Builder @Primary
-   regression in BL-039.
+   regression in BL-039. **CORRECTED above: (b) is a recurrence of an already-logged pattern, not a fresh finding.**
 3. Sprint-level: total wall-clock ~35 min for work estimated at 8 h, with three background JVM runs overlapped. The
-   binding constraint was not time but the usage limit (34% used at sprint start, per Owner).
+   binding constraint was not time but the usage limit (34% used at sprint start, per Owner). **CORRECTED above: ~35
+   min was a sum of item spans, not commit-to-commit wall-clock (~52 min) as prior sprints reported it.**
 4. Post-merge CI on master (run 35780938679) was red in two jobs, neither caused by Sprint 6 code: billing-service's
    Docker-gated Redis tests were already failing on the pre-sprint 11:06 run (unmocked `LegacyBillingSystemClient` from
    ACT-013 -> 503), and the Customer app's Kafka fan-out test had a baseline race (`expected 5L but was 6L`). Both fixed
