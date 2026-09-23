@@ -58,6 +58,11 @@ public class SecurityConfig {
                         // further restrict it to, but raw metrics/env detail should
                         // not be fully anonymous either.
                         .requestMatchers("/actuator/**").authenticated()
+                        // BL-047: the Togglz console can flip real business behavior (bypassing the
+                        // legacy billing system, entering a maintenance window) -- gated behind its own
+                        // scope, same pattern as the contract-plan read/write split below, never left
+                        // open just because it's an "admin" path.
+                        .requestMatchers("/togglz/**").hasAuthority("SCOPE_features:admin")
                         .requestMatchers(HttpMethod.GET, "/customers/*/plan").hasAuthority("SCOPE_contract:read")
                         .requestMatchers(HttpMethod.POST, "/customers/*/plan").hasAuthority("SCOPE_contract:write")
                         .anyRequest().authenticated())
