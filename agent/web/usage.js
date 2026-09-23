@@ -80,8 +80,23 @@ function renderEfficiencySummary(d) {
     ${windowsHtml}
     ${renderEfficiencyChart(e)}
     ${renderCostByOutcomeClass(e)}
+    ${renderDeliveryPathShare(d)}
     <p class="hint" style="margin-top:0.9rem;">Full per-window consumption breakdown (this hour/last 24h/this month, tokens by category, pricing versions): see <a href="/dashboard">Dashboard</a>'s Economics / Consumption section.</p>
   `);
+}
+
+// BL-059: real, counted answer to "which delivery path is actually used" -- distinct Workbench
+// run_ids vs distinct direct Claude Code session_ids over a real trailing window, never asserted
+// from prose alone.
+function renderDeliveryPathShare(d) {
+  const p = d.delivery_path_share;
+  if (!p || p.status !== "REACHABLE" || (p.workbench_runs === 0 && p.direct_claude_code_sessions === 0)) return "";
+  return `<p class="hint" style="margin-top:1.2rem;">Real delivery-path share, last ${p.window_days} days (counted from the event ledger, not asserted):</p>
+  <div class="exec-grid">
+    <div class="exec-stat"><div class="exec-value">${p.workbench_runs}</div><div class="exec-label">Workbench pipeline runs</div><div class="exec-note">${p.workbench_share_pct != null ? p.workbench_share_pct + "% of the total" : ""}</div></div>
+    <div class="exec-stat"><div class="exec-value">${p.direct_claude_code_sessions}</div><div class="exec-label">Direct Claude Code sessions</div><div class="exec-note">${p.direct_session_share_pct != null ? p.direct_session_share_pct + "% of the total" : ""}</div></div>
+  </div>
+  <p class="hint">${esc(p.note)}</p>`;
 }
 
 // BL-058: lifetime cost broken out per real terminal outcome class (COMPLETED, FAILED,

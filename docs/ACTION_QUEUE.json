@@ -482,7 +482,8 @@
       "created_at_commit": null,
       "resolved_at_commit": null,
       "note_2026_09_22": "Finding (1) re-examined against real NRG evidence (E:/NRG investigation, 2026-09-22): the app is a three-source composite, not a faithful replica of one employer -- domain boundaries, legacy-billing facade, aggregator/BFF (BL-039) and serverless = NRG; microservices + gateway + Eureka-style discovery = Marsh; Kafka = BCBSA (Owner directive 2026-09-22). The 'faithful replica' argument is replaced by 'evidence-backed representation of three real engagements'; finding (1) stays retracted. Findings (4) shared symmetric JWT secret and (7) advisory real-topology CI job were independently named as real blockers by an external trainer review on 2026-09-22 (private repo coaching/TRAINER_REVIEW_2026-09-22_agentic_delivery.md) -> candidates for the next sprint.",
-      "finding_7_resolution_2026_09_22": "Resolved by BL-056: the real-topology CI job is gating (continue-on-error removed) after 3 clean runs."
+      "finding_7_resolution_2026_09_22": "Resolved by BL-056: the real-topology CI job is gating (continue-on-error removed) after 3 clean runs.",
+      "note_2026_09_23": "Finding (3) is now REAL, MEASURED DATA, not an impression -- BL-059 instrumented event_ledger.get_delivery_path_share(): over the real trailing 30 days, DISTINCT Workbench run_ids (run_usage_summary events) = 440 vs DISTINCT direct Claude Code session_ids (model_usage/source=claude_code) = 4 -- Workbench pipeline runs are 99.1% of real counted delivery activity, the OPPOSITE of finding (3)'s original impression (\"most real delivery happened via direct Claude Code sessions, the pipeline is likely vestigial\"). Finding (3) is RETRACTED as measured wrong, not reframed -- the real data contradicts it directly. Now published live on the Usage page (never asserted from prose alone going forward). Findings (1), (2), (4)-(9) are unaffected by this correction."
     }
   ]
 }
