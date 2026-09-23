@@ -928,6 +928,25 @@ def get_usage_economics() -> dict:
         if completed_with_cost else None
     )
 
+    # BL-058: cost per verified outcome, broken out per real outcome class -- never hardcodes the
+    # class list, groups by whatever status values the ledger actually holds, so a new terminal
+    # status added later shows up automatically instead of being silently dropped from the table.
+    by_outcome_class = {}
+    for r in rows:
+        cls = r["status"] or "UNKNOWN_STATUS"
+        by_outcome_class.setdefault(cls, []).append(r)
+    outcome_breakdown = []
+    for cls, cls_rows in sorted(by_outcome_class.items()):
+        known_cost_rows = [r for r in cls_rows if r["cost_usd"] is not None]
+        outcome_breakdown.append({
+            "outcome_class": cls,
+            "run_count": len(cls_rows),
+            "runs_with_known_cost": len(known_cost_rows),
+            "total_cost_usd": round(sum(r["cost_usd"] for r in known_cost_rows), 6) if known_cost_rows else None,
+            "avg_cost_usd": round(sum(r["cost_usd"] for r in known_cost_rows) / len(known_cost_rows), 6) if known_cost_rows else None,
+            "cost_provenance": "ACTUAL/CALCULATED_FROM_ACTUAL_USAGE (run_usage_summary ledger events) — never a fabricated zero" if known_cost_rows else "unknown — no run in this class has a captured cost",
+        })
+
     return {
         "status": "REACHABLE",
         "canonical_source": "event ledger (delivery_events, event_type=run_usage_summary) — includes FAILED/NO_CHANGE_NEEDED/DEPLOYMENT_STATUS_UNKNOWN runs, never only successful ones",
@@ -943,6 +962,7 @@ def get_usage_economics() -> dict:
         "lifetime": lifetime,
         "cost_per_verified_change_usd": cost_per_verified_change,
         "cost_per_verified_change_note": "INSUFFICIENT DATA" if cost_per_verified_change is None else "lifetime COMPLETED runs with known cost only",
+        "cost_by_outcome_class": outcome_breakdown,
         "pricing_versions_seen": sorted({r["pricing_version"] for r in rows if r["pricing_version"]}),
         "timezone_note": (
             f"last_hour_utc/today_utc_calendar_day (kept for backward compatibility) are UTC-only. "
