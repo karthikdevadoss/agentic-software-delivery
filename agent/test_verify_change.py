@@ -110,6 +110,59 @@ class VerdictLogicTestCase(unittest.TestCase):
         self.assertTrue(would_be_unverified, "a HIGH-risk change with skipped mandatory tests must never be silently PASSED")
 
 
+class ExecutedNothingTestCase(unittest.TestCase):
+    """Regression for the 2026-09-25 defect: execute() returned PASSED/exit 0
+    for a HIGH/CROSS_MODULE change when test impact analysis selected NO suite,
+    so zero commands ran. Observed failing before the fix on the real highest-
+    risk file in the repo (agent/web_server.py): commands == [], verdict
+    PASSED, exit 0.
+
+    Unlike VerdictLogicTestCase above, this calls the REAL execute() rather
+    than re-implementing its arithmetic -- a test that recomputes the logic
+    it is checking cannot catch the logic being wrong, which is exactly why
+    the original defect survived a suite that already had verdict tests."""
+
+    def test_high_risk_change_running_zero_commands_is_unverified_not_passed(self):
+        import test_impact_analysis as tia
+
+        selection = tia.analyze(["agent/web_server.py"])
+        # Preconditions that make this the real known-bad case, asserted so
+        # the test fails loudly (rather than passing vacuously) if TIA ever
+        # starts selecting suites for this path -- at which point this test
+        # should be re-pointed at whatever path is then uncovered.
+        self.assertTrue(
+            selection.classification.risk in ("HIGH", "CRITICAL")
+            or selection.classification.blast_radius in ("CROSS_MODULE", "SYSTEM"),
+            "fixture path is no longer classified high-risk; re-point this test",
+        )
+        self.assertFalse(selection.fail_closed, "fixture path now fails closed; re-point this test")
+        self.assertEqual(
+            (selection.java_tests, selection.python_tests, selection.node_tests, selection.playwright_specs),
+            ([], [], [], []),
+            "fixture path now selects suites; re-point this test at an uncovered high-risk path",
+        )
+
+        # Real call. Safe and fast precisely because zero commands run.
+        evidence = vc.execute(["agent/web_server.py"], selection, dry_run=False)
+
+        self.assertEqual(evidence["commands"], [], "fixture assumption broken: something executed")
+        self.assertTrue(evidence["executed_nothing"])
+        self.assertEqual(
+            evidence["verdict"], "UNVERIFIED",
+            "a high-risk change that executed no test command must never report PASSED",
+        )
+        self.assertNotEqual(evidence["overall_exit_code"], 0, "verdict UNVERIFIED must not exit 0")
+
+    def test_dry_run_is_still_dry_run_not_unverified(self):
+        """The new rule must not swallow the pre-existing DRY_RUN state."""
+        import test_impact_analysis as tia
+
+        selection = tia.analyze(["agent/web_server.py"])
+        evidence = vc.execute(["agent/web_server.py"], selection, dry_run=True)
+        self.assertEqual(evidence["verdict"], "DRY_RUN")
+        self.assertEqual(evidence["overall_exit_code"], 0)
+
+
 class EvidenceInstrumentationTestCase(unittest.TestCase):
     """BL-020: real round-trip tests for the post-hoc evidence-update
     helpers -- no fabricated defaults, no silent success."""

@@ -236,6 +236,30 @@ def execute(paths, selection: tia.ImpactSelection, dry_run: bool) -> dict:
                 evidence["commands"].append(result)
                 overall_rc = overall_rc or result["exit_code"]
 
+        # 2026-09-25: before this, execute() ran ONLY selection.java_tests.
+        # python_tests/node_tests/playwright_specs were computed by TIA and
+        # then silently dropped -- playwright_specs was printed by _report()
+        # and never executed. A frontend change therefore selected real specs
+        # and ran none of them, which is the mechanism behind UI defects that
+        # were found by hand rather than by the gate.
+        if selection.python_tests:
+            result = _run([sys.executable, "-m", "unittest", *selection.python_tests], AGENT_DIR)
+            result["name"] = "python-selected"
+            evidence["commands"].append(result)
+            overall_rc = overall_rc or result["exit_code"]
+
+        for script in selection.node_tests:
+            result = _run(["node", script], AGENT_DIR)
+            result["name"] = f"node:{script}"
+            evidence["commands"].append(result)
+            overall_rc = overall_rc or result["exit_code"]
+
+        if selection.playwright_specs:
+            result = _run(["npx", "playwright", "test", *selection.playwright_specs], REPO_ROOT)
+            result["name"] = "playwright-selected"
+            evidence["commands"].append(result)
+            overall_rc = overall_rc or result["exit_code"]
+
     # BL-017 (2026-09-20): SKIPPED is not PASSED. Real incident this closes:
     # BL-007's SecurityConfig gap was invisible locally because the one test
     # that would have caught it always skipped (no Docker) -- Maven itself
@@ -257,7 +281,31 @@ def execute(paths, selection: tia.ImpactSelection, dry_run: bool) -> dict:
     )
     evidence["test_skip_accounting"] = {"total_skipped": total_skipped, "by_command": skipped_detail}
 
-    if is_high_risk and total_skipped and overall_rc == 0:
+    # 2026-09-25: "nothing ran" is not "nothing was wrong". The skip accounting
+    # above only sees tests Surefire REPORTED as skipped, i.e. inside a suite
+    # that actually executed. A change that selected NO suite at all executed
+    # no commands, reported no skips, and therefore returned overall_rc == 0 ->
+    # PASSED. Reproduced on agent/web_server.py (HIGH / CROSS_MODULE, 108 KB
+    # control plane): zero commands, verdict PASSED, exit 0. Python `agent/`
+    # changes have no TIA coverage yet (the analyze() comment says so in its
+    # own `skipped` reason), so the highest-risk file in the repo was the exact
+    # case that silently passed. A high-risk change that ran nothing is
+    # UNVERIFIED -- the same claim-hygiene rule as a skipped mandatory test.
+    executed_nothing = not evidence["commands"]
+    evidence["executed_nothing"] = executed_nothing
+
+    if is_high_risk and executed_nothing:
+        evidence["verdict"] = "UNVERIFIED"
+        evidence["verdict_reason"] = (
+            f"no test command executed for a HIGH-risk/CROSS_MODULE-or-SYSTEM change "
+            f"(risk={selection.classification.risk}, blast_radius={selection.classification.blast_radius}). "
+            f"Test impact analysis selected no suite for these paths: {paths}. "
+            f"Selection reasons: {selection.reasons or 'none recorded'}. "
+            f"Running nothing proves nothing; this is NOT the same claim as PASSED -- "
+            f"run the relevant suite explicitly, or extend TIA to cover these paths."
+        )
+        overall_rc = 1
+    elif is_high_risk and total_skipped and overall_rc == 0:
         evidence["verdict"] = "UNVERIFIED"
         evidence["verdict_reason"] = (
             f"{total_skipped} test(s) skipped during a HIGH-risk/CROSS_MODULE-or-SYSTEM change "
