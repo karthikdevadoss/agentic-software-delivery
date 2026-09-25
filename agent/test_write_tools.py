@@ -7,6 +7,7 @@ and verifies real Customer files are untouched after every test.
 Run: python agent/test_write_tools.py
 """
 
+import os
 import shutil
 import unittest
 
@@ -102,8 +103,16 @@ class WriteToolsTestCase(unittest.TestCase):
         self.assertIn("traversal", str(ctx.exception))
 
     def test_absolute_path_rejected(self):
+        # Platform-correct absolute path. This used to hardcode
+        # "C:/Windows/evil.java", which is absolute ONLY on Windows -- on the
+        # Linux CI runner it is a RELATIVE path, so the code rejected it via
+        # the out-of-scope branch instead and this assertion failed (real CI
+        # failure, 2026-09-25). The path was always rejected either way, so
+        # this was a test-portability bug, not a security hole -- but a test
+        # that silently stops exercising the branch it names is still broken.
+        absolute = "C:/Windows/evil.java" if os.name == "nt" else "/etc/evil.java"
         with self.assertRaises(wt.WriteToolError) as ctx:
-            wt.propose_edit("C:/Windows/evil.java", "x")
+            wt.propose_edit(absolute, "x")
         self.assertIn("absolute", str(ctx.exception))
 
     def test_out_of_scope_path_rejected(self):

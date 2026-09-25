@@ -10,6 +10,7 @@ correctly routes to the already-tested underlying libraries.
 Run: python agent/test_execution_tools.py
 """
 
+import os
 import shutil
 import unittest
 from unittest import mock
@@ -153,7 +154,14 @@ class ExecutionToolsTestCase(unittest.TestCase):
         et.set_approval_prompt(_approve)
         cases = [
             ("../../etc/evil.java", "traversal"),
-            ("C:/Windows/evil.java", "absolute"),
+            # Platform-correct absolute path -- see the same fix in
+            # test_write_tools.test_absolute_path_rejected. "C:/Windows/..." is
+            # absolute only on Windows; on the Linux CI runner it is relative,
+            # so this case silently exercised the out-of-scope branch instead
+            # of the absolute-path branch it claims to test (real CI failure,
+            # 2026-09-25). Rejected either way -- a portability bug in the
+            # test, not a gap in the write boundary.
+            ("C:/Windows/evil.java" if os.name == "nt" else "/etc/evil.java", "absolute"),
             ("docs/DECISIONS.md", "approved source scope"),
             ("app/pom.xml", "approved source scope"),
             (

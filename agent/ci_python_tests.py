@@ -32,8 +32,20 @@ from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # HERMETIC MODULES -- no live Postgres, no Railway, no spawned web_server, no
-# network. Each was verified individually on 2026-09-25 (41/41 passing, all
-# grep-clean of DATABASE_URL / railway.app / psycopg). These BLOCK CI.
+# network, no dependence on this developer machine's toolchain or dotfiles.
+# These BLOCK CI.
+#
+# HOW THIS LIST IS VALIDATED, and how it was wrong the first time: the original
+# version was built from (a) grepping each test FILE for DATABASE_URL /
+# railway.app / psycopg and (b) the module passing locally. Both signals are
+# unsound, and the first real CI run proved it by failing 4 modules:
+#   - grep reads the test file, not what it IMPORTS. test_knowledge_candidates
+#     never names a database; it imports the event ledger, which does.
+#   - "passes locally" is meaningless on a machine that happens to hold an
+#     EVENT_LEDGER_DATABASE_URL, a JDK, and a ~/.claude/settings.json.
+# The only sound validation is a real run in an environment that has none of
+# those -- i.e. CI itself. Treat any future addition here as provisional until
+# it has gone green on a fresh runner, not when it goes green on this laptop.
 # ---------------------------------------------------------------------------
 HERMETIC_MODULES = [
     "test_acceptance_contract",
@@ -50,16 +62,13 @@ HERMETIC_MODULES = [
     "test_capability_boundaries",
     "test_change_risk",
     "test_check_config_drift",
-    "test_claude_code_hook",
     "test_demo_catalogue",
     "test_demo_execution",
     "test_dev_check",
-    "test_environment_preflight",
     "test_estimation",
     "test_eval_runner",
     "test_execution_tools",
     "test_interview_walkthrough_data",
-    "test_knowledge_candidates",
     "test_learn_tree",
     "test_main",
     "test_mcp_server",
@@ -83,7 +92,6 @@ HERMETIC_MODULES = [
     "test_tools",
     "test_triage_promotion",
     "test_verify_change",
-    "test_verify_claude_hooks_config",
     "test_verify_claude_permissions_config",
     "test_write_tools",
 ]
@@ -100,6 +108,20 @@ HERMETIC_MODULES = [
 # ---------------------------------------------------------------------------
 LIVE_INFRA_MODULES = {
     "test_backend_execution": "spawns a real web_server subprocess",
+    # --- The four below were MISCLASSIFIED as hermetic and were caught by the
+    # first real CI run (2026-09-25, run 36172353680), not by local testing.
+    # Root cause of the misclassification: "hermetic" was judged from grepping
+    # each test FILE for DATABASE_URL/railway/psycopg plus the fact that it
+    # passed locally. Both signals were wrong. The grep missed dependencies
+    # reached through IMPORTS rather than named in the test file, and the local
+    # pass was an artifact of this dev machine holding an EVENT_LEDGER_DATABASE_URL
+    # and a JDK that CI's Python job deliberately does not have. This is the
+    # repo's own documented "green on a long-lived dev machine, red on a fresh
+    # checkout" trap, reproduced exactly.
+    "test_knowledge_candidates": "imports the event ledger; needs a live EVENT_LEDGER_DATABASE_URL",
+    "test_claude_code_hook": "RealLedgerDistinctnessTestCase queries the live Postgres ledger",
+    "test_environment_preflight": "asserts a live JDK on the host; CI's Python job has no Java installed",
+    "test_verify_claude_hooks_config": "asserts ~/.claude/settings.json exists on this developer machine",
     "test_event_ledger": "requires a live DATABASE_URL (real Postgres event ledger)",
     "test_learn_pdf": "hits the live Railway deployment",
     "test_session_history": "hits the live Railway deployment",
@@ -133,7 +155,7 @@ SOURCE_MODULES_NOT_TESTS = ("test_impact_analysis", "test_architect")
 # is deliberately below that (suites legitimately grow and shrink a little),
 # but far above zero -- its whole job is to fail when the suite silently
 # collapses, which is exactly what the bare `discover` command did.
-MIN_EXPECTED_TESTS = 550
+MIN_EXPECTED_TESTS = 520
 
 
 def check_every_module_is_accounted_for() -> list:
