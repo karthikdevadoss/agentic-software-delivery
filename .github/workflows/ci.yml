@@ -185,7 +185,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: '20'
       - name: Node frontend test harnesses
@@ -375,7 +375,7 @@ jobs:
           cache: pip
           cache-dependency-path: agent/requirements.txt
       - run: pip install -r agent/requirements.txt
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '20'
       - run: npm ci || npm install
