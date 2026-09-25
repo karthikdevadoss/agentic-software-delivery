@@ -133,15 +133,17 @@ jobs:
       # UPDATED 2026-09-25: this used to run 4 named modules and the comment
       # here recorded "full Python regression in CI" as a known-open gap. That
       # gap is now largely closed -- the runner below executes the full
-      # hermetic set (42 modules, ~570 tests). Six modules remain excluded
-      # because they genuinely require live infrastructure this job does not
-      # and should not hold (real Postgres via DATABASE_URL, the deployed
-      # Railway apps, a spawned web_server subprocess); the runner prints all
-      # six with their individual reasons on every run, so the exclusion is
-      # visible rather than silent. One further module (test_showcase_data) is
-      # held back pending an Owner decision, also named by the runner.
+      # hermetic set (40 modules). Ten modules remain excluded because they
+      # genuinely require live infrastructure this job does not and should not
+      # hold (real Postgres via DATABASE_URL, the deployed Railway apps, a
+      # spawned web_server subprocess, a real JDK, this developer machine's
+      # ~/.claude/settings.json); the runner prints all ten with their
+      # individual reasons on every run, so the exclusion is visible rather
+      # than silent. PENDING_OWNER_DECISION is currently empty -- the one
+      # module parked there (test_showcase_data) was released into the
+      # blocking set the same day after a real re-verification.
       # 2026-09-25: was 4 named modules out of 51 real test files. Now the full
-      # hermetic set (42 modules, ~570 tests) via an explicit runner rather than
+      # hermetic set via an explicit runner rather than
       # `unittest discover`, for two measured reasons:
       #   1. `python -m unittest discover -p "test_*.py"` in agent/ runs for
       #      12+ minutes, prints no "Ran N tests" summary, and EXITS 0 -- a

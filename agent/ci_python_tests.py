@@ -86,6 +86,10 @@ HERMETIC_MODULES = [
     # live) and an honest last_verified bump. The 9th URL, the custom domain,
     # is annotated unreachable in showcase.yaml rather than hidden.
     "test_showcase_data",
+    # Reads the three real state documents + real git history; writes nothing.
+    # Needs full history (rev-list --max-parents=0), which this CI job already
+    # has via fetch-depth: 0 for verify_change.py.
+    "test_state_brief",
     "test_static_gate",
     "test_test_architect",
     "test_test_impact_analysis",
@@ -151,7 +155,12 @@ PENDING_OWNER_DECISION = {}
 # Architect) -- and are the reason a bare discover -p "test_*.py" misbehaves.
 SOURCE_MODULES_NOT_TESTS = ("test_impact_analysis", "test_architect")
 
-# Real measured count on 2026-09-25 was 553 across the hermetic set. The floor
+# Real measured count on 2026-09-25 is 547 across the 40-module hermetic set
+# (531 before test_state_brief was added, +16 from it -- verified by collecting
+# both lists, not by trusting the delta). An earlier version of this comment
+# said 553; that figure was measured before the four misclassified live-infra
+# modules were moved out on 9a26512 and is corrected here rather than left to
+# look like an unexplained shrink. The floor
 # is deliberately below that (suites legitimately grow and shrink a little),
 # but far above zero -- its whole job is to fail when the suite silently
 # collapses, which is exactly what the bare `discover` command did.
