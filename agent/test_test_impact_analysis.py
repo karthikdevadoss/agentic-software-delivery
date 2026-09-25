@@ -6,6 +6,7 @@ Focused tests for agent/test_impact_analysis.py (Testing Architecture V1
 import unittest
 
 import test_impact_analysis as tia
+import tools
 
 
 class AnalyzeTestCase(unittest.TestCase):
@@ -107,6 +108,80 @@ class AnalyzeTestCase(unittest.TestCase):
         selection = tia.analyze(real_diff)
         self.assertFalse(selection.fail_closed)
         self.assertEqual(selection.java_tests, [tia.ALL_JAVA_MODULE_TESTS])
+
+
+class FrontendSpecMapDriftTestCase(unittest.TestCase):
+    """The frontend path->spec map is hand-maintained, and on 2026-09-25 it had
+    already drifted from the real tree: 13 Playwright specs existed on disk and
+    only 5 were reachable from any mapped source path. A frontend change
+    therefore could not trigger the other 8, which is the same class of silent
+    gap as verify_change.py reporting PASSED after running nothing.
+
+    This is a RATCHET, not a clean-slate assertion. KNOWN_UNMAPPED records
+    exactly the 8 specs that were already unreachable, by name, so the real
+    state is visible rather than hidden. The test fails when a NEW spec appears
+    without a mapping -- which is the drift worth catching, because it is the
+    one that happens silently during normal work.
+
+    Shrinking KNOWN_UNMAPPED is real work (each entry needs a source path that
+    should trigger it). GROWING it to make this test pass is the failure mode
+    this test exists to prevent -- add the mapping instead."""
+
+    KNOWN_UNMAPPED = {
+        "e2e/ask-codebase.spec.js",
+        "e2e/golden-journey.spec.js",
+        "e2e/interview-walkthrough.spec.js",
+        "e2e/link-integrity.spec.js",
+        "e2e/nav-consistency.spec.js",
+        "e2e/pdf.spec.js",
+        "e2e/profile.spec.js",
+        "e2e/workbench-real-acceptance.spec.js",
+    }
+
+    def _specs_on_disk(self):
+        e2e_dir = tools.REPO_ROOT / "e2e"
+        return {f"e2e/{p.name}" for p in sorted(e2e_dir.glob("*.spec.js"))}
+
+    def _specs_reachable(self):
+        return {s for specs in tia.FRONTEND_PATH_TO_SPECS.values() for s in specs}
+
+    def test_no_new_playwright_spec_is_unreachable_from_the_tia_map(self):
+        unmapped = self._specs_on_disk() - self._specs_reachable()
+        new = sorted(unmapped - self.KNOWN_UNMAPPED)
+        self.assertEqual(
+            new, [],
+            f"New Playwright spec(s) exist that no source path maps to: {new}. "
+            "A change to the code they cover will not trigger them. Add an entry to "
+            "tia.FRONTEND_PATH_TO_SPECS mapping the relevant source path(s) to the spec "
+            "-- do NOT add it to KNOWN_UNMAPPED to make this pass.",
+        )
+
+    def test_known_unmapped_list_does_not_contain_specs_that_are_now_mapped(self):
+        """Keeps the ratchet honest in the other direction: once a spec is
+        genuinely wired up, it must be removed from KNOWN_UNMAPPED so the
+        remaining debt is always the real remaining debt."""
+        stale = sorted(self.KNOWN_UNMAPPED & self._specs_reachable())
+        self.assertEqual(
+            stale, [],
+            f"These specs are now reachable from the TIA map and must be removed "
+            f"from KNOWN_UNMAPPED: {stale}",
+        )
+
+    def test_every_mapped_spec_actually_exists_on_disk(self):
+        missing = sorted(self._specs_reachable() - self._specs_on_disk())
+        self.assertEqual(
+            missing, [],
+            f"TIA maps source paths to spec file(s) that do not exist: {missing}. "
+            "The map points at a deleted/renamed spec, so those paths silently select nothing.",
+        )
+
+    def test_every_mapped_source_path_still_exists(self):
+        missing = sorted(p for p in tia.FRONTEND_PATH_TO_SPECS if not (tools.REPO_ROOT / p).exists())
+        self.assertEqual(
+            missing, [],
+            f"TIA maps source paths that no longer exist: {missing}. Dead map entries "
+            "hide the fact that the real file moved and is now unmapped.",
+        )
 
 
 if __name__ == "__main__":
