@@ -18,6 +18,8 @@ Run: python agent/test_rag_index.py
 
 import hashlib
 import json
+import pathlib
+import tempfile
 import unittest
 from unittest import mock
 
@@ -41,21 +43,61 @@ def _fake_embed_query(text):
 class RagIndexTestCase(unittest.TestCase):
     FIXTURE_PATH = tools.REPO_ROOT / "docs" / "_test_fixture_rag.md"
 
+    # ISOLATION BY CONSTRUCTION (2026-09-25). This class used to back up the
+    # REAL agent/.rag_index/index.json in setUpClass and restore it in
+    # tearDownClass, while patching in a 16-dimensional fake embedder. That is
+    # safe only if teardown always runs -- and it does not. A timeout, Ctrl-C,
+    # CI step cancellation or crash skips tearDownClass and leaves the real
+    # index holding 16-dim fake vectors written under the REAL model's id.
+    #
+    # That is not hypothetical: it happened on 2026-09-25 when this module was
+    # killed by a 25s survey timeout. The damage was invisible to both existing
+    # guards -- the model_id check passed (the fake vectors were stored under
+    # `local:BAAI/bge-small-en-v1.5`), and incremental rebuild reused them
+    # because the content hashes were unchanged (`embedded=0`). Semantic search
+    # then failed with a 384-vs-16 matmul error until a full delete+rebuild.
+    #
+    # The fix is isolation, not better cleanup: INDEX_PATH is redirected into a
+    # temporary directory for the whole class, so the real index is never
+    # opened for writing at all. Teardown failing can no longer corrupt
+    # anything, because there is nothing real in scope to corrupt.
     @classmethod
     def setUpClass(cls):
-        cls._index_backup = (
-            rag_index.INDEX_PATH.read_text(encoding="utf-8")
-            if rag_index.INDEX_PATH.exists() else None
+        # The temp dir is nested INSIDE the real .rag_index/ directory, which
+        # is deliberate and took two attempts to get right:
+        #   - OS temp dir (outside the repo) breaks 8 tests: production code
+        #     calls Path.relative_to(REPO_ROOT) and raises "not in the subpath of".
+        #   - A sibling dir inside the repo breaks 4 tests: the indexer's own
+        #     ingestion-exclusion rule matches the literal prefix "agent/.rag_index",
+        #     so a sibling like agent/.rag_index_test_x is NOT excluded and the
+        #     indexer starts ingesting its own test fixtures.
+        # Nesting under .rag_index/ satisfies all three constraints at once:
+        # inside the repo, already covered by the exclusion rule, and separate
+        # from the real index.json that must never be written by a test.
+        cls._REAL_INDEX_PATH = pathlib.Path(rag_index.INDEX_PATH)
+        real_index_dir = cls._REAL_INDEX_PATH.parent
+        real_index_dir.mkdir(parents=True, exist_ok=True)
+        cls._tmpdir = tempfile.TemporaryDirectory(prefix="_test_", dir=str(real_index_dir))
+        tmp_index = pathlib.Path(cls._tmpdir.name) / "index.json"
+        cls._index_patch = mock.patch.object(rag_index, "INDEX_PATH", tmp_index)
+        cls._index_patch.start()
+        # Fail loudly rather than silently testing the wrong thing if the
+        # redirect ever stops working (e.g. the module starts capturing the
+        # path at import time instead of reading the attribute).
+        assert rag_index.INDEX_PATH == tmp_index, "index path redirect failed"
+        assert "_test_" in pathlib.Path(rag_index.INDEX_PATH).parent.name, (
+            f"not an isolated path: {rag_index.INDEX_PATH}"
+        )
+        assert pathlib.Path(rag_index.INDEX_PATH) != cls._REAL_INDEX_PATH, (
+            "tests are pointed at the REAL index -- refusing to run"
         )
 
     @classmethod
     def tearDownClass(cls):
         if cls.FIXTURE_PATH.exists():
             cls.FIXTURE_PATH.unlink()
-        if cls._index_backup is not None:
-            rag_index.INDEX_PATH.write_text(cls._index_backup, encoding="utf-8")
-        elif rag_index.INDEX_PATH.exists():
-            rag_index.INDEX_PATH.unlink()
+        cls._index_patch.stop()
+        cls._tmpdir.cleanup()
 
     def setUp(self):
         rag_index._loaded_index = None
