@@ -207,6 +207,35 @@ def start_service(service: dict) -> subprocess.Popen:
     env["PORT"] = str(service["port"])
     if service["name"] != "eureka-server":
         env["EUREKA_URL"] = f"http://localhost:{EUREKA_PORT}/eureka"
+        # ROOT CAUSE OF A REAL FLAKE, fixed 2026-09-25 (CI run 36173704049,
+        # reproduced locally first run). The Eureka CLIENT caches the registry
+        # locally and refreshes it on its own timer -- default 30s. This
+        # harness proves the Eureka SERVER's registry converged
+        # (wait_for_eureka_registration) and that the GATEWAY can route
+        # (wait_for_gateway_routing_ready), but neither of those says anything
+        # about billing-service's OWN client-side cache, which is what
+        # BillingCustomerClient resolves CUSTOMER-SERVICE through.
+        #
+        # Measured failure, from services/real-topology-tests/logs:
+        #   18:53:22.593  billing-service fetches registry (no customer-service yet)
+        #   18:53:35.8 -> 18:53:48.0  all 5 harness retries fail:
+        #       IllegalStateException: No instances available for CUSTOMER-SERVICE
+        #   18:53:53.179  NEXT registry fetch -- 30.6s after the previous one
+        # The call-layer retry budget (~12s) is shorter than the refresh
+        # interval (30s), so whenever the POST lands just after a refresh every
+        # retry falls inside the same stale-cache window. Pure coin-flip: green
+        # when it lands near a refresh, red when it doesn't.
+        #
+        # The fix is to shrink the staleness window below the retry budget, NOT
+        # to add retries (the existing ones are sound and were never the
+        # problem) and NOT to weaken the assertion. 5s is a test-topology
+        # value: production keeps the 30s default, and the services' own
+        # application.properties are untouched -- this is a harness-scoped env
+        # override exactly like PORT/EUREKA_URL above. The application's real
+        # behaviour under a stale cache is CORRECT and stays under test: it
+        # still returns a clear 503 "please retry", which is what a real client
+        # should see.
+        env["EUREKA_CLIENT_REGISTRYFETCHINTERVALSECONDS"] = "5"
     if service["name"] == "billing-service":
         # BL-038: point the facade at the stand-in started by this harness
         # (respects --port-offset), overriding application.properties' default.
