@@ -130,18 +130,31 @@ jobs:
       - name: Build the curated backend RAG index (needed by search_project_context tests + evals)
         working-directory: agent
         run: python backend_rag_index.py
-      # Scoped deliberately to the fully offline/mocked test modules (no
-      # live Railway URL, no real Anthropic/Postgres credential needed) --
-      # NOT yet the full agent/ suite. Several existing test files touch
-      # live production infrastructure (the event ledger's real Postgres,
-      # the deployed Customer/platform apps) using credentials this CI
-      # job intentionally does not have, by design (see docs/DECISIONS.md
-      # / the overnight session's coverage matrix: "full Python regression
-      # in CI" is recorded as a real, not-yet-closed gap, not silently
-      # skipped).
-      - name: Python unit/contract tests (RAG/MCP/Evals vertical slice)
+      # UPDATED 2026-09-25: this used to run 4 named modules and the comment
+      # here recorded "full Python regression in CI" as a known-open gap. That
+      # gap is now largely closed -- the runner below executes the full
+      # hermetic set (42 modules, ~570 tests). Six modules remain excluded
+      # because they genuinely require live infrastructure this job does not
+      # and should not hold (real Postgres via DATABASE_URL, the deployed
+      # Railway apps, a spawned web_server subprocess); the runner prints all
+      # six with their individual reasons on every run, so the exclusion is
+      # visible rather than silent. One further module (test_showcase_data) is
+      # held back pending an Owner decision, also named by the runner.
+      # 2026-09-25: was 4 named modules out of 51 real test files. Now the full
+      # hermetic set (42 modules, ~570 tests) via an explicit runner rather than
+      # `unittest discover`, for two measured reasons:
+      #   1. `python -m unittest discover -p "test_*.py"` in agent/ runs for
+      #      12+ minutes, prints no "Ran N tests" summary, and EXITS 0 -- a
+      #      false green that would report success having completed nothing.
+      #   2. test_impact_analysis.py and test_architect.py are SOURCE modules
+      #      whose names merely start with test_; discover sweeps them in.
+      # The runner asserts the result instead of trusting the exit code: it
+      # fails if zero tests ran, if the count falls below a floor (suite
+      # silently shrank), or if any test failed. It also fails if a new
+      # test_*.py exists in agent/ that is in no declared bucket.
+      - name: Python hermetic test suite (BLOCKING -- asserts tests really ran)
         working-directory: agent
-        run: python -m unittest test_backend_rag_index test_mcp_server test_backend_planning test_eval_runner -v
+        run: python ci_python_tests.py
       - name: RAG/MCP retrieval + routing evals (must meet recorded thresholds)
         working-directory: agent
         run: python eval_runner.py all
@@ -329,3 +342,65 @@ jobs:
           name: real-topology-service-logs
           path: services/real-topology-tests/logs/
           retention-days: 7
+
+  # ---------------------------------------------------------------------
+  # Playwright E2E -- NON-BLOCKING on purpose (2026-09-25).
+  #
+  # 13 real specs have existed and been maintained in e2e/ for some time and
+  # have NEVER run in CI -- `grep playwright .github/workflows/ci.yml` returned
+  # zero before this job. That is the cheapest untapped coverage in the repo,
+  # and it is also the layer that catches the defect class the Owner reports
+  # hitting most (UI bugs found by hand, not by a gate).
+  #
+  # It starts non-blocking because it has no CI track record: playwright.config.js
+  # auto-starts `python agent/web_server.py` and waits for it, which works
+  # locally but has never been exercised on a cold GitHub runner. Promoting a
+  # job to blocking before knowing its real flake rate is how a team learns to
+  # ignore red builds.
+  #
+  # PROMOTION CRITERION, so this cannot quietly stay non-blocking forever:
+  # once it has run green on 5 consecutive master pushes, remove
+  # `continue-on-error` and make it gating. If it is red or flaky instead, that
+  # is a real finding to fix -- not a reason to delete the job.
+  # ---------------------------------------------------------------------
+  e2e-playwright:
+    name: Playwright E2E (non-blocking, stability observation)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: agent/requirements.txt
+      - run: pip install -r agent/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci || npm install
+      - name: Install Playwright browser (chromium only -- the config's sole project)
+        run: npx playwright install --with-deps chromium
+      # The RAG indexes are gitignored build output; web_server.py needs them
+      # present, exactly as the Python job above does.
+      - name: Build RAG indexes (web_server depends on them)
+        working-directory: agent
+        run: |
+          python rag_index.py
+          python backend_rag_index.py
+      - name: Run Playwright specs (config auto-starts web_server.py)
+        id: pw
+        run: npx playwright test --reporter=list
+      - name: Upload Playwright traces on failure
+        if: steps.pw.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 7
+      - name: Stability note
+        if: always()
+        run: |
+          echo "Playwright outcome: ${{ steps.pw.outcome }}"
+          echo "This job is NON-BLOCKING. Promote to gating after 5 consecutive"
+          echo "green runs on master by removing continue-on-error."

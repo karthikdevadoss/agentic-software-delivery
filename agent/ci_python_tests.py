@@ -1,0 +1,215 @@
+"""
+CI entry point for the hermetic Python test suite.
+
+WHY THIS EXISTS RATHER THAN A BARE `python -m unittest discover`
+Two real defects, both found 2026-09-25 by actually running the obvious
+command rather than assuming it worked:
+
+1. FALSE GREEN. `python -m unittest discover -p "test_*.py"` in agent/ runs
+   for >12 minutes, never prints a `Ran N tests` summary, and **exits 0**.
+   A CI job built on it would report success having completed nothing. This
+   is the same defect class as verify_change.py's "PASSED after running zero
+   commands" bug fixed the same day: an exit code that means "nothing ran",
+   read as "nothing wrong".
+
+2. TWO SOURCE MODULES LOOK LIKE TESTS. `agent/test_impact_analysis.py` (the
+   Test Impact Analysis engine) and `agent/test_architect.py` (the Test
+   Architect) are implementation, not tests -- their names merely start with
+   `test_`. Any `discover -p "test_*.py"` sweeps them in. Their real test
+   files are `test_test_impact_analysis.py` and `test_test_architect.py`,
+   both of which ARE in the list below.
+
+So the module list is explicit, and the result is asserted rather than
+trusted. Exit code is only 0 when real tests really ran and really passed.
+
+Run:  python agent/ci_python_tests.py
+      python agent/ci_python_tests.py --list     # print the two lists, run nothing
+"""
+
+import sys
+import unittest
+from pathlib import Path
+
+# ---------------------------------------------------------------------------
+# HERMETIC MODULES -- no live Postgres, no Railway, no spawned web_server, no
+# network. Each was verified individually on 2026-09-25 (41/41 passing, all
+# grep-clean of DATABASE_URL / railway.app / psycopg). These BLOCK CI.
+# ---------------------------------------------------------------------------
+HERMETIC_MODULES = [
+    "test_acceptance_contract",
+    "test_agent_decision_eval_runner",
+    "test_agent_loop",
+    "test_aggregate_evidence",
+    "test_ai_intelligence",
+    "test_ask_codebase",
+    "test_backend_catalogue",
+    "test_backend_planning",
+    "test_backend_rag_index",
+    "test_backlog",
+    "test_build_tools",
+    "test_capability_boundaries",
+    "test_change_risk",
+    "test_check_config_drift",
+    "test_claude_code_hook",
+    "test_demo_catalogue",
+    "test_demo_execution",
+    "test_dev_check",
+    "test_environment_preflight",
+    "test_estimation",
+    "test_eval_runner",
+    "test_execution_tools",
+    "test_interview_walkthrough_data",
+    "test_knowledge_candidates",
+    "test_learn_tree",
+    "test_main",
+    "test_mcp_server",
+    "test_non_llm_intelligence_metrics",
+    "test_pricing_config",
+    # Promoted from the live-infra list 2026-09-25 once it was isolated: it now
+    # redirects INDEX_PATH into a temp dir and can no longer touch (or be
+    # blocked by) the real index. Verified passing with the real index absent.
+    "test_rag_index",
+    "test_reasoning_gateway",
+    "test_reasoning_gateway_enforcement",
+    "test_risk_policy",
+    "test_static_gate",
+    "test_test_architect",
+    "test_test_impact_analysis",
+    "test_tools",
+    "test_triage_promotion",
+    "test_verify_change",
+    "test_verify_claude_hooks_config",
+    "test_verify_claude_permissions_config",
+    "test_write_tools",
+]
+
+# ---------------------------------------------------------------------------
+# LIVE-INFRASTRUCTURE MODULES -- deliberately NOT blocking CI, with the real
+# reason recorded per module. These are NOT skipped, disabled, or weakened:
+# they are real integration tests that require credentials/services this CI
+# job intentionally does not hold. They must still be run locally or in an
+# environment that has the real dependency.
+#
+# This list is PRINTED ON EVERY CI RUN so the exclusion cannot quietly decay
+# into "nobody ever runs these". Closing it is tracked work, not a silent gap.
+# ---------------------------------------------------------------------------
+LIVE_INFRA_MODULES = {
+    "test_backend_execution": "spawns a real web_server subprocess",
+    "test_event_ledger": "requires a live DATABASE_URL (real Postgres event ledger)",
+    "test_learn_pdf": "hits the live Railway deployment",
+    "test_session_history": "hits the live Railway deployment",
+    "test_triage_execution": "hits live Railway over urllib + spawns a subprocess",
+    "test_web_server": "spawns a real web_server subprocess and hits live Railway",
+}
+
+# BUILD-DERIVED PREREQUISITE, not a live-infra dependency: a few modules in the
+# hermetic list read the on-disk RAG indexes, which are gitignored build output.
+# CI already builds both (`python rag_index.py`, `python backend_rag_index.py`)
+# before invoking this runner, which is why they belong in the blocking set
+# despite needing state that is absent on a fresh checkout. Locally they fail
+# until those two commands have been run at least once.
+REQUIRES_PREBUILT_RAG_INDEX = ("test_mcp_server", "test_backend_rag_index", "test_ask_codebase")
+
+# HELD BACK PENDING AN OWNER DECISION -- not excluded, not skipped, not
+# forgotten. test_showcase_data currently fails one real assertion:
+# showcase.yaml's `last_verified` (2026-09-17) is older than the latest commit
+# touching showcase content (2026-09-22). The remedy is NOT to bump the date,
+# because a re-verification on 2026-09-25 found the content is not fully
+# correct: the published custom domain agentic.karthikdevadoss.com returns 000
+# (DNS resolves to Railway; the connection itself fails). Bumping last_verified
+# would assert "verified on this date" about content with a dead published URL.
+# Add to HERMETIC_MODULES once the domain is fixed or the URL is removed.
+PENDING_OWNER_DECISION = {
+    "test_showcase_data": "last_verified is stale, but content re-verification found a dead published URL",
+}
+
+# Whole-file accounting, asserted at runtime below: every test_*.py in agent/
+# must be in exactly one bucket. Two files are SOURCE modules, not tests --
+# test_impact_analysis.py (the TIA engine) and test_architect.py (the Test
+# Architect) -- and are the reason a bare discover -p "test_*.py" misbehaves.
+SOURCE_MODULES_NOT_TESTS = ("test_impact_analysis", "test_architect")
+
+# Real measured count on 2026-09-25 was 553 across the hermetic set. The floor
+# is deliberately below that (suites legitimately grow and shrink a little),
+# but far above zero -- its whole job is to fail when the suite silently
+# collapses, which is exactly what the bare `discover` command did.
+MIN_EXPECTED_TESTS = 500
+
+
+def check_every_module_is_accounted_for() -> list:
+    """A new test_*.py added to agent/ must land in exactly one bucket. Without
+    this, a genuinely new test module is simply never run by CI and nobody
+    notices -- the same silent-gap family as the false-green `discover` bug and
+    the unreachable Playwright specs. Returns the unaccounted module names."""
+    here = Path(__file__).resolve().parent
+    on_disk = {p.stem for p in here.glob("test_*.py")}
+    accounted = (
+        set(HERMETIC_MODULES)
+        | set(LIVE_INFRA_MODULES)
+        | set(PENDING_OWNER_DECISION)
+        | set(SOURCE_MODULES_NOT_TESTS)
+    )
+    return sorted(on_disk - accounted)
+
+
+def main() -> int:
+    unaccounted = check_every_module_is_accounted_for()
+    if unaccounted:
+        print("FAIL: test module(s) exist in agent/ but are in no bucket:")
+        for m in unaccounted:
+            print(f"  - {m}")
+        print("Add each to HERMETIC_MODULES (preferred), LIVE_INFRA_MODULES with a real")
+        print("reason, or PENDING_OWNER_DECISION. An unlisted module is never run.")
+        return 1
+
+    if "--list" in sys.argv:
+        print(f"HERMETIC (blocking CI) -- {len(HERMETIC_MODULES)} modules:")
+        for m in HERMETIC_MODULES:
+            print(f"  {m}")
+        print(f"\nLIVE-INFRA (not blocking CI, must still be run elsewhere) -- {len(LIVE_INFRA_MODULES)}:")
+        for m, why in sorted(LIVE_INFRA_MODULES.items()):
+            print(f"  {m:28s} {why}")
+        return 0
+
+    print("=" * 72)
+    print(f"Running {len(HERMETIC_MODULES)} hermetic Python test modules (blocking).")
+    print(f"NOT run here -- {len(LIVE_INFRA_MODULES)} live-infrastructure modules, real reasons:")
+    for m, why in sorted(LIVE_INFRA_MODULES.items()):
+        print(f"  - {m}: {why}")
+    print("These are excluded for a stated environmental reason, NOT skipped or")
+    print("weakened. They still need to run where the real dependency exists.")
+    print("=" * 72)
+
+    suite = unittest.defaultTestLoader.loadTestsFromNames(HERMETIC_MODULES)
+    result = unittest.TextTestRunner(verbosity=2).run(suite)
+
+    print("\n" + "=" * 72)
+    print(f"tests run : {result.testsRun}")
+    print(f"failures  : {len(result.failures)}")
+    print(f"errors    : {len(result.errors)}")
+    print(f"skipped   : {len(result.skipped)}")
+
+    # --- the false-green guard, the whole reason this file exists ---
+    if result.testsRun == 0:
+        print("\nFAIL: zero tests actually ran. An exit code of 0 here would mean")
+        print("'nothing ran', not 'nothing wrong'. Failing deliberately.")
+        return 1
+
+    if result.testsRun < MIN_EXPECTED_TESTS:
+        print(f"\nFAIL: only {result.testsRun} tests ran, expected at least "
+              f"{MIN_EXPECTED_TESTS}. The suite has silently shrunk -- either a")
+        print("module stopped loading, or tests were removed. Investigate before")
+        print("lowering this floor; lowering it to go green is the failure mode")
+        print("this guard exists to prevent.")
+        return 1
+
+    if not result.wasSuccessful():
+        print("\nFAIL: real test failures/errors above.")
+        return 1
+
+    print("\nPASS: real tests ran and really passed.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
