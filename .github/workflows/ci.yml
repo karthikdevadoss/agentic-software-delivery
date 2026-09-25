@@ -11,7 +11,7 @@ jobs:
     name: Customer App (Java/Spring, incl. real Postgres Testcontainers)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -104,7 +104,7 @@ jobs:
     name: Agentic platform backend (Python)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           # verify_change.py --base needs real merge-base history against
           # origin/master, which a shallow (depth-1) checkout doesn't have.
@@ -184,7 +184,7 @@ jobs:
     name: Agentic platform frontend (Node)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v5
         with:
           node-version: '20'
@@ -218,7 +218,7 @@ jobs:
       matrix:
         service: [customer-service, billing-service, notification-service, metering-service, eureka-server, api-gateway]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -289,7 +289,7 @@ jobs:
     name: Real-topology multi-instance tier (BL-021/BL-025; GATING since BL-056)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -368,7 +368,7 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
