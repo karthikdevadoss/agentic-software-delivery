@@ -214,6 +214,89 @@ class StalenessTestCase(unittest.TestCase):
         self.assertNotIn("State is current with HEAD", out)
 
 
+class CommittedProseWarningTestCase(unittest.TestCase):
+    """docs/PROJECT_STATUS.md has no last_verified marker, so the brief cannot
+    compute its staleness the way it does for PROJECT_STATE.json. A real
+    fresh-session recovery test on 2026-09-25 found three of the four promoted
+    sections had current-sounding titles and pre-V4-era content. The brief must
+    therefore LABEL that block rather than present it as current truth -- and
+    must still reproduce it in full, because the prose is the only record."""
+
+    def test_the_committed_prose_warning_is_rendered(self):
+        out = render_real()
+        self.assertIn("COMMITTED PROSE -- NOT INDEPENDENTLY VERIFIED CURRENT STATE", out)
+        self.assertIn("no last_verified marker", out)
+        # The precedence claim must be stated, not just implied.
+        self.assertIn("the output wins", out)
+
+    def test_each_known_stale_section_is_marked_individually(self):
+        out = render_real()
+        self.assertTrue(sb.KNOWN_STALE_HEADINGS, "nothing declared stale -- test is vacuous")
+        for heading, why in sb.KNOWN_STALE_HEADINGS.items():
+            marker = f"!! KNOWN STALE ({heading.lstrip('# ')})"
+            self.assertIn(marker, out, f"{heading} is declared stale but carries no marker")
+            self.assertIn(why, out, f"{heading}'s stated reason is not shown to the reader")
+
+    def test_every_known_stale_heading_is_actually_promoted_by_the_brief(self):
+        """A typo in KNOWN_STALE_HEADINGS would silently disable its warning --
+        the marker simply never renders and the section looks trustworthy."""
+        stray = set(sb.KNOWN_STALE_HEADINGS) - set(sb.REQUIRED_STATUS_HEADINGS)
+        self.assertEqual(
+            set(), stray,
+            f"declared stale but not a promoted section (typo?): {sorted(stray)}",
+        )
+
+    def test_the_prose_itself_is_still_reproduced_in_full(self):
+        """Labelling must not become quiet deletion. Every line of all four
+        sections, stale or not, still reaches the reader.
+
+        The expectation is parsed from docs/PROJECT_STATUS.md INDEPENDENTLY
+        here, not via sb.collect_status_sections(). An earlier version of this
+        test called that function to build its own expectation and was
+        therefore tautological -- dropping a section shrank the expectation
+        too, and the test still passed. Caught 2026-09-25 by deliberately
+        seeding exactly that mutation. Same defect class as the verify_change
+        test that re-implemented the arithmetic it was checking."""
+        text = sb.PROJECT_STATUS.read_text(encoding="utf-8")
+        lines = text.splitlines()
+        starts = [i for i, l in enumerate(lines) if l.startswith("# ")]
+        expected = {}
+        for n, i in enumerate(starts):
+            end = starts[n + 1] if n + 1 < len(starts) else len(lines)
+            expected[lines[i]] = lines[i:end]
+
+        out = render_real()
+        for heading in sb.REQUIRED_STATUS_HEADINGS:
+            self.assertIn(heading, expected, f"{heading} absent from the real file")
+            for line in expected[heading]:
+                if line.strip():
+                    self.assertIn(line, out, f"line dropped from {heading}: {line[:70]!r}")
+
+    def test_no_startup_information_disappeared(self):
+        """Regression fence for the whole brief: everything the pre-warning
+        version carried must still be present."""
+        out = render_real()
+        required = [
+            "SESSION STATE BRIEF",
+            "docs/PROJECT_STATE.json",
+            "docs/ACTION_QUEUE.json",
+            "docs/PROJECT_STATUS.md",
+            "current_version:",
+            "current_ticket :",
+            "next_action    :",
+            "verified state :",
+            "ACTIVE of",
+        ]
+        for marker in required:
+            self.assertIn(marker, out, f"startup information lost: {marker!r}")
+        # and the queue/state content itself, not just the labels
+        for item in REAL_QUEUE["items"]:
+            if item["status"] in sb.ACTIVE_STATUSES:
+                self.assertIn(item["id"], out)
+        self.assertIn(str(REAL_STATE["next_action"])[:60], out)
+        self.assertIn("STALE STATE", out)  # the PROJECT_STATE banner still fires
+
+
 class SizeTestCase(unittest.TestCase):
     def test_brief_is_far_smaller_than_the_three_source_documents(self):
         """The whole point. If this ever fails, the brief has stopped being a

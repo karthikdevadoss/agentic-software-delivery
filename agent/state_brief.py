@@ -99,6 +99,32 @@ REQUIRED_STATUS_HEADINGS = [
     "# Useful commands",
 ]
 
+# KNOWN STALE, measured 2026-09-25 by a real fresh-session recovery test.
+# docs/PROJECT_STATUS.md carries no `last_verified` marker of its own, so unlike
+# PROJECT_STATE.json there is nothing to compute staleness FROM -- the only
+# honest signal available is this hand-verified list. Three of the four sections
+# the brief promotes have current-sounding TITLES but pre-V4-era CONTENT; the
+# heading survived while the project moved on underneath it. Each reason below
+# was checked against the real file and against real git before being written.
+#
+# These are LABELLED, not removed: removing them would lose information, and the
+# committed prose is still the only place some of this is written down. The
+# correction to the document itself is a project-facts change and belongs to the
+# Owner, not to this script -- so this list must SHRINK by re-verification, never
+# by someone finding the warning inconvenient.
+KNOWN_STALE_HEADINGS = {
+    "# Exact next development step":
+        'says "Next planned phase: V4" while PROJECT_STATE.current_version already '
+        'reads "V4.1 + Trainer Preview V1"; the named next action predates it',
+    "# What does NOT exist yet":
+        'lists "CI/CD", "production hosting", "test agent" and "reviewer agent" as '
+        "absent -- all four demonstrably exist (green GitHub Actions runs, Railway "
+        "deployments, the qa-evaluator and shiva agents)",
+    "# Current architecture":
+        "describes a single monolithic Spring app with H2; the real topology is six "
+        "microservices behind an api-gateway with Eureka and Brave tracing",
+}
+
 # --- ACTION_QUEUE.json ------------------------------------------------------
 # ACTIVE = work that is not finished. `blocked` is active: blocked work is open
 # work that happens to be stuck, and losing it from the brief is precisely the
@@ -313,9 +339,23 @@ def render(brief: dict) -> str:
     w("  (resolved/verified/deferred history stays in docs/ACTION_QUEUE.json)")
 
     w("")
-    w("--- docs/PROJECT_STATUS.md (4 current-facing sections, verbatim) ------")
+    w("--- docs/PROJECT_STATUS.md (4 sections, verbatim) --------------------")
+    w("!! COMMITTED PROSE -- NOT INDEPENDENTLY VERIFIED CURRENT STATE.")
+    w("!! This file carries no last_verified marker, so nothing here has been")
+    w("!! checked against the real repository. Under the evidence-precedence rule")
+    w("!! it ranks BELOW anything you observe directly from git or a live run:")
+    w("!! if a command's real output disagrees with a line below, the output wins.")
+    if KNOWN_STALE_HEADINGS:
+        w(f"!! {len(KNOWN_STALE_HEADINGS)} of these sections are KNOWN STALE as of "
+          "2026-09-25 and are marked")
+        w("!! individually below. Verify before acting on any of them.")
     for heading, body in brief["status_sections"].items():
         w("")
+        why = KNOWN_STALE_HEADINGS.get(heading)
+        if why:
+            w(f"!! KNOWN STALE ({heading.lstrip('# ')}) -- {why}.")
+            w("!! Reproduced verbatim below because the text is still the only record;")
+            w("!! do NOT act on it without verifying against git/runtime first.")
         w(body.rstrip())
     w("")
     w("(dated 'Current Reality' history and 'Completed versions' remain in")
