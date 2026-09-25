@@ -95,6 +95,27 @@ optional_role_specific_feature: null
 production_urls:
   customer_app: "https://agentic-delivery-customer-app-production.up.railway.app"
   platform_backend: "https://agentic-platform-backend-production.up.railway.app"
-  custom_domain: "https://agentic.karthikdevadoss.com"
+  # UNREACHABLE as of 2026-09-25 (re-verification): returns no response at all
+  # (curl exit/000) on repeated attempts. DNS resolves correctly -- the name is
+  # a CNAME to r1bbjhwh.up.railway.app (69.46.46.70) -- so the record is right
+  # and the failure is at connection/TLS level, consistent with the Railway
+  # custom-domain mapping or its certificate no longer being active.
+  # Deliberately NOT deleted: the domain is owned and the fix is a Railway
+  # config action, not a content error. The two Railway URLs above are the
+  # canonical, verified-live entry points until this resolves.
+  custom_domain: "https://agentic.karthikdevadoss.com"  # KNOWN UNREACHABLE 2026-09-25
 
-last_verified: "2026-09-17"
+# Re-verified 2026-09-25 against the live Railway production URLs. What was
+# actually checked, so this date means something specific rather than "someone
+# looked at it":
+#   - all 13 selected capabilities resolve, unresolved_requirement_texts == []
+#   - every path-style evidence link resolves to a real file in this repo
+#     (incl. docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml, which really does
+#      carry the referenced AEQ-009 record)
+#   - 8 of 9 referenced URLs return HTTP 200: both Railway apps, /workbench,
+#     /dashboard, /usage, /learn, and both GitHub links
+#   - the 9th (custom_domain above) is unreachable and is annotated, not hidden
+# Changes since the previous 2026-09-17 verification were additive only
+# (+90/-2 across PORTFOLIO_CAPABILITIES.yaml and INTERVIEW_WALKTHROUGH.yaml);
+# this file itself was unchanged.
+last_verified: "2026-09-25"
