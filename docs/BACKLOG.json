@@ -1451,7 +1451,7 @@
       "confidence": "LOW",
       "pattern_type": "first_of_kind",
       "title": "[BCBSA] HL7 FHIR R4 facade with HAPI FHIR: Patient + Coverage read API over the customer domain (closes ACT-017)",
-      "description": "Small healthcare-integration module or endpoint in customer-service exposing FHIR R4 Patient (from Customer) and Coverage (from ContractPlan) resources via hapi-fhir-structures-r4 + a RestfulServer or plain JSON parser; capability statement; validation test with HAPI's validator. Honest framing: same façade-over-legacy pattern the Owner built at BCBSA, applied to the energy domain for demonstration.",
+      "description": "Small healthcare-integration module or endpoint in customer-service exposing FHIR R4 Patient (from Customer) and Coverage (from ContractPlan) resources via hapi-fhir-structures-r4 + a RestfulServer or plain JSON parser; capability statement; validation test with HAPI's validator. Honest framing: same fa\u00e7ade-over-legacy pattern the Owner built at BCBSA, applied to the energy domain for demonstration.",
       "size_rationale": "ACT-017; first FHIR code; HAPI versions resolved against Maven Central. suggest_estimate(LARGE,LOW,first_of_kind,'2-3 h') -> INSUFFICIENT_HISTORY n=0",
       "parent_id": "BL-042",
       "status": "planned",
@@ -1626,7 +1626,7 @@
       "pattern_type": "apply_known_pattern",
       "parent_id": null,
       "title": "[Trainer] Instrument real usage share: Workbench pipeline runs vs direct Claude Code sessions, from the event ledger, and reframe the showcase text accordingly",
-      "description": "Add a ledger query + a line on the Dashboard/Usage: count of delivery runs that went through the Workbench propose->approve->apply path vs work done in direct sessions over the last 30 days; update the showcase/§02 wording to whatever the number says (CLI primary, Workbench demo surface, or the reverse).",
+      "description": "Add a ledger query + a line on the Dashboard/Usage: count of delivery runs that went through the Workbench propose->approve->apply path vs work done in direct sessions over the last 30 days; update the showcase/\u00a702 wording to whatever the number says (CLI primary, Workbench demo surface, or the reverse).",
       "size_rationale": "Query + one UI line + text edit. suggest_estimate(SMALL,MEDIUM,apply_known_pattern,'30-45 min') -> COMPUTED n=3 | RE-ESTIMATED 2026-09-23: suggest_estimate COMPUTED n=4 median_ratio=0.16 suggested_mid=6.0 -- ADOPTED 2026-09-23 (Sprint 7 re-estimation, post Sprint-6 correction), not overridden",
       "status": "done",
       "category": "delivery",
@@ -1635,7 +1635,7 @@
       "created_at": "2026-09-22T19:51:42+00:00",
       "started_at": "2026-09-23T11:35:00+00:00",
       "completed_at": "2026-09-23T11:29:32.829155+00:00",
-      "actual_note": "DONE, with a genuinely surprising real result. event_ledger.get_delivery_path_share() counts DISTINCT run_id (Workbench, run_usage_summary) vs DISTINCT session_id (direct Claude Code, model_usage/source=claude_code) over a real trailing 30-day window. REAL MEASURED RESULT: 440 Workbench runs vs 4 direct sessions (99.1% vs 0.9%) -- the OPPOSITE of ACT-018 finding (3)'s prior impression (\"the pipeline is likely vestigial, most delivery happens via direct sessions\"). Corrected ACT-018 with the real number (retracted, not reframed) and updated the trainer showcase §10 honest-gaps entry to match. Published live on the Usage page. New test verified against the real remote ledger with proper insert/cleanup discipline. Full agent/test_event_ledger.py suite: 42/42 pass.",
+      "actual_note": "DONE, with a genuinely surprising real result. event_ledger.get_delivery_path_share() counts DISTINCT run_id (Workbench, run_usage_summary) vs DISTINCT session_id (direct Claude Code, model_usage/source=claude_code) over a real trailing 30-day window. REAL MEASURED RESULT: 440 Workbench runs vs 4 direct sessions (99.1% vs 0.9%) -- the OPPOSITE of ACT-018 finding (3)'s prior impression (\"the pipeline is likely vestigial, most delivery happens via direct sessions\"). Corrected ACT-018 with the real number (retracted, not reframed) and updated the trainer showcase \u00a710 honest-gaps entry to match. Published live on the Usage page. New test verified against the real remote ledger with proper insert/cleanup discipline. Full agent/test_event_ledger.py suite: 42/42 pass.",
       "actual_ratio": null,
       "contaminated": false
     },
@@ -1995,6 +1995,43 @@
       "actual_note": null,
       "actual_ratio": null,
       "contaminated": false
+    },
+    {
+      "id": "BL-077",
+      "title": "Private engineering-memory & interview-evidence system V1",
+      "description": "Owner-directed. A private, git-backed system that permanently preserves real engineering learnings (attempt -> failure -> detection -> investigation -> root cause -> fix -> verification -> lesson -> prevention -> interview value) so they cannot be lost in terminal output, chat history, CI logs or scattered markdown. Three levels: raw evidence (REFERENCED, not copied, from the existing event ledger/git/CI), verified learnings (new canonical ID-addressable records), and interview intelligence (curated, traceable to evidence). Deliberately a JOIN + LIFECYCLE layer over the 12 memory-ish stores that already exist (AI_ENGINEERING_QUALITY_LEDGER.yaml, knowledge_candidates.py, LESSONS.md, RETRO_LOG.md, ACTION_QUEUE.json, interview-scenarios/, triage/scenarios.yaml, RETRACTIONS.yaml, KNOWLEDGE_BASE.md, EVIDENCE_AUTHORITY_MODEL.md, ESCAPED_DEFECT_COMPILER.md, PROJECT_STATE.verification_state) -- NOT a 13th parallel prose store. Lives in the private repo; no new database, no new service.",
+      "size": "XLARGE",
+      "size_rationale": "First-of-its-kind for this repo: a new canonical record store with its own schema, a lifecycle with enforced promotion rules, automatic candidate capture from git/CI, a query interface, deterministic export/rebuild, secret redaction, backfill of existing history, serious tests with seeded-failure proof, and one canonical architecture document. The rubric defaults a first integration of a given kind to LARGE; this spans two repositories and ten-plus deliverables, so XLARGE.",
+      "estimate_range": "3.0-5.0 hours",
+      "confidence": "LOW_MEDIUM",
+      "size_rationale_confidence_note": "LOW_MEDIUM deliberately: the audit step alone changed the design (an existing 30-defect structured ledger was found that I did not know about), and backfill effort depends on how much existing evidence survives deterministic verification -- which cannot be known before running it.",
+      "pattern_type": "first_of_kind_knowledge_infrastructure",
+      "category": "delivery",
+      "status": "done",
+      "sprint": "owner-directed, out of sprint sequence (Sprint 7 remains paused)",
+      "created_at": "2026-09-25",
+      "created_at_commit": "dcbaafe",
+      "commit_shas": [
+        "e322088 (karthik-ai-context, private)"
+      ],
+      "session_ids": [],
+      "checklist": [
+        "A. audit existing mechanisms (DONE - found 12 overlapping stores)",
+        "B. three memory levels",
+        "C. automatic candidate capture",
+        "D. storage/durability + attachment abstraction",
+        "E. retrieval",
+        "F. evidence-backed backfill",
+        "G. interview value",
+        "H. privacy/redaction",
+        "I. backup/recovery proof",
+        "K. tests incl. seeded-failure",
+        "L. one canonical doc",
+        "M. storage measurement"
+      ],
+      "completed_at": "2026-09-25",
+      "actual_note": "Delivered in the private repo as brahma/. 20 files, 5,173 insertions: schema, evidence verification, store, capture, query, CLI, 7 evidence-verified backfill records, one canonical doc, 64 tests (6 guards proved capable of failing via seeded mutation), 3 blocking CI steps. Two real defects found and fixed while building it: the redactor's Authorization pattern leaked the credential after matching only the word 'Bearer', and the repo's own secret_scan gate correctly flagged three test fixtures (resolved by assembling them at runtime rather than weakening the scanner). The audit step changed the design materially: twelve existing learning stores were found, including a 30-defect structured ledger, so the deliverable became a join+lifecycle layer rather than a new store.",
+      "deviation": "Scope narrowed deliberately vs the brief in two places, both stated in BRAHMA.md: no S3 attachments (interface built, no present need) and no Postgres read model (no measured need). Capture left as dry-run: 122 candidates are detectable and writing them as empty stubs would be the noise the brief forbade."
     }
   ],
   "_calibration_process": {
