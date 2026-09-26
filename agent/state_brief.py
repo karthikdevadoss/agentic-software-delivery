@@ -113,16 +113,14 @@ REQUIRED_STATUS_HEADINGS = [
 # Owner, not to this script -- so this list must SHRINK by re-verification, never
 # by someone finding the warning inconvenient.
 KNOWN_STALE_HEADINGS = {
-    "# Exact next development step":
-        'says "Next planned phase: V4" while PROJECT_STATE.current_version already '
-        'reads "V4.1 + Trainer Preview V1"; the named next action predates it',
-    "# What does NOT exist yet":
-        'lists "CI/CD", "production hosting", "test agent" and "reviewer agent" as '
-        "absent -- all four demonstrably exist (green GitHub Actions runs, Railway "
-        "deployments, the qa-evaluator and shiva agents)",
-    "# Current architecture":
-        "describes a single monolithic Spring app with H2; the real topology is six "
-        "microservices behind an api-gateway with Eureka and Brave tracing",
+    # EMPTY IS THE HEALTHY STATE, and it is empty as of 2026-09-26.
+    # The three sections listed here on 2026-09-25 -- "Exact next development
+    # step", "What does NOT exist yet" and "Current architecture" -- were
+    # CORRECTED in docs/PROJECT_STATUS.md rather than left labelled, so the
+    # warning is no longer true and has been withdrawn. That is the only
+    # legitimate way an entry leaves this dict: the document was fixed and
+    # re-verified. Deleting an entry because the banner is inconvenient, while
+    # the prose is still stale, is the failure this comment exists to prevent.
 }
 
 # --- ACTION_QUEUE.json ------------------------------------------------------

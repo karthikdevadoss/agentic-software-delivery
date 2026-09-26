@@ -45,6 +45,18 @@ Before modifying anything:
 11. Do not modify code until explicitly asked.
 12. Before ever reporting previously-described work (from PROJECT_STATE.json, a prior session's summary, or the user's own recollection) as missing/lost: git status --short and git log alone are NOT a complete picture. Also check git stash list, git branch -a, and git reflog -20 — real, uncommitted work is routinely (and correctly) stashed or left on an unmerged branch when a higher-priority task interrupts it, and none of that shows up in a plain status/log check. Only report something as genuinely lost after checking all of these and finding no trace.
 
+## Where strategy lives (this repo is not the authority)
+This repository is the authority for ENGINEERING state: what exists, what is
+verified, what is next technically. It is deliberately NOT the authority for
+the Owner's employment goal, target roles, positioning, capability priority or
+company strategy. Those live in the private context repository
+(`karthik-ai-context`) under `current/CURRENT_PRIORITIES.md`, with supersession
+history in `current/PLAN_DECISIONS.md`.
+
+Do not restate strategy here, and do not infer it from this repo's contents. If
+a task needs it, read it there. If the two ever appear to disagree, the private
+file wins on strategy and this repo wins on engineering fact.
+
 ## Evidence precedence
 When two sources disagree, the higher one is authoritative and the lower one is
 to be corrected — never averaged, never quietly reconciled:
@@ -167,6 +179,17 @@ not optional and it has not been weakened -- read it before sizing, sprinting,
 merging a sprint, closing a tracked item, or writing a retro.
 
 ## Feedback discipline
+**Capture checkpoint (added 2026-09-26).** At the end of a meaningful task --
+one that fixed a real defect, changed a decision, produced a measurement, or
+failed in an instructive way -- record what a future session could NOT
+re-derive from git. Commits preserve what changed; they do not preserve the
+approach that was tried and abandoned, the hypothesis that was wrong, or why a
+design was rejected. That reasoning exists only in the session until it is
+written down, and it is usually the most valuable part. The durable store is
+private; see the strategy pointer above for where. A deterministic capture pass
+can always re-derive candidates from git, so the only genuinely
+unrecoverable material is session-only reasoning -- capture that, not the diff.
+
 For every meaningful run: compare expected vs. actual, classify any gap
 (implementation bug / test gap / requirement ambiguity / architecture /
 security / model-or-tool-API behavior / context-memory problem /

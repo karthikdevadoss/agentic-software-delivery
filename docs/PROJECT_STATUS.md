@@ -29,30 +29,27 @@ investigation, implementation, testing, diagnosis, retry, verification,
 and documentation/state updates increasingly move to agents.
 
 # Current architecture
+CORRECTED 2026-09-26. This section previously described a single monolithic
+Spring app with H2 and was years out of date; the history of how it got here is
+preserved unchanged in the dated "Current Reality" sections below.
 
-Customer target application:
-- Spring Boot 4.1.1
-- Java 17 target
-- CustomerController
-- CustomerService
-- CustomerRepository
-- Customer entity
-- H2 in-memory DB
-- browser UI at /
-- GET /customers/{id}
-- POST /customers
-- Update Email deliberately not implemented yet
+Two things live in this repository and should not be confused:
 
-AI application:
-- Python
-- Anthropic Python SDK
-- Claude Sonnet 5
-- python-dotenv
-- requirement file → Claude → implementation plan
-- agent/main.py supports --mode v2 (static repo context) and --mode v3 (default: controlled tool-using agent, now including semantic retrieval)
-- official-SDK-based MCP adapter (agent/mcp_server.py, `mcp` package) exposing the same read-only tools
-- fastembed-based local, incremental RAG index (agent/rag_index.py, agent/embeddings.py)
-- agent/metrics.py: minimal structured metrics hooks for tools/RAG
+1. THE AI DELIVERY PLATFORM (`agent/`, `public-site/`, `agent/web/`) - a Python
+   agent layer: a planner and controlled tool-using execution agent, an
+   approval-gated write boundary, an MCP adapter, two local fastembed RAG
+   indexes, labelled retrieval/routing evals, a durable Postgres event ledger,
+   cost/token telemetry and five public Railway-hosted surfaces.
+2. THE TARGET APPLICATION (`app/`, `services/`) - the real enterprise-shaped
+   system the platform does engineering work ON. `app/` is a Java 21 /
+   Spring Boot 4.1.1 customer-plan-preferences application with REST and
+   GraphQL, real Postgres via Testcontainers, and Kafka eventing. `services/`
+   holds a six-service decomposition: eureka-server, api-gateway (Spring Cloud
+   Gateway WebMVC), customer-service, billing-service, metering-service and
+   notification-service, with RS256 JWT via a published JWKS, real Brave
+   distributed tracing, and a gating multi-instance real-topology test tier.
+
+Both are exercised by one GitHub Actions pipeline with ten blocking jobs.
 
 # Completed versions
 
@@ -239,52 +236,45 @@ docs-only commits), see `last_verified_code_commit` in
 - old exposed key was rotated
 
 # What does NOT exist yet
-- MCP write/build/deploy tools (only read-only tools exposed, by design)
-- MCP Streamable HTTP actually run (stdio is what's verified; HTTP path is coded/documented for a future hosted platform)
-- production-grade code embeddings (Voyage AI implemented but blocked on VOYAGE_API_KEY; fastembed is what's actually verified)
-- vector DB at scale (current index is local JSON + numpy, sized for this repo)
-- a genuinely human-approved live execution cycle (V4.1 is wired into the live loop and proven to fail closed without a real human; a real person has not yet typed a real approval)
-- any ticket actually implemented through V4/V4.1 (Update Email remains the planned first proof, after the human-approved cycle above)
-- test agent
-- reviewer agent
-- autonomous file modification by our Python system (the mechanism exists behind an approval gate; nothing calls it autonomously)
-- compile/test/self-correction loop (compile/test tool exists; no failure-feedback loop wired yet)
-- GitHub PR automation
-- CI/CD
-- production hosting
+CORRECTED 2026-09-26. The previous version of this list was written before V4
+and claimed that CI/CD, production hosting, a test agent and a reviewer agent
+did not exist. All four demonstrably do, and the stale list was actively
+misleading a fresh reader. Re-verified against the real codebase on this date:
+
+- OpenAI and Gemini provider integration (only a key-shape pattern in a secret
+  scanner and a mention in learning content - neither is an integration)
+- LangGraph, LangChain, Spring AI (verified absent from the codebase)
+- LLM-as-judge evaluation (deterministic evals only)
+- hybrid search and reranking (embeddings and cosine vector search are real;
+  these two are not)
+- end-to-end OpenTelemetry tracing (an opt-in console METRICS exporter exists,
+  `scripts/otel_session.sh`; that is a foundation, not tracing)
+- a dedicated indirect prompt-injection test suite
+- general crash-mid-workflow checkpoint/resume
+- Standing Interview (the planned deep-RAG interview surface - not started)
+- production-grade code embeddings (Voyage is coded but blocked on a key;
+  fastembed is what is actually verified)
+- a vector database at scale (the index is local JSON plus numpy)
+- multi-user concurrency or production scale claims
 
 # Exact next development step
+CORRECTED 2026-09-26. This section previously said "Next planned phase: V4",
+which had been false since V4.1 shipped. Superseded content is preserved in the
+dated history below.
+
 Do NOT implement anything automatically after reading this file.
 
-MCP + RAG foundations are now complete and verified (see above) — this did
-not change the plan, only unblocked it: V4 can now use semantic_repository_search
-and MCP-exposed tools without needing to build them from scratch.
+THE AUTHORITY FOR WHAT HAPPENS NEXT IS `docs/PROJECT_STATE.json`'s `next_phase`
+and `next_action`, read via `python agent/state_brief.py`. This section exists
+to point there, not to hold a second copy that can drift.
 
-Next planned phase:
-V4 — controlled code-writing agent with a compile feedback loop.
+As of 2026-09-26: Architecture V1 rework Phases 0-3 are complete and verified.
+Phase 4A (plan freeze and knowledge governance) is complete. No engineering
+mission is authorised; the next step needs explicit Owner approval.
 
-Goal:
-Let the agent propose an actual code change (starting with the Update Email
-ticket) as a reviewable diff, apply it only under tight, explicit controls,
-then run a controlled compile tool (no arbitrary shell/Maven access) to
-verify the change and support self-correction — still with no autonomous
-Git writes, PR creation, or deployment at this stage.
-
-Next action (exact, small, first when resuming):
-V4 and V4.1 are both committed and verified in isolation/simulation, but a
-genuinely human-approved live run has NOT happened yet — the one live demo
-this session correctly failed closed with no real terminal attached. First
-action on return: personally run
-`python agent/execution_agent.py <a safe fixture ticket>` at a real
-interactive terminal, using a harmless fixture/test target (NOT Update
-Email), and personally type the real approval. Prove: investigation ->
-proposal -> pause -> real APPROVE -> exact approved change applies ->
-compile/test -> verified result. Clean the fixture afterward. Only after
-that proof should the next MVP be chosen — expected to be a small
-browser-based control UI (Requirement -> Start -> status/evidence -> View
-Diff -> Approve/Reject -> build/test -> result), then a small dashboard MVP
-using only real telemetry — but re-prioritize if the live proof shows
-otherwise.
+Strategy, priorities and the employment goal are NOT recorded in this public
+repository. They live in the private context repository, which this repo
+deliberately does not restate.
 
 # Useful commands
 
@@ -297,8 +287,11 @@ python agent/main.py requirements/sample_requirement.txt --mode v2
 Run V3 explicitly:
 python agent/main.py requirements/sample_requirement.txt --mode v3
 
-Run all automated tests (24 total: agent loop, RAG index, MCP server):
-python -m unittest test_agent_loop test_rag_index test_mcp_server -v   (from the agent/ directory)
+Run the full hermetic Python suite the way CI does (552 tests as of
+2026-09-26; asserts that tests really ran rather than trusting exit 0).
+The previous line here named 3 modules and "24 total", which had been
+false for months:
+python agent/ci_python_tests.py
 
 Build/rebuild the RAG index (incremental — safe and cheap to run any time, only changed/new/deleted content is re-embedded):
 python agent/rag_index.py
