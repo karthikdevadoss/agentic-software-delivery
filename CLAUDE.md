@@ -53,6 +53,12 @@ company strategy. Those live in the private context repository
 (`karthik-ai-context`) under `current/CURRENT_PRIORITIES.md`, with supersession
 history in `current/PLAN_DECISIONS.md`.
 
+The same applies to WHO DOES WHAT. Model responsibilities -- who plans, who
+implements, who reviews, and who approves -- are recorded in that repository's
+`current/CURRENT_MODEL_ROLES.md`. As of 2026-09-26 this session's role is
+IMPLEMENTER, not planner: missions are proposed elsewhere, approved by the
+Owner, and only then implemented here.
+
 Do not restate strategy here, and do not infer it from this repo's contents. If
 a task needs it, read it there. If the two ever appear to disagree, the private
 file wins on strategy and this repo wins on engineering fact.
