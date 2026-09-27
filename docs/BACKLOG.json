@@ -2105,13 +2105,16 @@
       "size_rationale": "suggest-estimate SMALL/MEDIUM/apply_known_pattern -> COMPUTED n=4, median_ratio 0.16, suggested_midpoint 3.2 min. ADOPTED. Sprint 8's action item to apply a further residual-bias factor to COMPUTED output is NOT implemented (that is a backlog.py change and the Owner excluded side projects), so this is the engine's number as-is.",
       "deviated_from_suggestion": false,
       "category": "scrum_process",
-      "status": "active",
+      "status": "done",
       "sprint": "Sprint 9 (owner pre-approved 2026-09-27)",
       "created_at": "2026-09-27",
       "started_at": "2026-09-27",
       "created_at_commit": "0750f95",
       "commit_shas": [],
-      "session_ids": []
+      "session_ids": [],
+      "completed_at": "2026-09-27",
+      "actual_ratio": 1.9,
+      "actual_note": "~6 min actual vs the COMPUTED 3.2 min midpoint = ratio 1.9 -- the FIRST item in this project's history to land ABOVE the band rather than below it. Calibration rule recorded, 4 lessons written, ACT-019 opened."
     },
     {
       "id": "BL-082",
@@ -2130,7 +2133,8 @@
       "started_at": "2026-09-27",
       "created_at_commit": "0750f95",
       "commit_shas": [],
-      "session_ids": []
+      "session_ids": [],
+      "actual_note": "NOT COMPLETE. Local replay 3/3 PASS. Two production deploys executed; both shipped WITHOUT the corpus -- production reports {\"loaded\":false} and the page/nav fail closed correctly, so nothing is misrepresented publicly. Root cause of attempt 1: `railway up` respects .gitignore, which I had assumed it did not. Attempt 2 added a .railwayignore (verbatim .gitignore minus the one corpus line, with two seeded-proof tests guarding .env) and still shipped empty, so the remaining hypothesis is that this service builds from the GitHub repo rather than the uploaded directory -- in which case a gitignored file can never ship and option C needs a different delivery mechanism. STOPPED for an Owner decision rather than trying further variations."
     },
     {
       "id": "BL-083",
@@ -2143,13 +2147,16 @@
       "size_rationale": "suggest-estimate SMALL/MEDIUM/apply_known_pattern -> COMPUTED n=4, median_ratio 0.16, suggested_midpoint 2.4 min. ADOPTED. Directly repeats BL-078's proven procedure (surgical docx edit, re-hash, re-derive) on four books instead of two, so apply_known_pattern is now genuinely accurate rather than optimistic.",
       "deviated_from_suggestion": false,
       "category": "delivery",
-      "status": "active",
+      "status": "done",
       "sprint": "Sprint 9 (owner pre-approved 2026-09-27)",
       "created_at": "2026-09-27",
       "started_at": "2026-09-27",
       "created_at_commit": "0750f95",
       "commit_shas": [],
-      "session_ids": []
+      "session_ids": [],
+      "completed_at": "2026-09-27",
+      "actual_ratio": 3.3,
+      "actual_note": "~8 min actual vs the COMPUTED 2.4 min midpoint = ratio 3.3. Four books edited, re-hashed, derived text and corpus rebuilt; a vacuous byte-identity test replaced with a non-vacuous one. Also above the band."
     }
   ],
   "_calibration_process": {

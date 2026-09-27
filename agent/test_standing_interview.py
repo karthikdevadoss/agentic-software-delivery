@@ -323,6 +323,40 @@ class DeploymentWiringTestCase(unittest.TestCase):
                                  "agent/.si_corpus/ is dockerignored -- the image "
                                  "would build with no corpus and never answer")
 
+    def test_railwayignore_is_gitignore_minus_only_the_corpus_line(self):
+        """Railway uses .railwayignore INSTEAD of .gitignore when it exists, so
+        anything .gitignore excluded would start uploading unless repeated
+        there. This asserts the file is a verbatim copy minus exactly one
+        active pattern -- the corpus -- and nothing else drifted.
+
+        This exists because the first deploy shipped no corpus: `railway up`
+        respects .gitignore, which had been assumed otherwise."""
+        gi = self.REPO / ".gitignore"
+        ri = self.REPO / ".railwayignore"
+        self.assertTrue(ri.exists(), ".railwayignore is missing -- the corpus will not ship")
+
+        def active(path):
+            return [l.strip() for l in path.read_text(encoding="utf-8").splitlines()
+                    if l.strip() and not l.strip().startswith("#")]
+
+        g, r = active(gi), active(ri)
+        self.assertEqual(["agent/.si_corpus/"], sorted(set(g) - set(r)),
+                         "the corpus line must be the ONLY thing .railwayignore drops")
+        self.assertEqual([], sorted(set(r) - set(g)),
+                         ".railwayignore has patterns .gitignore does not -- it has drifted")
+
+    def test_railwayignore_still_excludes_every_secret_bearing_path(self):
+        """The hazard this file introduces. If it ever stops excluding an env
+        file, secrets start uploading into a production build context."""
+        ri = self.REPO / ".railwayignore"
+        if not ri.exists():
+            self.skipTest(".railwayignore not present")
+        active = [l.strip() for l in ri.read_text(encoding="utf-8").splitlines()
+                  if l.strip() and not l.strip().startswith("#")]
+        for must in (".env",):
+            self.assertIn(must, active,
+                          f"{must!r} is no longer excluded from the Railway upload")
+
     def test_no_book_text_is_committed_anywhere_in_this_repo(self):
         import subprocess
         r = subprocess.run(["git", "ls-files", "agent/.si_corpus"],
