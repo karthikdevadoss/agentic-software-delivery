@@ -304,14 +304,6 @@ class DeploymentWiringTestCase(unittest.TestCase):
 
     REPO = pathlib.Path(__file__).resolve().parent.parent
 
-    def test_the_corpus_path_is_gitignored(self):
-        import subprocess
-        r = subprocess.run(["git", "check-ignore", "agent/.si_corpus/corpus.json"],
-                           cwd=str(self.REPO), capture_output=True, text=True)
-        self.assertEqual(0, r.returncode,
-                         "agent/.si_corpus/ is NOT gitignored -- book text could "
-                         "reach the public repository")
-
     def test_the_corpus_path_is_not_dockerignored(self):
         di = self.REPO / ".dockerignore"
         if not di.exists():
@@ -323,39 +315,32 @@ class DeploymentWiringTestCase(unittest.TestCase):
                                  "agent/.si_corpus/ is dockerignored -- the image "
                                  "would build with no corpus and never answer")
 
-    def test_railwayignore_is_gitignore_minus_only_the_corpus_line(self):
-        """Railway uses .railwayignore INSTEAD of .gitignore when it exists, so
-        anything .gitignore excluded would start uploading unless repeated
-        there. This asserts the file is a verbatim copy minus exactly one
-        active pattern -- the corpus -- and nothing else drifted.
+    def test_the_corpus_is_NOT_gitignored_or_the_upload_silently_drops_it(self):
+        """The inverse of what this asserted until 2026-09-27, and the reason
+        two production deploys shipped an empty corpus.
 
-        This exists because the first deploy shipped no corpus: `railway up`
-        respects .gitignore, which had been assumed otherwise."""
-        gi = self.REPO / ".gitignore"
-        ri = self.REPO / ".railwayignore"
-        self.assertTrue(ri.exists(), ".railwayignore is missing -- the corpus will not ship")
+        `railway up` respects .gitignore. While agent/.si_corpus/ was ignored,
+        the corpus was silently excluded from the upload and production reported
+        {"loaded": false}. A .railwayignore did not override it. The corpus must
+        therefore be UNTRACKED-BUT-NOT-IGNORED. If anyone re-adds it to
+        .gitignore to 'protect the public repo', Standing Interview stops
+        working in production with no error -- this test is what says so."""
+        import subprocess
+        r = subprocess.run(["git", "check-ignore", "agent/.si_corpus/corpus.json"],
+                           cwd=str(self.REPO), capture_output=True, text=True)
+        self.assertNotEqual(0, r.returncode,
+                            "agent/.si_corpus/ is gitignored again -- `railway up` will drop "
+                            "the corpus and Standing Interview will report loaded:false in "
+                            "production. Keep it untracked instead; git add -A is already "
+                            "hard-denied in .claude/settings.json.")
 
-        def active(path):
-            return [l.strip() for l in path.read_text(encoding="utf-8").splitlines()
-                    if l.strip() and not l.strip().startswith("#")]
-
-        g, r = active(gi), active(ri)
-        self.assertEqual(["agent/.si_corpus/"], sorted(set(g) - set(r)),
-                         "the corpus line must be the ONLY thing .railwayignore drops")
-        self.assertEqual([], sorted(set(r) - set(g)),
-                         ".railwayignore has patterns .gitignore does not -- it has drifted")
-
-    def test_railwayignore_still_excludes_every_secret_bearing_path(self):
-        """The hazard this file introduces. If it ever stops excluding an env
-        file, secrets start uploading into a production build context."""
-        ri = self.REPO / ".railwayignore"
-        if not ri.exists():
-            self.skipTest(".railwayignore not present")
-        active = [l.strip() for l in ri.read_text(encoding="utf-8").splitlines()
-                  if l.strip() and not l.strip().startswith("#")]
-        for must in (".env",):
-            self.assertIn(must, active,
-                          f"{must!r} is no longer excluded from the Railway upload")
+    def test_no_railwayignore_exists_to_confuse_the_upload_rules(self):
+        """One rule, not two. A .railwayignore is used INSTEAD of .gitignore by
+        Railway, so having both makes upload behaviour depend on which file a
+        reader happens to check -- and it did not actually override .gitignore
+        when tried on 2026-09-27."""
+        self.assertFalse((self.REPO / ".railwayignore").exists(),
+                         ".railwayignore is back; it did not work and it splits the rules")
 
     def test_no_book_text_is_committed_anywhere_in_this_repo(self):
         import subprocess

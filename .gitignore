@@ -70,8 +70,17 @@ playwright/.cache/
 .project
 
 # Standing Interview corpus: built from the PRIVATE knowledge base by
-# scripts/build_si_corpus.py. Gitignored on purpose -- no book text may ever
-# enter this public repository. It IS delivered to the container, because
-# `railway up` uploads the working directory (not a git clone), and it is
-# deliberately NOT in .dockerignore for the same reason.
-agent/.si_corpus/
+# scripts/build_si_corpus.py. It is deliberately NOT ignored here.
+#
+# WHY NOT IGNORED, which is the opposite of what it says above until 2026-09-27:
+# `railway up` respects .gitignore, so while this path was ignored the corpus was
+# silently dropped from two production uploads and Standing Interview reported
+# {"loaded": false} in production. A .railwayignore did not override it.
+#
+# So the corpus is now UNTRACKED-BUT-NOT-IGNORED: railway up includes it, and git
+# still never commits it. That second half is enforced, not trusted:
+#   - .claude/settings.json HARD-DENIES `git add -A` and `git add .`
+#   - agent/test_standing_interview.py asserts `git ls-files agent/.si_corpus`
+#     is empty, and that .gitignore does NOT re-ignore this path
+# It shows in `git status` as `??`, which is visible rather than silent.
+# Never `git add` it.

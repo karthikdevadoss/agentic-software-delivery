@@ -2127,14 +2127,15 @@
       "size_rationale": "suggest-estimate MEDIUM/LOW_MEDIUM/first_of_kind -> INSUFFICIENT_HISTORY, n=1. Per Sprint 8 action item 1 and the Owner's explicit restatement, NO hour range is recorded: a rubric band with no reference class is a guess wearing a number, and BL-079 was wrong by ~12x that way. Size label only. First real deploy of the platform backend carrying build-time private data, so first_of_kind is honest.",
       "deviated_from_suggestion": false,
       "category": "delivery",
-      "status": "active",
+      "status": "done",
       "sprint": "Sprint 9 (owner pre-approved 2026-09-27)",
       "created_at": "2026-09-27",
       "started_at": "2026-09-27",
       "created_at_commit": "0750f95",
       "commit_shas": [],
       "session_ids": [],
-      "actual_note": "NOT COMPLETE. Local replay 3/3 PASS. Two production deploys executed; both shipped WITHOUT the corpus -- production reports {\"loaded\":false} and the page/nav fail closed correctly, so nothing is misrepresented publicly. Root cause of attempt 1: `railway up` respects .gitignore, which I had assumed it did not. Attempt 2 added a .railwayignore (verbatim .gitignore minus the one corpus line, with two seeded-proof tests guarding .env) and still shipped empty, so the remaining hypothesis is that this service builds from the GitHub repo rather than the uploaded directory -- in which case a gitignored file can never ship and option C needs a different delivery mechanism. STOPPED for an Owner decision rather than trying further variations."
+      "actual_note": "COMPLETE. Production verified: /api/standing-interview/status reports loaded:true with 361 chunks across all 8 books; /standing-interview HTTP 200; nav entry present and its gate resolves; all three questions answered correctly on the railway.app host. Root cause of the two failed attempts was that `railway up` respects .gitignore. Fix: the corpus is now UNTRACKED-BUT-NOT-IGNORED, so the upload carries it while git still never commits it (git add -A is hard-denied, and a test asserts git ls-files agent/.si_corpus is empty). .railwayignore removed -- it did not override .gitignore and split the rules.",
+      "completed_at": "2026-09-27"
     },
     {
       "id": "BL-083",
