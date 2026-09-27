@@ -1358,3 +1358,218 @@ proven capable of failing, pushed, no rework.
 - Remaining Owner-packet facts not yet applied to the books (Marsh Liberty
   Mutual/Bavaria, Progressive/Velocity, incidents A and C, NRG EVgo removal,
   Lambda 2025) — unchanged by this sprint.
+
+## Sprint 12 — Standing Interview interview voice (2026-09-27) — CLOSED, all items complete
+
+### Scope, as the Owner approved it
+
+> "GOAL: Answers must sound like Karthik in an interview, not like a search
+> report… HOW: Change the SI generation prompt + a post-check that rejects
+> banned phrases and truncated last sentences. Do not rebuild retrieval unless
+> a trace shows voice cannot be fixed in the prompt. Add tests that fail on the
+> OLD kafka-generic text… Prove the kafka-generic question LIVE."
+
+Three items, sized BUILD / ACCEPTANCE / DEPLOY separately, all sized before work.
+
+### Sizes given, before any work
+
+| Item | Size | Estimate | Confidence | Pattern | suggest-estimate |
+|---|---|---|---|---|---|
+| BL-087 BUILD — voice spec + post-check | MEDIUM | 11.2 min (mid) | MEDIUM | apply_known_pattern | **COMPUTED** n=6, median_ratio 0.375 |
+| BL-088 ACCEPTANCE — tests + gate | SMALL | **NO RELIABLE ESTIMATE** | MEDIUM | verification_only | **INSUFFICIENT_HISTORY** n=0 |
+| BL-089 DEPLOY — ship + prove live | SMALL | 6.8 min (mid) | MEDIUM | apply_known_pattern | **COMPUTED** n=7, median_ratio 0.68 |
+
+Sprint 11's retro proposed withholding COMPUTED suggestions for
+`apply_known_pattern` until the ratio history is re-based. That action item is
+**not Owner-approved**, and this project requires approval before acting on
+retro action items, so the computed numbers were adopted. Worth recording
+separately: the SMALL/`apply_known_pattern` median had **already moved 0.16 →
+0.68 on its own** once BL-081/083/086 entered its history, which substantially
+weakens the case for the re-basing fix that retro proposed.
+
+### What the traces said, and the question the Owner left open
+
+The Owner's condition for touching retrieval was "unless a trace shows voice
+cannot be fixed in the prompt". **It can.** Retrieval still returns NRG's
+chunks first, and after the prompt change the model leads with BCBSA anyway.
+Retrieval was not rebuilt.
+
+One rule turned out to cover both requirements with no conflict: **lead with
+where you actually used it.** For Kafka that is BCBSA first; for OAuth/JWT that
+is NRG first. The spec looked like two ordering rules and was really one.
+
+Three failures the prompt alone could not fix, each found by a real trace:
+
+1. **The model repeated the books' own audit register.** "no genuine evidence
+   of Kafka" is a phrase the Marsh book literally contains. Banning the word
+   "genuine" produced "no real evidence" on the next run; banning the noun
+   phrase produced "a clean absence". Fixed by a prompt rule that explicitly
+   *translates* audit wording into speech, plus a maintained ban list.
+2. **It recited interview-prep excerpts as memory.** BOOK-03 contains practice
+   Q&A and a general trade-off discussion; the model served it as experience,
+   which is where the invented member-ID partition key came from. Fixed by
+   naming preparation material as not-memory.
+3. **A retry told only a violation CATEGORY swapped one banned phrase for
+   another.** "invents an exact cron count" → the retry removed it and said
+   "substring". Fixed by quoting the matched words back, and then by giving the
+   retry the whole register rather than the single phrase it was caught on.
+
+### What was built
+
+- **Frozen voice spec in the system prompt**: lead with where the work
+  happened; one employer at a time; omit an employer you have nothing to say
+  about; state the boundary in one sentence; at most one uncertainty line;
+  translate audit wording; never recite prep material; 6–10 spoken lines.
+  Three worked Not/Say example pairs, which consistently outperformed abstract
+  rules.
+- **`voice_violations()`** — a deterministic gate, separate from `leaks()` on
+  purpose (a leak refuses immediately; a voice violation gets one retry).
+  Every banned phrase chosen by counting the real corpus: "partition key" 0
+  occurrences in all 361 chunks, "at-least-once" and "schema evolution" 0 in
+  the hands-on books, "cron" 0 in the hands-on books.
+- **One corrective retry, then `voice_rejected`** with its own outcome, and
+  the matched phrases recorded into the ledger and shown by `si_review.py`.
+- **`MAX_ANSWER_TOKENS` 400 → 1000** as a truncation safety net set far above
+  the length target, so an over-long answer fails as "reads as an essay"
+  rather than as an ambiguous cut-off.
+
+### Verification
+
+- **22 new hermetic tests** (SI module 41 → 63; suite 593 → 614, 0 failures).
+  18 of the first 19 observed FAILING against the pre-Sprint-12 module; the
+  one that passes both sides is the guard that a clean first attempt must not
+  pay for a retry. The two later gap tests were also observed failing against
+  the intermediate commit.
+- **Sprint 11's seeding trick did not work here** — the new checks call
+  `si.voice_violations()`, which the old module lacks, so importing it raises
+  `AttributeError` and proves nothing. Replaced with something better: a
+  `--selftest` that asserts every check rejects the **verbatim Owner-rejected
+  answer** pulled from the event ledger, and it runs automatically before
+  every real gate invocation, so it cannot rot the way a one-off shell
+  demonstration does.
+- **Local acceptance 8/8 on three consecutive runs**; the absence-only
+  question stress-tested 6/6 answered.
+- **Production 8/8 on two consecutive runs** after the final deploy, plus the
+  live generic-Kafka answer read in full.
+
+Live now, verbatim: *"My hands-on Kafka experience is from BCBSA. I wrote
+producer and consumer application code there… Outside of BCBSA, Kafka wasn't
+part of the picture. At NRG the async work ran through SQS with a dead-letter
+queue and some scheduled jobs, not Kafka."*
+
+### Final actuals
+
+| Item | Size | Estimate (mid) | Actual | Ratio | Verdict |
+|---|---|---|---|---|---|
+| BL-087 BUILD | MEDIUM | 11.2 min | **~56 min** | **5.00** | outside [0.7, 1.3] — **ABOVE** |
+| BL-088 ACCEPTANCE | SMALL | *no estimate* | ~22 min | n/a | cannot be scored |
+| BL-089 DEPLOY | SMALL | 6.8 min | **~25 min** | **3.68** | outside band — **ABOVE** |
+| **SPRINT** | 3 items | 18.0 min scoreable | ~87 min total, 81 min scoreable | **4.50** | **ABOVE** |
+
+Markers: start ~21:55, first clean trace 22:27, first commit `ffd12b1` 22:51,
+gap fix `c760b73` 23:06, absence fix `afb2d9b` 23:13, production green 23:17.
+Running total: **2 of 39 items inside the ±30% band** (computed from
+`docs/BACKLOG.json`).
+
+### Diagnosis — ESTIMATION WRONG, and this time the *pattern type* was wrong, not the multiplier
+
+Fourth and fifth consecutive COMPUTED suggestions above the band. But the
+useful finding is not "the multiplier is biased again" — it is that **I chose
+the wrong `pattern_type` for both items, and the multiplier was then applied
+correctly to the wrong base.**
+
+I labelled both `apply_known_pattern`. Editing a prompt and adding a regex list
+*looks* exactly like work this project has done many times. The actual work was
+**iterative convergence against a non-deterministic generator**: five prompt
+iterations, each requiring a real model call to evaluate, each revealing a
+failure mode that could not have been predicted from reading the code — the
+audit register, then the prep-material recitation, then the retry swapping one
+banned phrase for another, then the absence-only shape, then two more register
+variants found only by reading live output. That is `investigation_only`
+behaviour wearing `apply_known_pattern` clothes.
+
+This is a better diagnosis than Sprint 11's because it is actionable in
+advance: the tell is not the size of the diff, it is **whether the acceptance
+criterion can be evaluated without running the model.** If it cannot, no
+number of past prompt edits makes it a known pattern.
+
+There is no IMPLEMENTATION ISSUES verdict for BL-088. There is one for BL-087
+and one for BL-089, both below.
+
+### Action items
+
+**(1) Estimation-mistake improvements**
+
+- **New sizing rule, and the one worth keeping from this sprint: if the
+  acceptance criterion can only be evaluated by running a non-deterministic
+  model, the pattern is `investigation_only`, never `apply_known_pattern` —
+  regardless of how familiar the code change looks.** Both of this sprint's
+  misses come from that single mislabel. This is a rule about choosing the
+  input to the estimator, which is the part I actually control; the multiplier
+  was applied correctly to a base I had picked wrongly.
+- **Withdraw Sprint 11's "re-base median_ratio" proposal as premature.** The
+  SMALL/`apply_known_pattern` median self-corrected 0.16 → 0.68 within one
+  sprint purely by accumulating real data. Re-basing it by hand would have been
+  a manual intervention into a mechanism that was already converging. Recorded
+  as tested-and-withdrawn so it is not re-proposed from the Sprint 11 text.
+- **Sprint 11's "prove live is not SMALL" was right and I overrode it.** I
+  kept BL-089 SMALL on the argument that the deploy path is now a single gated
+  script, and recorded that as a prediction to be scored. It scored 3.68. The
+  script is not the cost; three deploy-verify-fix cycles are. Reinstated: an
+  item whose acceptance contains "prove live" is at least MEDIUM.
+
+**(2) Implementation-mistake improvements**
+
+- **A banned-phrase list is never finished by reasoning about it.** Three
+  separate times this sprint, banning one word moved the model to the next one:
+  genuine → real → clean. Each widening was correct and none was predictable.
+  **Rule: after any change to how answers are generated, read real output
+  again before calling the gate done — and treat the first live answer that
+  passes as evidence to be read, not as a result to be filed.** The two gaps in
+  `c760b73` were found exactly that way, in an answer the gate had already
+  passed.
+- **Two of my own checks contradicted each other and the product paid for it.**
+  `_check_generic_kafka` accepted the words "absence" and "zero" as proof the
+  NRG absence was stated, while the voice spec bans those same words — so a
+  correctly-voiced answer failed the content check. Second sprint running that
+  an assertion I invented failed a good answer. **Rule: when a sprint adds a
+  gate that bans vocabulary, grep every existing assertion for that vocabulary
+  in the same change.**
+- **The deploy cycle was entered three times because each fix was found after
+  deploying, not before.** The first two were legitimate (live output is the
+  only place those gaps were visible), but the third — the absence-only
+  question — was reproducible locally and would have been caught by stressing
+  each question more than once before the first deploy. **Rule: for a
+  non-deterministic surface, the pre-deploy gate runs each question N times,
+  not once.** One run proves it can pass; it does not prove it does.
+
+**(3) Neither, but still needed**
+
+- **Recording `voice_violations` into the ledger paid for itself inside the
+  same sprint.** The production `voice_rejected` was diagnosed from one read of
+  `si_review.py` — both the first-attempt and retry causes, no local
+  reproduction. Sprint 11's lesson ("an unexplained refusal is the expensive
+  kind") applied prospectively for once, rather than after the fact.
+- **Known residual, stated rather than chased.** Roughly one run in six still
+  narrates how the JMS lead was investigated. The prompt has a worked example
+  against it and the register ban catches its common forms, but paraphrase is
+  open-ended, and widening further starts risking refusals on good answers —
+  which is the Sprint 11 defect this project already paid for once. Left open
+  deliberately, not overlooked.
+- **SPRINT AS A WHOLE:** every previous SI sprint fixed something that was
+  *wrong*. This one fixed something that was *correct but badly said*, and it
+  cost more than any of them — because correctness has a test and voice has a
+  judgement, and the only way to turn a judgement into a test was to read real
+  output over and over until the patterns were empirical rather than
+  imagined. The transferable rule is the sizing one above: **work whose
+  acceptance can only be evaluated by running the model is investigation, no
+  matter how small the diff looks.**
+
+### Carried forward
+
+- BL-080 (access gate, SMS notification) still `planned`, untouched.
+- ACT-019 open by design; Sprint 12's triage recorded in it.
+- Sprint 10 retro still not written (Owner deferred it).
+- Remaining Owner-packet book facts (Marsh Liberty Mutual/Bavaria,
+  Progressive/Velocity, incidents A and C, NRG EVgo removal, Lambda 2025) —
+  unchanged by this sprint.

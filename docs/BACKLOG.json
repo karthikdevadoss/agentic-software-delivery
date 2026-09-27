@@ -2243,10 +2243,15 @@
       "created_at": "2026-09-27",
       "started_at": "2026-09-27",
       "created_at_commit": "7b07b6a",
-      "commit_shas": [],
+      "commit_shas": [
+        "ffd12b1",
+        "c760b73",
+        "afb2d9b"
+      ],
       "session_ids": [],
       "completed_at": "2026-09-27",
-      "actual_note": "~70 min. Five prompt iterations, each driven by a real trace rather than a guess, and the traces answered the Owner's open question directly: voice CAN be fixed in the prompt -- retrieval still returns NRG's chunks first and the model now leads with BCBSA anyway -- so retrieval was NOT rebuilt. The single rule 'lead with where you actually used it' satisfies both 'Kafka -> BCBSA first' and 'OAuth -> NRG first' with no ordering conflict. Three failures needed more than the prompt: (1) the model kept repeating the books' own audit register ('no genuine evidence'), fixed by a prompt rule that explicitly translates audit wording into speech; (2) it recited theory out of interview-prep excerpts as if it were memory, fixed by naming preparation material as not-memory; (3) the retry told only a violation CATEGORY swapped one banned phrase for another, fixed by quoting the matched words back. MAX_ANSWER_TOKENS 400 -> 1000 as a truncation safety net, deliberately far above the 6-10 line target so an over-long answer fails as 'reads as an essay' rather than as an ambiguous cut-off."
+      "actual_note": "~70 min. Five prompt iterations, each driven by a real trace rather than a guess, and the traces answered the Owner's open question directly: voice CAN be fixed in the prompt -- retrieval still returns NRG's chunks first and the model now leads with BCBSA anyway -- so retrieval was NOT rebuilt. The single rule 'lead with where you actually used it' satisfies both 'Kafka -> BCBSA first' and 'OAuth -> NRG first' with no ordering conflict. Three failures needed more than the prompt: (1) the model kept repeating the books' own audit register ('no genuine evidence'), fixed by a prompt rule that explicitly translates audit wording into speech; (2) it recited theory out of interview-prep excerpts as if it were memory, fixed by naming preparation material as not-memory; (3) the retry told only a violation CATEGORY swapped one banned phrase for another, fixed by quoting the matched words back. MAX_ANSWER_TOKENS 400 -> 1000 as a truncation safety net, deliberately far above the 6-10 line target so an over-long answer fails as 'reads as an essay' rather than as an ambiguous cut-off. SCORED: ~56 min against the COMPUTED 11.2 min midpoint = ratio 5.00, outside the band, ABOVE. The diagnosis is NOT another biased multiplier: pattern_type apply_known_pattern was the wrong input. Editing a prompt and adding a regex list looks like known-pattern work, but the actual work was iterative convergence against a non-deterministic generator -- five prompt iterations, each needing a real model call to evaluate, each revealing a failure mode unpredictable from reading the code. The tell is whether the acceptance criterion can be evaluated WITHOUT running the model; if it cannot, the pattern is investigation_only.",
+      "actual_ratio": 5.0
     },
     {
       "id": "BL-088",
@@ -2264,7 +2269,11 @@
       "created_at": "2026-09-27",
       "started_at": "2026-09-27",
       "created_at_commit": "7b07b6a",
-      "commit_shas": [],
+      "commit_shas": [
+        "ffd12b1",
+        "c760b73",
+        "afb2d9b"
+      ],
       "session_ids": [],
       "completed_at": "2026-09-27",
       "actual_note": "~30 min. 19 new hermetic tests (SI module 41 -> 60; suite 593 -> 612). 18 of the 19 observed FAILING against the pre-Sprint-12 module; the one that passes both before and after is the no-regression guard that a clean first attempt must not pay for a retry. Sprint 11's seeding trick did NOT work for the gate this time -- the new checks call si.voice_violations(), which the old module does not have, so importing it raises AttributeError and proves nothing. Replaced with something better: a --selftest mode that asserts every check rejects the verbatim Owner-rejected answer, and it runs automatically before every real gate invocation, so it cannot rot the way a one-off shell demonstration does. The gate also caught a contradiction between two of my own checks -- the content check accepted the words 'absence' and 'zero' that the voice spec bans, so a correctly-voiced answer failed."
@@ -2280,13 +2289,20 @@
       "size_rationale": "suggest-estimate SMALL/MEDIUM/apply_known_pattern -> COMPUTED n=7, median_ratio 0.68 (up from 0.16 last sprint now that the three over-runs are in the history), suggested_midpoint 6.8 min. ADOPTED. Sprint 11's retro said an item whose acceptance contains 'prove live' should not be SMALL; kept SMALL deliberately because the deploy path is now a single gated script and the gate is proven, and recorded here as a prediction to be scored rather than quietly avoided.",
       "deviated_from_suggestion": false,
       "category": "delivery",
-      "status": "active",
+      "status": "done",
       "sprint": "Sprint 12 (owner approved 2026-09-27)",
       "created_at": "2026-09-27",
       "started_at": "2026-09-27",
       "created_at_commit": "7b07b6a",
-      "commit_shas": [],
-      "session_ids": []
+      "commit_shas": [
+        "ffd12b1",
+        "c760b73",
+        "afb2d9b"
+      ],
+      "session_ids": [],
+      "completed_at": "2026-09-27",
+      "actual_ratio": 3.68,
+      "actual_note": "~25 min against the COMPUTED 6.8 min midpoint = ratio 3.68, outside the band, ABOVE. Three deploy-verify-fix cycles, not one: the first live answer the gate passed contained two audit-register phrases no pattern covered, and the absence-only question then failed in production. Sprint 11's action item said an item whose acceptance contains 'prove live' should not be SMALL; I overrode it on the argument that the deploy path is now a single gated script and recorded that as a prediction to be scored. It scored 3.68 -- the script was never the cost. Final state: production 8/8 on two consecutive acceptance runs, corpus 361 chunks loaded, 0 corpus files tracked in git."
     }
   ],
   "_calibration_process": {
