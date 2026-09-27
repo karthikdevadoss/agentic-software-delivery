@@ -431,6 +431,18 @@ _VOICE_BANNED = [
     # search feature, which are legitimate things to have worked on.
     (re.compile(r'\b(in|from|during|across)\s+(the\s+|a\s+|my\s+)?(file\s+|code\s+|keyword\s+)?searches?\b', re.I),
      "explains how it turned up in a search"),
+    # Added after reading the FIRST LIVE answer this gate passed. It opened
+    # correctly and then said "there was no genuine Kafka or JMS usage" and
+    # "a single SQS mention showed up in some filing material but got
+    # rejected" -- the audit register again, in two shapes the earlier
+    # patterns did not cover because they only looked for the word
+    # "evidence". Proof that a banned-phrase list is never finished by
+    # reasoning about it; it is finished by reading real output.
+    (re.compile(r'\bgenuine\b', re.I), "says 'genuine', which is audit wording"),
+    (re.compile(r'\b(mention|reference|hit|match)e?s?\s+(showed|show|turned|turn|came)\s+up\b', re.I),
+     "describes something turning up in the record"),
+    (re.compile(r'\bfiling\s+material\b', re.I), "cites 'filing material'"),
+    (re.compile(r'\bgot\s+rejected\b', re.I), "says a finding 'got rejected'"),
     # details no book contains -- verified by counting the real corpus
     (re.compile(r'\bpartition\s+key\b', re.I), "invents a partition key"),
     (re.compile(r'\bat[- ]least[- ]once\b', re.I), "invents a delivery guarantee"),

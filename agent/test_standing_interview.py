@@ -595,6 +595,22 @@ class VoiceGateTestCase(unittest.TestCase):
             "I built the customer search endpoint and we used Elasticsearch "
             "behind the product search feature on that site."))
 
+    def test_the_audit_register_is_caught_in_the_shapes_it_actually_appeared_in(self):
+        """Verbatim from the FIRST live answer the gate let through. Each of
+        these passed every pattern that existed at the time, because those
+        patterns looked for the word "evidence" and the model had moved on to
+        other wording. A banned-phrase list is finished by reading real output,
+        not by reasoning about it."""
+        for real in ("At Marsh there was no genuine Kafka or JMS usage either.",
+                     "A single SQS mention showed up in some filing material "
+                     "but got rejected."):
+            self.assertTrue(si.voice_violations(real), f"still passes: {real!r}")
+
+    def test_closing_those_gaps_did_not_break_plain_speech(self):
+        self.assertEqual([], si.voice_violations(
+            "At Marsh we didn't use Kafka or JMS at all. The async work there "
+            "was a different shape entirely."))
+
     def test_every_banned_phrase_has_a_human_readable_reason(self):
         for rx, why in si._VOICE_BANNED:
             self.assertTrue(why and why[0].islower(), why)
