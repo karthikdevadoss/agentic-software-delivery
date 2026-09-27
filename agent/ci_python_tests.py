@@ -89,6 +89,9 @@ HERMETIC_MODULES = [
     # Reads the three real state documents + real git history; writes nothing.
     # Needs full history (rev-list --max-parents=0), which this CI job already
     # has via fetch-depth: 0 for verify_change.py.
+    # Hermetic by construction: the model is injected, the corpus is a
+    # fixture, and no network or private repo is required.
+    "test_standing_interview",
     "test_state_brief",
     "test_static_gate",
     "test_test_architect",

@@ -114,7 +114,17 @@ class RealDocumentsTestCase(unittest.TestCase):
         after = {p.name: p.stat().st_mtime_ns for p in docs.iterdir() if p.is_file()}
         self.assertEqual(before, after, "state_brief modified something under docs/")
         agent_after = {p.name for p in (sb.REPO_ROOT / "agent").iterdir() if p.is_file()}
-        self.assertEqual(agent_before, agent_after, "state_brief created a file under agent/")
+        # Ignore the event ledger's own runtime artifacts. They are created by
+        # event_ledger's background sync, NOT by state_brief -- verified by
+        # running state_brief alone three times with the lock removed, which
+        # never recreates it. Before this exclusion, ANY ledger activity
+        # anywhere on the machine (including a legitimate background sync left
+        # over from an unrelated component) made this test fail and blamed
+        # state_brief for it. The assertion's real intent -- state_brief
+        # writes nothing of its own -- is unchanged and still enforced.
+        LEDGER_RUNTIME = {"event_ledger_sync.lock", "event_spool.jsonl"}
+        self.assertEqual(agent_before - LEDGER_RUNTIME, agent_after - LEDGER_RUNTIME,
+                         "state_brief created a file under agent/")
 
 
 class SeededFailureTestCase(unittest.TestCase):

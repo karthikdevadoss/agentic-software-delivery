@@ -105,6 +105,17 @@ KNOWN_EVENT_TYPES = frozenset({
     "error", "timeout",
     "correction_recorded", "regression_verified",
 
+    # Standing Interview review queue (BL-079). Two event types, not one:
+    # a REFUSAL is the system declining to answer (a coverage gap or an
+    # out-of-scope question), whereas DISSATISFIED is a human saying the
+    # answer was wrong or weak. Those are different defects with different
+    # fixes, and collapsing them into one type would lose that distinction
+    # exactly when the next sprint needs it. The ledger is the store because
+    # it is already durable, already append-only, already redacted at
+    # envelope build time, and survives a container redeploy -- a local file
+    # on Railway would not.
+    "standing_interview_refusal", "standing_interview_dissatisfied",
+
     # Claude Code development-activity source (activity_class=
     # PRODUCT_DEVELOPMENT) — genuinely new event shapes, not a forced fit
     # into the Workbench/PRODUCT_RUNTIME taxonomy above. See

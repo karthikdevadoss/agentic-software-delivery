@@ -1,0 +1,149 @@
+<title>Agentic Software Delivery — Standing Interview</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="/style.css">
+<style>
+  /* Deliberately plain and close to the rest of the platform: this is an
+     interview surface, not a chat product. No avatars, no typing dots, no
+     streaming theatre -- a question, a pause, an answer. */
+  .si-wrap { max-width: 760px; margin: 0 auto; padding: 0 1rem 4rem; }
+  .si-intro { color: #555; font-size: 0.95rem; line-height: 1.55; margin: 0 0 1.5rem; }
+  .si-form { display: flex; gap: 0.6rem; align-items: stretch; margin-bottom: 0.5rem; }
+  .si-form input[type=text] {
+    flex: 1; padding: 0.7rem 0.85rem; font-size: 1rem; font-family: inherit;
+    border: 1px solid #c8ccd0; border-radius: 4px; background: #fff;
+  }
+  .si-form input[type=text]:focus { outline: 2px solid #2d6cdf; outline-offset: -1px; }
+  .si-form button { padding: 0.7rem 1.2rem; font-size: 1rem; cursor: pointer; }
+  .si-form button[disabled] { opacity: 0.55; cursor: default; }
+  .si-hint { font-size: 0.85rem; color: #777; margin: 0 0 1.6rem; }
+  .si-exchange { border-top: 1px solid #e3e6e8; padding: 1.3rem 0; }
+  .si-q { font-weight: 600; margin: 0 0 0.7rem; }
+  .si-q::before { content: "Q  "; color: #9aa0a6; font-weight: 400; }
+  .si-a { margin: 0; line-height: 1.65; white-space: pre-wrap; }
+  .si-a::before { content: "A  "; color: #9aa0a6; }
+  .si-pending { color: #777; font-style: italic; }
+  .si-actions { margin-top: 0.8rem; }
+  .si-actions button {
+    font-size: 0.82rem; padding: 0.3rem 0.7rem; cursor: pointer;
+    background: #fff; border: 1px solid #c8ccd0; border-radius: 3px; color: #555;
+  }
+  .si-actions button[disabled] { opacity: 0.6; cursor: default; }
+  .si-saved { font-size: 0.82rem; color: #2e7d32; }
+  .si-offline {
+    border: 1px solid #e0b400; background: #fffbe6; padding: 0.9rem 1rem;
+    border-radius: 4px; margin-bottom: 1.5rem; font-size: 0.92rem;
+  }
+</style>
+
+<nav class="top-nav" id="top-nav"></nav>
+
+<div class="si-wrap">
+  <h1>Standing Interview</h1>
+
+  <p class="si-intro">
+    Ask an interview question about the backend systems I've worked on, or about
+    the AI delivery platform in this repository. Answers come only from my own
+    recorded engineering knowledge — if it isn't in there, I'll say so rather
+    than guess.
+  </p>
+
+  <div class="si-offline" id="si-offline" hidden>
+    This instance has no knowledge base loaded, so it can't answer yet.
+  </div>
+
+  <form class="si-form" id="si-form" autocomplete="off">
+    <input type="text" id="si-question" maxlength="500"
+           placeholder="How did you use Spring Security at NRG?"
+           aria-label="Interview question">
+    <button type="submit" id="si-ask">Ask</button>
+  </form>
+  <p class="si-hint">One question at a time. Typed answers only — no audio.</p>
+
+  <div id="si-thread"></div>
+</div>
+
+<script src="/nav.js"></script>
+<script>
+  const form = document.getElementById("si-form");
+  const input = document.getElementById("si-question");
+  const askBtn = document.getElementById("si-ask");
+  const thread = document.getElementById("si-thread");
+  const offline = document.getElementById("si-offline");
+
+  // The page must not pretend to work when no corpus shipped. Same check the
+  // nav uses to decide whether to show this destination at all.
+  fetch("/api/standing-interview/status")
+    .then(r => r.json())
+    .then(s => {
+      if (!s.loaded) {
+        offline.hidden = false;
+        input.disabled = true;
+        askBtn.disabled = true;
+      }
+    })
+    .catch(() => { /* leave the form usable; the ask call will report honestly */ });
+
+  function el(tag, cls, text) {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined) n.textContent = text;
+    return n;
+  }
+
+  form.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const question = input.value.trim();
+    if (!question) return;
+
+    askBtn.disabled = true;
+    input.value = "";
+
+    const block = el("div", "si-exchange");
+    block.appendChild(el("p", "si-q", question));
+    const answerEl = el("p", "si-a si-pending", "thinking…");
+    block.appendChild(answerEl);
+    thread.prepend(block);
+
+    try {
+      const resp = await fetch("/api/standing-interview/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question })
+      });
+      const data = await resp.json();
+      answerEl.className = "si-a";
+      answerEl.textContent = data.answer || "No answer was returned.";
+
+      // Dissatisfied is offered on every answered question. It is the more
+      // expensive signal than a refusal -- retrieval found something and the
+      // answer still missed -- so it is always one click away.
+      if (data.grounded && data.outcome === "answered") {
+        const actions = el("div", "si-actions");
+        const btn = el("button", null, "Dissatisfied with this answer");
+        btn.addEventListener("click", async () => {
+          btn.disabled = true;
+          try {
+            await fetch("/api/standing-interview/feedback", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ question, answer: answerEl.textContent })
+            });
+            actions.replaceChildren(el("span", "si-saved", "Saved for review."));
+          } catch (e) {
+            btn.disabled = false;
+            btn.textContent = "Couldn't save — try again";
+          }
+        });
+        actions.appendChild(btn);
+        block.appendChild(actions);
+      }
+    } catch (e) {
+      answerEl.className = "si-a";
+      answerEl.textContent = "Something went wrong reaching the server.";
+    } finally {
+      askBtn.disabled = false;
+      input.focus();
+    }
+  });
+</script>

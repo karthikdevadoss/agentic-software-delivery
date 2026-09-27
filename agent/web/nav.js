@@ -35,6 +35,15 @@ const CANONICAL_NAV_DESTINATIONS = [
   { href: "/learn", label: "Learn", hiddenOn: ["/workbench", "/dashboard", "/usage"] },
   { href: "/ask-codebase", label: "Ask the Codebase" },
   { href: "/showcase/senior-java-ai-transformation", label: "Role Showcase" },
+  // BL-079: gated, not unconditional. The Owner's condition was that Standing
+  // Interview may appear in the live nav ONLY if the production page can
+  // actually answer, and the corpus is delivered at deploy time rather than
+  // committed -- so an instance can legitimately exist without one. Rather
+  // than rely on remembering to add the link after a successful deploy, the
+  // entry asks the server whether a corpus is loaded and removes itself if
+  // not. A nav link to a page that cannot answer is worse than no link.
+  { href: "/standing-interview", label: "Standing Interview",
+    requiresEndpoint: "/api/standing-interview/status", requiresKey: "loaded" },
 ];
 
 function _isCurrentPage(href, pathname) {
@@ -63,8 +72,23 @@ function renderCanonicalNav(containerId = "top-nav") {
   if (!container) return;
   const pathname = window.location.pathname;
   container.innerHTML = "";
-  for (const { href, label, hiddenOn } of CANONICAL_NAV_DESTINATIONS) {
+  for (const { href, label, hiddenOn, requiresEndpoint, requiresKey } of CANONICAL_NAV_DESTINATIONS) {
     if (_isHiddenOnPage(hiddenOn, pathname)) continue;
+    // A gated destination renders hidden and is only revealed once the server
+    // confirms it can actually serve. Fail-closed: any error leaves it hidden.
+    if (requiresEndpoint) {
+      const gated = document.createElement("a");
+      gated.href = href;
+      gated.textContent = label;
+      gated.hidden = true;
+      gated.dataset.navGated = "true";
+      container.appendChild(gated);
+      fetch(requiresEndpoint)
+        .then((r) => r.json())
+        .then((s) => { if (s && s[requiresKey]) gated.hidden = false; })
+        .catch(() => { /* stays hidden */ });
+      continue;
+    }
     const a = document.createElement("a");
     a.href = href;
     if (_isCurrentPage(href, pathname)) {

@@ -68,3 +68,10 @@ playwright/.cache/
 .settings/
 .classpath
 .project
+
+# Standing Interview corpus: built from the PRIVATE knowledge base by
+# scripts/build_si_corpus.py. Gitignored on purpose -- no book text may ever
+# enter this public repository. It IS delivered to the container, because
+# `railway up` uploads the working directory (not a git clone), and it is
+# deliberately NOT in .dockerignore for the same reason.
+agent/.si_corpus/

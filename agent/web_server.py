@@ -59,6 +59,7 @@ import demo_catalogue
 import showcase_data
 import interview_walkthrough_data
 import ask_codebase
+import standing_interview
 import demo_execution
 import estimation
 import triage_execution
@@ -1655,6 +1656,85 @@ async def ask_codebase_page(request: Request):
     return FileResponse(str(WEB_DIR / "ask-codebase.html"))
 
 
+async def standing_interview_page(request: Request):
+    """Standing Interview v0. Typed question in, first-person answer out,
+    grounded only in the private corpus. See agent/standing_interview.py for
+    why it does not reuse Ask the Codebase's retrieval path."""
+    return FileResponse(str(WEB_DIR / "standing-interview.html"))
+
+
+async def standing_interview_status(request: Request):
+    """Whether this instance can answer at all. The nav uses this to hide the
+    entry when no corpus shipped -- a nav link to a page that cannot answer is
+    worse than no link, and the Owner made that an explicit condition. Exposes
+    only counts and book ids, never corpus content."""
+    return JSONResponse(await run_in_threadpool(standing_interview.corpus_status))
+
+
+async def standing_interview_ask(request: Request):
+    """Real retrieval + a real model call, both CPU/IO-bound, so both run off
+    the event loop (AEQ-010: a sync call left on the loop froze the service).
+
+    Every non-answer is logged for review. A refusal is a coverage signal and
+    it is the cheapest one available -- dropping it would throw away the main
+    thing v0 exists to learn."""
+    body = await request.json()
+    question = (body.get("question") or "").strip()[:500]
+    if not question:
+        return JSONResponse({"error": "question is required"}, status_code=400)
+
+    result = await run_in_threadpool(standing_interview.answer, question)
+
+    if not result.get("grounded") or result.get("outcome") != "answered":
+        await run_in_threadpool(
+            _log_si_event, "standing_interview_refusal", question, result)
+
+    # The interviewer sees the answer and nothing else -- no scores, no book
+    # ids, no excerpts. `outcome` is included only so the page can render the
+    # Dissatisfied control appropriately; it names no source.
+    return JSONResponse({"answer": result["answer"],
+                         "grounded": bool(result.get("grounded")),
+                         "outcome": result.get("outcome")})
+
+
+async def standing_interview_feedback(request: Request):
+    """A human said the answer was wrong or weak. More expensive than a
+    refusal: retrieval found something and the answer still missed."""
+    body = await request.json()
+    question = (body.get("question") or "").strip()[:500]
+    answer_text = (body.get("answer") or "").strip()[:2000]
+    if not question:
+        return JSONResponse({"error": "question is required"}, status_code=400)
+    await run_in_threadpool(
+        _log_si_event, "standing_interview_dissatisfied", question,
+        {"outcome": "dissatisfied", "answer": answer_text})
+    return JSONResponse({"saved": True})
+
+
+def _log_si_event(event_type: str, question: str, result: dict) -> None:
+    """Write-through to the durable ledger; never raises into the request.
+    event_ledger.record_event already spools locally when the remote is
+    unreachable, so a telemetry outage degrades rather than loses the row."""
+    try:
+        import event_ledger
+        event_ledger.record_event(
+            event_type,
+            source="standing_interview",
+            activity_class="PRODUCT_RUNTIME",
+            status=result.get("outcome"),
+            payload={
+                "question": question,
+                "outcome": result.get("outcome"),
+                "best_score": result.get("best_score"),
+                "scope": result.get("scope"),
+                "answer": result.get("answer"),
+                "leaks": result.get("leaks"),
+            },
+        )
+    except Exception:  # noqa: BLE001 - review logging must never break an answer
+        pass
+
+
 async def ask_codebase_api(request: Request):
     """GET-only, idempotent, no request body -- the query is the only
     input, already bounded (agent/ask_codebase.MAX_QUERY_LEN) before any
@@ -2030,6 +2110,9 @@ routes = [
     Route("/api/showcase/{slug}", get_showcase_data, methods=["GET"]),
     Route("/api/interview-walkthrough", get_interview_walkthrough_data, methods=["GET"]),
     Route("/api/ask-codebase", ask_codebase_api, methods=["GET"]),
+    Route("/api/standing-interview/status", standing_interview_status, methods=["GET"]),
+    Route("/api/standing-interview/ask", standing_interview_ask, methods=["POST"]),
+    Route("/api/standing-interview/feedback", standing_interview_feedback, methods=["POST"]),
     Route("/api/triage/scenario-a/reset", triage_reset, methods=["POST"]),
     Route("/api/triage/scenario-a/reproduce", triage_reproduce, methods=["POST"]),
     Route("/api/triage/scenario-a/diagnose", triage_diagnose, methods=["POST"]),
@@ -2067,6 +2150,7 @@ routes = [
     Route("/usage/session/{session_id}", usage_page, methods=["GET"]),
     Route("/showcase/{slug}", showcase_page, methods=["GET"]),
     Route("/ask-codebase", ask_codebase_page, methods=["GET"]),
+    Route("/standing-interview", standing_interview_page, methods=["GET"]),
     Route("/triage", triage_page, methods=["GET"]),
     Route("/triage/scenario-b", triage_page_b, methods=["GET"]),
     Route("/triage/scenario-c", triage_page_c, methods=["GET"]),
