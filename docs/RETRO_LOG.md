@@ -724,6 +724,135 @@ using `suggest_estimate()` for real.
 Retro prepared 2026-09-20, ~19:01–19:08 CEST, within the sprint's own 1-hour cap (used: ~19 minutes total, including this retro). Both items merged to `master` and pushed. Next sprint scoping awaits the Owner.
 
 
+## Sprint 8 — Standing Interview v0 (2026-09-27) — CLOSED
+
+### Scope, as the Owner approved it
+
+> "1. Corpus deploy: C — Private books are delivered to the container at deploy
+> time (Railway volume or private fetch — you pick the smallest option that
+> works). Public repo must contain ZERO book text. Do not weaken
+> ask_codebase.py's outside-repo guarantee. SI must use its own isolated corpus
+> path… SI MAY go in the live nav only if the production page can actually
+> answer. 2. Books 5 and 6: YES, unfreeze and re-hash for the owner packet only…
+> 3. …Mark that May-2026 'supersedes present' sentence SUPERSEDED. Keep the old
+> sentence visible as a withdrawn claim. 4. Start the sprint — Implement only
+> BL-078 and BL-079 as scoped. BL-080 stays planned."
+
+Two items in sprint. BL-080 (access gate + notification) remained `planned` and
+was not started.
+
+### Sizes given, before any work
+
+| Item | Size | Estimate | Confidence | Pattern | suggest-estimate |
+|---|---|---|---|---|---|
+| BL-078 | MEDIUM | 18–30 min (mid 23.4) | MEDIUM | apply_known_pattern | **COMPUTED**, n=5, median_ratio 0.39 — suggestion ADOPTED over a raw 45–75 min instinct |
+| BL-079 | LARGE → **XLARGE** | 3–5 h → **5–8 h** (mid 390) | LOW_MEDIUM | first_of_kind | **INSUFFICIENT_HISTORY** n=2, then n=0 after re-size; fallback to the raw rubric band |
+
+BL-079 was re-sized **before** implementation, not after: the original LARGE
+assumed the corpus was already reachable in production. It is not — the root
+`Dockerfile` does `COPY . .` over the public repo only. Option C added a
+genuinely novel deploy-data path, so the size moved. `deviated_from_suggestion:
+false` on both.
+
+### Final actuals — real timestamps, not recollection
+
+| Item | Size | Estimate (mid) | Actual | Ratio | Verdict |
+|---|---|---|---|---|---|
+| BL-078 | MEDIUM | 23.4 min | **7 min** (15:18:51 backlog activated → 15:25:48 commit `fe9484c`) | **0.30** | outside band [0.7, 1.3] |
+| BL-079 | XLARGE | 390 min | **~32 min** (15:25:48 → ~15:58) | **0.08** | outside band |
+| **SPRINT** | 2 items | **413 min (6.9 h)** | **~39 min** | **0.09** | outside band |
+
+Evidence: `docs/BACKLOG.json` mtime 15:18:51 (both items set `active`), private
+commit `fe9484c` at 15:25:48, last sprint artifact
+`scripts/deploy_platform_with_si_corpus.sh` at 15:52:08, plus the final 581-test
+suite run. Deliverables: private `fe9484c`, public `224676a` → merged `1b564a9`.
+
+### Diagnosis — ESTIMATION WRONG
+
+Not implementation issues. Both items landed, verified, pushed, CI-green, with
+no rework and no scope cut. The gap is entirely in prediction, and it is the
+**seventh consecutive sprint** to miss low. Running total: **2 of 36 items inside
+the ±30% band.**
+
+The new and more interesting datum is BL-078. Sprint 6's named failure was
+silently overriding a COMPUTED suggestion; this sprint I adopted it, which moved
+the ratio from 0.12 (against my raw 60-min midpoint) to 0.30 (against the
+computed 23.4). **The engine is directionally right and still magnitudinally
+short by roughly 3x.** Adopting it was correct and insufficient. That is a
+finding about the calibration mechanism itself, not about this sprint's
+discipline.
+
+BL-079's 0.08 is the more honest signal about XLARGE: the rubric band for a
+first-of-kind XLARGE (5–8 h) is derived from nothing, because
+`suggest_estimate` returned n=0. A band with no reference class is a guess
+wearing a number.
+
+### Action items
+
+**(1) Estimation-mistake improvements**
+
+- **Stop treating the rubric band as an estimate when `suggest_estimate` returns
+  n=0.** BL-079's 5–8 h had zero historical basis and was wrong by roughly 12x.
+  When the engine says INSUFFICIENT_HISTORY, record the size label and an
+  explicit "no reliable estimate" rather than inventing hours — a number with no
+  reference class is worse than an honest absence, because it gets planned
+  against.
+- **Apply a standing correction factor to COMPUTED suggestions.** BL-078 shows
+  the engine's own output is still around 3x high. `suggest_estimate` already
+  computes median_ratio; applying it twice — once for the size class, once for
+  the observed residual bias — is a small, testable change.
+- **Size the VERIFICATION separately from the BUILD.** Both items' code was
+  fast; what actually consumed the sprint was acceptance testing, the two
+  defects it found, and three full 581-test suite runs at roughly 94 s each.
+  That is predictable work and it is currently invisible in the estimate.
+
+**(2) Implementation-mistake improvements**
+
+- **Measure a retrieval threshold before shipping it, never guess one.** I set
+  `GROUNDING_THRESHOLD = 0.34` from intuition. Real cosines: 0.69 answerable,
+  0.4491 nonsense. 0.34 admitted everything, which silently disabled the
+  refusal path — the single most important behaviour in the feature. Any future
+  threshold gets a measured pair of examples recorded next to it.
+- **A single numeric gate was never going to separate "not in the corpus" from
+  "lexically similar to the corpus."** The private-details question scored
+  0.6816. The fix that worked was a second, semantic gate: the model's own
+  decline. Design an ungrounded path with two independent signals from the start.
+- **Do not quote a withdrawn claim inside its own withdrawal.** The first
+  version of the BL-078 correction reproduced the stale sentence verbatim,
+  leaving the exact string retrievable and quotable — defeating the whole
+  purpose of the edit. Caught only because the verifier was tightened from "the
+  specific sentences are gone" to "no such reference survives anywhere".
+
+**(3) Neither, but still needed**
+
+- **The gate that saved this sprint was one I did not write for it.**
+  `test_reasoning_gateway_enforcement` failed the build on a direct Anthropic
+  SDK import in `standing_interview.py`. Without it, a second uncontrolled model
+  call site would have shipped. That is evidence the architectural-enforcement
+  tests are earning their cost, and an argument for adding more of them rather
+  than relying on review.
+- **Deployment is not done.** SI is verified locally against the real 361-chunk
+  corpus, and the nav entry self-hides in production until
+  `/api/standing-interview/status` reports `loaded: true`.
+  `scripts/deploy_platform_with_si_corpus.sh` exists and fails closed on all
+  three invariants, but **has not been run**. SI must not be described as live
+  until it has.
+- **SPRINT AS A WHOLE:** every defect this sprint was found by *exercising the
+  thing*, not by reading it — the threshold, the missing logging, the
+  over-firing decline gate, the verbatim-quote mistake, and the SDK import. Four
+  of five were invisible in the code as written. The sprint-level lesson is that
+  for a feature whose output is prose, acceptance testing against real data is
+  not a final step but the primary defect-detection mechanism, and should be
+  budgeted as such.
+
+### Carried forward
+
+- BL-080 (access gate, notification) remains `planned`, correctly unstarted.
+- The packet's Marsh and BCBSA role titles were **not** applied: that needs
+  Books 01–04 unfrozen, which was not authorised. Reported, not silently closed.
+- Two review rows are already in the queue from acceptance testing and should be
+  triaged before the next sprint (`python agent/si_review.py`).
+
 ## Sprint 6 retro: RA-1, RA-2, BL-038, BL-056, BL-057, BL-046, BL-040, BL-039, BL-041 (CLOSED 2026-09-23, corrected same day after an independent Shiva review of the DRAFT found the diagnosis itself was wrong -- see the correction note before the diagnosis section)
 
 Sprint approved 2026-09-22 ~21:50 CEST by the Owner ("start... test end to end and commit and make sure the app and the ai
