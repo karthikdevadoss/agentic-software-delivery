@@ -233,6 +233,15 @@ class LeakGuardTestCase(unittest.TestCase):
         "I implemented the Spring Security filter that validated RS256 tokens.",
         "I didn't design the issuer; I implemented the filter against it.",
         "I don't have that detail.",
+        # VERBATIM from a real generated answer, 2026-09-27. This exact sentence
+        # was the whole reason the Owner saw "explain your experience with kafka"
+        # refuse: the leak scanner matched "the source" inside ordinary backend
+        # English and threw away the best answer the system produces.
+        "That let the receiving side stay current without the source service "
+        "having to synchronously coordinate with every consumer.",
+        "The source system was slower and batch-updated.",
+        "We treated that service as the source of truth.",
+        "I read the source code for the filter before changing it.",
     ]
 
     def test_every_leaky_phrasing_is_detected(self):
@@ -348,6 +357,159 @@ class DeploymentWiringTestCase(unittest.TestCase):
                            cwd=str(self.REPO), capture_output=True, text=True)
         self.assertEqual("", r.stdout.strip(),
                          "corpus files are tracked in the public repository")
+
+
+class LeakFalsePositiveTestCase(unittest.TestCase):
+    """Sprint 11. The leak scanner is a REFUSAL trigger, so a false positive is
+    not cosmetic -- it silently converts a correct, grounded, well-attributed
+    answer into "I don't have a grounded answer for that one", and the operator
+    then sees an unexplained refusal in the review queue with a HIGH retrieval
+    score beside it. That is exactly what happened to the generic Kafka
+    question (best_score 0.7332, outcome leak_blocked).
+
+    Both halves are pinned here: the engineering senses of "source" must pass,
+    and the provenance senses must still be blocked. Narrowing a control
+    without a test on the part that was narrowed away is how a control quietly
+    stops working."""
+
+    ENGINEERING_SENSES_MUST_PASS = [
+        "the source service published the event",
+        "the source system is batch-updated",
+        "that service was our source of truth",
+        "I changed the source code, not the config",
+        "we read from the source table nightly",
+        "my source control history shows the commits",
+    ]
+
+    PROVENANCE_SENSES_MUST_STILL_BLOCK = [
+        "The sources say I used RS256.",
+        "My source says the filter was mine.",
+        "The source states that Kafka was absent.",
+        "My sources mention a DLQ.",
+        "The source material describes the JWT flow.",
+        "My source document has the sequence diagram.",
+        "According to my source, it was Apigee.",
+    ]
+
+    def test_ordinary_backend_english_about_a_source_system_is_not_a_leak(self):
+        for text in self.ENGINEERING_SENSES_MUST_PASS:
+            self.assertEqual([], si.leaks(text), f"false positive on: {text!r}")
+
+    def test_provenance_uses_of_source_are_still_blocked(self):
+        for text in self.PROVENANCE_SENSES_MUST_STILL_BLOCK:
+            self.assertTrue(si.leaks(text), f"leak NOT detected: {text!r}")
+
+    def test_the_other_provenance_words_were_not_touched_by_the_narrowing(self):
+        for text in ("the document says so", "my notes cover it",
+                     "the corpus has it", "the excerpt above", "my knowledge base"):
+            self.assertTrue(si.leaks(text), text)
+
+
+class EmployerCoverageTestCase(unittest.TestCase):
+    """Sprint 11, Owner-reported: "explain your experience in using oauth or
+    jwt" produced one mashed paragraph with no employer attached to any claim.
+    The cause was RETRIEVAL, not wording -- 5 of the 6 real chunks came from a
+    single employer's books, so the other employers' material was never in
+    front of the model at all. A prompt cannot attribute what it was not given.
+
+    The fixture scores the books so that pure cosine top-k would return ONLY
+    the most recent employer, which is the real failure shape inverted."""
+
+    BOOK_SCORES = {"BOOK-05": 0.90, "BOOK-06": 0.89,      # NRG
+                   "BOOK-03": 0.80, "BOOK-04": 0.79,      # BCBSA
+                   "BOOK-01": 0.70, "BOOK-02": 0.69}      # Marsh
+
+    def setUp(self):
+        self.scores = dict(self.BOOK_SCORES)
+        self._real_cosine = si._cosine
+        # A chunk's vector IS its score here, and cosine just reads it. Honest
+        # about what it is: this test is about slot allocation, not vector maths.
+        si._cosine = lambda qv, cv: cv[0]
+
+    def tearDown(self):
+        si._cosine = self._real_cosine
+
+    def _corpus(self):
+        chunks = [{"book_id": b, "section": f"s{i}", "employer": "x",
+                   "knowledge_type": "system_knowledge", "work_type": "professional",
+                   "status": "current", "vector": [self.scores[b]],
+                   "text": f"{b} chunk {i} kafka oauth jwt"}
+                  for b in self.scores for i in range(3)]
+        return si.Corpus({"model_id": "test-model", "chunks": chunks,
+                          "source_book_hashes": {}})
+
+    def _retrieve(self, question):
+        return si.retrieve(question, self._corpus(), embed_query=lambda q: [1.0])
+
+    def test_a_generic_question_retrieves_from_every_employer_not_just_the_top(self):
+        hits = self._retrieve("explain your experience in using oauth or jwt")
+        employers = [h["employer"] for h in hits]
+        for expected in ("NRG Energy", "BCBSA", "Marsh"):
+            self.assertIn(expected, employers,
+                          f"{expected} absent -> the answer cannot attribute it")
+
+    def test_the_most_recent_employer_comes_first(self):
+        hits = self._retrieve("explain your experience with kafka")
+        self.assertEqual("NRG Energy", hits[0]["employer"])
+        first_of = {}
+        for n, h in enumerate(hits):
+            first_of.setdefault(h["employer"], n)
+        self.assertLess(first_of["NRG Energy"], first_of["BCBSA"])
+        self.assertLess(first_of["BCBSA"], first_of["Marsh"])
+
+    def test_a_question_that_names_an_employer_is_NOT_balanced(self):
+        q = "How did you use Kafka at BCBSA?"
+        self.assertTrue(si.names_employer(q))
+        self.assertFalse(si.names_employer("explain your experience with kafka"))
+        hits = self._retrieve(q)
+        # pure top-k over this fixture -> the highest-scoring books only
+        self.assertEqual({"NRG Energy"}, {h["employer"] for h in hits})
+
+    def test_an_employer_below_the_grounding_threshold_is_left_out(self):
+        self.scores["BOOK-01"] = self.scores["BOOK-02"] = 0.20
+        hits = self._retrieve("explain your experience with kafka")
+        employers = [h["employer"] for h in hits]
+        # Both halves, deliberately. Asserting only the absence would pass
+        # vacuously against code that labels nothing at all -- which is exactly
+        # how it behaved before this sprint, and exactly the vacuous-test shape
+        # Sprint 9's retro found and swore off.
+        self.assertIn("BCBSA", employers, "balancing stopped working entirely")
+        self.assertNotIn("Marsh", employers,
+                         "an irrelevant employer must not be dragged in")
+
+    def test_every_hit_carries_an_employer_label_for_the_prompt(self):
+        hits = self._retrieve("explain your experience with kafka")
+        prompt = si.build_user_prompt("q", hits)
+        for expected in ("NRG Energy", "BCBSA", "Marsh"):
+            self.assertIn(expected, prompt,
+                          "the model cannot attribute an unlabelled excerpt")
+
+    def test_the_grounding_gate_reads_the_best_score_not_the_first_hit(self):
+        """Balanced retrieval returns hits in EMPLOYER order, so hits[0] is no
+        longer the maximum. Reading the gate off position 0 would start
+        refusing answerable questions -- this fails if that is reintroduced."""
+        chunk = self._corpus().chunks[0]
+        out_of_order = [dict(chunk, score=0.20, employer="NRG Energy"),
+                        dict(chunk, score=0.90, employer="BCBSA")]
+        with mock.patch.object(si, "retrieve", return_value=out_of_order):
+            out = si.answer("q", self._corpus(),
+                            create_fn=fake_model("I wrote the producer code."))
+        self.assertEqual("answered", out["outcome"])
+        self.assertAlmostEqual(0.90, out["best_score"])
+
+    def test_the_book_to_employer_map_covers_all_six_career_books(self):
+        mapped = set()
+        for _name, books in si.EMPLOYER_BOOKS:
+            mapped |= set(books)
+        self.assertEqual({f"BOOK-0{i}" for i in range(1, 7)}, mapped)
+        self.assertIsNone(si.employer_for_book("BOOK-07"))
+        self.assertIsNone(si.employer_for_book("BOOK-08"))
+
+    def test_the_system_prompt_forbids_blending_two_employers(self):
+        low = si.SYSTEM_PROMPT.lower()
+        self.assertIn("one employer at a time", low)
+        self.assertIn("never blend", low)
+        self.assertIn("confirmed absence", low)
 
 
 if __name__ == "__main__":

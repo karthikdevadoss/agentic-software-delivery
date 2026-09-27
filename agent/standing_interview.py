@@ -37,6 +37,22 @@ import os
 import pathlib
 import re
 
+# Loads agent/.env's ANTHROPIC_API_KEY into the process environment. Same
+# recurrence as the 2026-09-14 backend_planning.py bug in docs/LESSONS.md:
+# reasoning_gateway.py reads ANTHROPIC_API_KEY from os.environ but does NOT
+# load .env itself, and this module is reached both through web_server.py
+# (which gets the load for free via event_ledger's import side effect) and
+# directly from a CLI/replay harness (which does not). Without this, a local
+# replay of a real question returns outcome="no_model" -- an honest denial,
+# but one that looks identical to "the corpus answered nothing" in a trace and
+# hid the real Sprint 11 traces on the first run. Production on Railway is
+# unaffected either way; the env var is injected by the platform there.
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:                                  # dotenv absent -> rely on
+    pass                                           # the real environment
+
 CORPUS_PATH = pathlib.Path(__file__).resolve().parent / ".si_corpus" / "corpus.json"
 
 # Below this cosine score nothing is considered grounded.
@@ -107,10 +123,26 @@ ABSOLUTE RULES
   better answer than a vague claim of ownership.
 - Never state a date, employer, title or metric that is not in the excerpts.
 
+ONE EMPLOYER AT A TIME
+Each excerpt is labelled with the employer it belongs to. Attribute every
+claim to the employer whose excerpt it came from, and never blend two
+employers' systems into one description -- if two employers solved the same
+problem differently, that is two separate statements, not an average.
+
+When the question names no employer ("explain your experience with X"), take
+the employers in the order the excerpts appear, which is most recent first.
+Give each one its own short paragraph, starting with the employer name. Cover
+only employers whose excerpts actually speak to the question. If an excerpt
+says a technology was NOT used somewhere, say that plainly as its own point --
+a confirmed absence is a real, useful interview answer, not a gap to hide.
+
+When the question DOES name one employer, answer only about that employer.
+
 STYLE
 Short. Spoken, not written. First person. Two to five sentences for most
-questions. No bullet lists, no headings, no markdown. Plain sentences, the way
-you would actually say it in a room."""
+questions -- for a multi-employer answer, two to three sentences per employer.
+No bullet lists, no headings, no markdown. Plain sentences, the way you would
+actually say it in a room."""
 
 # Deterministic post-generation leak scan. Prompt instructions are advisory;
 # this is the control.
@@ -118,7 +150,20 @@ _LEAK_PATTERNS = [
     re.compile(r'\bbook[\s\-]*(0?\d|one|two|three|four|five|six|seven|eight)\b', re.I),
     re.compile(r'\bBOOK-\d', re.I),
     re.compile(r'according to (the|my|a)\b', re.I),
-    re.compile(r'\b(the|my) (document|corpus|excerpt|notes|knowledge base|source)s?\b', re.I),
+    re.compile(r'\b(the|my) (document|corpus|excerpt|notes|knowledge base)s?\b', re.I),
+    # `source` WAS in the alternation above until Sprint 11. It produced a real
+    # false positive on a genuinely good answer: "...without the source service
+    # having to synchronously coordinate with every consumer" -- ordinary
+    # backend English for the upstream service, zero provenance leakage. That
+    # single word silently converted the best generic-Kafka answer the system
+    # produces into a refusal, which is exactly what the Owner reported. `source`
+    # is kept below only in senses that actually reveal the answer is being read
+    # off supplied text; "source service/system/of truth/code/table" no longer
+    # trips it. Verified against the real observed sentence in the tests.
+    re.compile(r'\b(the|my) sources?\s+'
+               r'(say|says|said|state|states|mention|mentions|indicate|indicates|'
+               r'note|notes|describe|describes|show|shows|suggest|suggests)\b', re.I),
+    re.compile(r'\b(the|my) source (material|document|text|excerpt|passage)s?\b', re.I),
     re.compile(r'\.(docx|md|yaml|json|py)\b', re.I),
     re.compile(r'\b(krishna|vishnu|shiva|rudra|yamaraj|brahma|ganesha|shakti)\b', re.I),
     re.compile(r'\bkarthik-ai-context\b', re.I),
@@ -173,6 +218,35 @@ def route(question: str) -> str:
     return "both"
 
 
+# Book -> employer. Verified against the real corpus on 2026-09-27 by counting
+# employer mentions per book rather than assumed: BOOK-01/02 are 97/19 Marsh,
+# BOOK-03/04 are 109/32 BCBSA, BOOK-05/06 are 77/19 NRG. Ordered NRG first
+# (2021-present), then BCBSA, then Marsh -- reverse chronological, which is
+# also the order the Owner asked a generic answer to be given in.
+EMPLOYER_BOOKS: tuple[tuple[str, frozenset[str]], ...] = (
+    ("NRG Energy", frozenset({"BOOK-05", "BOOK-06"})),
+    ("BCBSA", frozenset({"BOOK-03", "BOOK-04"})),
+    ("Marsh", frozenset({"BOOK-01", "BOOK-02"})),
+)
+
+# When the question itself names an employer, retrieval stays pure top-k --
+# those questions already produce the answers the Owner asked to keep, and
+# balancing them would import material about employers nobody asked about.
+_EMPLOYER_NAMED = re.compile(
+    r"\b(nrg|bcbsa|blue\s*cross|blue\s*shield|marsh|bluestream|m2\s*broker)\b", re.I)
+
+
+def employer_for_book(book_id: str) -> str | None:
+    for name, books in EMPLOYER_BOOKS:
+        if book_id in books:
+            return name
+    return None
+
+
+def names_employer(question: str) -> bool:
+    return bool(_EMPLOYER_NAMED.search(question))
+
+
 def _allowed_books(scope: str) -> set[str] | None:
     if scope == "career":
         return {f"BOOK-0{i}" for i in range(1, 7)}
@@ -198,14 +272,56 @@ def retrieve(question: str, corpus: Corpus, embed_query=None, top_k: int = TOP_K
             return []
         embed_query = embeddings.embed_query
     qv = embed_query(question)
-    allowed = _allowed_books(route(question))
+    scope = route(question)
+    allowed = _allowed_books(scope)
     scored = []
     for c in corpus.chunks:
         if allowed is not None and c["book_id"] not in allowed:
             continue
         scored.append((_cosine(qv, c["vector"]), c))
     scored.sort(key=lambda s: -s[0])
-    return [dict(c, score=round(s, 4)) for s, c in scored[:top_k]]
+
+    if scope == "career" and not names_employer(question):
+        picked = _balance_by_employer(scored, top_k)
+    else:
+        picked = scored[:top_k]
+    return [dict(c, score=round(s, 4), employer=employer_for_book(c["book_id"]))
+            for s, c in picked]
+
+
+def _balance_by_employer(scored: list, top_k: int) -> list:
+    """Employer coverage for a question that names no employer.
+
+    REAL DEFECT this fixes (Owner-reported, Sprint 11): "explain your
+    experience in using oauth or jwt" retrieved 5 of 6 chunks from one
+    employer's books and 1 from another's, because pure cosine top-k has no
+    reason to spread. The model then produced one mashed paragraph with no
+    employer attached to any claim -- which is exactly the answer that got the
+    Dissatisfied click. Reserving slots per employer is deterministic; asking
+    the prompt nicely to cover three employers is not, and the material for the
+    other two was never in front of it anyway.
+
+    An employer whose own best chunk is below the grounding threshold
+    contributes nothing -- a question that genuinely only touches one employer
+    must not drag in two irrelevant ones."""
+    per = max(1, top_k // max(1, len(EMPLOYER_BOOKS)))
+    out, used = [], set()
+    for _name, books in EMPLOYER_BOOKS:
+        group = [(s, c) for s, c in scored if c["book_id"] in books]
+        if not group or group[0][0] < GROUNDING_THRESHOLD:
+            continue
+        for s, c in group[:per]:
+            out.append((s, c))
+            used.add(id(c))
+    # Any unfilled slots go to the next-best chunks overall, so a question
+    # about one employer loses nothing by taking this path.
+    for s, c in scored:
+        if len(out) >= top_k:
+            break
+        if id(c) not in used:
+            out.append((s, c))
+            used.add(id(c))
+    return out[:top_k]
 
 
 def leaks(text: str) -> list[str]:
@@ -214,7 +330,14 @@ def leaks(text: str) -> list[str]:
 
 
 def build_user_prompt(question: str, hits: list[dict]) -> str:
-    excerpts = "\n\n".join(f"[excerpt {n}]\n{h['text']}" for n, h in enumerate(hits, 1))
+    # The employer label is supplied explicitly rather than left for the model
+    # to infer from the excerpt body. Mid-book chunks frequently never repeat
+    # the employer name, and an unlabelled excerpt is how one employer's
+    # architecture ends up attributed to another.
+    def head(n, h):
+        emp = h.get("employer")
+        return f"[excerpt {n} -- {emp}]" if emp else f"[excerpt {n}]"
+    excerpts = "\n\n".join(f"{head(n, h)}\n{h['text']}" for n, h in enumerate(hits, 1))
     return (f"{excerpts}\n\n---\nInterview question: {question}\n\n"
             "Answer in first person, using only the excerpts above.")
 
@@ -231,7 +354,11 @@ def answer(question: str, corpus: Corpus | None = None, create_fn=None) -> dict:
         return {"outcome": "no_corpus", "grounded": False, "answer": NO_CORPUS, "hits": []}
 
     hits = retrieve(question, corpus)
-    best = hits[0]["score"] if hits else 0.0
+    # max(), not hits[0] -- employer-balanced retrieval deliberately returns
+    # hits in employer order, so the first hit is no longer the highest scoring
+    # one. Reading the grounding gate off position 0 would have started
+    # refusing answerable questions.
+    best = max((h["score"] for h in hits), default=0.0)
     if not hits or best < GROUNDING_THRESHOLD:
         return {"outcome": "ungrounded", "grounded": False, "answer": REFUSAL,
                 "hits": hits, "best_score": best, "scope": route(question)}

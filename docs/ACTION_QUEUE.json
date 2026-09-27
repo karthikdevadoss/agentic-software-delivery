@@ -496,7 +496,15 @@
       "evidence": "As of 2026-09-27 the queue already holds 2 rows from acceptance testing (1 refusal: 'What is the capital of France?' best_score=0.4491; 1 dissatisfied). Reproduce with: python agent/si_review.py",
       "safe_to_auto_execute": false,
       "verification_required": "Run python agent/si_review.py at the start of a sprint; every row older than one sprint is either converted into a backlog/queue item or explicitly dismissed with a reason. An empty queue must be distinguished from an unreachable ledger -- the tool prints its source for exactly that reason.",
-      "created_at_commit": "0750f95"
+      "created_at_commit": "0750f95",
+      "triage_log": [
+        {
+          "date": "2026-09-27",
+          "sprint": "Sprint 11",
+          "rows_read": "3 refusals + 2 dissatisfied (source: ledger)",
+          "outcome": "Both real Owner rows became BL-084. The generic-Kafka row was NOT a corpus gap: outcome=leak_blocked at best_score 0.7332, a false positive in the leak scanner. The OAuth/JWT Dissatisfied row was a retrieval coverage problem, not a wording problem. The two 'capital of France' refusals and the 'test answer for review' row are acceptance-test artefacts, dismissed with that reason. Confirms the queue's value: neither real cause was the one the refusal text suggested."
+        }
+      ]
     }
   ]
 }
