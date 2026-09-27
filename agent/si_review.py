@@ -124,6 +124,14 @@ def main() -> int:
             print(f"  answer   : {str(p['answer'])[:200]}")
         if p.get("leaks"):
             print(f"  !! LEAK BLOCKED: {p['leaks']}")
+        # A voice_rejected row is a DIFFERENT problem from an ungrounded one --
+        # retrieval worked, the model answered, and the answer was refused for
+        # how it was written. Showing the matched phrases here is what makes it
+        # triageable in one read instead of needing a local reproduction.
+        if p.get("voice_violations"):
+            print(f"  !! VOICE REJECTED: {p['voice_violations']}")
+            if p.get("retry_violations"):
+                print(f"     retry also failed: {p['retry_violations']}")
     print("\nTriage these into docs/ACTION_QUEUE.json or docs/BACKLOG.json before "
           "planning the next sprint.")
     return 0

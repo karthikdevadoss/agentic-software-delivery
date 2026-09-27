@@ -1729,6 +1729,13 @@ def _log_si_event(event_type: str, question: str, result: dict) -> None:
                 "scope": result.get("scope"),
                 "answer": result.get("answer"),
                 "leaks": result.get("leaks"),
+                # Sprint 12: a voice_rejected row without these is an
+                # unexplained refusal in the queue -- the exact shape that
+                # made the Sprint 11 generic-Kafka defect expensive to find.
+                # leaks was recorded and that is the only reason that row was
+                # diagnosable; do the same for the voice gate.
+                "voice_violations": result.get("voice_violations"),
+                "retry_violations": result.get("retry_violations"),
             },
         )
     except Exception:  # noqa: BLE001 - review logging must never break an answer

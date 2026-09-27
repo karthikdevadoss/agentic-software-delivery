@@ -512,5 +512,207 @@ class EmployerCoverageTestCase(unittest.TestCase):
         self.assertIn("confirmed absence", low)
 
 
+# The REAL text the Owner clicked Dissatisfied on, 2026-09-27 20:03, verbatim
+# from the event ledger. Every new test in this file is anchored to it rather
+# than to a paraphrase: this is the answer that has to become impossible.
+OLD_KAFKA_GENERIC = (
+    "At NRG, Kafka wasn't part of the system at all - it's a confirmed absence, "
+    "zero hits across the full file census. The real async mechanism there was "
+    "SQS plus a dead-letter queue and one scheduled cron job. At BCBSA, I "
+    "directly worked on Kafka producer/consumer application code, propagating "
+    "member, coverage and claims changes between backend services. I can speak "
+    "to the general engineering concerns - at-least-once delivery meaning "
+    "consumers have to handle duplicates, using member ID as a natural "
+    "partition key for ordering, idempotency for replayed events, schema "
+    "evolution, dead-letter handling. What I can't tell you is the exact retry, "
+    "DLQ or offset-handling configuration on that project. I also can't say "
+    "which cloud it ran on. I can't speak to what happened when a consumer "
+    "failed specifically. At Marsh there's no genuine evidence of Kafka, JMS, "
+    "RabbitMQ or ActiveMQ."
+)
+
+# The shape the Owner froze, written out so a future change that breaks it
+# fails here rather than in production.
+NEW_KAFKA_GENERIC = (
+    "My hands-on Kafka experience is from BCBSA. I worked on producer/consumer "
+    "application code that propagated member, coverage and claims changes "
+    "between backend services, keeping a FHIR-facing normalized data view "
+    "current as changes landed upstream. That was real application-level coding "
+    "on my end, not a system I only observed running. I don't have the exact "
+    "retry, DLQ or offset-handling implementation preserved, and broker "
+    "administration wasn't mine. Elsewhere Kafka wasn't part of the picture - "
+    "at NRG the async work was SQS with a dead-letter queue, and at Marsh we "
+    "didn't use Kafka or JMS at all."
+)
+
+
+class VoiceGateTestCase(unittest.TestCase):
+    """Sprint 12. The Owner's complaint was not that the answer was wrong -- it
+    was factually fine -- but that it read like a search report. Every
+    assertion here is one clause of the frozen voice spec."""
+
+    def test_the_exact_text_the_owner_rejected_is_now_rejected(self):
+        bad = si.voice_violations(OLD_KAFKA_GENERIC)
+        self.assertTrue(bad, "the Owner-rejected answer passes the voice gate")
+        # Not just "something fired" -- the specific things he named.
+        joined = " | ".join(bad).lower()
+        for expected in ("census", "hits", "confirmed absence", "partition key",
+                         "delivery guarantee", "schema evolution", "cron",
+                         "evidence"):
+            self.assertIn(expected, joined, f"did not catch: {expected}")
+
+    def test_the_frozen_shape_passes(self):
+        self.assertEqual([], si.voice_violations(NEW_KAFKA_GENERIC),
+                         "the Owner's own specified shape is being rejected")
+
+    def test_a_truncated_answer_is_rejected(self):
+        self.assertIn("stops mid-sentence",
+                      si.voice_violations("At BCBSA I wrote the producer code and then I"))
+        self.assertNotIn("stops mid-sentence", si.voice_violations(NEW_KAFKA_GENERIC))
+
+    def test_closing_punctuation_inside_a_quote_still_counts_as_finished(self):
+        self.assertEqual([], si.voice_violations(
+            "At BCBSA I wrote the producers. The team called it \"the feed.\""))
+
+    def test_an_essay_about_what_he_cannot_say_is_rejected(self):
+        essay = ("I can't tell you the topic names. I can't recall the retry "
+                 "settings. I don't have the offsets. I cannot say which cloud.")
+        bad = si.voice_violations(essay)
+        self.assertTrue(any("cannot say" in b for b in bad), bad)
+        self.assertTrue(any("opens on a limitation" in b for b in bad), bad)
+
+    def test_ONE_uncertainty_line_is_allowed_because_honesty_is_the_point(self):
+        ok = ("At BCBSA I wrote the Kafka producer and consumer code for member "
+              "and coverage changes. I don't have the exact retry or DLQ "
+              "settings for that project. Broker administration wasn't mine.")
+        self.assertEqual([], si.voice_violations(ok),
+                         "a single honest limit must not be penalised")
+
+    def test_search_talk_is_banned_but_real_search_work_is_not(self):
+        self.assertTrue(si.voice_violations(
+            "JMS showed up in searches but it wasn't real usage."))
+        self.assertEqual([], si.voice_violations(
+            "I built the customer search endpoint and we used Elasticsearch "
+            "behind the product search feature on that site."))
+
+    def test_every_banned_phrase_has_a_human_readable_reason(self):
+        for rx, why in si._VOICE_BANNED:
+            self.assertTrue(why and why[0].islower(), why)
+            self.assertNotIn("regex", why.lower())
+
+    def test_the_voice_gate_is_separate_from_the_leak_gate(self):
+        """They have opposite failure costs -- a leak must refuse immediately, a
+        voice violation gets one retry first. Merging them is how the Sprint 11
+        false positive stayed invisible."""
+        self.assertEqual([], si.leaks(OLD_KAFKA_GENERIC),
+                         "the old answer leaked nothing -- it was only badly voiced")
+        self.assertTrue(si.voice_violations(OLD_KAFKA_GENERIC))
+
+
+class VoiceRetryTestCase(unittest.TestCase):
+    """The retry is the whole reason the gate can afford to be strict. Without
+    it, one banned phrase in an otherwise perfect answer becomes a refusal --
+    which is precisely the Sprint 11 defect this project already paid for."""
+
+    def setUp(self):
+        self.corpus = make_corpus()
+        self.strong = [dict(self.corpus.chunks[0], score=0.81, employer="BCBSA")]
+
+    def _two_replies(self, first, second):
+        calls = []
+
+        def create(**kwargs):
+            calls.append(kwargs)
+            return FakeResponse(first if len(calls) == 1 else second)
+        create.calls = calls
+        return create
+
+    def test_a_voice_violation_is_retried_not_refused(self):
+        model = self._two_replies(
+            "At BCBSA we used member ID as the partition key for ordering.",
+            NEW_KAFKA_GENERIC)
+        with mock.patch.object(si, "retrieve", return_value=self.strong):
+            out = si.answer("explain your experience with kafka",
+                            self.corpus, create_fn=model)
+        self.assertEqual("answered", out["outcome"])
+        self.assertEqual(NEW_KAFKA_GENERIC, out["answer"])
+        self.assertEqual(2, len(model.calls), "the retry did not happen")
+
+    def test_the_retry_is_told_what_was_wrong_not_just_asked_again(self):
+        model = self._two_replies(
+            "At BCBSA we used member ID as the partition key for ordering.",
+            NEW_KAFKA_GENERIC)
+        with mock.patch.object(si, "retrieve", return_value=self.strong):
+            si.answer("q", self.corpus, create_fn=model)
+        retry_prompt = str(model.calls[1])
+        self.assertIn("partition key", retry_prompt,
+                      "the retry repeats the rules instead of naming the failure")
+
+    def test_two_bad_attempts_refuse_and_are_logged_under_their_own_outcome(self):
+        model = self._two_replies(
+            "Zero hits across the full file census at NRG.",
+            "Still a confirmed absence, zero hits across the census.")
+        with mock.patch.object(si, "retrieve", return_value=self.strong):
+            out = si.answer("q", self.corpus, create_fn=model)
+        self.assertEqual("voice_rejected", out["outcome"])
+        self.assertEqual(si.REFUSAL, out["answer"])
+        self.assertTrue(out["voice_violations"])
+        self.assertTrue(out["retry_violations"])
+
+    def test_a_clean_first_attempt_costs_exactly_one_model_call(self):
+        model = self._two_replies(NEW_KAFKA_GENERIC, "should never be used")
+        with mock.patch.object(si, "retrieve", return_value=self.strong):
+            out = si.answer("q", self.corpus, create_fn=model)
+        self.assertEqual("answered", out["outcome"])
+        self.assertEqual(1, len(model.calls),
+                         "a good answer must not pay for a retry")
+
+    def test_a_retry_that_leaks_is_refused_rather_than_shipped(self):
+        """The retry output goes through the leak scan too. Without this the
+        voice fix would have opened a hole in the confidentiality control."""
+        model = self._two_replies(
+            "Zero hits across the census.",
+            "According to the document, I wrote the producer code at BCBSA.")
+        with mock.patch.object(si, "retrieve", return_value=self.strong):
+            out = si.answer("q", self.corpus, create_fn=model)
+        self.assertEqual("voice_rejected", out["outcome"])
+        self.assertEqual(si.REFUSAL, out["answer"])
+
+    def test_the_answer_token_budget_fits_the_required_length(self):
+        """400 tokens truncated real multi-employer answers mid-sentence. The
+        spec asks for 6-10 finished spoken lines, so the budget is part of the
+        contract, not a tuning detail."""
+        self.assertGreaterEqual(si.MAX_ANSWER_TOKENS, 600)
+        model = self._two_replies(NEW_KAFKA_GENERIC, "x")
+        with mock.patch.object(si, "retrieve", return_value=self.strong):
+            si.answer("q", self.corpus, create_fn=model)
+        self.assertEqual(si.MAX_ANSWER_TOKENS, model.calls[0]["max_tokens"])
+
+
+class VoiceSpecInPromptTestCase(unittest.TestCase):
+    """The prompt is not the control -- voice_violations() is -- but the prompt
+    is what makes the control pass on the first attempt instead of the second,
+    and a trace proved the ordering could only be fixed there."""
+
+    def test_the_prompt_says_to_lead_with_where_the_work_happened(self):
+        low = si.SYSTEM_PROMPT.lower()
+        self.assertIn("lead with where you actually used it", low)
+        self.assertIn("not the most recent one", low)
+
+    def test_the_prompt_forbids_repeating_audit_language(self):
+        low = si.SYSTEM_PROMPT.lower()
+        for phrase in ("census", "zero hits", "confirmed absence"):
+            self.assertIn(phrase, low, f"prompt does not name {phrase!r}")
+        self.assertIn("translate it", low)
+
+    def test_the_prompt_forbids_reciting_preparation_material_as_memory(self):
+        low = si.SYSTEM_PROMPT.lower()
+        self.assertIn("preparation material, not memory", low)
+        self.assertIn("delivery guarantees", low)
+
+    def test_the_prompt_caps_the_limitation_talk(self):
+        self.assertIn("at most one short", si.SYSTEM_PROMPT.lower())
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

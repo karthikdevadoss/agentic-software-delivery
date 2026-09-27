@@ -70,6 +70,14 @@ CORPUS_PATH = pathlib.Path(__file__).resolve().parent / ".si_corpus" / "corpus.j
 GROUNDING_THRESHOLD = 0.50
 TOP_K = 6
 
+# This is a SAFETY NET against a mid-sentence cut-off, not the length control
+# -- the prompt asks for 6-10 spoken lines, which is about 250 tokens. 400 was
+# the old value and it truncated real multi-employer answers. Raised
+# deliberately well above the target so that an over-long answer fails the
+# gate's word count (informative: "reads as an essay") instead of failing as a
+# truncation (ambiguous: was it too long, or did the budget run out?).
+MAX_ANSWER_TOKENS = 1000
+
 # The second, stronger gate. When the model has the excerpts in front of it and
 # still says it cannot answer, that is the most reliable ungrounded signal
 # available -- better than any cosine number, because it is a judgement about
@@ -129,14 +137,78 @@ claim to the employer whose excerpt it came from, and never blend two
 employers' systems into one description -- if two employers solved the same
 problem differently, that is two separate statements, not an average.
 
-When the question names no employer ("explain your experience with X"), take
-the employers in the order the excerpts appear, which is most recent first.
-Give each one its own short paragraph, starting with the employer name. Cover
-only employers whose excerpts actually speak to the question. If an excerpt
-says a technology was NOT used somewhere, say that plainly as its own point --
-a confirmed absence is a real, useful interview answer, not a gap to hide.
+LEAD WITH WHERE YOU ACTUALLY USED IT
+When the question names no employer ("explain your experience with X"), start
+with the employer where you actually did hands-on work with X, whichever one
+that is -- NOT the most recent one, and never with a place that did not use
+it. Give that employer the bulk of the answer. Then, in one or two short
+sentences at the end, say where else it did or did not come up and what was
+used instead there. Somewhere it was not used is a closing footnote, never the
+opening line.
 
 When the question DOES name one employer, answer only about that employer.
+
+LEAVE OUT AN EMPLOYER YOU HAVE NOTHING TO SAY ABOUT
+If the excerpts for one employer contain nothing substantive about the
+question, do not give that employer a paragraph at all. A paragraph whose
+content is "at X I don't have the detail on how that worked" is worse than
+silence: it spends the interviewer's attention on nothing and it makes the
+whole answer read as a coverage report. Two employers answered well beats
+three employers listed.
+
+WHAT YOU DID, AND WHERE THAT STOPPED
+State the hands-on work plainly, then the boundary of it in one sentence --
+what you wrote, versus what someone else ran. Then stop. At most ONE short
+sentence anywhere in the answer about something you cannot recall; pick the
+single thing an interviewer is most likely to ask next (exact names, exact
+settings) and leave it at that. Never write a paragraph about your own limits,
+never list several things you cannot say, and never open with one.
+
+NEVER SAY, BECAUSE A PERSON DOES NOT TALK LIKE THIS
+Nothing about how you looked the answer up. No "census", no "zero hits", no
+"keyword hits", no "confirmed absence", no "no genuine evidence", no "the
+evidence shows", no explaining that something was a false positive. You are
+remembering your own work out loud. "We didn't use Kafka there" is how a
+person says it.
+
+Some excerpts are written in audit language and record an absence as "no
+genuine evidence of X", "confirmed absence", "zero hits". That is the wording
+of a record, not the wording of a person. Translate it: "we didn't use X
+there", or "X wasn't part of that stack". Never repeat the audit phrasing back
+-- it is the single clearest tell that the answer is being read rather than
+remembered.
+
+NEVER STATE A DETAIL THE EXCERPTS DO NOT CONTAIN, and be most careful with the
+plausible ones: a partition key, a delivery guarantee, a schema registry, a
+retry policy, an exact count of scheduled jobs. If it is not in front of you,
+it did not happen.
+
+TWO THINGS THIS MATERIAL WILL TEMPT YOU INTO. Say neither.
+  Not: "SQS plus a dead-letter queue and one scheduled cron job."
+  Say: "SQS with a dead-letter queue, and some scheduled jobs."
+The exact number of cron jobs is not something you would recall in a room, and
+it is not in the hands-on record.
+  Not: "JMS turned up but it was a false positive, just a substring match
+       inside base64 tokens."
+  Say: "We didn't use JMS either."
+How a fact was established is never part of remembering your own project. If
+you find yourself explaining why something LOOKED true but wasn't, stop and
+just say what was actually used.
+
+SOME EXCERPTS ARE PREPARATION MATERIAL, NOT MEMORY. An excerpt may be written
+as a practice question with a model answer, or as a list of general concerns a
+technology raises, or as a note about what is and is not known. None of that
+is your experience and none of it is a thing you did. Use such an excerpt only
+for the plain facts it states about your work, and never repeat its theory,
+its checklists or its question-and-answer framing. Concretely: do NOT recite
+general messaging concepts -- delivery guarantees, duplicate handling,
+ordering keys, schema registries, idempotency -- as if they were part of what
+you built. An interviewer asks about the things you touched; volunteering
+textbook material reads as covering for not having done the work, and it is
+also the fastest way to state something that is not true.
+
+LENGTH
+Six to ten spoken lines. Always finish the final sentence.
 
 STYLE
 Short. Spoken, not written. First person. Two to five sentences for most
@@ -324,6 +396,101 @@ def _balance_by_employer(scored: list, top_k: int) -> list:
     return out[:top_k]
 
 
+# --- voice gate ---------------------------------------------------------
+# Sprint 12. The leak scan above protects the SOURCE; this protects the VOICE.
+# Separate on purpose: a leak is a confidentiality failure and a voice
+# violation is a quality failure, they have different fixes, and merging them
+# would have made the Sprint 11 false positive even harder to see.
+#
+# Every phrase here was chosen against the real corpus rather than from taste.
+# Counted over all 361 chunks on 2026-09-27: "partition key" appears 0 times
+# anywhere, "at-least-once" and "schema evolution" 0 times in the hands-on
+# books, "cron" 0 times in the hands-on books. The model was producing them
+# from its own world knowledge on top of grounded retrieval, which is the most
+# dangerous failure this surface has -- fluent, plausible, and an interviewer
+# would follow up on it.
+_VOICE_BANNED = [
+    # search/retrieval vocabulary -- nobody remembers their own job this way
+    (re.compile(r'\bcensus\b', re.I), "says 'census'"),
+    (re.compile(r'\b(zero|no|\d+)\s+(keyword\s+)?hits\b', re.I), "talks about 'hits'"),
+    (re.compile(r'\b(confirmed|comprehensive)\s+absence\b', re.I), "says 'confirmed absence'"),
+    # Widened 2026-09-27 after a real trace: with "genuine" banned the model
+    # simply paraphrased the same book phrase as "no real evidence of Kafka".
+    # It is the audit register that is wrong, not one adjective.
+    (re.compile(r'\b(no|any|little)\s+(genuine|real|hard|clear|direct)\s+evidence\b', re.I),
+     "uses audit wording about evidence"),
+    (re.compile(r'\bgenuine\s+evidence\b', re.I), "says 'genuine evidence'"),
+    (re.compile(r'\bthe\s+evidence\s+(shows|says|is)\b', re.I), "cites 'the evidence'"),
+    (re.compile(r'\bfalse\s+positives?\b', re.I), "explains a false positive"),
+    (re.compile(r'\bsubstring\b', re.I), "explains a substring match"),
+    # Added after a real trace on "Did NRG use Kafka?": the answer explained
+    # that JMS had turned up "in searches". How the fact was established is
+    # never part of remembering your own project, and it is the same tell as
+    # "census" wearing different words. Deliberately narrow -- it matches
+    # "in searches"/"from a file search" and not Elasticsearch or a product
+    # search feature, which are legitimate things to have worked on.
+    (re.compile(r'\b(in|from|during|across)\s+(the\s+|a\s+|my\s+)?(file\s+|code\s+|keyword\s+)?searches?\b', re.I),
+     "explains how it turned up in a search"),
+    # details no book contains -- verified by counting the real corpus
+    (re.compile(r'\bpartition\s+key\b', re.I), "invents a partition key"),
+    (re.compile(r'\bat[- ]least[- ]once\b', re.I), "invents a delivery guarantee"),
+    (re.compile(r'\bschema\s+evolution\b', re.I), "invents schema evolution"),
+    (re.compile(r'\b(one|a\s+single)\s+(scheduled\s+)?cron\b', re.I), "invents an exact cron count"),
+    (re.compile(r'\bbridg(ed|ing)\s+the\s+batch\b', re.I), "claims bridging the batch core"),
+]
+
+# A limitation is honest; a paragraph of them is a different answer than the
+# one that was asked for. The Owner's spec allows exactly one plain line, so
+# two is the tolerated maximum and three is a rejection.
+_LIMIT_MARKER = re.compile(
+    r"\b(can't|cannot|couldn't|don't have|do not have|not something i|"
+    r"wouldn't claim|not claim|isn't something|is not something|no detail|"
+    r"don't recall|do not recall|can't recall|couldn't tell you|can't tell you|"
+    r"wouldn't be able|not able to say)", re.I)
+
+MAX_LIMIT_SENTENCES = 2
+
+
+def _sentences(text: str) -> list[str]:
+    return [p.strip() for p in re.split(r'(?<=[.!?])\s+', text.strip()) if p.strip()]
+
+
+def voice_violations(text: str) -> list[str]:
+    """What is wrong with HOW this answer is written. Empty list is good.
+
+    Deliberately not merged into leaks(): this is a quality gate whose action
+    is regenerate-then-refuse, while leaks() is a confidentiality control that
+    refuses immediately. Keeping them apart is also why the Sprint 11 leak
+    false positive is still easy to see in a trace."""
+    # The matched words are quoted back, not just the category. A retry told
+    # "invents an exact cron count" has to guess which phrase that was; a retry
+    # told "invents an exact cron count ('one scheduled cron')" can delete it.
+    # Real trace, 2026-09-27: with only the category, the "Did NRG use Kafka?"
+    # retry replaced one banned phrase with a different one and was refused.
+    bad = []
+    for rx, why in _VOICE_BANNED:
+        m = rx.search(text)
+        if m:
+            bad.append("%s (%r)" % (why, m.group(0)))
+
+    sents = _sentences(text)
+    if not sents:
+        return bad + ["is empty"]
+
+    # Truncation. A cut-off answer is the most obviously machine-like failure
+    # an interviewer can see, and max_tokens makes it a real one.
+    if not re.search(r'''[.!?]["'”’)\]]*$''', sents[-1]):
+        bad.append("stops mid-sentence")
+
+    n_limits = sum(1 for x in sents if _LIMIT_MARKER.search(x))
+    if n_limits > MAX_LIMIT_SENTENCES:
+        bad.append("spends %d sentences on what you cannot say (at most %d)"
+                   % (n_limits, MAX_LIMIT_SENTENCES))
+    if _LIMIT_MARKER.search(sents[0]):
+        bad.append("opens on a limitation instead of on the work")
+    return bad
+
+
 def leaks(text: str) -> list[str]:
     """Which forbidden identifiers a generated answer contains. Empty is good."""
     return [p.pattern for p in _LEAK_PATTERNS if p.search(text)]
@@ -377,7 +544,7 @@ def answer(question: str, corpus: Corpus | None = None, create_fn=None) -> dict:
         purpose="HUMAN_EXPLANATION",
         system_prompt=SYSTEM_PROMPT,
         user_message=build_user_prompt(question, hits),
-        max_tokens=400,
+        max_tokens=MAX_ANSWER_TOKENS,
         create_fn=create_fn,
         model=os.environ.get("CLAUDE_MODEL", "claude-sonnet-5"),
     )
@@ -404,6 +571,41 @@ def answer(question: str, corpus: Corpus | None = None, create_fn=None) -> dict:
         # record it -- a leak that is silently patched is a leak nobody fixes.
         return {"outcome": "leak_blocked", "grounded": True, "answer": REFUSAL,
                 "hits": hits, "best_score": best, "leaks": found}
+
+    # Voice gate. ONE corrective retry, then refuse -- a retry is cheap and
+    # nearly always sufficient, whereas refusing on a first violation would
+    # repeat exactly the Sprint 11 defect of throwing away a good answer over
+    # one phrase. The retry NAMES the violations rather than repeating the
+    # rules, because the rules were already in the system prompt and did not
+    # hold; restating them is the thing that already failed.
+    voice = voice_violations(text)
+    if voice:
+        retry = reasoning_gateway.call(
+            purpose="HUMAN_EXPLANATION",
+            system_prompt=SYSTEM_PROMPT,
+            user_message=(build_user_prompt(question, hits)
+                          + "\n\nA previous attempt at this answer was rejected "
+                            "because it " + "; ".join(voice)
+                          + ". Say the same thing again without that, as a person "
+                            "remembering their own work out loud. Finish every "
+                            "sentence."),
+            max_tokens=MAX_ANSWER_TOKENS,
+            create_fn=create_fn,
+            model=os.environ.get("CLAUDE_MODEL", "claude-sonnet-5"),
+        )
+        retry_text = (retry.get("text") or "").strip()
+        retry_voice = voice_violations(retry_text) if retry_text else ["is empty"]
+        if retry_text and not retry_voice and not leaks(retry_text):
+            text, result = retry_text, retry
+        else:
+            # Twice is a real problem with this question, not a bad roll.
+            # Refuse and log it under its OWN outcome, so it reaches the review
+            # queue distinguishable from an ungrounded refusal -- those have
+            # opposite fixes and counting them together would hide both.
+            return {"outcome": "voice_rejected", "grounded": True,
+                    "answer": REFUSAL, "hits": hits, "best_score": best,
+                    "scope": route(question), "voice_violations": voice,
+                    "retry_violations": retry_voice}
 
     return {"outcome": "answered", "grounded": True, "answer": text,
             "hits": hits, "best_score": best, "scope": route(question),

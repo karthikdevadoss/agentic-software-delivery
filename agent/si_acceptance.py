@@ -82,9 +82,30 @@ def _check_generic_kafka(text):
         bad.append(f"no BCBSA producer/consumer hands-on (missing {missing})")
     if not _any(text, "producer"):
         bad.append("does not mention the producer side")
-    if not (_any(text, "nrg") and _any(text, "absence", "wasn't used", "was not used",
-                                       "no kafka", "not used", "zero")):
-        bad.append("does not state the confirmed Kafka absence at NRG")
+    # Sprint 12 FROZEN VOICE SPEC 1: lead with the employer where he USED it.
+    # Kafka -> BCBSA first, never NRG first. Asserted on the opening sentence
+    # rather than on whole-text ordering, because "BCBSA appears before NRG
+    # somewhere" is satisfied by an answer that still opens on an absence.
+    first = _sentences(text)[0] if _sentences(text) else ""
+    if not _any(first, "bcbsa"):
+        bad.append(f"does not open at BCBSA (opens: {first[:80]!r})")
+    if _any(first, "nrg", "marsh"):
+        bad.append("opens on an employer that did not use Kafka")
+    # SPEC 3: the absences are short footnotes, not the body of the answer.
+    sents = _sentences(text)
+    absence = [x for x in sents if _any(x, "nrg", "marsh")]
+    if len(absence) > 3:
+        bad.append(f"{len(absence)} sentences about where Kafka was NOT used (max 3)")
+    # NOTE the wording accepted here. An earlier version of this check accepted
+    # "absence" and "zero" -- the very words the frozen voice spec BANS -- so
+    # the content check and the voice check contradicted each other and a
+    # correctly-voiced answer failed. These are the plain-speech forms a person
+    # actually uses; the audit forms are rejected by _check_voice, not accepted
+    # here.
+    if not (_any(text, "nrg") and _any(text, "didn't use", "did not use", "wasn't",
+                                       "was not", "no kafka", "not part of",
+                                       "wasn't part", "never used", "not in the")):
+        bad.append("does not say plainly that Kafka was not used at NRG")
     # DELIBERATELY NOT an ordering check, and the reason is recorded because the
     # first version of this gate had one and it failed a good answer.
     #
@@ -125,7 +146,8 @@ def _check_kafka_at_bcbsa(text):
 
 def _check_kafka_absent_at_nrg(text):
     bad = []
-    if not _any(text, "no kafka", "wasn't", "was not", "absence", "not used", "zero"):
+    if not _any(text, "no kafka", "wasn't", "was not", "didn't use", "did not use",
+                "not part of", "not used"):
         bad.append("does not state the absence")
     if not _any(text, "sqs"):
         bad.append("does not name the real async mechanism (SQS)")
@@ -137,6 +159,31 @@ def _check_spring_security_nrg(text):
     bad = [f"missing {b}" for b in bad]
     if not _any(text, "jwt", "filter", "access control"):
         bad.append("no hands-on detail (JWT filter / access control)")
+    return bad
+
+
+def _sentences(text: str):
+    return si._sentences(text)
+
+
+def _check_voice(text):
+    """Sprint 12. Every answered question runs the same voice assertions, not
+    only the one the Owner reported. The banned register and the truncation
+    check are the product's own gate (si.voice_violations), re-asserted here
+    against the REAL model output -- the hermetic tests prove the checker
+    works, and this proves the generator actually satisfies it end to end.
+
+    Sprint 11's lesson applied: an assertion I invent is a requirement I
+    invented, so this asserts the Owner's frozen spec and nothing more."""
+    bad = ["voice: " + v for v in si.voice_violations(text)]
+    # SPEC 8: complete sentences, roughly 6-10 spoken lines. The upper bound is
+    # generous on purpose -- the Owner's complaint was a search report, not a
+    # long answer, and a hard word cap would start failing good answers.
+    words = len(text.split())
+    if words < 35:
+        bad.append(f"too short to be an interview answer ({words} words)")
+    if words > 320:
+        bad.append(f"reads as an essay, not spoken ({words} words)")
     return bad
 
 
@@ -160,14 +207,86 @@ CASES = [
     ("Tell me about Kafka at NRG", True, _check_kafka_absent_at_nrg, False),
     ("How did you use Spring Security at NRG?", True, _check_spring_security_nrg, True),
     ("What is the capital of France?", False, None, False),
+    # Added Sprint 12: the Owner asked this one on the live page and it was
+    # refused by the DECLINE GATE at best_score 0.5204 -- above the 0.50
+    # threshold, caught by the second independent signal. That is the only
+    # case in the suite that exercises the decline gate against real output,
+    # so it belongs here permanently.
+    ("what is capital of india", False, None, False),
 ]
+
+
+# --- the gate proves itself ---------------------------------------------------
+# A gate is only worth its exit code if it has been seen rejecting the real bad
+# output. Sprint 11 proved the previous version of this file red by running it
+# against the pre-fix module; that is no longer possible for the Sprint 12
+# checks, because they call si.voice_violations() which did not exist then --
+# importing the old module just raises AttributeError, which proves nothing.
+#
+# So the known-bad case is pinned here instead, verbatim from the event ledger:
+# the answer the Owner clicked Dissatisfied on at 2026-09-27 20:03. --selftest
+# asserts every check rejects it, and it runs on every real gate invocation, so
+# it cannot rot the way a one-off shell demonstration does.
+OWNER_REJECTED_KAFKA_ANSWER = (
+    "At NRG, Kafka wasn't part of the system at all - it's a confirmed absence, "
+    "zero hits across the full file census. The real async mechanism there was "
+    "SQS plus a dead-letter queue and one scheduled cron job. At BCBSA, I "
+    "directly worked on Kafka producer/consumer application code, propagating "
+    "member, coverage and claims changes between backend services. I can speak "
+    "to the general engineering concerns - at-least-once delivery meaning "
+    "consumers have to handle duplicates, using member ID as a natural "
+    "partition key for ordering, idempotency for replayed events, schema "
+    "evolution, dead-letter handling. What I can't tell you is the exact retry, "
+    "DLQ or offset-handling configuration on that project. I also can't say "
+    "which cloud it ran on. At Marsh there's no genuine evidence of Kafka, JMS, "
+    "RabbitMQ or ActiveMQ."
+)
+
+
+def selftest() -> int:
+    """Assert this gate rejects the real answer the Owner rejected."""
+    print("=" * 74)
+    print("GATE SELFTEST -- the verbatim Owner-rejected generic-Kafka answer")
+    print("=" * 74)
+    failures = []
+
+    voice = _check_voice(OWNER_REJECTED_KAFKA_ANSWER)
+    print("\n_check_voice ->")
+    for v in voice:
+        print("   ", v)
+    if not voice:
+        failures.append("_check_voice ACCEPTED the Owner-rejected answer")
+    else:
+        joined = " | ".join(voice).lower()
+        # The specific things the Owner named, not merely "something fired".
+        for clause in ("census", "hits", "confirmed absence", "partition key",
+                       "delivery guarantee", "schema evolution", "cron", "evidence"):
+            if clause not in joined:
+                failures.append(f"_check_voice missed the banned clause: {clause}")
+
+    kafka = _check_generic_kafka(OWNER_REJECTED_KAFKA_ANSWER)
+    print("\n_check_generic_kafka ->")
+    for v in kafka:
+        print("   ", v)
+    if not any("open" in v for v in kafka):
+        failures.append("_check_generic_kafka did not catch the NRG-first opening")
+
+    print("\n" + "=" * 74)
+    if failures:
+        print("SELFTEST FAILED -- this gate cannot be trusted:")
+        for f in failures:
+            print("  -", f)
+        return 1
+    print("SELFTEST PASSED -- the gate rejects the known-bad answer")
+    return 0
 
 
 def ask_local(question: str) -> dict:
     r = si.answer(question)
     return {"answer": r["answer"], "outcome": r["outcome"],
             "grounded": bool(r.get("grounded")), "best_score": r.get("best_score"),
-            "leaks": r.get("leaks")}
+            "leaks": r.get("leaks"), "voice_violations": r.get("voice_violations"),
+            "retry_violations": r.get("retry_violations")}
 
 
 def ask_remote(base_url: str, question: str) -> dict:
@@ -180,6 +299,11 @@ def ask_remote(base_url: str, question: str) -> dict:
 
 
 def run(base_url: str | None) -> int:
+    # Never report a green suite from a gate that has not just proven it can go
+    # red. This costs no model calls and takes milliseconds.
+    if selftest() != 0:
+        return 1
+
     where = base_url or "local corpus + local model"
     print("=" * 74)
     print("STANDING INTERVIEW ACCEPTANCE --", where)
@@ -209,10 +333,16 @@ def run(base_url: str | None) -> int:
         bad = []
         if must_answer:
             if outcome != "answered":
-                bad.append(f"MUST ANSWER but outcome={outcome}"
-                           + (f" leaks={r['leaks']}" if r.get("leaks") else ""))
+                detail = ""
+                if r.get("leaks"):
+                    detail = f" leaks={r['leaks']}"
+                elif r.get("voice_violations"):
+                    detail = (f" voice={r['voice_violations']}"
+                              f" retry={r.get('retry_violations')}")
+                bad.append(f"MUST ANSWER but outcome={outcome}{detail}")
             else:
                 bad += extra(text) if extra else []
+                bad += _check_voice(text)
                 # A leak in a shipped answer is a hard failure, not a warning.
                 found = si.leaks(text)
                 if found:
@@ -250,5 +380,7 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--base-url", default=None,
                     help="deployed host; omit to run against the local corpus")
+    ap.add_argument("--selftest", action="store_true",
+                    help="only assert the gate rejects the known-bad answer")
     args = ap.parse_args()
-    sys.exit(run(args.base_url))
+    sys.exit(selftest() if args.selftest else run(args.base_url))
