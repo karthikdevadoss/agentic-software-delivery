@@ -606,6 +606,15 @@ class VoiceGateTestCase(unittest.TestCase):
                      "but got rejected."):
             self.assertTrue(si.voice_violations(real), f"still passes: {real!r}")
 
+    def test_absence_is_never_dressed_up_as_an_audit_finding(self):
+        """Six real runs of "Tell me about Kafka at NRG" produced one answer
+        saying "it's a clean absence across the codebase". Same register,
+        different adjective -- the third time this sprint that widening one
+        word simply moved the model to the next one."""
+        for adj in ("confirmed", "comprehensive", "clean", "clear", "complete", "total"):
+            self.assertTrue(si.voice_violations(f"It was a {adj} absence there."), adj)
+        self.assertEqual([], si.voice_violations("We didn't use it there."))
+
     def test_closing_those_gaps_did_not_break_plain_speech(self):
         self.assertEqual([], si.voice_violations(
             "At Marsh we didn't use Kafka or JMS at all. The async work there "

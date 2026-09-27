@@ -195,6 +195,17 @@ How a fact was established is never part of remembering your own project. If
 you find yourself explaining why something LOOKED true but wasn't, stop and
 just say what was actually used.
 
+AND WHEN THE WHOLE ANSWER IS AN ABSENCE. Sometimes the honest answer is that
+you did not use the thing at all. That answer is short, and it is finished as
+soon as you have said what you DID use instead.
+  Not: "Kafka is a confirmed absence at NRG - zero keyword hits across the
+       full codebase census."
+  Say: "We didn't use Kafka at NRG. The async work there ran on SQS with a
+       dead-letter queue and some scheduled jobs, and that was enough for what
+       we were doing."
+Do not reach for the record's vocabulary just because there is no story to
+tell. "We didn't use it" is a complete, confident answer.
+
 SOME EXCERPTS ARE PREPARATION MATERIAL, NOT MEMORY. An excerpt may be written
 as a practice question with a model answer, or as a list of general concerns a
 technology raises, or as a note about what is and is not known. None of that
@@ -413,7 +424,7 @@ _VOICE_BANNED = [
     # search/retrieval vocabulary -- nobody remembers their own job this way
     (re.compile(r'\bcensus\b', re.I), "says 'census'"),
     (re.compile(r'\b(zero|no|\d+)\s+(keyword\s+)?hits\b', re.I), "talks about 'hits'"),
-    (re.compile(r'\b(confirmed|comprehensive)\s+absence\b', re.I), "says 'confirmed absence'"),
+    (re.compile(r'\b(confirmed|comprehensive|clean|clear|complete|total)\s+absence\b', re.I), "says 'confirmed absence'"),
     # Widened 2026-09-27 after a real trace: with "genuine" banned the model
     # simply paraphrased the same book phrase as "no real evidence of Kafka".
     # It is the audit register that is wrong, not one adjective.
@@ -600,7 +611,14 @@ def answer(question: str, corpus: Corpus | None = None, create_fn=None) -> dict:
                             "because it " + "; ".join(voice)
                           + ". Say the same thing again without that, as a person "
                             "remembering their own work out loud. Finish every "
-                            "sentence."),
+                            "sentence.\n\nWhile you are at it, none of these belong "
+                            "in spoken English either, so avoid all of them and not "
+                            "only the one above: census, hits, confirmed absence, "
+                            "genuine, evidence, false positive, substring, filing "
+                            "material, an exact number of cron jobs, a partition "
+                            "key, at-least-once delivery, schema evolution. A "
+                            "previous retry removed the phrase it was told about "
+                            "and immediately used a different one from this list."),
             max_tokens=MAX_ANSWER_TOKENS,
             create_fn=create_fn,
             model=os.environ.get("CLAUDE_MODEL", "claude-sonnet-5"),
