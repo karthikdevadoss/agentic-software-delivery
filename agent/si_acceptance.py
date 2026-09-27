@@ -85,8 +85,18 @@ def _check_generic_kafka(text):
     if not (_any(text, "nrg") and _any(text, "absence", "wasn't used", "was not used",
                                        "no kafka", "not used", "zero")):
         bad.append("does not state the confirmed Kafka absence at NRG")
-    if not _order(text, "nrg", "bcbsa"):
-        bad.append("NRG is not answered first")
+    # DELIBERATELY NOT an ordering check, and the reason is recorded because the
+    # first version of this gate had one and it failed a good answer.
+    #
+    # The Owner's requirement for this question is content: "BCBSA
+    # producer/consumer hands-on + NRG has no Kafka". The NRG-FIRST requirement
+    # was stated for the OAuth/JWT question, and it is asserted there. Imposing
+    # it here as well penalised a genuinely good answer that opened with the
+    # real hands-on experience and then stated the absence -- which is better
+    # interview technique for a technology the current employer does not use
+    # than opening with "we don't use that". Retrieval still puts the most
+    # recent employer's excerpts first; what the model leads with, given both
+    # facts, is a judgement this gate does not need to own.
     return bad
 
 

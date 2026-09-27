@@ -2175,7 +2175,9 @@
       "created_at": "2026-09-27",
       "started_at": "2026-09-27",
       "created_at_commit": "a04a779",
-      "commit_shas": [],
+      "commit_shas": [
+        "8f2b012"
+      ],
       "session_ids": [],
       "completed_at": "2026-09-27",
       "actual_note": "~55 min. Traces found TWO causes, neither of which was the threshold or the decline gate. (1) Generic Kafka was not ungrounded at all -- best_score 0.7332, outcome leak_blocked: the leak scanner's `(the|my) ...source` alternative matched 'without the source service having to synchronously coordinate', ordinary backend English, and converted the best answer the system produces into a refusal. (2) Generic OAuth/JWT retrieved 5 of 6 chunks from one employer's books, so the model had no other employer's material in front of it and produced one unattributed blob. Fixes: narrowed the leak pattern to provenance senses of 'source' only; reserved a retrieval slot per employer for questions that name no employer, ordered NRG first; labelled each excerpt with its employer; read the grounding gate off max(score) instead of hits[0]. Also fixed a recurrence of the 2026-09-14 load_dotenv defect that made the first local trace read 'no_model'."
@@ -2196,7 +2198,9 @@
       "created_at": "2026-09-27",
       "started_at": "2026-09-27",
       "created_at_commit": "a04a779",
-      "commit_shas": [],
+      "commit_shas": [
+        "8f2b012"
+      ],
       "session_ids": [],
       "completed_at": "2026-09-27",
       "actual_note": "~25 min. 11 new hermetic tests (30 -> 41 in the SI module; suite 581 -> 593). 9 of the 11 observed FAILING against the pre-fix module for the intended reasons; the other 2 are deliberate no-regression guards on the part of the leak pattern that was narrowed away. agent/si_acceptance.py was itself run against the pre-fix module and went RED on exactly the two Owner-reported defects (generic Kafka leak_blocked, generic OAuth 'no NRG paragraph' + unattributed Apigee) while the four already-good questions stayed green -- so the gate is proven to detect the known-bad case, not a rubber stamp. One check of my own was found false-positive on the first run (a blanket first-person pronoun check failed the correct, pronoun-free 'Did NRG use Kafka?' absence answer) and was narrowed per-case rather than deleted."
@@ -2212,13 +2216,16 @@
       "size_rationale": "suggest-estimate SMALL/MEDIUM/apply_known_pattern -> COMPUTED n=6, median_ratio 0.16, suggested_midpoint 3.3 min. ADOPTED, with the Sprint 9 caveat recorded: the engine over-corrected on both scoreable items last sprint (1.9 and 3.3). Adopted anyway rather than hand-adjusting, because a narrative override of a computed number is exactly what this project's own rule forbids -- if it is wrong again that is a third real data point for the calibration loop, which is worth more than a guess that happens to land.",
       "deviated_from_suggestion": false,
       "category": "delivery",
-      "status": "active",
+      "status": "done",
       "sprint": "Sprint 11 (owner pre-approved 2026-09-27)",
       "created_at": "2026-09-27",
       "started_at": "2026-09-27",
       "created_at_commit": "a04a779",
       "commit_shas": [],
-      "session_ids": []
+      "session_ids": [],
+      "completed_at": "2026-09-27",
+      "actual_ratio": 2.73,
+      "actual_note": "~9 min actual vs the COMPUTED 3.3 min midpoint = ratio 2.73, outside the band, ABOVE -- the THIRD consecutive over from a COMPUTED suggestion (1.9 and 3.3 in Sprint 9). The 3.3 min priced running a deploy script; the real time was one acceptance run that correctly BLOCKED the upload, one over-specified assertion of my own to re-scope, the upload, a real container build, and a full production replay. Production: 7/7 acceptance PASS over HTTP, page 200, nav entry present, corpus loaded 361 chunks, Dissatisfied still writes a ledger row, 0 corpus files tracked in git."
     }
   ],
   "_calibration_process": {

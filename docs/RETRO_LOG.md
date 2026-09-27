@@ -1130,3 +1130,231 @@ neither test can run on the Docker-less dev machine.
    the same night as an in-scope proactive fix (see docs/LESSONS.md, 2026-09-22 entry); verification is CI-only because
    neither test can run on the Docker-less dev machine. For the joint retro: "merged + pushed" was reported before the
    post-merge CI result was known -- the sprint's own 'CI gating' work made that gap visible.
+
+## Sprint 11 — Standing Interview answer quality from Owner-logged failures (2026-09-27) — CLOSED, all items complete
+
+### Scope, as the Owner pre-approved it
+
+> "SI quality from OWNER-LOGGED failures... A. READ FIRST — dump the SI review
+> queue + ACT-019... reproduce six questions with traces; quote current refuse
+> rules from code and do not change them until the trace exists. C. FIX only
+> what the traces show; do not lower the France refuse to make Kafka pass; add
+> regression tests for the six questions; two independent signals; do not guess
+> a new threshold without measuring. D. DEPLOY + PROVE LIVE on the same Railway
+> host, corpus still untracked; if generic Kafka still refuses, STOP and report
+> the new trace; do not loop."
+
+Three items, sized BUILD / ACCEPTANCE / DEPLOY separately, all sized before work.
+
+### Sizes given, before any work
+
+| Item | Size | Estimate | Confidence | Pattern | suggest-estimate |
+|---|---|---|---|---|---|
+| BL-084 BUILD — trace + fix | MEDIUM | **NO RELIABLE ESTIMATE** | LOW_MEDIUM | investigation_only | **INSUFFICIENT_HISTORY** n=0 |
+| BL-085 ACCEPTANCE — regression + gate | SMALL | **NO RELIABLE ESTIMATE** | MEDIUM | verification_only | **INSUFFICIENT_HISTORY** n=0 |
+| BL-086 DEPLOY — ship + prove live | SMALL | 3–4 min (mid 3.3) | MEDIUM | apply_known_pattern | **COMPUTED** n=6, median_ratio 0.16 — adopted |
+
+Two of three items carry no hour range at all. That is the Sprint 8 action item
+working as designed for the second sprint running: a diagnosis whose cause is
+unknown at sizing time cannot honestly be timeboxed, and the rubric's 20–40 min
+would have been a guess dressed as a number.
+
+### What the traces actually said — before anything was changed
+
+The refuse rules were quoted from code and left alone until the trace existed:
+`GROUNDING_THRESHOLD = 0.50` (measured, not guessed) and the first-sentence
+`DECLINE_MARKERS` gate. **Neither was the cause of either failure, and neither
+was changed.** The France refusal was never lowered.
+
+| Question | scope | best | outcome (pre-fix) | real cause |
+|---|---|---|---|---|
+| explain your experience with kafka | career | 0.7332 | **leak_blocked** | leak-scanner false positive |
+| explain your experience in using oauth or jwt | career | 0.7181 | answered, Dissatisfied | retrieval covered 1 employer |
+| How did you use Kafka at BCBSA? | career | 0.7606 | **leak_blocked** | same false positive |
+| Did NRG use Kafka? | career | 0.7791 | answered (good) | — |
+| Tell me about Kafka at NRG | career | 0.7381 | answered (good) | — |
+| How did you use Spring Security at NRG? | career | 0.6915 | answered (good) | — |
+| What is the capital of France? | both | 0.4491 | ungrounded (correct) | — |
+
+**Cause 1 — the generic Kafka "refusal" was not a refusal decision at all.**
+Retrieval scored 0.7332 and the model produced the best Kafka answer the system
+has ever produced. The leak scanner then matched `(the|my) ...source` inside the
+sentence *"That let the receiving side stay current without the source service
+having to synchronously coordinate with every consumer"* — ordinary backend
+English for the upstream service, zero provenance leakage — and because a leak
+triggers a refusal, that whole answer was replaced with the standard refusal
+line. The Owner saw an unexplained refusal. The queue row said `leak_blocked,
+best_score=0.7332`, which is why dumping the queue first mattered: the refusal
+text pointed at a corpus gap and the row pointed at the real cause.
+
+**Cause 2 — the OAuth/JWT Dissatisfied click was a retrieval problem, not a
+wording problem.** Five of six chunks came from one employer's books and one
+from another's. Pure cosine top-k has no reason to spread. The model produced one
+paragraph with no employer attached to any claim, because two of the three
+employers' material was never in its context. The system prompt already asked
+for specificity; it could not comply with material it did not have.
+
+### What was changed
+
+1. `source` narrowed to provenance senses only (`the sources say`, `my source
+   material`, …). Every other provenance word untouched.
+2. Employer-balanced retrieval for questions that name no employer: a reserved
+   slot per employer, most recent first, and any employer whose own best chunk
+   is below the grounding threshold is dropped. A question that *does* name an
+   employer stays pure top-k — those answers were already the ones to keep.
+3. Every excerpt is labelled with its employer, so attribution is supplied
+   rather than inferred from mid-book text that often never repeats the name.
+4. System prompt: one employer at a time, never blend two, a confirmed absence
+   is a real answer.
+5. Corollary bug found by its own test: with hits in employer order,
+   `hits[0]["score"]` is no longer the maximum, so the grounding gate now reads
+   `max(...)` — otherwise the fix would have started refusing answerable questions.
+6. A recurrence of the 2026-09-14 `load_dotenv` defect: reached outside the web
+   server, `standing_interview` had no `.env`, so the very first trace read
+   `no_model` and looked like an empty corpus.
+
+### Verification
+
+- **41 hermetic SI tests** (was 30); whole suite **593** (was 581), 0 failures.
+- **9 of the 11 new tests observed FAILING** against the pre-fix module for the
+  intended reasons. The other two are deliberate no-regression guards on the
+  part of the leak pattern that was narrowed away — they must pass before and
+  after, and without them the narrowing would be unguarded.
+- `agent/si_acceptance.py` replays all seven questions against the real
+  361-chunk corpus and a real model, with the **same assertions locally and
+  over HTTP**. Local 7/7. **Run against the pre-fix module it goes RED on
+  exactly the two Owner-reported defects and stays green on the four
+  already-good questions** — the gate is proven to detect the known-bad case
+  rather than being a green rubber stamp.
+- **Production, after the deploy:** 7/7 PASS on
+  `agentic-platform-backend-production.up.railway.app`. `/standing-interview`
+  HTTP 200, nav entry present, corpus `{"loaded":true,"chunks":361}`, and the
+  Dissatisfied path still writes a real ledger row (verified by posting one and
+  reading it back through `si_review.py`). Corpus tracked in git: 0 files.
+
+Production generic Kafka now opens: *"At NRG Energy, Kafka wasn't used at all —
+I confirmed this was a comprehensive absence, zero hits across the full file
+census... At BCBSA, I directly worked on Kafka producer/consumer application
+code..."* Production generic OAuth now opens by employer, NRG first, with Marsh's
+Apigee edge in its own paragraph and the RS256/key-rotation detail explicitly
+declined.
+
+### Final actuals
+
+| Item | Size | Estimate (mid) | Actual | Ratio | Verdict |
+|---|---|---|---|---|---|
+| BL-084 BUILD | MEDIUM | *no estimate* | ~16 min | n/a | cannot be scored |
+| BL-085 ACCEPTANCE | SMALL | *no estimate* | ~14 min | n/a | cannot be scored |
+| BL-086 DEPLOY | SMALL | 3.3 min | **~9 min** | **2.73** | outside [0.7, 1.3] — **ABOVE** |
+| **SPRINT** | 3 items | 3.3 min scoreable | ~48 min total (3.3 min scoreable → 9 min) | — | over on the one scoreable item |
+
+Wall-clock markers: sprint start ~20:45, fix verified 21:01, tests+CI green
+21:15, commit `8f2b012` 21:24, upload 21:28, production replay green 21:30.
+Running total: **2 of 39 items inside the ±30% band** (`BL-021`, `BL-029`;
+computed from `docs/BACKLOG.json`, not asserted).
+
+### Diagnosis — ESTIMATION WRONG (third consecutive over), and one real IMPLEMENTATION ISSUE
+
+**ESTIMATION WRONG, BL-086, ratio 2.73.** This is now the *third consecutive*
+COMPUTED suggestion to land above the band (1.9 and 3.3 in Sprint 9, 2.73 here).
+Three in a row in the same direction is no longer oscillation — it is a
+consistent bias, and its mechanism is identifiable: the engine's `median_ratio`
+of 0.16 is built almost entirely from Sprints 1–7, where the *estimates* were
+inflated. Multiplying a correctly-sized task by 0.16 produces a number that
+cannot be met. I adopted it anyway, deliberately and on the record, because
+overriding a computed number with a narrative feels better and is exactly what
+this project's own rule forbids. That was the right call for the data and the
+wrong call for the schedule, and it is now answerable with three points instead
+of two.
+
+Specifically, the 3.3 min midpoint priced "run a deploy script" and nothing
+else. The real 9 minutes was: one acceptance run that **correctly blocked the
+upload**, one assertion of my own to re-scope, the upload, a real container
+build, and a full production replay. None of that is overhead — it is what
+"prove it live" costs, and no estimate in this project has ever included it.
+
+**IMPLEMENTATION ISSUE, mine, caught by the gate rather than by the Owner.**
+My first version of `_check_generic_kafka` asserted NRG had to be named *before*
+BCBSA. The Owner stated NRG-first for the OAuth/JWT question; for Kafka the
+stated requirement is content ("BCBSA producer/consumer hands-on + NRG has no
+Kafka"). My invented ordering rule failed a genuinely good answer that opened
+with the real hands-on experience and then stated the absence — which is better
+interview technique for a technology the current employer doesn't use. Removing
+it restores the Owner's stated criteria rather than weakening a gate, and the
+reason is written into the code beside the check so a later reader cannot
+mistake it for a quiet relaxation. Same shape, twice in one sprint: my blanket
+first-person pronoun check also failed the correct, pronoun-free *"No, Kafka
+wasn't used anywhere on the NRG project"* answer.
+
+**No IMPLEMENTATION ISSUES verdict for BL-084 or BL-085.** Both landed, verified,
+proven capable of failing, pushed, no rework.
+
+### Action items
+
+**(1) Estimation-mistake improvements**
+
+- **Stop adopting the COMPUTED suggestion for `apply_known_pattern` until the
+  ratio history is re-based.** Three consecutive overs with an identified
+  mechanism is enough evidence. The concrete fix is not another multiplier: it
+  is to compute `median_ratio` only over items whose estimate was itself
+  produced by the engine, so the 2016-era inflated-estimate sprints stop
+  poisoning it. Until that exists, `apply_known_pattern` items get
+  NO RELIABLE ESTIMATE like everything else — which is honest, and which has now
+  worked twice.
+- **Any item whose acceptance criterion contains the words "prove live" is not
+  SMALL.** Three sprints of evidence: the deploy step is never the cost, the
+  proof is. A deploy item's estimate must include a gate run, a container build
+  and a production replay, or it is estimating a different task than the one in
+  the acceptance criteria.
+- **"No reliable estimate" continues to earn its place.** Two of three items ran
+  against no predicted number and nothing was lost by not inventing one.
+
+**(2) Implementation-mistake improvements**
+
+- **An assertion I invent is a requirement I invented.** Twice this sprint a
+  check of my own failed a correct answer (ordering, first-person). New rule:
+  every assertion in an acceptance gate is traceable to a quoted line of the
+  Owner's criteria, or it is labelled in the code as my own inference and
+  reviewed against a known-good output before it can block a deploy.
+- **A gate that blocks must be run against known-good output before it is
+  trusted to block.** This sprint's gate was correctly proven against the
+  known-BAD case (it went red on the pre-fix module). It was not proven against
+  known-GOOD output, which is how two false-positive checks reached it. Both
+  directions, same as the leak-scanner lesson this sprint is built on.
+- **The deploy script had been enforcing the bug it was written before.** Its
+  header still claimed `railway up` uploads gitignored files and its guard still
+  *required* the corpus to be gitignored — so running it would have aborted a
+  correct deploy. Sprint 10 fixed the mechanism and never revisited the script
+  that encodes it. Rule: when a root cause inverts an assumption, grep for every
+  artefact that asserts the old one in the same sprint, scripts and comments
+  included, not only the code path that failed.
+
+**(3) Neither, but still needed**
+
+- **The review queue paid for itself on its first real use.** Both Owner rows
+  had causes that the user-visible text actively pointed away from: a "refusal"
+  that was a leak-block at 0.73, and a Dissatisfied click that was a retrieval
+  coverage problem rather than a prompt problem. ACT-019 stays open as a
+  standing per-sprint step and now carries a `triage_log`.
+- **A one-sided safety control destroys good output silently.** Written to
+  `docs/LESSONS.md` as its own lesson. The leak scanner had seven LEAKY fixtures
+  and three short hand-written CLEAN ones — a green 30-test module with an
+  invisible false positive in its highest-value path. Any blocking content gate
+  needs CLEAN fixtures copied verbatim from real generated output.
+- **SPRINT AS A WHOLE:** every minute of diagnosis in this sprint was spent on
+  the two failures the Owner logged, and both root causes were in code the
+  Owner never saw and neither was where the symptom pointed. The sprints that
+  went badly (8, 9) were the ones that started from an assumption about someone
+  else's system; this one started from a recorded row and a trace, and it landed
+  in under an hour including a production proof. The transferable rule is not
+  about Kafka or OAuth: **reproduce with a trace before touching a rule, and
+  the fix is usually somewhere the symptom was not.**
+
+### Carried forward
+
+- BL-080 (access gate, SMS notification) still `planned`, untouched.
+- ACT-019 open by design; Sprint 11's triage recorded in it.
+- Sprint 10 retro still not written (Owner deferred it: "retro only if there is time").
+- Remaining Owner-packet facts not yet applied to the books (Marsh Liberty
+  Mutual/Bavaria, Progressive/Velocity, incidents A and C, NRG EVgo removal,
+  Lambda 2025) — unchanged by this sprint.
