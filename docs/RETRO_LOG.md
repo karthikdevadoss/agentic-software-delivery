@@ -724,6 +724,148 @@ using `suggest_estimate()` for real.
 Retro prepared 2026-09-20, ~19:01–19:08 CEST, within the sprint's own 1-hour cap (used: ~19 minutes total, including this retro). Both items merged to `master` and pushed. Next sprint scoping awaits the Owner.
 
 
+## Sprint 9 — retro write-backs, SI deploy, Books 01–04 titles (2026-09-27) — CLOSED, one item incomplete
+
+### Scope, as the Owner pre-approved it
+
+> "1) Apply any Sprint 8 retro action items that MUST be done before deploy…
+> 2) Deploy Standing Interview to production with private corpus. 3) Unfreeze
+> Books 01–04 ONLY for two titles… Size items with backlog.py. If
+> suggest-estimate n=0, write 'no reliable estimate' and still proceed — do not
+> invent hours from the rubric and call them an estimate."
+
+Three items, all sized before work, owner pre-approved so no second start gate.
+
+### Sizes given, before any work
+
+| Item | Size | Estimate | Confidence | Pattern | suggest-estimate |
+|---|---|---|---|---|---|
+| BL-081 retro write-backs | SMALL | 3–4 min (mid 3.2) | MEDIUM | apply_known_pattern | **COMPUTED** n=4, median_ratio 0.16 — adopted |
+| BL-082 deploy SI | MEDIUM | **NO RELIABLE ESTIMATE** | LOW_MEDIUM | first_of_kind | **INSUFFICIENT_HISTORY** n=1 — no hours recorded, per the new rule |
+| BL-083 Books 01–04 titles | SMALL | 2–4 min (mid 2.4) | MEDIUM | apply_known_pattern | **COMPUTED** n=4, median_ratio 0.16 — adopted |
+
+BL-082 is the first item in this project's history sized with **no hour range at
+all**. That is the Sprint 8 action item working as designed.
+
+### Final actuals
+
+| Item | Size | Estimate (mid) | Actual | Ratio | Verdict |
+|---|---|---|---|---|---|
+| BL-081 | SMALL | 3.2 min | **~6 min** | **1.9** | outside band [0.7, 1.3] — **ABOVE** |
+| BL-083 | SMALL | 2.4 min | **~8 min** | **3.3** | outside band — **ABOVE** |
+| BL-082 | MEDIUM | *no estimate* | **~85 min, INCOMPLETE** | n/a | cannot be scored |
+| **SPRINT** | 3 items | 5.6 min scoreable | ~14 min scoreable + 85 min unscoreable | — | mixed |
+
+### Diagnosis — ESTIMATION WRONG, and for the first time in the OTHER direction
+
+Both scoreable items landed **above** the band. Every item in sprints 1–8 came in
+**below**. That is a genuine reversal and it has a real cause: I adopted the
+COMPUTED suggestion, and the engine's ratio history (median 0.16) is built from
+sprints where the work was over-estimated. Feeding a 0.16 multiplier into a
+correctly-sized task over-corrects.
+
+So Sprint 8's proposed fix — *apply the residual bias as a second factor inside
+`suggest_estimate`* — would have made this sprint **worse**, not better. It is
+now recorded as a rejected hypothesis rather than a pending improvement. Two
+sprints of data now say the engine oscillates rather than converges: 0.30 under
+in Sprint 8, 1.9 and 3.3 over in Sprint 9.
+
+Running total: **2 of 39 items inside the ±30% band.**
+
+There is no IMPLEMENTATION ISSUES verdict for BL-081 or BL-083. Both landed,
+verified, pushed, no rework.
+
+**BL-082 is a genuine IMPLEMENTATION ISSUE**, and the honest classification is a
+wrong architectural assumption, not slow execution. See below.
+
+### The incomplete item, stated plainly
+
+Standing Interview is **NOT live**. Local replay passed 3/3 before each deploy.
+Two production deploys shipped without the corpus. Production reports
+`{"loaded":false,"chunks":0}`, the page returns HTTP 200 and says the knowledge
+base is not loaded, and the nav entry stays hidden.
+
+The fail-closed design is the one thing that went right: nothing is
+misrepresented on a public surface, and I did not have to remember to check —
+the mechanism enforced it.
+
+**Attempt 1 root cause, my error.** Option C was built on the belief that
+`railway up` uploads gitignored files. I inferred that from
+`deploy_customer_app.sh`'s note that it "does not include the .git folder" — a
+statement about `.git`, not about ignored files. Railway respects `.gitignore`.
+
+**Attempt 2** added `.railwayignore` (verbatim `.gitignore` minus exactly the one
+corpus line, 35 → 34 active patterns), with two tests guarding the real hazard
+that Railway uses that file *instead of* `.gitignore` and would otherwise start
+uploading `.env`. Both guards proved capable of failing. It still shipped empty.
+`.dockerignore` has no matching pattern either, so the corpus is not reaching
+Railway's upload at all.
+
+Remaining hypothesis: this service builds from the connected GitHub repository
+rather than the uploaded working directory — in which case a gitignored file can
+**never** ship by this route and option C needs a different mechanism.
+
+I stopped rather than trying a third variation. Each cycle costs a ~10 minute
+corpus rebuild plus a container build, and every remaining candidate changes
+either the security boundary or infrastructure configuration.
+
+### Action items
+
+**(1) Estimation-mistake improvements**
+
+- **Withdraw Sprint 8's residual-bias proposal.** It would have amplified this
+  sprint's error. Record it as tested-and-rejected in
+  `_calibration_process` so it is not re-proposed from the Sprint 8 retro text.
+- **Two sprints of oscillation is now the signal, not the noise.** 0.30 under,
+  then 1.9 and 3.3 over. The mechanism is not converging, and a third
+  adjustment aimed at the mean would be curve-fitting to four data points. The
+  defensible next move is what the Architecture V1 dossier already recommended
+  and nobody has acted on: stop using advance prediction as a control and use
+  adaptive guardrails instead.
+- **"No reliable estimate" worked and should stay.** BL-082 ran 85 minutes
+  against no predicted number, and nothing was lost by not having invented one —
+  whereas BL-079's fabricated 5–8h band actively misled planning last sprint.
+
+**(2) Implementation-mistake improvements**
+
+- **Verify an infrastructure assumption against the tool, not against a comment
+  about the tool.** The entire option-C mechanism rested on one inferred
+  sentence. A five-minute check — deploy one throwaway gitignored file and look
+  for it in the container — would have invalidated the design before any of it
+  was built. **New rule: any delivery mechanism that depends on what a build
+  tool includes gets a one-file probe before the feature is built on it.**
+- **`cmd | tail` masked a killed process as success.** Already written to
+  `LESSONS.md` this sprint; it recurred here and cost a full wasted cycle,
+  because the corpus appeared rebuilt when it was two hours stale. Caught only
+  by comparing output mtime against input mtime.
+- **Two duplicate build processes competed for memory** (4.8 GB + 1.2 GB, 87%
+  load, <2 GiB free) after earlier timeouts left them running. Killing them
+  restored 7.7 GiB. A long-running local build should check for an existing
+  instance before starting.
+
+**(3) Neither, but still needed**
+
+- **A vacuous test was found and replaced.** With all six frozen books now
+  carrying an authorised correction, the "these four must be byte-identical"
+  test was checking zero books — green and incapable of failing. Replaced with
+  "every frozen book is either untouched or a declared correction with a
+  recorded reason", proved capable of failing by seeding undeclared drift. Worth
+  generalising: an exemption list that grows can silently empty the test it
+  guards.
+- **SPRINT AS A WHOLE:** the two small, well-understood items went fine and were
+  over-estimated; the one item with an unvalidated external dependency consumed
+  six times their combined effort and did not finish. The pattern across Sprints
+  8 and 9 is consistent — effort is not driven by code volume but by how many
+  assumptions about *someone else's system* are load-bearing and unverified.
+  That, not size labels, is what a useful estimate would have to capture.
+
+### Carried forward
+
+- **BL-082 remains `active` and NOT complete** — awaiting an Owner decision on
+  the corpus delivery mechanism.
+- BL-080 (access gate, notification) still `planned`, untouched.
+- ACT-019 open: triage the SI review queue (2 rows) before the next sprint.
+
 ## Sprint 8 — Standing Interview v0 (2026-09-27) — CLOSED
 
 ### Scope, as the Owner approved it
