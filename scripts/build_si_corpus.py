@@ -150,7 +150,22 @@ def build(private_repo: pathlib.Path) -> dict:
 
     sys.path.insert(0, str(REPO_ROOT / "agent"))
     import embeddings
-    vectors = embeddings.embed_texts([c["text"] for c in chunks])
+
+    # Embedded in batches rather than one call. A single 361-chunk call was
+    # silently KILLED on 2026-09-27 with the machine at 87% memory load and
+    # under 2 GiB free -- no traceback, no output, no corpus, and (because the
+    # shell reported the exit code of `tail` rather than python) an apparent
+    # success. Batching bounds peak memory and prints progress, so a kill is
+    # visible as a gap in the output instead of looking like a clean run.
+    BATCH = 32
+    vectors = []
+    for i in range(0, len(chunks), BATCH):
+        batch = [c["text"] for c in chunks[i:i + BATCH]]
+        vectors.extend(embeddings.embed_texts(batch))
+        print(f"  embedded {min(i + BATCH, len(chunks))}/{len(chunks)}", flush=True)
+    if len(vectors) != len(chunks):
+        raise SystemExit(f"FAIL: embedded {len(vectors)} vectors for {len(chunks)} chunks -- "
+                         "refusing to write a partially-embedded corpus.")
     for c, v in zip(chunks, vectors):
         c["vector"] = v
 

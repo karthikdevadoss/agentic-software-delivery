@@ -6,6 +6,53 @@ current state (see PROJECT_STATE.json). Keep entries short and reusable;
 this is not a session diary. Add a new entry only when a real failure or
 surprising verified behavior would otherwise get rediscovered later.
 
+- **A retrieval threshold you guessed is a refusal path you have silently
+  disabled.** Real incident (2026-09-27, BL-079): Standing Interview shipped
+  with `GROUNDING_THRESHOLD = 0.34`, a number chosen by intuition. Measured
+  against the real 361-chunk corpus afterwards: an answerable question scores
+  0.6915, and "what is the capital of France?" scores **0.4491** -- bge-small
+  returns ~0.45 cosine for *unrelated* text, so 0.34 admitted everything. The
+  most important behaviour in the feature -- refusing what it cannot ground --
+  was inert, and every nonsense question came back `outcome=answered` and was
+  never logged for review. **General rule:** any similarity threshold gets a
+  measured positive and a measured negative example recorded next to the
+  constant, in the same commit that introduces it. A threshold with no
+  measurements beside it is an untested branch.
+- **One numeric similarity gate cannot separate "not in the corpus" from
+  "lexically similar to the corpus."** Same incident: "what is Karthik's home
+  address and salary?" scored **0.6816** -- higher than many legitimate
+  questions -- because the words genuinely match career text even though the
+  answer is not in it. No threshold placement separates those two populations.
+  The fix that worked was a **second, semantic gate**: detect the model's own
+  decline (it has the excerpts in front of it and says it cannot answer) and
+  convert that into the standard refusal *plus a logged review row*. **General
+  rule:** design an ungrounded path with two independent signals -- one about
+  retrieval distance, one about whether the retrieved text actually supports an
+  answer. Related trap: the first version of that decline detector scanned the
+  leading 160 characters and over-fired on a good answer ending "...I don't
+  have the exact key-rotation detail though", punishing precisely the honesty
+  the system prompt asks for. Narrowed to the first sentence.
+- **Never reproduce a withdrawn claim inside its own withdrawal when the
+  document is retrievable.** Real incident (2026-09-27, BL-078): a correction
+  to a frozen knowledge book quoted the retracted sentence verbatim so the
+  correction would be self-documenting. That left the exact stale string in the
+  retrieval corpus, where a grounded-answer system could surface the chunk and
+  quote the wrong half -- defeating the entire purpose of the edit. **General
+  rule:** in any document that feeds retrieval, describe a withdrawn claim
+  ("an earlier version asserted a mid-2026 end date") rather than quoting it,
+  and write the verifier as "no such reference survives anywhere" rather than
+  "the specific sentence is gone".
+- **`cmd | tail` reports tail's exit code, not the command's.** Real incident
+  (2026-09-27, Sprint 9): `timeout 400 python build_si_corpus.py | tail -6;
+  echo "EXIT=$?"` printed `EXIT=0` for a build that had been killed and written
+  nothing. The stale output file was only caught by comparing its mtime against
+  its inputs. The underlying cause was memory (87% load, <2 GiB free) killing
+  the process with no traceback. **General rule:** when an exit code matters,
+  capture it from the process itself (`cmd > log; rc=$?`) or set
+  `set -o pipefail`; and verify a build by checking that its *output* changed,
+  not that the command appeared to succeed. Same family as the false-green
+  `discover` bug and verify_change's PASSED-after-zero-tests.
+
 - **A background-sync lock file with no staleness/TTL check can silently
   disable an entire telemetry pipeline for days with zero visible error.**
   Real incident (found 2026-09-18): `agent/event_ledger.py`'s
