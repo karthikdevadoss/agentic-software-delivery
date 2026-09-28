@@ -1736,6 +1736,10 @@ def _log_si_event(event_type: str, question: str, result: dict) -> None:
                 # diagnosable; do the same for the voice gate.
                 "voice_violations": result.get("voice_violations"),
                 "retry_violations": result.get("retry_violations"),
+                # Sprint 13: which employer the attribution matrix put in the
+                # lead (and which it excluded), so a refusal or Dissatisfied
+                # click can be read against the policy that shaped it.
+                "policy": result.get("policy"),
             },
         )
     except Exception:  # noqa: BLE001 - review logging must never break an answer

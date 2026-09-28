@@ -47,7 +47,81 @@ import sys
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUT_DIR = REPO_ROOT / "agent" / ".si_corpus"
 OUT_PATH = OUT_DIR / "corpus.json"
-CORPUS_FORMAT_VERSION = 1
+# 2 (Sprint 13, BL-090): adds `career_map` and `attribution`. The server
+# treats a corpus without them as no corpus at all, so a stale v1 file on a
+# container cannot silently answer without the map.
+CORPUS_FORMAT_VERSION = 2
+CAREER_MAP_REL = pathlib.Path("books") / "SI_CAREER_MAP.md"
+
+# The hands-on books each end in a technology attribution matrix:
+#     <Technology>
+#     Personal classification: HANDS-ON | USED/EXPOSED | NOT USED | ...
+#     Safe interpretation: <one line>
+# That table is the books' own answer to "where did he actually use X", so it
+# is parsed into structured data here rather than left for the model to
+# infer from prose. The vocabulary is normalised into four buckets; anything
+# unrecognised is kept verbatim under bucket "OTHER" rather than guessed.
+_CLASSIFICATION_RE = re.compile(r"^Personal classification:\s*(.+?)\s*$")
+_INTERPRETATION_RE = re.compile(r"^Safe interpretation:\s*(.+?)\s*$")
+
+
+def _bucket(classification: str) -> str:
+    c = classification.upper()
+    if c.startswith("HANDS-ON"):
+        return "HANDS_ON"
+    if c.startswith(("USED/EXPOSED", "MINOR EXPOSURE", "WEAK", "DOMAIN KNOWLEDGE", "POSSIBLE")):
+        return "USED"
+    if c.startswith(("NOT USED", "NOT SUPPORTED", "UNKNOWN")):
+        return "NOT_USED"
+    if "SYSTEM" in c:
+        return "SYSTEM"
+    return "OTHER"
+
+
+def _parse_attribution(body: str) -> list[dict]:
+    """Walk the derived text; a classification line binds to the nearest
+    preceding non-empty line that is not a meta comment. When the matrix is
+    split by a section heading, that heading IS the technology name."""
+    out, prev, section = [], None, None
+    for line in body.splitlines():
+        t = line.strip()
+        if not t:
+            continue
+        if t.startswith("## "):
+            section = t[3:].strip()
+            prev = None
+            continue
+        if t.startswith("<!--"):
+            continue
+        m = _CLASSIFICATION_RE.match(t)
+        if m:
+            tech = prev if prev is not None else section
+            if tech:
+                out.append({"tech": tech, "classification": m.group(1),
+                            "bucket": _bucket(m.group(1)), "interpretation": ""})
+            prev = None
+            continue
+        m = _INTERPRETATION_RE.match(t)
+        if m and out and not out[-1]["interpretation"]:
+            out[-1]["interpretation"] = m.group(1)
+            prev = None
+            continue
+        prev = t
+    return out
+
+
+def _load_career_map(private_repo: pathlib.Path) -> str:
+    path = private_repo / CAREER_MAP_REL
+    if not path.is_file():
+        raise SystemExit(
+            f"FAIL: no career map at {path}.\n"
+            "Sprint 13 (BL-090): every Standing Interview answer is generated with the "
+            "standing career map in front of the model, so a corpus without one is "
+            "refused here rather than shipped as a working corpus.")
+    text = _FRONT_RE.sub("", path.read_text(encoding="utf-8")).strip()
+    if len(text) < 500:
+        raise SystemExit(f"FAIL: career map at {path} is implausibly short ({len(text)} chars).")
+    return text
 
 # Chunk sizing: derived book sections vary wildly, so cap by characters with a
 # small overlap rather than trusting section length. 1800/200 keeps a chunk
@@ -148,6 +222,25 @@ def build(private_repo: pathlib.Path) -> dict:
         raise SystemExit("FAIL: derived books produced zero chunks -- refusing to "
                          "write an empty corpus that would look like a working one.")
 
+    # Attribution: only the personal hands-on employer books carry the matrix.
+    attribution = {}
+    for path in sorted(derived.glob("BOOK-*.md")):
+        raw = path.read_text(encoding="utf-8")
+        fm = _front_matter(raw)
+        book_id = fm.get("book_id") or path.stem
+        entry = by_id.get(book_id, {})
+        if entry.get("knowledge_type") != "personal_hands_on" or not entry.get("employer"):
+            continue
+        rows = _parse_attribution(_FRONT_RE.sub("", raw))
+        if rows:
+            attribution[entry["employer"]] = rows
+    if not attribution:
+        raise SystemExit("FAIL: no attribution matrix parsed from any hands-on book -- "
+                         "the only-where-used answer policy cannot run without it.")
+
+    career_map = _load_career_map(private_repo)
+    map_hash = hashlib.sha256(career_map.encode("utf-8")).hexdigest()
+
     sys.path.insert(0, str(REPO_ROOT / "agent"))
     import embeddings
 
@@ -176,6 +269,9 @@ def build(private_repo: pathlib.Path) -> dict:
         "source_book_hashes": {b: by_id[b]["sha256"] for b in sorted(by_id)},
         "chunk_count": len(chunks),
         "chunks": chunks,
+        "career_map": career_map,
+        "career_map_sha256": map_hash,
+        "attribution": attribution,
     }
 
 
@@ -195,6 +291,12 @@ def main() -> int:
     print(f"wrote {OUT_PATH.relative_to(REPO_ROOT)}")
     print(f"  chunks     : {corpus['chunk_count']}  {dict(sorted(per_book.items()))}")
     print(f"  model_id   : {corpus['model_id']}")
+    print(f"  career_map : {len(corpus['career_map']):,} chars  sha256: {corpus['career_map_sha256'][:16]}...")
+    for emp, rows in sorted(corpus["attribution"].items()):
+        buckets = {}
+        for r in rows:
+            buckets[r["bucket"]] = buckets.get(r["bucket"], 0) + 1
+        print(f"  attribution: {emp:<6} {len(rows):>2} rows  {dict(sorted(buckets.items()))}")
     print(f"  bytes      : {OUT_PATH.stat().st_size:,}   sha256: {digest}...")
     print("\nThis file is GITIGNORED and must stay that way. It is delivered to the")
     print("container by `railway up`, which uploads the working directory.")

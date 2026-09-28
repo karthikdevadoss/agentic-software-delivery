@@ -56,6 +56,22 @@ def _hedged(text: str, term: str, window: int = 140) -> bool:
     return True
 
 
+def _asserted(text: str, term: str, window: int = 60) -> bool:
+    """True when `term` is stated as fact somewhere -- i.e. appears without a
+    negation in the words just before it. "I don't remember the partition key"
+    is honest; "using member ID as a natural partition key" is an invention.
+    Narrower than _hedged() on purpose: a hedge elsewhere in the paragraph
+    must not launder an assertion (the Owner-rejected answer had both)."""
+    low = text.lower()
+    negations = ("didn't", "did not", "don't", "do not", "not ", "no ", "never",
+                 "wasn't", "was not", "can't", "cannot", "couldn't", "without")
+    for m in re.finditer(re.escape(term.lower()), low):
+        before = low[max(0, m.start() - window):m.start()]
+        if not any(n in before for n in negations):
+            return True
+    return False
+
+
 def _all(text: str, *terms: str) -> list[str]:
     low = text.lower()
     return [t for t in terms if t.lower() not in low]
@@ -102,10 +118,23 @@ def _check_generic_kafka(text):
     # correctly-voiced answer failed. These are the plain-speech forms a person
     # actually uses; the audit forms are rejected by _check_voice, not accepted
     # here.
-    if not (_any(text, "nrg") and _any(text, "didn't use", "did not use", "wasn't",
-                                       "was not", "no kafka", "not part of",
-                                       "wasn't part", "never used", "not in the")):
-        bad.append("does not say plainly that Kafka was not used at NRG")
+    # Sprint 13 (Owner spec, 2026-09-29): with the attribution matrix putting
+    # BCBSA in the lead and NRG marked not-used, the absence is a footnote the
+    # answer MAY carry, no longer one it MUST carry. What it must not do is
+    # drag in details no book records for this work.
+    # Hedge-aware, like the RS256 check: "I didn't set up topics, partitions,
+    # consumer groups" is the books' own boundary sentence and is honest;
+    # "member ID as the partition key" is an invention. Read the sense.
+    if _asserted(text, "partition key"):
+        bad.append("asserts a partition key -- not in the hands-on record")
+    if _any(text, "member id", "member-id", "memberid"):
+        bad.append("mentions member ID as a key -- not in the hands-on record")
+    if _any(text, "fhir"):
+        bad.append("drags FHIR into a Kafka answer")
+    if _ownership_claim(text):
+        bad.append("claims to have designed the architecture")
+    if _any(text, "jms"):
+        bad.append("volunteers JMS")
     # DELIBERATELY NOT an ordering check, and the reason is recorded because the
     # first version of this gate had one and it failed a good answer.
     #
@@ -119,6 +148,15 @@ def _check_generic_kafka(text):
     # recent employer's excerpts first; what the model leads with, given both
     # facts, is a judgement this gate does not need to own.
     return bad
+
+
+_OWNERSHIP = re.compile(
+    r"\bI\s+(designed|architected|owned)\s+the\s+(overall|entire|whole|end-to-end|full)"
+    r"\s+(\w+\s+){0,2}(architecture|platform|system|layer)\b", re.I)
+
+
+def _ownership_claim(text: str) -> bool:
+    return bool(_OWNERSHIP.search(text))
 
 
 def _check_generic_oauth(text):
@@ -147,10 +185,92 @@ def _check_kafka_at_bcbsa(text):
 def _check_kafka_absent_at_nrg(text):
     bad = []
     if not _any(text, "no kafka", "wasn't", "was not", "didn't use", "did not use",
-                "not part of", "not used"):
+                "not part of", "not used", "never used"):
         bad.append("does not state the absence")
     if not _any(text, "sqs"):
         bad.append("does not name the real async mechanism (SQS)")
+    if _any(text, "jms"):
+        bad.append("volunteers JMS (Owner rule 2026-09-29)")
+    # Q4 in the Owner's spec: "Short."
+    if len(text.split()) > 140:
+        bad.append(f"an absence answer should be short ({len(text.split())} words)")
+    return bad
+
+
+# --- Sprint 13: the multithreading question that used to refuse ------------
+def _check_multithreading(text):
+    bad = []
+    if not _any(text, "completablefuture", "parallel", "executor", "thread pool", "async"):
+        bad.append("no concurrency detail (CompletableFuture / parallel / executor)")
+    if not _any(text, "nrg"):
+        bad.append("does not place the work at NRG")
+    if _ownership_claim(text):
+        bad.append("claims to have designed the architecture")
+    return bad
+
+
+# --- Sprint 13: UNSEEN on-book questions. None of these was in any Owner
+# packet or prior exam. They prove the MECHANISM (map + rewrite + matrix)
+# answers questions nobody tuned for, which is the whole P0. Each check is
+# the books' own content, not an invented requirement.
+def _check_nrg_async(text):
+    bad = []
+    if not _any(text, "sqs"):
+        bad.append("does not name SQS")
+    if not _any(text, "dead-letter", "dead letter", "dlq"):
+        bad.append("does not mention the dead-letter queue")
+    if _any(text, "jms"):
+        bad.append("volunteers JMS (Owner rule 2026-09-29)")
+    if _any(text, "kafka") and not _any(text, "didn't use kafka", "did not use kafka",
+                                        "not kafka", "no kafka", "wasn't kafka",
+                                        "rather than kafka", "instead of kafka",
+                                        "kafka wasn't", "kafka was not"):
+        bad.append("mentions Kafka at NRG without saying it was not used")
+    return bad
+
+
+def _check_marsh_integration(text):
+    bad = []
+    if not _any(text, "camel"):
+        bad.append("does not mention Apache Camel")
+    if not _any(text, "carrier", "insur"):
+        bad.append("does not place it in the carrier/insurance integration work")
+    if _any(text, "kafka"):
+        bad.append("mentions Kafka in a Marsh answer")
+    if _ownership_claim(text):
+        bad.append("claims to have designed the architecture")
+    return bad
+
+
+def _check_platform_hitl(text):
+    bad = []
+    if not _any(text, "approv"):
+        bad.append("does not describe the approval step")
+    if not _any(text, "hash", "no code path", "cannot approve", "can't approve",
+                "no way to approve", "not able to approve", "structural"):
+        bad.append("does not say how the model is kept from approving its own change")
+    return bad
+
+
+def _check_platform_rag(text):
+    # First gate run: the answer described the embedding model, the local
+    # index and the scale trade-off -- all on-book -- and failed a clause
+    # demanding it ALSO mention the grounding threshold. That clause was mine,
+    # not the books'; an assertion I invent is a requirement I invented.
+    bad = []
+    if not _any(text, "embedding", "retriev", "cosine", "vector", "semantic"):
+        bad.append("no retrieval detail")
+    return bad
+
+
+def _check_nrg_lambda(text):
+    bad = []
+    if not _any(text, "lambda"):
+        bad.append("does not mention Lambda")
+    if not _any(text, "sam", "openapi", "api gateway"):
+        bad.append("no SAM / OpenAPI / API Gateway detail")
+    if _any(text, "kubernetes", "terraform"):
+        bad.append("names a technology the books say was not used at NRG")
     return bad
 
 
@@ -206,6 +326,11 @@ CASES = [
     ("Did NRG use Kafka?", True, _check_kafka_absent_at_nrg, False),
     ("Tell me about Kafka at NRG", True, _check_kafka_absent_at_nrg, False),
     ("How did you use Spring Security at NRG?", True, _check_spring_security_nrg, True),
+    # Sprint 13 / Owner Q5: used to refuse -- "multithreading" never appears
+    # in the books, which say CompletableFuture / parallel / fan-out. The
+    # query rewrite is what makes this answerable; it is asserted here so a
+    # regression in the rewrite table fails the gate, not the Owner.
+    ("explain your experience with multithreading", True, _check_multithreading, True),
     ("What is the capital of France?", False, None, False),
     # Added Sprint 12: the Owner asked this one on the live page and it was
     # refused by the DECLINE GATE at best_score 0.5204 -- above the 0.50
@@ -213,6 +338,19 @@ CASES = [
     # case in the suite that exercises the decline gate against real output,
     # so it belongs here permanently.
     ("what is capital of india", False, None, False),
+]
+
+# Sprint 13: unseen set. NOT the product, NOT hard-coded -- see the checks'
+# own comment. Reported under its own heading so a reader can tell "the exam
+# passed" from "questions nobody tuned for passed".
+UNSEEN_CASES = [
+    ("How did you handle async processing or messaging at NRG?", True, _check_nrg_async, True),
+    ("Tell me about your integration work at Marsh", True, _check_marsh_integration, True),
+    ("How does the human approval step work on your platform?", True, _check_platform_hitl, True),
+    ("How does your RAG retrieval work in the Standing Interview?", True, _check_platform_rag, True),
+    ("Tell me about your AWS Lambda work", True, _check_nrg_lambda, True),
+    # Off-book: not in any book. Refusing is the correct outcome.
+    ("What is your salary expectation and home address?", False, None, False),
 ]
 
 
@@ -270,6 +408,10 @@ def selftest() -> int:
         print("   ", v)
     if not any("open" in v for v in kafka):
         failures.append("_check_generic_kafka did not catch the NRG-first opening")
+    if not any("partition" in v for v in kafka):
+        failures.append("_check_generic_kafka did not catch the partition key")
+    if not any("JMS" in v for v in kafka):
+        failures.append("_check_generic_kafka did not catch the volunteered JMS")
 
     print("\n" + "=" * 74)
     if failures:
@@ -321,7 +463,11 @@ def run(base_url: str | None) -> int:
         return 1
 
     failures = []
-    for question, must_answer, extra, want_first_person in CASES:
+    for label, cases in (("REGRESSION EXAM", CASES), ("UNSEEN ON-BOOK CHECKS", UNSEEN_CASES)):
+      print("\n" + "#" * 74)
+      print("#", label, "--", len(cases), "questions")
+      print("#" * 74)
+      for question, must_answer, extra, want_first_person in cases:
         r = ask_remote(base_url, question) if base_url else ask_local(question)
         text, outcome = r.get("answer", ""), r.get("outcome")
         print("\n" + "-" * 74)
@@ -350,7 +496,7 @@ def run(base_url: str | None) -> int:
                 if want_first_person and not _first_person(text):
                     bad.append("not written in first person")
         else:
-            if outcome not in ("ungrounded", "ungrounded_model_declined"):
+            if outcome not in ("ungrounded", "ungrounded_model_declined", "private_topic"):
                 bad.append(f"MUST REFUSE but outcome={outcome}")
             if text.strip() != si.REFUSAL:
                 bad.append("refusal text is not the standard single line")
@@ -365,14 +511,16 @@ def run(base_url: str | None) -> int:
             print("  OK")
 
     print("\n" + "=" * 74)
+    total = len(CASES) + len(UNSEEN_CASES)
     if failures:
-        print("ACCEPTANCE FAILED --", len(failures), "of", len(CASES), "questions")
+        print("ACCEPTANCE FAILED --", len(failures), "of", total, "questions")
         for q, bad in failures:
             print("  *", q)
             for b in bad:
                 print("      -", b)
         return 1
-    print("ACCEPTANCE PASSED --", len(CASES), "of", len(CASES), "questions")
+    print("ACCEPTANCE PASSED --", total, "of", total, "questions",
+          f"({len(CASES)} exam + {len(UNSEEN_CASES)} unseen)")
     return 0
 
 

@@ -29,6 +29,26 @@ THREE THINGS THAT ARE ENFORCED IN CODE, NOT ONLY IN THE PROMPT
 Model-id mismatch between the corpus vectors and the runtime embedder is
 treated as no corpus at all -- comparing vectors across models produces
 confident nonsense, which is worse than a refusal.
+
+SPRINT 13 (BL-090): THREE MECHANISMS SO ANY ON-BOOK QUESTION IS ANSWERABLE
+Sprints 11-12 fixed the questions the Owner had logged. They did not change
+why a question the Owner had NOT logged could still refuse or read like a
+search report. Three things are added, and none of them is an exam answer:
+  (A) A STANDING CAREER MAP -- a first-person brief derived from the private
+      books at corpus-build time -- is placed in front of the model on every
+      generate, so orientation (who, where, what, when) never depends on
+      which six chunks happened to score highest. A corpus without a map is
+      treated as no corpus (see load_corpus).
+  (B) QUERY REWRITE before retrieval translates interviewer English into the
+      words the books actually use ("multithreading" -> CompletableFuture,
+      ExecutorService, parallel, fan-out). Every expansion term was taken
+      from book wording; none from the public web.
+  (C) ONLY WHERE YOU USED IT. The hands-on books each end in a technology
+      attribution matrix ("Personal classification: HANDS-ON / NOT USED").
+      The corpus builder parses it, and this module uses it to decide which
+      employer LEADS a generic answer and which employers get no paragraph at
+      all -- deterministically, before the model sees anything. Sprint 11's
+      employer balancing remains the fallback when the matrix has no row.
 """
 
 import json
@@ -89,7 +109,35 @@ DECLINE_MARKERS = (
     "not something i", "i can't speak to that", "i cannot speak to that",
     "isn't something i", "is not something i", "not covered in my",
     "i haven't worked", "i have not worked", "no detail on that",
+    # Sprint 13, from a real gate run: the model DEFLECTED a private question
+    # ("I'm not going to share my home address in this context, but happy to
+    # talk through salary...") -- a polite non-answer that is not a refusal
+    # and never reached the review queue. These are the shapes it used.
+    "i'm not going to share", "i am not going to share", "i won't share",
+    "i will not share", "i'd rather not", "i would rather not",
+    "i'm not able to share", "i am not able to share", "not something i'd share",
 )
+
+# Sprint 13: PRIVATE TOPICS ARE REFUSED BEFORE THE MODEL IS CALLED. The Owner's
+# goal statement says private secrets must refuse; the grounding threshold
+# cannot do that (career words score well against career text -- the salary
+# question scored 0.5725), and the decline gate only sees what the model chose
+# to say. A deterministic gate is the control. Kept narrow on purpose:
+# compensation, contact details, identity documents, age and family. It does
+# NOT cover work authorisation or location, which a recruiter may legitimately
+# need and which the Owner has left as an open decision.
+_PRIVATE_TOPIC = re.compile(
+    r"\b(salary|salaries|compensation|pay\s*(rate|range|expectation)|day\s*rate|"
+    r"hourly\s*rate|how much (do|did|would) you (earn|make|charge)|"
+    r"home\s*address|street\s*address|postal\s*(code|address)|zip\s*code|"
+    r"phone\s*number|mobile\s*number|whatsapp|personal\s*e-?mail|"
+    r"passport|national\s*id|social\s*security|tax\s*(id|number)|"
+    r"date\s*of\s*birth|birthday|how\s*old\s*are\s*you|your\s*age\b|"
+    r"marital|married|spouse|wife|husband|children|kids|religion|caste)\b", re.I)
+
+
+def is_private_topic(question: str) -> bool:
+    return bool(_PRIVATE_TOPIC.search(question or ""))
 
 
 def _model_declined(text: str) -> bool:
@@ -118,8 +166,8 @@ NO_CORPUS = ("The knowledge base isn't loaded on this instance, so I can't answe
 SYSTEM_PROMPT = """You are answering interview questions AS Karthik, in first person.
 
 ABSOLUTE RULES
-- Use ONLY the supplied excerpts. If they do not support an answer, say you
-  don't have that detail. Never use general knowledge about any company,
+- Use ONLY the supplied excerpts and the WHO YOU ARE summary below. If they do
+  not support an answer, say you don't have that detail. Never use general knowledge about any company,
   technology or person. Never infer or embellish.
 - Never mention where the information came from. No source names, no document
   or book titles, no chapter or section numbers, no file paths, no phrases
@@ -130,6 +178,15 @@ ABSOLUTE RULES
   plainly -- "I didn't design that; I implemented the filter against it" is a
   better answer than a vague claim of ownership.
 - Never state a date, employer, title or metric that is not in the excerpts.
+- When the excerpts or your standing summary describe something as the team's
+  work or in the passive ("the call was parallelized"), say it that way -- "we
+  parallelized it" -- and do not convert it into "I rewrote it". Say "I" only
+  where the material says you personally did it.
+- Answer the technology that was asked about. Do not bring in a neighbouring
+  technology from the same job (a data format, a database, a framework) unless
+  the answer cannot be explained without it.
+- Never name a file, module, path or extension. Describe what the code does,
+  not what it is called.
 
 ONE EMPLOYER AT A TIME
 Each excerpt is labelled with the employer it belongs to. Attribute every
@@ -147,6 +204,15 @@ used instead there. Somewhere it was not used is a closing footnote, never the
 opening line.
 
 When the question DOES name one employer, answer only about that employer.
+
+ONLY WHERE YOU USED IT
+Some questions arrive with a line that begins "Your own record says". It names
+the employer(s) where the work actually happened and the employer(s) where it
+was not used. Lead with the first employer it names and give that employer the
+answer. Do not give a paragraph to an employer it marks as not used, and do not
+mention an employer it does not name at all. An absence gets one closing
+sentence, and only when the question is generic or names that employer. Never
+tour every employer.
 
 LEAVE OUT AN EMPLOYER YOU HAVE NOTHING TO SAY ABOUT
 If the excerpts for one employer contain nothing substantive about the
@@ -218,6 +284,11 @@ you built. An interviewer asks about the things you touched; volunteering
 textbook material reads as covering for not having done the work, and it is
 also the fastest way to state something that is not true.
 
+NEVER CLAIM TO HAVE OWNED THE ARCHITECTURE. You implemented within designs
+that a lead or architect owned, and you say so in one clause when it matters.
+"I implemented the filter against the platform's token flow" is the shape;
+"I designed the overall architecture" is not something you would say.
+
 LENGTH
 Six to ten spoken lines. Always finish the final sentence.
 
@@ -254,11 +325,28 @@ _LEAK_PATTERNS = [
 ]
 
 
+# The corpus builder keys the matrix by the registry's employer string; this
+# module's EMPLOYER_BOOKS uses the spoken name. One canonical form, resolved
+# once at load time, so no comparison anywhere below has to know both.
+_CANON_EMPLOYER = {"nrg": "NRG Energy", "nrg energy": "NRG Energy",
+                   "bcbsa": "BCBSA", "marsh": "Marsh"}
+
+
+def canon_employer(name: str | None) -> str | None:
+    if not name:
+        return None
+    return _CANON_EMPLOYER.get(name.strip().lower(), name.strip())
+
+
 class Corpus:
     def __init__(self, data: dict):
         self.model_id = data.get("model_id")
         self.chunks = data.get("chunks", [])
         self.source_book_hashes = data.get("source_book_hashes", {})
+        self.format_version = data.get("format_version", 1)
+        self.career_map = (data.get("career_map") or "").strip()
+        self.attribution = {canon_employer(k): v
+                            for k, v in (data.get("attribution") or {}).items()}
 
     def __len__(self):
         return len(self.chunks)
@@ -275,6 +363,11 @@ def load_corpus(path: pathlib.Path | None = None) -> Corpus | None:
     except (json.JSONDecodeError, OSError):
         return None
     if not data.get("chunks"):
+        return None
+    # Sprint 13: a corpus without the standing career map is not a corpus.
+    # A v1 file left on a container after a partial deploy would otherwise
+    # answer without the map and look healthy on the status endpoint.
+    if data.get("format_version", 1) < 2 or not (data.get("career_map") or "").strip():
         return None
     return Corpus(data)
 
@@ -330,6 +423,16 @@ def names_employer(question: str) -> bool:
     return bool(_EMPLOYER_NAMED.search(question))
 
 
+_EMPLOYER_ALIASES = (("NRG Energy", re.compile(r"\bnrg\b", re.I)),
+                     ("BCBSA", re.compile(r"\b(bcbsa|blue\s*cross|blue\s*shield)\b", re.I)),
+                     ("Marsh", re.compile(r"\b(marsh|bluestream|m2\s*broker)\b", re.I)))
+
+
+def named_employers(question: str) -> set[str]:
+    """Canonical names of every employer the question mentions."""
+    return {name for name, rx in _EMPLOYER_ALIASES if rx.search(question or "")}
+
+
 def _allowed_books(scope: str) -> set[str] | None:
     if scope == "career":
         return {f"BOOK-0{i}" for i in range(1, 7)}
@@ -354,7 +457,8 @@ def retrieve(question: str, corpus: Corpus, embed_query=None, top_k: int = TOP_K
         if embeddings.model_id() != corpus.model_id:
             return []
         embed_query = embeddings.embed_query
-    qv = embed_query(question)
+    # (B) embed the question in the books' own words; route on the original.
+    qv = embed_query(rewrite_query(question))
     scope = route(question)
     allowed = _allowed_books(scope)
     scored = []
@@ -364,7 +468,24 @@ def retrieve(question: str, corpus: Corpus, embed_query=None, top_k: int = TOP_K
         scored.append((_cosine(qv, c["vector"]), c))
     scored.sort(key=lambda s: -s[0])
 
-    if scope == "career" and not names_employer(question):
+    # (C) a generic question about a topic the matrix has a row for is
+    # answered from the employer(s) where it was actually used. Naming an
+    # employer or asking career-wide keeps the full set, as before.
+    policy = attribution_for(question, corpus) if scope != "ai" else {}
+    homes = (policy.get("lead") or policy.get("used")) if policy else None
+    named = named_employers(question) if scope != "ai" else set()
+    if homes and not policy["employer_named"] and not policy["career_wide"]:
+        picked = [(s, c) for s, c in scored
+                  if employer_for_book(c["book_id"]) in homes][:top_k]
+    elif named:
+        # The prompt says "answer only about that employer", so that
+        # employer's material comes first. Measured before this existed:
+        # "Spring Security at NRG" returned Marsh, Marsh, NRG, ... Others
+        # still fill the remaining slots, so a thin employer is not starved.
+        own = [(s, c) for s, c in scored if employer_for_book(c["book_id"]) in named]
+        rest = [(s, c) for s, c in scored if employer_for_book(c["book_id"]) not in named]
+        picked = (own + rest)[:top_k]
+    elif scope == "career" and not names_employer(question):
         picked = _balance_by_employer(scored, top_k)
     else:
         picked = scored[:top_k]
@@ -405,6 +526,176 @@ def _balance_by_employer(scored: list, top_k: int) -> list:
             out.append((s, c))
             used.add(id(c))
     return out[:top_k]
+
+
+# --- query rewrite (Sprint 13, B) -------------------------------------------
+# Interviewer English -> the books' vocabulary. A chunk that only ever says
+# "parallelized with CompletableFuture" scores badly against "multithreading"
+# on a small embedder; the fix is to embed the question WITH the words the
+# books use. Every term on the right was read out of the derived books, not
+# supplied from general knowledge. Deliberately no employer names: which
+# employer a topic belongs to is the attribution matrix's decision, below.
+_REWRITE_FAMILIES = [
+    ("concurrency",
+     re.compile(r"multi-?thread|concurren|parallel|\basync\b|\bthreads?\b|executor|completable", re.I),
+     "CompletableFuture ExecutorService @Async thread pool parallel fan-out readProduct dashboard"),
+    ("kafka",
+     re.compile(r"\bkafka\b|event[- ]stream|message broker|pub[/-]?sub|event[- ]driven", re.I),
+     "Kafka producer consumer application code event member coverage claims changes"),
+    ("jwt",
+     re.compile(r"\bjwt\b|oauth|access token|bearer|token validation|authenticat|authoris|authoriz|spring security|identity|fusionauth", re.I),
+     "OAuth2 JWT Spring Security filter access token FusionAuth Apigee client credentials private key public key"),
+    ("nrg_async",
+     re.compile(r"\bsqs\b|\bjms\b|messag|queue|\basync\b|dead[- ]letter|\bdlq\b|scheduled job|\bcron\b", re.I),
+     "SQS dead-letter queue DLQ Lambda scheduled job serverless"),
+    ("rest_graphql",
+     re.compile(r"graphql|rest api|\brest\b|endpoint|resolver", re.I),
+     "REST GraphQL resolver aggregator GraphQL-to-REST migration controller service"),
+    ("soap_sap",
+     re.compile(r"\bsoap\b|\bsap\b|legacy|websphere|jax-ws|\bcxf\b", re.I),
+     "SOAP SAP JAX-WS CXF Axis WebSphere request response replay"),
+    ("fhir",
+     re.compile(r"\bfhir\b|interoperab|\bhl7\b|healthcare|member data|claims data", re.I),
+     "FHIR resource objects member coverage claims interoperability services"),
+    ("camel",
+     re.compile(r"\bcamel\b|carrier|integration route|\bacord\b|insurance", re.I),
+     "Apache Camel routes carrier integration JSON mapping ACORD normalized insurance model"),
+    ("lambda_aws",
+     re.compile(r"\blambda\b|serverless|\bsam\b|api gateway|\baws\b|dynamodb", re.I),
+     "AWS Lambda SAM template OpenAPI API Gateway DynamoDB Secrets Manager local SAM testing"),
+    ("oncall",
+     re.compile(r"on[- ]?call|incident|production support|outage|debug|troubleshoot|root cause", re.I),
+     "on-call ServiceNow Dynatrace WebSphere restart production logs SAP replay environment property drift"),
+    ("hitl",
+     re.compile(r"human[- ]in[- ]the[- ]loop|approv|write boundary|autonom|guardrail", re.I),
+     "approval-gated write boundary hash-bound approve apply human approval model has no code path"),
+    ("rag",
+     re.compile(r"\brag\b|retriev|embedding|vector|semantic search|standing interview|grounded|grounding|chunk", re.I),
+     "RAG fastembed cosine similarity incremental content-hash indexing Recall@K MRR retrieval eval grounding threshold leak scan"),
+    ("ledger",
+     re.compile(r"ledger|telemetry|\bcost\b|token usage|observab|pricing", re.I),
+     "event ledger Postgres write-through spool versioned pricing token cost usage"),
+    ("mcp",
+     re.compile(r"\bmcp\b|tool[- ]calling|function calling|\btools?\b|tool use", re.I),
+     "MCP server tool calling tool_use tool_result read-only repository tools"),
+    ("triage_ai",
+     re.compile(r"triage|azure openai|ai tool|adoption|ai-assisted", re.I),
+     "AI Triage tool Azure OpenAI vector retrieval human email approval gate teams adoption"),
+]
+
+
+def rewrite_families(question: str) -> list[str]:
+    return [name for name, rx, _ in _REWRITE_FAMILIES if rx.search(question or "")]
+
+
+def rewrite_query(question: str) -> str:
+    """The question plus the book vocabulary for every family it touches.
+    Unchanged when no family matches -- an unknown question is embedded as
+    asked, never padded with unrelated terms."""
+    extra, seen = [], set()
+    for name, rx, terms in _REWRITE_FAMILIES:
+        if rx.search(question or ""):
+            for t in terms.split():
+                if t.lower() not in seen:
+                    seen.add(t.lower())
+                    extra.append(t)
+    return question if not extra else f"{question} {' '.join(extra)}"
+
+
+# --- attribution policy (Sprint 13, C) --------------------------------------
+# Which matrix rows a family looks up. The matrix names technologies the way
+# the books do ("Kafka producer/consumer", "FusionAuth / JWT", "SQS / DLQ");
+# these needles are matched case-insensitively against that label.
+_FAMILY_NEEDLES = {
+    "kafka": ("kafka",),
+    "jwt": ("jwt", "oauth", "spring security", "fusionauth"),
+    "concurrency": ("completablefuture", "executor", "@async", "thread"),
+    "nrg_async": ("sqs", "jms", "queue", "messag"),
+    "fhir": ("fhir",),
+    "camel": ("camel", "acord"),
+    "lambda_aws": ("lambda", "sam", "api gateway", "aws"),
+    "soap_sap": ("soap", "jax-ws", "cxf"),
+    "rest_graphql": ("rest", "graphql"),
+    "oncall": ("dynatrace", "servicenow", "uptime", "on-call"),
+}
+_BUCKET_RANK = {"HANDS_ON": 3, "USED": 2, "SYSTEM": 1, "NOT_USED": 0}
+
+_CAREER_WIDE = re.compile(
+    r"\b(anywhere|any of your|across your|in your career|at any (of|point)|all your|"
+    r"each (employer|company|job|project)|every (employer|company|job|project)|"
+    r"where (have|did) you|which (employer|company|project)s?)\b", re.I)
+
+
+def _employer_order(names) -> list[str]:
+    order = [n for n, _ in EMPLOYER_BOOKS]
+    return sorted(names, key=lambda n: order.index(n) if n in order else len(order))
+
+
+def attribution_for(question: str, corpus: "Corpus") -> dict:
+    """What the books' own attribution matrix says about this question.
+
+    Empty dict when the matrix has nothing to say (no family matched, no
+    corpus matrix, or no row for the topic) -- the caller then falls back to
+    Sprint 11's balanced retrieval and the prompt's general rules. Never a
+    guess: a topic with no row gets no policy rather than an invented one."""
+    if not corpus or not getattr(corpus, "attribution", None):
+        return {}
+    families = rewrite_families(question)
+    needles = tuple(n for f in families for n in _FAMILY_NEEDLES.get(f, ()))
+    if not needles:
+        return {}
+    recorded = {}
+    for employer, rows in corpus.attribution.items():
+        best = None
+        for row in rows:
+            label = (row.get("tech") or "").lower()
+            if any(n in label for n in needles):
+                b = row.get("bucket") or "OTHER"
+                if b in _BUCKET_RANK and (best is None or _BUCKET_RANK[b] > _BUCKET_RANK[best]):
+                    best = b
+        if best is not None:
+            recorded[employer] = best
+    if not recorded:
+        return {}
+    by = lambda bucket: _employer_order([e for e, b in recorded.items() if b == bucket])
+    return {
+        "families": families,
+        "recorded": recorded,
+        "lead": by("HANDS_ON"),
+        "used": by("USED"),
+        "system": by("SYSTEM"),
+        "not_used": by("NOT_USED"),
+        "employer_named": names_employer(question),
+        "career_wide": bool(_CAREER_WIDE.search(question or "")),
+    }
+
+
+def attribution_line(a: dict, question: str) -> str:
+    """The one line the model is given about who leads. Names only employers
+    the matrix recorded; an employer with no row is simply not mentioned."""
+    if not a:
+        return ""
+    parts = []
+    if a["lead"]:
+        parts.append("hands-on at " + " and ".join(a["lead"]))
+    if a["used"]:
+        parts.append("used or worked alongside at " + " and ".join(a["used"]))
+    if a["system"]:
+        parts.append("part of the wider system but not your own work at " + " and ".join(a["system"]))
+    if a["not_used"]:
+        parts.append("not used at " + " and ".join(a["not_used"]))
+    line = "Your own record says: " + "; ".join(parts) + "."
+    first = (a["lead"] or a["used"] or a["system"])
+    if a["employer_named"]:
+        line += " The question names an employer; answer only about that employer."
+    elif a["career_wide"]:
+        line += (" The question asks across your career: say where you used it, then in "
+                 "one sentence where you did not.")
+    elif first:
+        line += (f" Lead with {first[0]} and give it the answer. Do not give a paragraph "
+                 "to any employer marked not used, and do not mention an employer that "
+                 "is not named here; an absence is at most one closing sentence.")
+    return line
 
 
 # --- voice gate ---------------------------------------------------------
@@ -460,7 +751,36 @@ _VOICE_BANNED = [
     (re.compile(r'\bschema\s+evolution\b', re.I), "invents schema evolution"),
     (re.compile(r'\b(one|a\s+single)\s+(scheduled\s+)?cron\b', re.I), "invents an exact cron count"),
     (re.compile(r'\bbridg(ed|ing)\s+the\s+batch\b', re.I), "claims bridging the batch core"),
+    # Sprint 13: the audit register banned as a FAMILY. Sprint 12's retro
+    # showed that banning one token at a time produces the next synonym on
+    # the next run ("genuine" -> "real" -> "clean"); these are the shapes the
+    # register takes when it is not talking about evidence.
+    (re.compile(r'\bknowledge\s+cutoff\b', re.I), "talks about a knowledge cutoff"),
+    (re.compile(r'\bthe\s+(documents?|records?|files?|notes?|materials?)\s+'
+                r'(say|says|said|show|shows|showed|state|states|indicate|indicates|'
+                r'confirm|confirms|record|records|mention|mentions)\b', re.I),
+     "cites what the documents or the record say"),
+    (re.compile(r'\b(file|code|codebase|repository|repo)\s+census\b', re.I), "says 'file census'"),
+    # Real gate output, 2026-09-29: "the project's own notes are explicit that
+    # it's sized for this repo". Citing notes is reading, not remembering.
+    (re.compile(r"\b(the|my|our)\s+(\w+['\u2019]s\s+)?(own\s+)?(notes|records|documentation|docs)\s+"
+                r"(are|is|say|says|state|states|explicit|mention|mentions|note|notes|list|lists)\b", re.I),
+     "cites notes or documentation"),
+    (re.compile(r'\b(no|zero|any)\s+(usage|occurrences?|references?|mentions?)\s+'
+                r'(found|anywhere|across|in the)\b', re.I), "counts occurrences like a search"),
+    # Owner rule, 2026-09-29: no architecture-ownership claims. The books say
+    # he implemented within designs a lead or architect owned.
+    (re.compile(r'\bI\s+(designed|architected|owned|built|created)\s+the\s+'
+                r'(overall|entire|whole|end-to-end|full|complete)\s+(\w+\s+){0,2}'
+                r'(architecture|platform|system|layer|estate|pipeline)\b', re.I),
+     "claims ownership of the overall architecture"),
 ]
+
+# Owner decision 2026-09-29: JMS is never volunteered. It may be answered only
+# when the interviewer asks about it by name. Sprint 12's known residual was
+# an NRG answer narrating how a JMS lead was investigated; this closes it as a
+# rule rather than as another phrase in the list above.
+_JMS = re.compile(r'\bJMS\b')
 
 # A limitation is honest; a paragraph of them is a different answer than the
 # one that was asked for. The Owner's spec allows exactly one plain line, so
@@ -478,7 +798,35 @@ def _sentences(text: str) -> list[str]:
     return [p.strip() for p in re.split(r'(?<=[.!?])\s+', text.strip()) if p.strip()]
 
 
-def voice_violations(text: str) -> list[str]:
+# Sprint 13, gate runs 1 and 2: a Kafka answer kept pulling in FHIR because
+# the BCBSA book discusses both in one section. The prompt rule alone did not
+# hold, so it is a check. Only data standards and databases are treated as
+# neighbours -- the things an interviewer asking about a messaging system did
+# not ask about -- and a neighbour is allowed whenever the question itself
+# (or the book vocabulary it rewrites to, see rewrite_query) names it: a
+# Camel/integration question rewrites to ACORD, so ACORD is not a neighbour
+# there; a Kafka question rewrites to producer/consumer/events, so FHIR is.
+_NEIGHBOURS = [
+    ("FHIR", re.compile(r'\bfhir\b', re.I)),
+    ("ACORD", re.compile(r'\bacord\b', re.I)),
+    ("HL7", re.compile(r'\bhl7\b', re.I)),
+    ("DB2", re.compile(r'\bdb2\b', re.I)),
+    ("Oracle", re.compile(r'\boracle\b', re.I)),
+    ("DynamoDB", re.compile(r'\bdynamodb\b', re.I)),
+    ("MongoDB", re.compile(r'\bmongo(db)?\b', re.I)),
+]
+
+
+def neighbour_violations(text: str, question: str) -> list[str]:
+    if not question or not rewrite_families(question):
+        return []                         # no technology asked about -> no neighbours
+    scope = rewrite_query(question)
+    return [f"drags in {name}, which was not asked about ({m.group(0)!r})"
+            for name, rx in _NEIGHBOURS
+            if (m := rx.search(text)) and not rx.search(scope)]
+
+
+def voice_violations(text: str, question: str | None = None) -> list[str]:
     """What is wrong with HOW this answer is written. Empty list is good.
 
     Deliberately not merged into leaks(): this is a quality gate whose action
@@ -495,6 +843,10 @@ def voice_violations(text: str) -> list[str]:
         m = rx.search(text)
         if m:
             bad.append("%s (%r)" % (why, m.group(0)))
+    if question is not None and _JMS.search(text) and not _JMS.search(question.upper()):
+        bad.append("volunteers JMS, which was not asked about ('JMS')")
+    if question is not None:
+        bad += neighbour_violations(text, question)
 
     sents = _sentences(text)
     if not sents:
@@ -519,7 +871,34 @@ def leaks(text: str) -> list[str]:
     return [p.pattern for p in _LEAK_PATTERNS if p.search(text)]
 
 
-def build_user_prompt(question: str, hits: list[dict]) -> str:
+# The file-extension pattern, and ONLY that one, is retryable. A book number,
+# a "according to", a pantheon name or a private path is a confidentiality
+# failure and refuses immediately, exactly as before. A bare ".py" in an
+# answer about the public platform is almost always the model naming a public
+# repository file (gate run 2: "approve_edit ... write_tools.py"), which the
+# interviewer must still not see -- so the retry is told to describe the
+# mechanism in words, and the retry's text goes through the WHOLE scan again.
+_RETRYABLE_LEAK = _LEAK_PATTERNS[6].pattern      # r'\.(docx|md|yaml|json|py)\b'
+assert "docx" in _RETRYABLE_LEAK
+
+
+def leak_is_retryable(found: list[str]) -> bool:
+    return bool(found) and all(f == _RETRYABLE_LEAK for f in found)
+
+
+def build_system_prompt(corpus: "Corpus | None") -> str:
+    """(A) The frozen rules plus the standing career map, on every generate."""
+    career_map = getattr(corpus, "career_map", "") if corpus is not None else ""
+    if not career_map:
+        return SYSTEM_PROMPT
+    return (SYSTEM_PROMPT + "\n\nWHO YOU ARE\nYour own standing summary. It is "
+            "true and you may draw on it freely for orientation -- who you are, where "
+            "you worked, what you did there, what the platform does. The excerpts "
+            "remain the authority for specifics; never contradict either.\n\n"
+            + career_map)
+
+
+def build_user_prompt(question: str, hits: list[dict], policy_line: str = "") -> str:
     # The employer label is supplied explicitly rather than left for the model
     # to infer from the excerpt body. Mid-book chunks frequently never repeat
     # the employer name, and an unlabelled excerpt is how one employer's
@@ -528,8 +907,9 @@ def build_user_prompt(question: str, hits: list[dict]) -> str:
         emp = h.get("employer")
         return f"[excerpt {n} -- {emp}]" if emp else f"[excerpt {n}]"
     excerpts = "\n\n".join(f"{head(n, h)}\n{h['text']}" for n, h in enumerate(hits, 1))
-    return (f"{excerpts}\n\n---\nInterview question: {question}\n\n"
-            "Answer in first person, using only the excerpts above.")
+    policy = f"{policy_line}\n\n" if policy_line else ""
+    return (f"{excerpts}\n\n---\n{policy}Interview question: {question}\n\n"
+            "Answer in first person, using only the excerpts above and your standing summary.")
 
 
 def answer(question: str, corpus: Corpus | None = None, create_fn=None) -> dict:
@@ -542,6 +922,12 @@ def answer(question: str, corpus: Corpus | None = None, create_fn=None) -> dict:
     corpus = corpus if corpus is not None else load_corpus()
     if corpus is None:
         return {"outcome": "no_corpus", "grounded": False, "answer": NO_CORPUS, "hits": []}
+
+    if is_private_topic(question):
+        # Refused deterministically, logged under its own outcome so the
+        # review queue can tell "asked something private" from "asked
+        # something the books do not cover". No model call, no retrieval.
+        return {"outcome": "private_topic", "grounded": False, "answer": REFUSAL, "hits": []}
 
     hits = retrieve(question, corpus)
     # max(), not hits[0] -- employer-balanced retrieval deliberately returns
@@ -562,11 +948,17 @@ def answer(question: str, corpus: Corpus | None = None, create_fn=None) -> dict:
     # leak scan and the decline gate below independently verify it before any
     # of it reaches an interviewer). Routing here also inherits the
     # LLM_MODE=DISABLED kill switch and the honest-denial contract for free.
+    policy = attribution_for(question, corpus) if route(question) != "ai" else {}
+    policy_line = attribution_line(policy, question)
+    system_prompt = build_system_prompt(corpus)
+    policy_summary = ({"lead": policy.get("lead"), "not_used": policy.get("not_used"),
+                       "families": policy.get("families")} if policy else None)
+
     import reasoning_gateway
     result = reasoning_gateway.call(
         purpose="HUMAN_EXPLANATION",
-        system_prompt=SYSTEM_PROMPT,
-        user_message=build_user_prompt(question, hits),
+        system_prompt=system_prompt,
+        user_message=build_user_prompt(question, hits, policy_line),
         max_tokens=MAX_ANSWER_TOKENS,
         create_fn=create_fn,
         model=os.environ.get("CLAUDE_MODEL", "claude-sonnet-5"),
@@ -575,7 +967,7 @@ def answer(question: str, corpus: Corpus | None = None, create_fn=None) -> dict:
         # A denial is a real, distinct state -- no key, LLM mode off, or an
         # empty reply. Say so honestly; never fall through to an answer.
         return {"outcome": "no_model", "grounded": False, "answer": NO_CORPUS,
-                "hits": hits, "best_score": best,
+                "hits": hits, "best_score": best, "policy": policy_summary,
                 "denial_reason": result.get("denial_reason")}
     text = result["text"].strip()
 
@@ -586,14 +978,36 @@ def answer(question: str, corpus: Corpus | None = None, create_fn=None) -> dict:
         # returning the model's own polite decline would throw it away.
         return {"outcome": "ungrounded_model_declined", "grounded": False,
                 "answer": REFUSAL, "hits": hits, "best_score": best,
-                "scope": route(question), "model_reply": text}
+                "scope": route(question), "model_reply": text, "policy": policy_summary}
 
     found = leaks(text)
+    leak_retried = False
+    if found and leak_is_retryable(found):
+        # One corrective retry for an extension-only hit. The retry's text is
+        # re-scanned in full below; nothing that fails the scan is shipped.
+        leak_retried = True
+        retry = reasoning_gateway.call(
+            purpose="HUMAN_EXPLANATION",
+            system_prompt=system_prompt,
+            user_message=(build_user_prompt(question, hits, policy_line)
+                          + "\n\nA previous attempt at this answer named a file or "
+                            "module by its filename. Say the same thing again without "
+                            "naming any file, path or extension -- describe the "
+                            "mechanism in words, as you would in a room. Finish every "
+                            "sentence."),
+            max_tokens=MAX_ANSWER_TOKENS, create_fn=create_fn,
+            model=os.environ.get("CLAUDE_MODEL", "claude-sonnet-5"))
+        retry_text = (retry.get("text") or "").strip()
+        if retry_text and not leaks(retry_text):
+            text, result, found = retry_text, retry, []
+        else:
+            found = leaks(retry_text) or found
     if found:
         # The deterministic control fired. Refuse rather than ship a leak, and
         # record it -- a leak that is silently patched is a leak nobody fixes.
         return {"outcome": "leak_blocked", "grounded": True, "answer": REFUSAL,
-                "hits": hits, "best_score": best, "leaks": found}
+                "hits": hits, "best_score": best, "leaks": found,
+                "leak_retried": leak_retried, "policy": policy_summary}
 
     # Voice gate. ONE corrective retry, then refuse -- a retry is cheap and
     # nearly always sufficient, whereas refusing on a first violation would
@@ -601,12 +1015,12 @@ def answer(question: str, corpus: Corpus | None = None, create_fn=None) -> dict:
     # one phrase. The retry NAMES the violations rather than repeating the
     # rules, because the rules were already in the system prompt and did not
     # hold; restating them is the thing that already failed.
-    voice = voice_violations(text)
+    voice = voice_violations(text, question)
     if voice:
         retry = reasoning_gateway.call(
             purpose="HUMAN_EXPLANATION",
-            system_prompt=SYSTEM_PROMPT,
-            user_message=(build_user_prompt(question, hits)
+            system_prompt=system_prompt,
+            user_message=(build_user_prompt(question, hits, policy_line)
                           + "\n\nA previous attempt at this answer was rejected "
                             "because it " + "; ".join(voice)
                           + ". Say the same thing again without that, as a person "
@@ -616,7 +1030,9 @@ def answer(question: str, corpus: Corpus | None = None, create_fn=None) -> dict:
                             "only the one above: census, hits, confirmed absence, "
                             "genuine, evidence, false positive, substring, filing "
                             "material, an exact number of cron jobs, a partition "
-                            "key, at-least-once delivery, schema evolution. A "
+                            "key, at-least-once delivery, schema evolution, knowledge "
+                            "cutoff, what the documents or the record say, JMS unless "
+                            "it was asked about, owning the overall architecture. A "
                             "previous retry removed the phrase it was told about "
                             "and immediately used a different one from this list."),
             max_tokens=MAX_ANSWER_TOKENS,
@@ -624,7 +1040,7 @@ def answer(question: str, corpus: Corpus | None = None, create_fn=None) -> dict:
             model=os.environ.get("CLAUDE_MODEL", "claude-sonnet-5"),
         )
         retry_text = (retry.get("text") or "").strip()
-        retry_voice = voice_violations(retry_text) if retry_text else ["is empty"]
+        retry_voice = voice_violations(retry_text, question) if retry_text else ["is empty"]
         if retry_text and not retry_voice and not leaks(retry_text):
             text, result = retry_text, retry
         else:
@@ -635,11 +1051,12 @@ def answer(question: str, corpus: Corpus | None = None, create_fn=None) -> dict:
             return {"outcome": "voice_rejected", "grounded": True,
                     "answer": REFUSAL, "hits": hits, "best_score": best,
                     "scope": route(question), "voice_violations": voice,
-                    "retry_violations": retry_voice}
+                    "retry_violations": retry_voice, "policy": policy_summary}
 
     return {"outcome": "answered", "grounded": True, "answer": text,
             "hits": hits, "best_score": best, "scope": route(question),
-            "authority": result.get("authority"), "usage": result.get("usage")}
+            "authority": result.get("authority"), "usage": result.get("usage"),
+            "policy": policy_summary, "leak_retried": leak_retried}
 
 
 def corpus_status(corpus: Corpus | None = None) -> dict:
@@ -649,4 +1066,7 @@ def corpus_status(corpus: Corpus | None = None) -> dict:
     if corpus is None:
         return {"loaded": False, "chunks": 0, "reason": "no corpus file on this instance"}
     return {"loaded": True, "chunks": len(corpus), "model_id": corpus.model_id,
-            "books": sorted({c["book_id"] for c in corpus.chunks})}
+            "books": sorted({c["book_id"] for c in corpus.chunks}),
+            # Sprint 13: present/absent only -- never the text, never who.
+            "career_map": bool(corpus.career_map),
+            "attribution_rows": sum(len(v) for v in corpus.attribution.values())}

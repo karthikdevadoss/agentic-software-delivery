@@ -182,7 +182,12 @@ class ModelDeclineTestCase(unittest.TestCase):
     def test_a_declining_answer_becomes_a_refusal_and_is_flagged_ungrounded(self):
         model = fake_model("I don't have that detail - it's not something I worked on.")
         with mock.patch.object(si, "retrieve", return_value=self.strong):
-            out = si.answer("what is his salary?", self.corpus, create_fn=model)
+            # Sprint 13: "what is his salary?" is now refused BEFORE the model by
+            # the private-topic gate, so this test -- which is about the DECLINE
+            # gate -- asks something the books plausibly cover but the fake
+            # model declines anyway. Same mechanism, different question.
+            out = si.answer("what was the exact retry policy on that pipeline?",
+                            self.corpus, create_fn=model)
         self.assertEqual("ungrounded_model_declined", out["outcome"])
         self.assertFalse(out["grounded"])
         self.assertEqual(si.REFUSAL, out["answer"])
@@ -462,8 +467,13 @@ class EmployerCoverageTestCase(unittest.TestCase):
         self.assertTrue(si.names_employer(q))
         self.assertFalse(si.names_employer("explain your experience with kafka"))
         hits = self._retrieve(q)
-        # pure top-k over this fixture -> the highest-scoring books only
-        self.assertEqual({"NRG Energy"}, {h["employer"] for h in hits})
+        # Sprint 11 asserted pure top-k here, which on this fixture returned
+        # ONLY NRG material for a question about BCBSA -- documenting the
+        # behaviour, not endorsing it. Sprint 13 (Owner: "only where used"):
+        # the named employer's material comes first, and it is still not
+        # balanced across employers -- Marsh's lower-scoring books stay out.
+        self.assertEqual("BCBSA", hits[0]["employer"])
+        self.assertNotIn("Marsh", {h["employer"] for h in hits})
 
     def test_an_employer_below_the_grounding_threshold_is_left_out(self):
         self.scores["BOOK-01"] = self.scores["BOOK-02"] = 0.20
@@ -536,14 +546,20 @@ OLD_KAFKA_GENERIC = (
 NEW_KAFKA_GENERIC = (
     "My hands-on Kafka experience is from BCBSA. I worked on producer/consumer "
     "application code that propagated member, coverage and claims changes "
-    "between backend services, keeping a FHIR-facing normalized data view "
-    "current as changes landed upstream. That was real application-level coding "
+    "between backend services, keeping the downstream data current as changes "
+    "landed upstream. That was real application-level coding "
     "on my end, not a system I only observed running. I don't have the exact "
     "retry, DLQ or offset-handling implementation preserved, and broker "
     "administration wasn't mine. Elsewhere Kafka wasn't part of the picture - "
     "at NRG the async work was SQS with a dead-letter queue, and at Marsh we "
-    "didn't use Kafka or JMS at all."
+    "didn't use Kafka at all."
 )
+# Sprint 13: the frozen shape used to say "keeping a FHIR-facing normalized data
+# view current" -- the Owner's 2026-09-29 Q3 rule is that a Kafka answer does not
+# drag FHIR in, so that clause is gone too (later instruction wins).
+# Sprint 13: the frozen shape used to end "...didn't use Kafka or JMS at all."
+# The Owner's 2026-09-29 rule is that JMS is never volunteered on a question
+# that did not ask about it, so the fixture now says only what was asked.
 
 
 class VoiceGateTestCase(unittest.TestCase):
@@ -741,3 +757,407 @@ class VoiceSpecInPromptTestCase(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+# ======================================================================
+# Sprint 13 / BL-090 -- the "any on-book question" mechanism.
+# Three parts, each a real mechanism rather than a hard-coded exam answer:
+#   (A) the standing career map is in front of the model on EVERY generate;
+#   (B) interviewer English is rewritten into the books' own vocabulary
+#       before retrieval;
+#   (C) the books' attribution matrix decides which employer leads and
+#       which employers get no paragraph at all.
+# Every test below was observed FAILING against the pre-Sprint-13 module
+# (AttributeError / AssertionError) before the implementation existed.
+# ======================================================================
+
+ATTRIBUTION_FIXTURE = {
+    "BCBSA": [
+        {"tech": "Kafka producer/consumer", "classification": "HANDS-ON",
+         "bucket": "HANDS_ON", "interpretation": "Explicitly confirmed application-side work."},
+        {"tech": "FHIR objects/resources", "classification": "HANDS-ON",
+         "bucket": "HANDS_ON", "interpretation": ""},
+    ],
+    "NRG Energy": [
+        {"tech": "Kafka", "classification": "NOT USED at NRG",
+         "bucket": "NOT_USED", "interpretation": "Confirmed absent."},
+        {"tech": "FusionAuth / JWT", "classification": "HANDS-ON",
+         "bucket": "HANDS_ON", "interpretation": "Repeated real JWT/security commits."},
+        {"tech": "SQS / DLQ", "classification": "USED/EXPOSED / system knowledge",
+         "bucket": "USED", "interpretation": ""},
+    ],
+    "Marsh": [
+        {"tech": "OAuth/JWT", "classification": "USED/EXPOSED",
+         "bucket": "USED", "interpretation": "Worked behind/through secured API boundary."},
+    ],
+}
+
+CAREER_MAP_FIXTURE = (
+    "I am a senior Java backend developer. Right now I work at NRG Energy as a "
+    "Senior Backend Developer; before that BCBSA; before that Marsh. "
+    "We did not use Kafka at NRG; the async work ran on SQS with dead-letter "
+    "queues and some scheduled jobs. " * 6
+)
+
+
+def make_corpus_v2(chunks=None, attribution=None, career_map=CAREER_MAP_FIXTURE):
+    c = make_corpus(chunks)
+    data = {"format_version": 2, "model_id": "test-model",
+            "chunks": c.chunks, "source_book_hashes": {"BOOK-05": "abc"},
+            "career_map": career_map,
+            "attribution": ATTRIBUTION_FIXTURE if attribution is None else attribution}
+    return si.Corpus(data)
+
+
+class QueryRewriteTestCase(unittest.TestCase):
+    """(B) The rewrite table exists so 'multithreading' can find a chunk that
+    only ever says 'CompletableFuture'. Every expansion term was taken from
+    the books' own wording, never from the public web."""
+
+    def test_multithreading_is_rewritten_into_the_books_vocabulary(self):
+        q = "explain your experience with multithreading"
+        out = si.rewrite_query(q)
+        self.assertIn(q, out)
+        for term in ("CompletableFuture", "ExecutorService", "parallel"):
+            self.assertIn(term, out)
+
+    def test_kafka_jwt_and_nrg_async_each_expand(self):
+        self.assertIn("consumer", si.rewrite_query("what did you do with Kafka?"))
+        self.assertIn("producer", si.rewrite_query("what did you do with Kafka?"))
+        self.assertIn("OAuth2", si.rewrite_query("tell me about JWT"))
+        self.assertIn("Spring Security", si.rewrite_query("tell me about JWT"))
+        out = si.rewrite_query("how did you do messaging at NRG?")
+        self.assertIn("SQS", out)
+        self.assertIn("dead-letter", out)
+
+    def test_a_question_with_no_family_is_returned_unchanged(self):
+        q = "what was the hardest bug you fixed?"
+        self.assertEqual(si.rewrite_query(q), q)
+
+    def test_the_rewrite_never_adds_an_employer_name(self):
+        # Employer routing is the attribution matrix's job, not the rewrite's.
+        for q in ("kafka", "jwt", "multithreading", "messaging", "async"):
+            out = si.rewrite_query(q).lower()
+            for emp in ("nrg", "bcbsa", "marsh"):
+                self.assertNotIn(emp, out.replace(q, ""))
+
+    def test_families_are_reported_so_attribution_can_look_them_up(self):
+        fams = si.rewrite_families("explain your experience with kafka")
+        self.assertIn("kafka", fams)
+        self.assertEqual(si.rewrite_families("hardest bug"), [])
+
+
+class AttributionTestCase(unittest.TestCase):
+    """(C) The books' own 'Personal classification' tables decide who leads."""
+
+    def test_kafka_leads_with_the_hands_on_employer_and_excludes_not_used(self):
+        corpus = make_corpus_v2()
+        a = si.attribution_for("explain your experience with kafka", corpus)
+        self.assertEqual(a["lead"], ["BCBSA"])
+        self.assertIn("NRG Energy", a["not_used"])
+        self.assertNotIn("Marsh", a["lead"])
+
+    def test_a_topic_no_matrix_records_yields_no_policy_rather_than_a_guess(self):
+        corpus = make_corpus_v2()
+        a = si.attribution_for("what was the hardest bug you fixed?", corpus)
+        self.assertEqual(a, {})
+
+    def test_jwt_has_two_evidenced_homes_and_the_hands_on_one_leads(self):
+        corpus = make_corpus_v2()
+        a = si.attribution_for("explain your experience in using oauth or jwt", corpus)
+        self.assertEqual(a["lead"], ["NRG Energy"])
+        self.assertIn("Marsh", a["used"])
+
+    def test_a_corpus_without_a_matrix_falls_back_to_no_policy(self):
+        corpus = make_corpus_v2(attribution={})
+        self.assertEqual(si.attribution_for("kafka", corpus), {})
+
+    def test_the_policy_line_names_the_lead_and_forbids_a_tour(self):
+        corpus = make_corpus_v2()
+        a = si.attribution_for("explain your experience with kafka", corpus)
+        line = si.attribution_line(a, "explain your experience with kafka")
+        self.assertIn("BCBSA", line)
+        self.assertIn("NRG Energy", line)
+        self.assertRegex(line.lower(), r"not used|did not use")
+        self.assertNotIn("Marsh", line)          # nothing recorded -> not mentioned
+
+    def test_naming_an_employer_or_asking_career_wide_lifts_the_exclusion(self):
+        corpus = make_corpus_v2()
+        self.assertTrue(si.attribution_for("did NRG use kafka?", corpus)["employer_named"])
+        self.assertTrue(si.attribution_for("did you use kafka anywhere?", corpus)["career_wide"])
+        self.assertFalse(si.attribution_for("explain your experience with kafka", corpus)["career_wide"])
+
+
+class OnlyWhereUsedRetrievalTestCase(unittest.TestCase):
+    """Retrieval for a generic question fills its slots from the employers
+    where the matrix says the work happened. Sprint 11's employer balancing
+    stays as the fallback when the matrix has nothing to say."""
+
+    def _corpus(self):
+        chunks = [
+            {"book_id": "BOOK-04", "section": "Kafka", "employer": "BCBSA",
+             "knowledge_type": "personal_hands_on", "work_type": "professional",
+             "status": "current", "vector": _vec(1.0),
+             "text": "I wrote the Kafka producer and consumer application code."},
+            {"book_id": "BOOK-05", "section": "Messaging", "employer": "NRG",
+             "knowledge_type": "system_knowledge", "work_type": "professional",
+             "status": "current", "vector": _vec(1.0),
+             "text": "Kafka is absent from the NRG project; async is SQS/DLQ."},
+            {"book_id": "BOOK-01", "section": "Messaging", "employer": "Marsh",
+             "knowledge_type": "system_knowledge", "work_type": "professional",
+             "status": "current", "vector": _vec(1.0),
+             "text": "No Marsh messaging platform is established."},
+        ]
+        return make_corpus_v2(chunks)
+
+    def test_a_generic_kafka_question_retrieves_only_the_hands_on_employer(self):
+        corpus = self._corpus()
+        hits = si.retrieve("explain your experience with kafka", corpus,
+                           embed_query=lambda q: _vec(1.0))
+        self.assertTrue(hits)
+        self.assertEqual({h["employer"] for h in hits}, {"BCBSA"})
+
+    def test_a_career_wide_question_keeps_every_employer(self):
+        corpus = self._corpus()
+        hits = si.retrieve("did you use kafka anywhere in your career?", corpus,
+                           embed_query=lambda q: _vec(1.0))
+        self.assertEqual({h["employer"] for h in hits}, {"BCBSA", "NRG Energy", "Marsh"})
+
+    def test_naming_the_absent_employer_still_retrieves_it(self):
+        corpus = self._corpus()
+        hits = si.retrieve("Did NRG use Kafka?", corpus, embed_query=lambda q: _vec(1.0))
+        self.assertIn("NRG Energy", {h["employer"] for h in hits})
+
+    def test_naming_an_employer_puts_that_employers_chunks_first(self):
+        # "How did you use Spring Security at NRG?" measured on the real corpus
+        # returned Marsh, Marsh, NRG, ... -- the named employer third. The
+        # prompt says "answer only about that employer", so retrieval should
+        # put that employer's material first rather than rely on the model
+        # to skip past two paragraphs of somebody else's.
+        chunks = self._corpus().chunks
+        chunks[1] = dict(chunks[1], vector=_vec(0.9))      # NRG scores LOWER
+        corpus = make_corpus_v2(chunks)
+        hits = si.retrieve("Did NRG use Kafka?", corpus, embed_query=lambda q: _vec(1.0))
+        self.assertEqual(hits[0]["employer"], "NRG Energy")
+        self.assertGreater(len(hits), 1, "named-first must not starve the answer")
+
+    def test_no_matrix_means_the_old_balancing_still_applies(self):
+        corpus = make_corpus_v2(self._corpus().chunks, attribution={})
+        hits = si.retrieve("explain your experience with kafka", corpus,
+                           embed_query=lambda q: _vec(1.0))
+        self.assertEqual({h["employer"] for h in hits}, {"BCBSA", "NRG Energy", "Marsh"})
+
+
+class CareerMapTestCase(unittest.TestCase):
+    """(A) The map is in front of the model on every successful generate, and
+    a corpus without one is not a corpus."""
+
+    def test_the_map_is_in_the_system_prompt_of_every_generate(self):
+        corpus = make_corpus_v2()
+        create = fake_model("At NRG I implemented the Spring Security filter that verified them. "
+                            "That is where it stopped; the platform team owned the issuer.")
+        strong = [dict(corpus.chunks[0], score=0.9, employer="NRG Energy")]
+        with mock.patch.object(si, "retrieve", return_value=strong):
+            r = si.answer("How did you use Spring Security at NRG?", corpus, create_fn=create)
+        self.assertEqual(r["outcome"], "answered")
+        self.assertIn(CAREER_MAP_FIXTURE[:60], create.last_kwargs["system"])
+
+    def test_a_v1_corpus_without_a_map_is_treated_as_no_corpus(self):
+        d = tempfile.mkdtemp()
+        try:
+            path = pathlib.Path(d) / "corpus.json"
+            path.write_text(json.dumps({"format_version": 1, "model_id": "m",
+                                        "chunks": [{"book_id": "BOOK-05", "text": "x",
+                                                    "vector": [1.0]}]}), encoding="utf-8")
+            self.assertIsNone(si.load_corpus(path))
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+
+    def test_status_reports_the_map_without_revealing_it(self):
+        s = si.corpus_status(make_corpus_v2())
+        self.assertTrue(s["career_map"])
+        self.assertNotIn("NRG", json.dumps(s))
+
+    def test_the_real_map_if_present_passes_the_leak_and_voice_gates(self):
+        corpus = si.load_corpus()
+        if corpus is None:
+            self.skipTest("no real corpus on this machine")
+        self.assertEqual(si.leaks(corpus.career_map), [])
+        # The map is written in the voice the answers must have; a banned
+        # phrase in it would teach the model the audit register.
+        self.assertEqual([v for v in si.voice_violations(corpus.career_map)
+                          if not v.startswith("spends")], [])
+
+
+class AnswerPolicyGateTestCase(unittest.TestCase):
+    """The audit family is banned as a FAMILY, and two Owner rules are code."""
+
+    def test_the_audit_register_family_is_banned(self):
+        for text in ("Per my knowledge cutoff, Kafka was not used.",
+                     "The documents say we used SQS.",
+                     "A full file census found nothing.",
+                     "The record shows no Kafka."):
+            self.assertTrue(si.voice_violations(text + " That is all."), text)
+
+    def test_jms_is_never_volunteered(self):
+        text = "We didn't use Kafka at NRG. We didn't use JMS either. Async ran on SQS."
+        v = si.voice_violations(text, question="Did NRG use Kafka?")
+        self.assertTrue(any("JMS" in x for x in v), v)
+
+    def test_jms_may_be_answered_when_it_is_asked_about(self):
+        text = "We didn't use JMS at NRG. The async work ran on SQS with a dead-letter queue."
+        v = si.voice_violations(text, question="Did you use JMS at NRG?")
+        self.assertFalse(any("JMS" in x for x in v), v)
+
+    def test_architecture_ownership_claims_are_rejected(self):
+        self.assertTrue(si.voice_violations(
+            "I designed the overall architecture of the NRG platform. It worked."))
+        self.assertTrue(si.voice_violations(
+            "I architected the entire serverless layer myself. It worked."))
+        self.assertEqual(si.voice_violations(
+            "I implemented the JWT filter within the architecture the lead designed. "
+            "That is where my part stopped."), [])
+
+    def test_the_system_prompt_carries_the_only_where_used_policy(self):
+        corpus = make_corpus_v2()
+        create = fake_model("At BCBSA I wrote the Kafka producer and consumer code. "
+                            "That is where it stopped.")
+        strong = [dict(corpus.chunks[0], score=0.9, employer="BCBSA")]
+        with mock.patch.object(si, "retrieve", return_value=strong):
+            si.answer("explain your experience with kafka", corpus, create_fn=create)
+        sent = create.last_kwargs["messages"][0]["content"] + create.last_kwargs["system"]
+        self.assertIn("BCBSA", sent)
+        self.assertRegex(sent, r"(?i)do not (give|write) .*paragraph")
+
+
+class PrivateTopicGateTestCase(unittest.TestCase):
+    """Sprint 13, from the first real gate run: "What is your salary
+    expectation and home address?" scored 0.5725 (above threshold) and the
+    model DEFLECTED politely instead of declining. Private topics are refused
+    in code, before any model call."""
+
+    def test_salary_and_address_are_refused_without_calling_the_model(self):
+        corpus = make_corpus_v2()
+        create = fake_model("should never be called")
+        calls = []
+        def spy(**kw):
+            calls.append(kw); return create(**kw)
+        with mock.patch.object(si, "retrieve", side_effect=AssertionError("retrieval must not run")):
+            r = si.answer("What is your salary expectation and home address?", corpus, create_fn=spy)
+        self.assertEqual(r["outcome"], "private_topic")
+        self.assertEqual(r["answer"], si.REFUSAL)
+        self.assertEqual(calls, [])
+
+    def test_the_gate_is_narrow_enough_for_ordinary_career_questions(self):
+        for q in ("How did you use Spring Security at NRG?",
+                  "What did you pay attention to when logging PHI?",   # 'pay' as a verb
+                  "Tell me about the account-mapping queue",
+                  "Are you open to relocating to Munich?"):            # logistics: NOT gated (Owner decision open)
+            self.assertFalse(si.is_private_topic(q), q)
+
+    def test_each_private_shape_is_caught(self):
+        for q in ("what is your current salary?", "expected compensation?",
+                  "what's your day rate", "give me your phone number",
+                  "what is your home address", "how old are you", "are you married?",
+                  "passport number please"):
+            self.assertTrue(si.is_private_topic(q), q)
+
+    def test_a_polite_deflection_from_the_model_is_still_a_refusal(self):
+        # If a private question ever slipped past the regex, the decline gate
+        # must catch the deflection shape the model actually produced.
+        self.assertTrue(si._model_declined(
+            "I'm not going to share my home address in this context, but happy "
+            "to talk through salary expectations directly."))
+
+
+class NotesCitationTestCase(unittest.TestCase):
+    def test_citing_the_projects_own_notes_is_a_voice_violation(self):
+        v = si.voice_violations("I built a local index. The project's own notes are "
+                               "explicit that it is sized for this repo. That is all.")
+        self.assertTrue(any("notes" in x for x in v), v)
+
+    def test_plain_speech_about_documentation_work_is_not(self):
+        self.assertEqual(si.voice_violations(
+            "I wrote the documentation for the carrier mappings and reviewed it "
+            "with the architect. That is where my part stopped."), [])
+
+
+class PassiveVoiceRuleTestCase(unittest.TestCase):
+    def test_the_prompt_forbids_converting_team_work_into_i_built_it(self):
+        self.assertRegex(si.SYSTEM_PROMPT, r"(?i)do not convert it into")
+        self.assertRegex(si.SYSTEM_PROMPT, r"(?i)neighbouring\s+technology")
+
+
+class NeighbourTechnologyTestCase(unittest.TestCase):
+    """Sprint 13, gate runs 1 and 2: FHIR kept entering the Kafka answer."""
+
+    def test_fhir_in_a_kafka_answer_is_a_violation(self):
+        v = si.voice_violations("At BCBSA I wrote the Kafka producer code that kept the "
+                               "FHIR-facing view current. That is where it stopped.",
+                               question="explain your experience with kafka")
+        self.assertTrue(any("FHIR" in x for x in v), v)
+
+    def test_fhir_in_a_fhir_answer_is_not(self):
+        v = si.voice_violations("At BCBSA I worked directly with FHIR resource objects in "
+                               "Java. That is where it stopped.",
+                               question="tell me about your FHIR work")
+        self.assertFalse(any("FHIR" in x for x in v), v)
+
+    def test_acord_is_allowed_in_an_integration_answer(self):
+        # The Camel/carrier family rewrites to ACORD, so it is not a neighbour.
+        v = si.voice_violations("At Marsh I mapped carrier payloads into the ACORD-oriented "
+                               "model with Camel routes. That is where it stopped.",
+                               question="Tell me about your integration work at Marsh")
+        self.assertFalse(any("ACORD" in x for x in v), v)
+
+    def test_a_question_about_no_technology_has_no_neighbours(self):
+        self.assertEqual(si.neighbour_violations("We used DB2 and FHIR there.",
+                                                 "what was your hardest week?"), [])
+
+
+class LeakRetryTestCase(unittest.TestCase):
+    """An extension-only leak earns one retry; the retry is fully re-scanned.
+    A book/path/name leak still refuses immediately."""
+
+    def setUp(self):
+        self.corpus = make_corpus_v2()
+        self.strong = [dict(self.corpus.chunks[1], score=0.85, employer=None)]
+
+    def _two(self, first, second):
+        calls = []
+        def create(**kw):
+            calls.append(kw); return FakeResponse(first if len(calls) == 1 else second)
+        create.calls = calls
+        return create
+
+    def test_a_filename_leak_is_retried_and_the_clean_retry_ships(self):
+        model = self._two("The hash is checked in write_tools.py before apply. Done.",
+                          "The hash is checked again right before the write. Done.")
+        with mock.patch.object(si, "retrieve", return_value=self.strong):
+            out = si.answer("How does the approval step work?", self.corpus, create_fn=model)
+        self.assertEqual(out["outcome"], "answered")
+        self.assertTrue(out["leak_retried"])
+        self.assertEqual(si.leaks(out["answer"]), [])
+        self.assertEqual(len(model.calls), 2)
+
+    def test_a_retry_that_still_leaks_is_refused(self):
+        model = self._two("See write_tools.py. Done.", "It lives in apply_edit.py. Done.")
+        with mock.patch.object(si, "retrieve", return_value=self.strong):
+            out = si.answer("How does the approval step work?", self.corpus, create_fn=model)
+        self.assertEqual(out["outcome"], "leak_blocked")
+        self.assertEqual(out["answer"], si.REFUSAL)
+        self.assertTrue(out["leak_retried"])
+
+    def test_a_book_identifier_leak_is_never_retried(self):
+        model = self._two("According to the document, BOOK-05 says so. Done.",
+                          "should never be used")
+        with mock.patch.object(si, "retrieve", return_value=self.strong):
+            out = si.answer("How does the approval step work?", self.corpus, create_fn=model)
+        self.assertEqual(out["outcome"], "leak_blocked")
+        self.assertEqual(len(model.calls), 1, "a confidentiality leak must not be retried")
+
+    def test_the_retry_output_still_passes_the_voice_gate(self):
+        model = self._two("See write_tools.py. Done.",
+                          "Zero hits across the census, but the hash is checked. Done.")
+        with mock.patch.object(si, "retrieve", return_value=self.strong):
+            out = si.answer("How does the approval step work?", self.corpus, create_fn=model)
+        self.assertNotEqual(out["outcome"], "answered")
