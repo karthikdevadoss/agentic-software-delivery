@@ -1024,3 +1024,17 @@ Sprint ratio 0.07 (about 35 min actual against an 8 h estimate). Retro
 DRAFT with computed ratios and four observations in `docs/RETRO_LOG.md`;
 the joint retro with the Owner is the next step, then Sprint 7 per
 `docs/BACKLOG.json`.
+
+# Current Reality (2026-09-29) — Sprint 13 Task 1: Standing Interview answers any on-book question
+
+Owner-approved three-task autonomous sprint; Task 1 complete and live at `0eadf92`.
+A standing career map (private, derived from the FINAL_V1 books) is in front of the
+model on every generate; interviewer English is rewritten into the books' vocabulary
+before retrieval; the hands-on books' own attribution matrix decides which employer
+leads a generic answer. Private topics refuse before any model call. Eight deploy
+attempts: seven were stopped by the deploy script's own local gate, each on a real
+mechanism defect fixed with a fail-first test; one exposed a Railway cutover race
+(remote gate served by the previous container), now closed by a per-upload deploy
+marker. Production 15/15 on two consecutive remote runs; independent QA: all 8 claims CONFIRMED on its own single production gate run (15/15, exit 0); one real residual found by reading a fresh answer -- audit register in a new shape ('a confirmed real async flow'), fixed in the tree as a family ban and riding the next deploy; symlink-security tests skip on this Windows machine (environmental, pre-existing).
+Tasks 2 (durable LangGraph workflow) and 3 (JD Match) follow in the same sprint.
+

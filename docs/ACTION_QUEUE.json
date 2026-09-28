@@ -1,5 +1,5 @@
 {
-  "_purpose": "Current actionable work discovered during verified sessions \u2014 not project history. Resolved items are removed here (their resolution is recorded via the commit that removes them + PROJECT_STATUS.md/LESSONS.md if reusable), not accumulated forever. This is separate from PROJECT_STATE.json's next_phase/next_action, which tracks the one current phase-level priority, not the backlog of smaller items surfaced along the way.",
+  "_purpose": "Current actionable work discovered during verified sessions — not project history. Resolved items are removed here (their resolution is recorded via the commit that removes them + PROJECT_STATUS.md/LESSONS.md if reusable), not accumulated forever. This is separate from PROJECT_STATE.json's next_phase/next_action, which tracks the one current phase-level priority, not the backlog of smaller items surfaced along the way.",
   "_status_values": [
     "blocked",
     "deferred",
@@ -264,7 +264,7 @@
       "reason": "Built a real, dogfooded Testing Architecture V1 (risk/blast-radius classification, Test Impact Analysis, a selective regression engine with a real fail-closed fallback, an always-on smoke tier, an extended Verification Contract schema) this session, per explicit instruction to make testing non-ad-hoc for this AI-developed platform. Per that same instruction's own anti-overengineering constraint, several named sub-capabilities were deliberately left designed-only rather than built in the same sitting.",
       "evidence": "docs/TESTING_ARCHITECTURE_V1.md is the full write-up. Five concrete open items: (1) CLOSED 2026-09-20 (BL-027) -- the Customer App's own frontend (app/src/main/resources/static/index.html) previously had only BL-013's narrow Update Email spec; e2e/customer-app-frontend.spec.js now adds 8 real tests covering the login gate (anonymous vs. USER vs. ADMIN view), the real USER cards (Overview/Account/Plan/Preferences/Appointments/Activity) actually rendering real data rather than staying stuck loading, a real Preferences write/read-after-reload flow, and real ADMIN list<->detail navigation + search -- mapped into agent/test_impact_analysis.py's FRONTEND_PATH_TO_SPECS alongside the pre-existing spec (agent/test_test_impact_analysis.py's 16 tests re-run clean), verified live (8/8, then 9/9 together with the pre-existing spec) against a real local `cd app && ./mvnw spring-boot:run` instance, and observed genuinely failing once (a deliberately seeded wrong expected value in the Preferences reload assertion, confirmed to fail for the intended reason) before being fixed back and re-verified green, per this project's 'a new test is not trusted until it has been observed failing' rule; (2) Test Impact Analysis is Java-only -- a Python agent/*.py change is flagged in the skip list, not auto-mapped to specific test modules; (3) verify_change.py is not wired into .github/workflows/ci.yml -- CI's full mvnw test/python/node suites remain the sole authoritative gate, deliberately not changed without separate explicit approval; (4) STALE, CORRECTED 2026-09-20: mutation testing (PIT, org.pitest:pitest-maven) was added to app/pom.xml by BL-006 -- confirmed present via direct grep. Property/fuzz/performance/chaos tooling still does not exist and remains deliberately deferred, not mandatory per-change; (5) verify_change.py's per-run evidence JSON (agent/.verify_change_evidence/*.json) is real but not yet aggregated across runs into first-pass-yield/rework/cost metrics.",
       "safe_to_auto_execute": false,
-      "verification_required": "Each item, if picked up: (1) DONE -- see evidence above; (2) needs a Python file/module-to-test mapping mirroring agent/test_impact_analysis.py's Java table, with its own dogfooding test; (3) needs an explicit decision on authoritative-gate wiring (additive annotation first, per docs/TESTING_ARCHITECTURE_V1.md \u00a7R, not a silent gate swap) before any CI file edit; (4)/(5) need their own scoped tasks, not opportunistic partial builds.",
+      "verification_required": "Each item, if picked up: (1) DONE -- see evidence above; (2) needs a Python file/module-to-test mapping mirroring agent/test_impact_analysis.py's Java table, with its own dogfooding test; (3) needs an explicit decision on authoritative-gate wiring (additive annotation first, per docs/TESTING_ARCHITECTURE_V1.md §R, not a silent gate swap) before any CI file edit; (4)/(5) need their own scoped tasks, not opportunistic partial builds.",
       "created_at_commit": "0767e06",
       "resolved_at_commit": null
     },
@@ -509,8 +509,42 @@
           "sprint": "Sprint 12",
           "rows_read": "5 refusals + 4 dissatisfied (source: ledger)",
           "outcome": "The Dissatisfied row on the generic-Kafka answer at 20:03 became BL-087: factually correct, wrong voice -- it opened at the employer that did not use Kafka and read as a search report. The 'what is capital of india' refusal was CORRECT and informative: ungrounded_model_declined at best_score 0.5204, i.e. above the 0.50 threshold and caught by the decline gate, the only real-output evidence that the second independent signal works. It is now a permanent acceptance case. The earlier France refusals and the 'sprint 11 production acceptance probe' row are test artefacts, dismissed with that reason."
+        },
+        {
+          "date": "2026-09-29",
+          "sprint": "Sprint 13",
+          "rows_read": "22 refusals + 3 dissatisfied at the time of reading; every 2026-09-28/29 row was produced by this sprint's own gate runs (private_topic, ungrounded world-knowledge, and the leak_blocked/voice_rejected rows that drove rounds 2-8). si_review.py now prints the refused model text, which is what made the leak_blocked rows diagnosable.",
+          "outcome": "no new corpus gap; the two multithreading refusals from 2026-09-27/28 are closed by the query rewrite (BL-090)"
         }
       ]
+    },
+    {
+      "id": "ACT-020",
+      "source": "qa_evaluator_sprint13",
+      "title": "Guard the untracked-but-not-ignored corpus against a stray `git add -A`",
+      "priority": "medium",
+      "status": "open",
+      "scope": "agent/.si_corpus/ (3.6 MB of private book text, untracked and deliberately NOT gitignored so railway up uploads it)",
+      "reason": "The independent QA pass (2026-09-29) confirmed zero book text is tracked, and noted the residual: nothing mechanical prevents a single `git add -A` or `git add .` from committing the corpus. The invariant is currently held by the rule in CLAUDE.md and by a test that runs AFTER the fact. A pre-commit guard (or a STATIC-tier check that fails on any staged path under agent/.si_corpus/) would make the invariant mechanical. Not auto-executed: git hooks are per-clone tooling and the STATIC gate's scope is an Owner call.",
+      "evidence": "QA report, claim 4: git ls-files agent/.si_corpus -> empty; git check-ignore -> exit 1 (not ignored); 12 random corpus chunks git-grepped against tracked files -> 0 found.",
+      "safe_to_auto_execute": false,
+      "verification_required": "Stage a corpus file deliberately in a scratch clone and show the guard rejects the commit; then `git ls-files agent/.si_corpus` stays empty on master.",
+      "created_at_commit": "0eadf92",
+      "triage_log": []
+    },
+    {
+      "id": "ACT-021",
+      "source": "qa_evaluator_sprint13",
+      "title": "Audit register in new shapes found by QA on a fresh draw -- fixed in the tree, awaiting the next platform deploy",
+      "priority": "low",
+      "status": "in_progress",
+      "scope": "agent/standing_interview.py _VOICE_BANNED (three family patterns: 'confirmed real', 'never came up', 'anywhere in the codebase'); agent/test_standing_interview.py QaFoundRegisterTestCase",
+      "reason": "QA fetched a fresh 'Did NRG use Kafka?' answer and found 'a confirmed real async flow' and 'Kafka never came up anywhere in that codebase' -- audit register the ban list did not cover, passing the shipped gate. Fixed as family patterns with both-sides tests the same hour. Production (0eadf92, three consecutive 15/15 runs) does not yet carry the fix; it rides the next deploy of the platform backend (Sprint 13 Task 2, BL-095), whose script re-runs the SI gate locally and remotely.",
+      "evidence": "QA report claim 3a; voice_violations() on both sentences returned [] before the fix; QaFoundRegisterTestCase observed failing against the committed module, then passing.",
+      "safe_to_auto_execute": true,
+      "verification_required": "After the next deploy: /api/standing-interview/status shows a newer deploy_marker; the remote gate passes; a fresh 'Did NRG use Kafka?' answer contains neither phrase. Then set resolved.",
+      "created_at_commit": "0eadf92",
+      "triage_log": []
     }
   ]
 }

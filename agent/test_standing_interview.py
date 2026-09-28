@@ -1311,3 +1311,20 @@ class SubstringSenseTestCase(unittest.TestCase):
         with mock.patch.object(si, "retrieve", return_value=strong):
             si.answer("How did you use Spring Security at NRG?", corpus, create_fn=model)
         self.assertIn("Open on the work", calls[1]["messages"][0]["content"])
+
+
+class QaFoundRegisterTestCase(unittest.TestCase):
+    """Independent QA (2026-09-29) read a fresh answer the gate had not
+    sampled and found the audit register in two new shapes."""
+
+    def test_the_two_shapes_qa_found_are_now_caught(self):
+        for text in ("There was also a confirmed real async flow in the dashboard. Done.",
+                     "Kafka never came up anywhere in that codebase. Done.",
+                     "It shows up nowhere in the repository. Done."):
+            self.assertTrue(si.voice_violations(text), text)
+
+    def test_plain_speech_about_the_same_facts_passes(self):
+        for text in ("We did parallelize the dashboard fan-out with CompletableFuture. Done.",
+                     "We didn't use Kafka at NRG; the async work ran on SQS. Done.",
+                     "The topic came up in a design review and we chose SQS. Done."):
+            self.assertEqual([v for v in si.voice_violations(text) if "search talk" in v or "confirmed real" in v], [], text)

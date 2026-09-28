@@ -793,6 +793,14 @@ _VOICE_BANNED = [
      "cites notes or documentation"),
     (re.compile(r'\b(no|zero|any)\s+(usage|occurrences?|references?|mentions?)\s+'
                 r'(found|anywhere|across|in the)\b', re.I), "counts occurrences like a search"),
+    # Found by the independent QA pass (2026-09-29) reading a FRESH answer the
+    # gate had not sampled: "a confirmed real async flow", "Kafka never came
+    # up anywhere in that codebase". The register wearing new clothes again.
+    (re.compile(r'\bconfirmed\s+(real|actual|genuine|true)\b', re.I), "says 'confirmed real'"),
+    (re.compile(r'\b(never|not once|nowhere)\s+(came|come|comes|turned|turns|showed|shows)\s+up\b', re.I),
+     "says something never came up, which is search talk"),
+    (re.compile(r'\b(anywhere|nowhere)\s+in\s+(that|the|this)\s+(codebase|code|repo|repository|source)\b', re.I),
+     "says 'anywhere in the codebase', which is search talk"),
     # Owner rule, 2026-09-29: no architecture-ownership claims. The books say
     # he implemented within designs a lead or architect owned.
     (re.compile(r'\bI\s+(designed|architected|owned|built|created)\s+the\s+'

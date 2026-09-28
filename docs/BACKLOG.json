@@ -2343,7 +2343,8 @@
       "started_at": "2026-09-29",
       "created_at_commit": "bac7cea",
       "commit_shas": [
-        "3a45571"
+        "3a45571",
+        "8a81a3f"
       ],
       "session_ids": [],
       "completed_at": "2026-09-29"
@@ -2359,15 +2360,22 @@
       "size_rationale": "Sprint 11 and 12 retros both said an item whose acceptance contains prove-live must not be SMALL (BL-086 and BL-089 both scored above 3x). Sized MEDIUM for that reason. suggest-estimate -> COMPUTED n=7, median_ratio 0.39, suggested_midpoint 13.7 min. ADOPTED per process (Sprint 11's withhold-COMPUTED action item is not Owner-approved). Recorded as a prediction to be scored: the deploy script is proven, the live verification loop is the real cost.",
       "deviated_from_suggestion": false,
       "category": "delivery",
-      "status": "active",
+      "status": "done",
       "sprint": "Sprint 13 (owner approved 2026-09-29, three-task autonomous sprint)",
       "created_at": "2026-09-29",
       "started_at": "2026-09-29",
       "created_at_commit": "bac7cea",
       "commit_shas": [
-        "3a45571"
+        "3a45571",
+        "8a81a3f",
+        "eb1aeec",
+        "90b8a2f",
+        "1b35ea0",
+        "a4a00a2",
+        "0eadf92"
       ],
-      "session_ids": []
+      "session_ids": [],
+      "completed_at": "2026-09-29"
     },
     {
       "id": "BL-093",
