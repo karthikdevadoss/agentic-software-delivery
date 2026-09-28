@@ -1258,3 +1258,28 @@ class QuestionAwareLeakTestCase(unittest.TestCase):
         self.assertTrue(si.leaks("According to the document, retrieval is local.", q))
         self.assertTrue(si.leaks("The excerpt above explains it.", q))
         self.assertTrue(si.leaks("It is in rag_index.py.", q))
+
+
+class NeighbourRetryTestCase(unittest.TestCase):
+    """Deploy attempt 5, generic Kafka question: FHIR on the first attempt,
+    DB2 on the retry. The retry must be told the whole neighbour list."""
+
+    def test_the_retry_is_told_every_neighbour_not_just_the_one_caught(self):
+        corpus = make_corpus_v2()
+        strong = [dict(corpus.chunks[0], score=0.85, employer="BCBSA")]
+        calls = []
+        def model(**kw):
+            calls.append(kw)
+            return FakeResponse("At BCBSA I wrote the Kafka producer code for the FHIR layer. Done."
+                                if len(calls) == 1 else
+                                "At BCBSA I wrote the Kafka producer and consumer code. Done.")
+        with mock.patch.object(si, "retrieve", return_value=strong):
+            out = si.answer("explain your experience with kafka", corpus, create_fn=model)
+        self.assertEqual(out["outcome"], "answered")
+        retry_prompt = calls[1]["messages"][0]["content"]
+        for name in ("FHIR", "DB2", "Oracle", "DynamoDB", "ACORD"):
+            self.assertIn(name, retry_prompt)
+
+    def test_the_prompt_carries_the_worked_example(self):
+        self.assertIn("FHIR-normalized", si.SYSTEM_PROMPT)
+        self.assertIn("DB2-backed", si.SYSTEM_PROMPT)

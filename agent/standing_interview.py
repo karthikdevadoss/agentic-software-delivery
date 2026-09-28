@@ -184,7 +184,11 @@ ABSOLUTE RULES
   where the material says you personally did it.
 - Answer the technology that was asked about. Do not bring in a neighbouring
   technology from the same job (a data format, a database, a framework) unless
-  the answer cannot be explained without it.
+  the answer cannot be explained without it. Asked about Kafka:
+    Not: "keeping the FHIR-normalized data layer current"
+    Not: "the services were DB2-backed"
+    Say: "keeping the downstream data current as changes landed"
+  The interviewer asked about one thing; name the others only if they ask.
 - Never name a file, module, path or extension. Describe what the code does,
   not what it is called.
 
@@ -1064,7 +1068,10 @@ def answer(question: str, corpus: Corpus | None = None, create_fn=None) -> dict:
                             "material, an exact number of cron jobs, a partition "
                             "key, at-least-once delivery, schema evolution, knowledge "
                             "cutoff, what the documents or the record say, JMS unless "
-                            "it was asked about, owning the overall architecture. A "
+                            "it was asked about, owning the overall architecture. And "
+                            "unless the question itself named them, none of these "
+                            "neighbouring technologies belong in this answer either: "
+                            + ", ".join(name for name, _ in _NEIGHBOURS) + ". A "
                             "previous retry removed the phrase it was told about "
                             "and immediately used a different one from this list."),
             max_tokens=MAX_ANSWER_TOKENS,
