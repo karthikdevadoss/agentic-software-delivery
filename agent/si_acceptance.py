@@ -286,7 +286,7 @@ def _sentences(text: str):
     return si._sentences(text)
 
 
-def _check_voice(text):
+def _check_voice(text, min_words=35):
     """Sprint 12. Every answered question runs the same voice assertions, not
     only the one the Owner reported. The banned register and the truncation
     check are the product's own gate (si.voice_violations), re-asserted here
@@ -300,7 +300,11 @@ def _check_voice(text):
     # generous on purpose -- the Owner's complaint was a search report, not a
     # long answer, and a hard word cap would start failing good answers.
     words = len(text.split())
-    if words < 35:
+    # Owner spec, Sprint 13 Q4: an absence answer is SHORT. A 33-word "we
+    # didn't use Kafka at NRG; the async work ran on SQS with a dead-letter
+    # queue" is the right answer, and the deploy gate refused it on this
+    # floor (attempt 3, 2026-09-29). Absence cases pass a lower floor.
+    if words < min_words:
         bad.append(f"too short to be an interview answer ({words} words)")
     if words > 320:
         bad.append(f"reads as an essay, not spoken ({words} words)")
@@ -488,7 +492,7 @@ def run(base_url: str | None) -> int:
                 bad.append(f"MUST ANSWER but outcome={outcome}{detail}")
             else:
                 bad += extra(text) if extra else []
-                bad += _check_voice(text)
+                bad += _check_voice(text, min_words=15 if extra is _check_kafka_absent_at_nrg else 35)
                 # A leak in a shipped answer is a hard failure, not a warning.
                 found = si.leaks(text)
                 if found:
