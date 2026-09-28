@@ -1283,3 +1283,31 @@ class NeighbourRetryTestCase(unittest.TestCase):
     def test_the_prompt_carries_the_worked_example(self):
         self.assertIn("FHIR-normalized", si.SYSTEM_PROMPT)
         self.assertIn("DB2-backed", si.SYSTEM_PROMPT)
+
+
+class SubstringSenseTestCase(unittest.TestCase):
+    """Deploy attempt 7: "not a substring check" is engineering vocabulary
+    from the platform book; "just a substring match inside base64 tokens" is
+    the JMS audit narrative. Pinned both ways."""
+
+    def test_engineering_sense_passes(self):
+        text = ("The test verifies it with an exact set-membership check, not a "
+                "substring check, so a renamed tool cannot slip through. That is all.")
+        self.assertFalse(any("substring" in v for v in si.voice_violations(text)), si.voice_violations(text))
+
+    def test_audit_narrative_sense_is_still_banned(self):
+        for text in ("JMS turned up but it was just a substring match inside base64 tokens. Done.",
+                     "That was a substring hit, not real usage. Done."):
+            self.assertTrue(any("substring" in v for v in si.voice_violations(text)), text)
+
+    def test_the_retry_is_told_to_open_on_the_work(self):
+        corpus = make_corpus_v2()
+        strong = [dict(corpus.chunks[0], score=0.85, employer="NRG Energy")]
+        calls = []
+        def model(**kw):
+            calls.append(kw)
+            return FakeResponse("Zero hits across the census. Done." if len(calls) == 1
+                                else "At NRG I implemented the filter. Done.")
+        with mock.patch.object(si, "retrieve", return_value=strong):
+            si.answer("How did you use Spring Security at NRG?", corpus, create_fn=model)
+        self.assertIn("Open on the work", calls[1]["messages"][0]["content"])

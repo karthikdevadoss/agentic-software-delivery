@@ -744,7 +744,12 @@ _VOICE_BANNED = [
     (re.compile(r'\bgenuine\s+evidence\b', re.I), "says 'genuine evidence'"),
     (re.compile(r'\bthe\s+evidence\s+(shows|says|is)\b', re.I), "cites 'the evidence'"),
     (re.compile(r'\bfalse\s+positives?\b', re.I), "explains a false positive"),
-    (re.compile(r'\bsubstring\b', re.I), "explains a substring match"),
+    # Narrowed 2026-09-29 (deploy attempt 7): the platform book says "an exact
+    # set-membership check (not a substring check)" -- engineering vocabulary,
+    # not the JMS audit narrative this was written for ("just a substring
+    # match inside base64 tokens"). Same false-positive class as `source`.
+    (re.compile(r'\b(just\s+a\s+)?substring\s+(match|hit)(es|s)?\b|\bsubstring\s+(inside|within|in)\b', re.I),
+     "explains a substring match"),
     # Added after a real trace on "Did NRG use Kafka?": the answer explained
     # that JMS had turned up "in searches". How the fact was established is
     # never part of remembering your own project, and it is the same tell as
@@ -1060,7 +1065,8 @@ def answer(question: str, corpus: Corpus | None = None, create_fn=None) -> dict:
                           + "\n\nA previous attempt at this answer was rejected "
                             "because it " + "; ".join(voice)
                           + ". Say the same thing again without that, as a person "
-                            "remembering their own work out loud. Finish every "
+                            "remembering their own work out loud. Open on the work "
+                            "itself, never on what you cannot say. Finish every "
                             "sentence.\n\nWhile you are at it, none of these belong "
                             "in spoken English either, so avoid all of them and not "
                             "only the one above: census, hits, confirmed absence, "
