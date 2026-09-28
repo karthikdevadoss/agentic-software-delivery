@@ -78,18 +78,43 @@ echo "==> Corpus OK: ${CHUNKS} chunks, untracked, NOT gitignored, not dockerigno
 echo "==> Acceptance replay against the local corpus (real model calls)"
 python agent/si_acceptance.py
 
+# Deploy identity marker. REAL INCIDENT (2026-09-29, Sprint 13): the poll
+# below used to stop at the first '"loaded":true', which the NEW container
+# answered on the first attempt -- and the remote gate then ran while
+# Railway was still routing most requests to the OLD container. 7 of 15
+# failures, every one of them old-code behaviour, and a wrong conclusion
+# was one grep away. The marker is unique per upload, lives in the same
+# untracked-but-uploaded directory as the corpus, and is reported by the
+# status endpoint; the gate does not run until the remote marker matches
+# on three consecutive polls and the old container has had time to drain.
+MARKER="deploy-$(date -u +%Y%m%dT%H%M%SZ)-$(git rev-parse --short HEAD)"
+echo "$MARKER" > agent/.si_corpus/deploy_marker.txt
+echo "==> Deploy marker: $MARKER"
+
 echo "==> Deploying the platform backend"
 railway up --service agentic-platform-backend
 
-echo "==> Waiting for the new deploy to report a loaded corpus"
-for attempt in $(seq 1 40); do
-  if curl -fsS --max-time 20 "$HOST/api/standing-interview/status" 2>/dev/null \
-      | grep -q '"loaded":true'; then
-    echo "    corpus loaded on attempt ${attempt}"
-    break
+echo "==> Waiting for the NEW container to answer (marker must match 3 polls in a row)"
+matches=0
+for attempt in $(seq 1 60); do
+  remote=$(curl -fsS --max-time 20 "$HOST/api/standing-interview/status" 2>/dev/null \
+           | python -c "import sys,json; d=json.load(sys.stdin); print(d.get('deploy_marker') or '')" 2>/dev/null || true)
+  if [[ "$remote" == "$MARKER" ]]; then
+    matches=$((matches + 1))
+    echo "    attempt ${attempt}: new container (${matches}/3)"
+    if (( matches >= 3 )); then break; fi
+  else
+    matches=0
+    echo "    attempt ${attempt}: not yet (remote marker: ${remote:-none})"
   fi
   sleep 15
 done
+if (( matches < 3 )); then
+  echo "ABORT: the new container never answered with marker $MARKER. Not gating against an unknown build." >&2
+  exit 1
+fi
+echo "==> Letting the previous container drain (45s) before the gate"
+sleep 45
 
 curl -fsS "$HOST/api/standing-interview/status"; echo
 

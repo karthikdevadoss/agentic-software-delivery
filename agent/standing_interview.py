@@ -1089,4 +1089,18 @@ def corpus_status(corpus: Corpus | None = None) -> dict:
             "books": sorted({c["book_id"] for c in corpus.chunks}),
             # Sprint 13: present/absent only -- never the text, never who.
             "career_map": bool(corpus.career_map),
-            "attribution_rows": sum(len(v) for v in corpus.attribution.values())}
+            "attribution_rows": sum(len(v) for v in corpus.attribution.values()),
+            # Which upload this container came from. Written by the deploy
+            # script next to the corpus; lets a caller tell the new container
+            # from the one still draining during Railway's cutover.
+            "deploy_marker": deploy_marker()}
+
+
+DEPLOY_MARKER_PATH = CORPUS_PATH.parent / "deploy_marker.txt"
+
+
+def deploy_marker() -> str | None:
+    try:
+        return DEPLOY_MARKER_PATH.read_text(encoding="utf-8").strip() or None
+    except OSError:
+        return None

@@ -1209,3 +1209,31 @@ class ProvenanceNarrowingTestCase(unittest.TestCase):
         self.assertEqual(out["outcome"], "leak_blocked")
         self.assertIn("My notes say", out["model_reply"])
         self.assertEqual(out["answer"], si.REFUSAL)
+
+
+class DeployMarkerTestCase(unittest.TestCase):
+    """Sprint 13 real incident: the remote gate ran against the OLD container
+    during Railway's cutover. The status endpoint reports the upload's marker
+    so the deploy script can wait for the new container specifically."""
+
+    def test_status_reports_the_marker_when_present(self):
+        d = tempfile.mkdtemp()
+        try:
+            marker = pathlib.Path(d) / "deploy_marker.txt"
+            marker.write_text("deploy-20260929T230000Z-eb1aeec\n", encoding="utf-8")
+            with mock.patch.object(si, "DEPLOY_MARKER_PATH", marker):
+                s = si.corpus_status(make_corpus_v2())
+            self.assertEqual(s["deploy_marker"], "deploy-20260929T230000Z-eb1aeec")
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+
+    def test_status_reports_none_without_a_marker(self):
+        with mock.patch.object(si, "DEPLOY_MARKER_PATH", pathlib.Path("/nonexistent/marker.txt")):
+            self.assertIsNone(si.corpus_status(make_corpus_v2())["deploy_marker"])
+
+    def test_the_deploy_script_gates_on_the_marker_not_on_loaded_true(self):
+        script = (pathlib.Path(__file__).resolve().parent.parent / "scripts"
+                  / "deploy_platform_with_si_corpus.sh").read_text(encoding="utf-8")
+        self.assertIn("deploy_marker.txt", script)
+        self.assertIn("matches >= 3", script)
+        self.assertNotIn("grep -q '\"loaded\":true'", script)
