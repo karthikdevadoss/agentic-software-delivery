@@ -1237,3 +1237,24 @@ class DeployMarkerTestCase(unittest.TestCase):
         self.assertIn("deploy_marker.txt", script)
         self.assertIn("matches >= 3", script)
         self.assertNotIn("grep -q '\"loaded\":true'", script)
+
+
+class QuestionAwareLeakTestCase(unittest.TestCase):
+    """Post-cutover remote gate: "the corpus holds ..." is the ANSWER to a
+    question about retrieval, and a citation for any other question."""
+
+    TEXT = "The corpus holds a few hundred embedded chunks and the index is local JSON with cosine similarity."
+
+    def test_describing_the_corpus_is_allowed_when_asked_about_retrieval(self):
+        self.assertEqual(si.leaks(self.TEXT, "How does your RAG retrieval work in the Standing Interview?"), [])
+
+    def test_the_same_sentence_is_a_leak_on_a_career_question(self):
+        self.assertTrue(si.leaks(self.TEXT, "explain your experience with kafka"))
+        self.assertTrue(si.leaks(self.TEXT))
+
+    def test_the_exemption_covers_only_the_provenance_verb_pattern(self):
+        q = "How does your RAG retrieval work?"
+        self.assertTrue(si.leaks("BOOK-05 lists the chunks.", q))
+        self.assertTrue(si.leaks("According to the document, retrieval is local.", q))
+        self.assertTrue(si.leaks("The excerpt above explains it.", q))
+        self.assertTrue(si.leaks("It is in rag_index.py.", q))

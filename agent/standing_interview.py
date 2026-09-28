@@ -882,9 +882,22 @@ def voice_violations(text: str, question: str | None = None) -> list[str]:
     return bad
 
 
-def leaks(text: str) -> list[str]:
-    """Which forbidden identifiers a generated answer contains. Empty is good."""
-    return [p.pattern for p in _LEAK_PATTERNS if p.search(text)]
+# The provenance-VERB pattern is identified by content so that a question
+# about the retrieval system itself can be exempted from it -- and only it.
+_PROVENANCE_VERB_LEAK = next(p for p in _LEAK_PATTERNS if "knowledge base|material" in p.pattern)
+
+
+def leaks(text: str, question: str | None = None) -> list[str]:
+    """Which forbidden identifiers a generated answer contains. Empty is good.
+
+    Question-aware for exactly one pattern (Sprint 13, post-cutover remote
+    gate): asked "How does your RAG retrieval work?", the model said what the
+    corpus holds -- which is the answer, not a citation. When the question is
+    in the `rag` family that one pattern is skipped; book ids, "according
+    to", private paths, pantheon names, "excerpt" and file extensions are
+    still scanned, and for any other question nothing changes."""
+    skip = _PROVENANCE_VERB_LEAK if (question and "rag" in rewrite_families(question)) else None
+    return [p.pattern for p in _LEAK_PATTERNS if p is not skip and p.search(text)]
 
 
 # The file-extension pattern, and ONLY that one, is retryable. A book number,
@@ -995,7 +1008,7 @@ def answer(question: str, corpus: Corpus | None = None, create_fn=None) -> dict:
                 "answer": REFUSAL, "hits": hits, "best_score": best,
                 "scope": route(question), "model_reply": text, "policy": policy_summary}
 
-    found = leaks(text)
+    found = leaks(text, question)
     leak_retried = False
     if found and leak_is_retryable(found):
         # One corrective retry for an extension-only hit. The retry's text is
@@ -1013,10 +1026,10 @@ def answer(question: str, corpus: Corpus | None = None, create_fn=None) -> dict:
             max_tokens=MAX_ANSWER_TOKENS, create_fn=create_fn,
             model=os.environ.get("CLAUDE_MODEL", "claude-sonnet-5"))
         retry_text = (retry.get("text") or "").strip()
-        if retry_text and not leaks(retry_text):
+        if retry_text and not leaks(retry_text, question):
             text, result, found = retry_text, retry, []
         else:
-            found = leaks(retry_text) or found
+            found = leaks(retry_text, question) or found
     if found:
         # The deterministic control fired. Refuse rather than ship a leak, and
         # record it -- a leak that is silently patched is a leak nobody fixes.
@@ -1060,7 +1073,7 @@ def answer(question: str, corpus: Corpus | None = None, create_fn=None) -> dict:
         )
         retry_text = (retry.get("text") or "").strip()
         retry_voice = voice_violations(retry_text, question) if retry_text else ["is empty"]
-        if retry_text and not retry_voice and not leaks(retry_text):
+        if retry_text and not retry_voice and not leaks(retry_text, question):
             text, result = retry_text, retry
         else:
             # Twice is a real problem with this question, not a bad roll.

@@ -124,6 +124,10 @@ def main() -> int:
             print(f"  answer   : {str(p['answer'])[:200]}")
         if p.get("leaks"):
             print(f"  !! LEAK BLOCKED: {p['leaks']}")
+        if p.get("model_reply"):
+            # Sprint 13: the refused text itself, so a leak_blocked or
+            # voice_rejected row can be diagnosed without a replay.
+            print(f"  refused text: {p['model_reply'][:500]}")
         # A voice_rejected row is a DIFFERENT problem from an ungrounded one --
         # retrieval worked, the model answered, and the answer was refused for
         # how it was written. Showing the matched phrases here is what makes it

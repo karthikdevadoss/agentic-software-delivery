@@ -275,8 +275,12 @@ def _check_nrg_lambda(text):
 
 
 def _check_spring_security_nrg(text):
-    bad = _all(text, "spring security")
-    bad = [f"missing {b}" for b in bad]
+    # Post-cutover remote gate, 2026-09-29: a correct answer said "security
+    # filters that handle JWT validation" and never the literal phrase. The
+    # books' own wording for this work is "JWT filter"/"security filter".
+    bad = []
+    if not _any(text, "spring security", "security filter", "jwt filter", "filter chain"):
+        bad.append("missing spring security / security filter")
     if not _any(text, "jwt", "filter", "access control"):
         bad.append("no hands-on detail (JWT filter / access control)")
     return bad
