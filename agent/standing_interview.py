@@ -304,7 +304,23 @@ _LEAK_PATTERNS = [
     re.compile(r'\bbook[\s\-]*(0?\d|one|two|three|four|five|six|seven|eight)\b', re.I),
     re.compile(r'\bBOOK-\d', re.I),
     re.compile(r'according to (the|my|a)\b', re.I),
-    re.compile(r'\b(the|my) (document|corpus|excerpt|notes|knowledge base)s?\b', re.I),
+    # Sprint 13: narrowed to PROVENANCE SENSES. The whole-noun form refused a
+    # correct answer about this surface's own retrieval ("runs locally
+    # against my own notes", "the knowledge base isn't loaded" is the
+    # product's own line). What must still be caught is the answer citing
+    # where it read something: "my notes say", "the document describes",
+    # "in the corpus". Same shape as the Sprint 11 `source` narrowing below.
+    re.compile(r'\b(the|my|our) (document|corpus|excerpt|notes|knowledge base|material)s?\s+'
+               r'(say|says|said|state|states|mention|mentions|indicate|indicates|'
+               r'note|notes|describe|describes|show|shows|suggest|suggests|record|records|'
+               r'list|lists|contain|contains|include|includes|confirm|confirms|cover|covers|'
+               r'hold|holds|discuss|discusses|address|addresses|document|documents|reflect|reflects|'
+               r'have|has|had|got|keep|keeps|kept|give|gives|gave|put|puts|call|calls|'
+               r'tell|tells|explain|explains)\b', re.I),
+    re.compile(r'\b(in|per) (the|my) (document|corpus|excerpt|notes)s?\b', re.I),
+    # 'excerpt' has no interview sense at all -- it exists only because of the
+    # prompt -- so any determiner + excerpt stays an unconditional leak.
+    re.compile(r'\b(the|my|our|this|that|these|those) excerpts?\b', re.I),
     # `source` WAS in the alternation above until Sprint 11. It produced a real
     # false positive on a genuinely good answer: "...without the source service
     # having to synchronously coordinate with every consumer" -- ordinary
@@ -878,8 +894,7 @@ def leaks(text: str) -> list[str]:
 # repository file (gate run 2: "approve_edit ... write_tools.py"), which the
 # interviewer must still not see -- so the retry is told to describe the
 # mechanism in words, and the retry's text goes through the WHOLE scan again.
-_RETRYABLE_LEAK = _LEAK_PATTERNS[6].pattern      # r'\.(docx|md|yaml|json|py)\b'
-assert "docx" in _RETRYABLE_LEAK
+_RETRYABLE_LEAK = next(p.pattern for p in _LEAK_PATTERNS if "docx" in p.pattern)
 
 
 def leak_is_retryable(found: list[str]) -> bool:
@@ -1007,7 +1022,11 @@ def answer(question: str, corpus: Corpus | None = None, create_fn=None) -> dict:
         # record it -- a leak that is silently patched is a leak nobody fixes.
         return {"outcome": "leak_blocked", "grounded": True, "answer": REFUSAL,
                 "hits": hits, "best_score": best, "leaks": found,
-                "leak_retried": leak_retried, "policy": policy_summary}
+                "leak_retried": leak_retried, "policy": policy_summary,
+                # The refused text itself, for the review queue. Without it a
+                # leak_blocked row cannot be diagnosed -- a replay may not
+                # reproduce the sentence (gate run 4, 2026-09-29, did not).
+                "model_reply": text[:600]}
 
     # Voice gate. ONE corrective retry, then refuse -- a retry is cheap and
     # nearly always sufficient, whereas refusing on a first violation would
@@ -1051,7 +1070,8 @@ def answer(question: str, corpus: Corpus | None = None, create_fn=None) -> dict:
             return {"outcome": "voice_rejected", "grounded": True,
                     "answer": REFUSAL, "hits": hits, "best_score": best,
                     "scope": route(question), "voice_violations": voice,
-                    "retry_violations": retry_voice, "policy": policy_summary}
+                    "retry_violations": retry_voice, "policy": policy_summary,
+                    "model_reply": retry_text[:600] or text[:600]}
 
     return {"outcome": "answered", "grounded": True, "answer": text,
             "hits": hits, "best_score": best, "scope": route(question),

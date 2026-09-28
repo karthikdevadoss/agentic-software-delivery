@@ -2320,7 +2320,9 @@
       "created_at": "2026-09-29",
       "started_at": "2026-09-29",
       "created_at_commit": "bac7cea",
-      "commit_shas": [],
+      "commit_shas": [
+        "3a45571"
+      ],
       "session_ids": [],
       "completed_at": "2026-09-29"
     },
@@ -2340,7 +2342,9 @@
       "created_at": "2026-09-29",
       "started_at": "2026-09-29",
       "created_at_commit": "bac7cea",
-      "commit_shas": [],
+      "commit_shas": [
+        "3a45571"
+      ],
       "session_ids": [],
       "completed_at": "2026-09-29"
     },
@@ -2360,7 +2364,9 @@
       "created_at": "2026-09-29",
       "started_at": "2026-09-29",
       "created_at_commit": "bac7cea",
-      "commit_shas": [],
+      "commit_shas": [
+        "3a45571"
+      ],
       "session_ids": []
     },
     {

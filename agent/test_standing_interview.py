@@ -405,8 +405,13 @@ class LeakFalsePositiveTestCase(unittest.TestCase):
             self.assertTrue(si.leaks(text), f"leak NOT detected: {text!r}")
 
     def test_the_other_provenance_words_were_not_touched_by_the_narrowing(self):
+        # Sprint 13 narrowed these nouns to provenance senses (a real false
+        # positive: the deploy gate refused a correct answer about this
+        # surface's own retrieval for saying "the knowledge base"). The bare
+        # noun is therefore no longer a leak; the citing sense still is, and
+        # "excerpt" is unconditional because it has no interview sense.
         for text in ("the document says so", "my notes cover it",
-                     "the corpus has it", "the excerpt above", "my knowledge base"):
+                     "the corpus has it", "the excerpt above", "my knowledge base says"):
             self.assertTrue(si.leaks(text), text)
 
 
@@ -1161,3 +1166,46 @@ class LeakRetryTestCase(unittest.TestCase):
         with mock.patch.object(si, "retrieve", return_value=self.strong):
             out = si.answer("How does the approval step work?", self.corpus, create_fn=model)
         self.assertNotEqual(out["outcome"], "answered")
+
+
+class ProvenanceNarrowingTestCase(unittest.TestCase):
+    """Sprint 13, gate run 4 (the deploy script's own local gate): a correct
+    answer about this surface's own retrieval was refused because it said
+    "the knowledge base"/"my notes" as the SUBJECT. Pinned from both sides,
+    as Sprint 11 pinned `source`: the senses that must pass AND the senses
+    that must still be blocked."""
+
+    CLEAN = (
+        # verbatim from the real replay, 2026-09-29
+        "The retrieval in this interview surface runs locally against my own notes.",
+        # the product's own refusal line
+        si.NO_CORPUS,
+        "Retrieval runs over the corpus with cosine similarity and a grounding threshold.",
+        "This surface retrieves from a private knowledge base before anything reaches you.",
+    )
+    LEAKY = (
+        "My notes say I used Kafka at BCBSA.",
+        "The document describes the JWT flow in detail.",
+        "In the corpus there is a section on FusionAuth.",
+        "The knowledge base lists SQS and a dead-letter queue.",
+        "According to my notes, we used Camel.",
+        "Per the excerpts, it was Oracle.",
+    )
+
+    def test_describing_the_mechanism_is_not_a_leak(self):
+        for text in self.CLEAN:
+            self.assertEqual(si.leaks(text), [], text)
+
+    def test_citing_where_it_was_read_is_still_a_leak(self):
+        for text in self.LEAKY:
+            self.assertTrue(si.leaks(text), text)
+
+    def test_a_refused_answer_keeps_the_model_text_for_review(self):
+        corpus = make_corpus_v2()
+        strong = [dict(corpus.chunks[1], score=0.85, employer=None)]
+        model = fake_model("My notes say the hash is checked twice. Done.")
+        with mock.patch.object(si, "retrieve", return_value=strong):
+            out = si.answer("How does the approval step work?", corpus, create_fn=model)
+        self.assertEqual(out["outcome"], "leak_blocked")
+        self.assertIn("My notes say", out["model_reply"])
+        self.assertEqual(out["answer"], si.REFUSAL)

@@ -1740,6 +1740,10 @@ def _log_si_event(event_type: str, question: str, result: dict) -> None:
                 # lead (and which it excluded), so a refusal or Dissatisfied
                 # click can be read against the policy that shaped it.
                 "policy": result.get("policy"),
+                # Sprint 13: the model's own refused text (leak_blocked,
+                # voice_rejected, model-declined), truncated. The ledger is
+                # private and already redacted at envelope build time.
+                "model_reply": result.get("model_reply"),
             },
         )
     except Exception:  # noqa: BLE001 - review logging must never break an answer
