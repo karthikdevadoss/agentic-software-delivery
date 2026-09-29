@@ -82,6 +82,7 @@
   .cols li { margin-bottom: 5px; }
 
   /* evidence rows */
+  .evnote { color: var(--soft); font-size: 15.5px; margin: -6px 0 18px; max-width: 66ch; }
   .ev { border-top: 1px solid var(--line); }
   .erow { display: grid; grid-template-columns: 1fr 200px; gap: 20px; padding: 18px 0;
           border-bottom: 1px solid var(--line); align-items: start; }
@@ -202,7 +203,12 @@
     </div>
   </div>
 
-  <h2 class="sec">Verified evidence</h2>
+  <!-- Heading deliberately not "Verified evidence": an independent read of
+       this page (2026-09-29) pointed out that wording borrows the
+       credibility of an audit nobody performed. These are self-reported
+       statuses with a link you can check, and the line below says so. -->
+  <h2 class="sec">What is running, and how to check it</h2>
+  <p class="evnote">Everything below runs on this platform &mdash; my own system, which I build and operate myself, not an employer's. Each row links to the running thing or to the source, so you can check it rather than take my word for it.</p>
   <div class="ev">
 
     <div class="erow">
