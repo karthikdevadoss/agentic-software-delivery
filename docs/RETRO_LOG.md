@@ -2220,3 +2220,47 @@ threshold rather than on zero failures in one draw; and record the per-question 
 over time, so a question that is genuinely 50/50 is visible as such instead of appearing as
 an intermittent deploy failure. This needs the Owner's call because N draws is N times the
 model spend on every deploy.
+
+### C. Production outcome, and the incident that ended the sprint
+
+**UI: deployed and verified live.** Marker `deploy-20260929T202535Z-448fc54`. All 67
+assertions in `e2e/ui-standards.spec.js` pass **against the production URL**, not only
+locally. Measured on the live pages at 1920×940: navigation and content start at the same
+x (392) on all nine pages — `/standing-interview` was 0 against 596 — every page uses a
+1200px column, body is 17px everywhere, the smallest rendered text is 12.5px, and no page
+scrolls sideways.
+
+**SI: deployed, and UNVERIFIED.** The specification change is live and passed the real-model
+acceptance gate 15/15 twice. It has not been measured against production, because:
+
+**P0 — the Anthropic API credit balance was exhausted mid-verification.** The post-deploy
+gate failed on its eleventh question with `anthropic.BadRequestError: 400 — 'Your credit
+balance is too low to access the Anthropic API'`. Verified live: the page returns 200, a
+private-topic question still answers correctly (it refuses before any model call), and every
+question that needs the model returns **HTTP 500**.
+
+Two separate things, and it matters not to conflate them:
+
+1. **The exhausted balance** is not a code defect and cannot be fixed from this laptop. It
+   needs credit on the Anthropic account, which is the Owner's decision and one this project
+   explicitly forbids changing without his separate approval.
+2. **The raw 500 is a real defect, and it is PRE-EXISTING.** `reasoning_gateway.call()`
+   raises on an API error rather than returning a denial, and no caller in
+   `standing_interview.py` ever caught it — Sprint 14's code does exactly the same. The
+   `no_model` path that exists covers a *missing key*, not a *failing call*. The credit
+   exhaustion exposed a gap that had been there the whole time. A recruiter mid-question saw
+   a server error page with no way to tell whether the site was broken, their question was
+   bad, or the system was out of credit — which is precisely what this project's own rule
+   forbids. Fixed (`outcome: model_unavailable`, an honest message, the provider's own
+   billing text never reaching the visitor or the record), proven both ways without spending
+   any credit, committed — and **not deployed**, because the deploy gate needs the model.
+
+**The sprint therefore ends blocked rather than closed**, on one thing only the Owner can
+resolve. Everything not gated on model spend is done and live.
+
+**3.6 — Cost, honestly.** The acceptance gate was run five times this sprint (~75 real model
+calls) plus two deploys that each ran it again. Each run is roughly $0.35 at the audit's
+measured $0.023/request. That is not what exhausted the balance on its own — the balance was
+already low — but re-running a stochastic 15-question gate until it comes up green is a
+pattern worth naming before it becomes a habit, and it is the direct reason item 3.5 above
+proposes thresholds instead of retries.

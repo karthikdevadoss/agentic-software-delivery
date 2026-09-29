@@ -1083,3 +1083,56 @@ once.
 
 Production at `b39462c`: 240/240 UI checks across three viewports, remote Standing Interview
 acceptance 15/15, zero known UI defects at close.
+
+# Current Reality (2026-09-29): Sprint 15 — the defects a green suite certified
+
+The Owner opened the site Sprint 14 had deployed, on his own 1920x1080 display,
+and found ten UI defects. Sprint 14 had reported 240/240 green. He then added
+that the Standing Interview "answers so crazily for some questions". Both were
+the same shape of failure: the checks were real, and they were aimed somewhere
+else.
+
+**Why a green suite certified a broken page.** The test matrix ran 1280 / 768 /
+390 and called 1280 "desktop". 1920 — the width the Owner actually uses — was
+never tested. The nav-alignment check covered 2 of 9 pages, and the worst defect
+in the product was on one of the other 7: `/standing-interview` rendered its
+navigation outside the centring container, so it spanned the full viewport from
+x=0 with "Home" clipped against the window edge while the page content sat at
+x=596. A green count measured the intersection of two choices the agent had made
+itself — which assertions to write, and which conditions to run them under.
+
+**What is now one thing instead of five.** A single shell (`--shell: 1200px`,
+`--shell-pad: 2rem`, `--prose: 68ch`) across all nine public pages, which
+previously used 700 / 860 / 936 / 1000 / 1100 and shifted the layout sideways on
+every navigation. One body size (17px; seven pages were 16). One h1 scale
+(previously 26.4px against the home page's 44). A 12.5px legibility floor, swept
+across 44 declarations in 9 stylesheets — the defect register had named 3 pages,
+and the register was a sample rather than an inventory.
+
+**Standing Interview: the model was obeying.** 37 unsolicited negatives across 21
+of 57 answered production answers, measured. The prompt required a boundary
+sentence, permitted a recall-limit sentence, instructed an ownership disclaimer,
+and the runtime gate budgeted two limitation sentences — so the model produced
+them. `agent/si_quality.py` now scores that directly, and was proven to reject
+all six answers the Owner objected to BEFORE a single prompt line changed. The
+budget is zero with three named exceptions; an absence is a constraint on what
+may be claimed rather than content to recite; and the runtime gate imports the
+same oracle the tests use, so the rule has one definition.
+
+**The fix over-applied itself, and only a real-model replay saw it.** Told not to
+volunteer a limitation, the model also stopped stating one when the question
+directly asked — "Did NRG use Kafka?" answered with SQS and never mentioned
+Kafka. The pre-deploy acceptance gate failed 4 of 15 and aborted before upload;
+production was never touched. At that moment 1,029 local assertions were green.
+A prompt change is not verified by any test that does not run the model
+(AEQ-033).
+
+**Deployed and verified:** marker `deploy-20260929T202535Z-448fc54`.
+**SI post-fix measurement: BLOCKED.** The Anthropic credit balance was exhausted before the re-capture could run, so the specification change is deployed but UNVERIFIED. Three tests fail deliberately until it is measured.
+
+**Not fixed, and needing the Owner rather than effort:** "describe a technical
+disagreement" still declines on every draw — a corpus gap, since the private
+books are technical and retrieval genuinely finds nothing behavioural, so the
+model correctly refuses rather than inventing a story. The light/dark theme is
+still not unified, because the Owner's instruction for this sprint was
+"do alignment only".
