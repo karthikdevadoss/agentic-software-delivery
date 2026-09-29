@@ -59,6 +59,7 @@ import demo_catalogue
 import showcase_data
 import interview_walkthrough_data
 import ask_codebase
+import si_budget
 import standing_interview
 import durable_workflow
 import jd_match
@@ -1710,6 +1711,24 @@ async def standing_interview_status(request: Request):
     return JSONResponse(await run_in_threadpool(standing_interview.corpus_status))
 
 
+def _visitor_key(request) -> str:
+    """Best available identity for rate limiting -- deliberately not a
+    fingerprint.
+
+    Railway terminates TLS in front of the app, so request.client.host is the
+    proxy. X-Forwarded-For's FIRST entry is the original client. Honest limit:
+    that header is client-supplied and can be spoofed, so the per-visitor
+    limit degrades against a determined attacker. That is precisely why
+    si_budget also enforces a DAILY BUDGET that does not depend on identity at
+    all.
+    """
+    fwd = request.headers.get("x-forwarded-for", "")
+    if fwd:
+        return fwd.split(",")[0].strip()[:64]
+    client = getattr(request, "client", None)
+    return (getattr(client, "host", None) or "unknown")[:64]
+
+
 async def standing_interview_ask(request: Request):
     """Real retrieval + a real model call, both CPU/IO-bound, so both run off
     the event loop (AEQ-010: a sync call left on the loop froze the service).
@@ -1722,7 +1741,26 @@ async def standing_interview_ask(request: Request):
     if not question:
         return JSONResponse({"error": "question is required"}, status_code=400)
 
+    # Spend protection, checked BEFORE the model call. This endpoint is a
+    # public POST with no auth and every request is billed; the Workbench has
+    # had a cooldown and a daily cap for months and this had neither. See
+    # agent/si_budget.py for the numbers and their honest limitations.
+    visitor = _visitor_key(request)
+    verdict = await run_in_threadpool(si_budget.check, visitor)
+    if not verdict["allowed"]:
+        return JSONResponse(
+            {"answer": verdict["message"], "grounded": False,
+             "outcome": verdict["status"].lower()},
+            status_code=429,
+            headers={"Retry-After": str(verdict["retry_after"])})
+
     result = await run_in_threadpool(standing_interview.answer, question)
+
+    # Count only what actually reached the model. A refusal decided before any
+    # model call costs nothing, so charging it against a visitor's allowance
+    # would let two private questions lock out a real recruiter.
+    if result.get("outcome") not in ("private_topic", "no_model", "model_unavailable"):
+        await run_in_threadpool(si_budget.record_answer, visitor)
 
     if not result.get("grounded") or result.get("outcome") != "answered":
         await run_in_threadpool(

@@ -94,6 +94,11 @@ HERMETIC_MODULES = [
     # Hermetic by construction: the model is injected, the corpus is a
     # fixture, and no network or private repo is required.
     "test_public_surface_gate",   # Sprint 14: recruiter-facing release guards
+    # Sprint 15: spend protection on the public Standing Interview endpoint.
+    # Hermetic -- it drives the real route with a mocked answer() and makes no
+    # model call. Written after the credit balance was exhausted and every
+    # grounded question on the live site returned HTTP 500.
+    "test_si_budget",
     # Sprint 15: answer quality. Hermetic -- it scores an archived JSON capture
     # of real production answers and calls nothing. The post-fix half of it
     # stays RED until agent/testdata/si_production_answers_after.json exists,
