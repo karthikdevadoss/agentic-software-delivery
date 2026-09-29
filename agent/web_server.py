@@ -79,6 +79,16 @@ import sessions_data
 import write_tools
 
 WEB_DIR = Path(__file__).resolve().parent / "web"
+
+# Sprint 14 (2026-09-29, Owner decision): Learn and JD Match are useful
+# personal tools but are not part of the recruiter-facing public deployment.
+# Rather than delete working features, their routes are registered only when
+# this flag is set. It is deliberately OPT-IN: production sets nothing, so the
+# public surface 404s, and no future deploy can re-expose them by accident.
+# Tests that need those routes set PRIVATE_SURFACES_ENABLED explicitly.
+PRIVATE_SURFACES_ENABLED = os.environ.get("PRIVATE_SURFACES_ENABLED", "").strip().lower() in (
+    "1", "true", "yes", "on",
+)
 REPO_ROOT = Path(__file__).resolve().parent.parent
 APP_DIR = REPO_ROOT / "app"
 RUN_HISTORY_PATH = Path(__file__).resolve().parent / "web_run_history.jsonl"
@@ -1451,6 +1461,26 @@ async def get_demo_reset_status(request: Request):
     return JSONResponse(_reset_state)
 
 
+async def home_page(request: Request):
+    """Sprint 14: the recruiter-facing home page at "/".
+
+    Until this sprint "/" served the Workbench. That was the right default
+    while the only audience was the Owner, and the wrong one the moment the
+    URL started arriving on a CV: a recruiter opening the root landed on an
+    internal delivery console that never says whose work it is. The Workbench
+    is unchanged and still lives at /workbench -- it is a good destination and
+    a poor front door."""
+    return FileResponse(str(WEB_DIR / "home.html"))
+
+
+async def case_study_durable_agent_page(request: Request):
+    """Sprint 14: the durable-agent crash-recovery case study, linked from the
+    home page's second proof card. Static; every claim on it was revalidated
+    against agent/durable_workflow.py, agent/workflow_drill.py and the
+    recorded production restart before publication."""
+    return FileResponse(str(WEB_DIR / "case-study-durable-agent.html"))
+
+
 async def workbench_page(request: Request):
     return FileResponse(str(WEB_DIR / "workbench.html"))
 
@@ -2213,8 +2243,16 @@ routes = [
     Route("/api/runs/{run_id}", get_run, methods=["GET"]),
     Route("/api/runs/{run_id}/events", stream_events, methods=["GET"]),
     Route("/api/runs/{run_id}/decide", decide, methods=["POST"]),
-    Route("/api/learn/tree", get_learn_tree_data, methods=["GET"]),
-    Route("/api/learn/book.pdf", get_learn_book_pdf, methods=["GET"]),
+    # Learn's API. Registered only when private surfaces are enabled -- see
+    # PRIVATE_SURFACES_ENABLED below.
+    *(
+        [
+            Route("/api/learn/tree", get_learn_tree_data, methods=["GET"]),
+            Route("/api/learn/book.pdf", get_learn_book_pdf, methods=["GET"]),
+        ]
+        if PRIVATE_SURFACES_ENABLED
+        else []
+    ),
     Route("/api/ai-intelligence/dates", get_ai_intelligence_dates, methods=["GET"]),
     Route("/api/ai-intelligence/daily/{date}", get_ai_intelligence_day, methods=["GET"]),
     Route("/api/sessions/history", get_session_history, methods=["GET"]),
@@ -2222,8 +2260,14 @@ routes = [
     Route("/api/showcase/{slug}", get_showcase_data, methods=["GET"]),
     Route("/api/interview-walkthrough", get_interview_walkthrough_data, methods=["GET"]),
     Route("/api/ask-codebase", ask_codebase_api, methods=["GET"]),
-    Route("/api/jd-match", jd_match_api, methods=["POST"]),
-    Route("/api/jd-match/sample", jd_match_sample, methods=["GET"]),
+    *(
+        [
+            Route("/api/jd-match", jd_match_api, methods=["POST"]),
+            Route("/api/jd-match/sample", jd_match_sample, methods=["GET"]),
+        ]
+        if PRIVATE_SURFACES_ENABLED
+        else []
+    ),
     Route("/api/workflow/start", workflow_start, methods=["POST"]),
     Route("/api/workflow/{workflow_id}", workflow_describe, methods=["GET"]),
     Route("/api/workflow/{workflow_id}/decide", workflow_decide, methods=["POST"]),
@@ -2261,7 +2305,8 @@ routes = [
     # Five public surfaces (see docs/COMPANY_VISION.md's public product
     # structure decision). "/" and "/workbench" both serve the same public
     # preview page — Workbench is the flagship/default landing surface.
-    Route("/", workbench_page, methods=["GET"]),
+    Route("/", home_page, methods=["GET"]),
+    Route("/case-study/durable-agent", case_study_durable_agent_page, methods=["GET"]),
     Route("/workbench", workbench_page, methods=["GET"]),
     Route("/dashboard", dashboard_page, methods=["GET"]),
     Route("/usage", usage_page, methods=["GET"]),
@@ -2269,12 +2314,24 @@ routes = [
     Route("/showcase/{slug}", showcase_page, methods=["GET"]),
     Route("/ask-codebase", ask_codebase_page, methods=["GET"]),
     Route("/standing-interview", standing_interview_page, methods=["GET"]),
-    Route("/jd-match", jd_match_page, methods=["GET"]),
     Route("/triage", triage_page, methods=["GET"]),
     Route("/triage/scenario-b", triage_page_b, methods=["GET"]),
     Route("/triage/scenario-c", triage_page_c, methods=["GET"]),
-    Route("/learn", learn_page, methods=["GET"]),
-    Route("/learn/{path:path}", learn_page, methods=["GET"]),
+    # Learn and JD Match: PUBLIC routes removed in Sprint 14 (Owner decision).
+    # They are personal/internal tools, not part of the recruiter-facing
+    # deployment. Nothing was deleted -- the implementations, datasets and
+    # tests are untouched, and setting PRIVATE_SURFACES_ENABLED restores them
+    # for local/authenticated use. In production the env var is absent, so
+    # /learn, /learn/*, /jd-match and their APIs fall through to a real 404.
+    *(
+        [
+            Route("/jd-match", jd_match_page, methods=["GET"]),
+            Route("/learn", learn_page, methods=["GET"]),
+            Route("/learn/{path:path}", learn_page, methods=["GET"]),
+        ]
+        if PRIVATE_SURFACES_ENABLED
+        else []
+    ),
     # Retired public terminology — kept as redirects, not dead links.
     Route("/trainer", redirect_trainer_to_workbench, methods=["GET"]),
     Route("/sessions", redirect_sessions_to_usage, methods=["GET"]),

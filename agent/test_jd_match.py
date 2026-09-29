@@ -274,9 +274,31 @@ class HttpRoutesTestCase(_Base):
     and its refusals were found in the LIVE ledger (2026-09-29 00:42-00:46Z)."""
 
     def test_routes(self):
+        # Sprint 14: /jd-match is no longer a PUBLIC route -- it is registered
+        # only when PRIVATE_SURFACES_ENABLED is set (agent/web_server.py).
+        # This test exercises the private surface deliberately, so it turns the
+        # flag on and reloads the module to rebuild the route table. The
+        # complementary guard -- that the flag OFF really does 404 -- lives in
+        # test_public_surface_gate.py.
+        import importlib
+        import os
         import web_server
         from starlette.testclient import TestClient
-        client = TestClient(web_server.app)
+        previous = os.environ.get("PRIVATE_SURFACES_ENABLED")
+        os.environ["PRIVATE_SURFACES_ENABLED"] = "1"
+        try:
+            web_server = importlib.reload(web_server)
+            self.assertTrue(web_server.PRIVATE_SURFACES_ENABLED,
+                            "the private-surface flag must be honoured on reload")
+            self._run_route_assertions(TestClient(web_server.app))
+        finally:
+            if previous is None:
+                os.environ.pop("PRIVATE_SURFACES_ENABLED", None)
+            else:
+                os.environ["PRIVATE_SURFACES_ENABLED"] = previous
+            importlib.reload(web_server)
+
+    def _run_route_assertions(self, client):
         self.assertEqual(client.get("/jd-match").status_code, 200)
         self.assertIn("JD Match", client.get("/jd-match").text)
         sample = client.get("/api/jd-match/sample").json()

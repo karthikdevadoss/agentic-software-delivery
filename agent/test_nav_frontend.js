@@ -31,14 +31,12 @@ const nav = require(NAV_PATH);
 // ---- 1. The canonical set is exactly the 7 intended destinations -----
 
 const EXPECTED_DESTINATIONS = [
+  { href: "/", label: "Home" },
   { href: "/workbench", label: "Workbench" },
   { href: "/triage", label: "Triage" },
-  { href: "/dashboard", label: "Dashboard" },
+  { href: "/ask-codebase", label: "Ask Codebase" },
+  { href: "/showcase/senior-java-ai-transformation", label: "Showcase" },
   { href: "/usage", label: "Usage" },
-  { href: "/learn", label: "Learn", hiddenOn: ["/workbench", "/dashboard", "/usage"] },
-  { href: "/ask-codebase", label: "Ask the Codebase" },
-  { href: "/showcase/senior-java-ai-transformation", label: "Role Showcase" },
-  { href: "/jd-match", label: "JD Match" },
 ];
 // BL-079 added a GATED entry (Standing Interview, shown only when the server
 // reports a loaded corpus). The unconditional set is what this guard pins;
@@ -53,8 +51,8 @@ assertDeepEqual(gated.map((d) => [d.href, d.label, d.requiresEndpoint, d.require
 
 // Role Showcase must genuinely be present -- the exact real defect.
 assert(
-  nav.CANONICAL_NAV_DESTINATIONS.some((d) => d.href === "/showcase/senior-java-ai-transformation" && d.label === "Role Showcase"),
-  "Role Showcase must be a real canonical destination (this is the exact production defect being fixed)"
+  nav.CANONICAL_NAV_DESTINATIONS.some((d) => d.href === "/showcase/senior-java-ai-transformation" && d.label === "Showcase"),
+  "Showcase must be a real canonical destination (this is the exact production defect being fixed)"
 );
 
 // Ask the Codebase must genuinely be present -- real production defect
@@ -63,22 +61,37 @@ assert(
 // the URL directly, invisible from every other page's nav (including its
 // own -- ask-codebase.html includes nav.js too).
 assert(
-  nav.CANONICAL_NAV_DESTINATIONS.some((d) => d.href === "/ask-codebase" && d.label === "Ask the Codebase"),
+  nav.CANONICAL_NAV_DESTINATIONS.some((d) => d.href === "/ask-codebase" && d.label === "Ask Codebase"),
   "Ask the Codebase must be a real canonical destination (real production defect: existed but was unreachable from any nav)"
 );
 
 // No duplicate Showcase URL (the directive's explicit constraint).
 const showcaseEntries = nav.CANONICAL_NAV_DESTINATIONS.filter((d) => d.href.startsWith("/showcase"));
-assert(showcaseEntries.length === 1, "exactly one canonical Role Showcase URL, no duplicates");
+assert(showcaseEntries.length === 1, "exactly one canonical Showcase URL, no duplicates");
+
+// Sprint 14 (Owner decision): Learn, JD Match and Dashboard must NOT appear in
+// public navigation. Learn and JD Match 404 publicly; Dashboard is
+// de-emphasized and reachable as a deep link from Usage.
+for (const forbidden of ["/learn", "/jd-match", "/dashboard"]) {
+  assert(!nav.CANONICAL_NAV_DESTINATIONS.some((d) => d.href === forbidden || d.href.startsWith(forbidden + "/")),
+    `${forbidden} must NOT be in public navigation (Sprint 14 Owner decision)`);
+}
+assert(nav.CANONICAL_NAV_DESTINATIONS[0].href === "/" && nav.CANONICAL_NAV_DESTINATIONS[0].label === "Home",
+  "Home leads the canonical navigation");
 
 // ---- 2. Current-page detection ----------------------------------------
 
 assert(nav._isCurrentPage("/workbench", "/workbench") === true, "/workbench is current on /workbench");
-assert(nav._isCurrentPage("/workbench", "/") === true, "/workbench is current on / (same page, see web_server.py's route table)");
+// Sprint 14: "/" is its own page now. Workbench must NOT be marked current
+// there, and Home must be -- the inverse of the old rule.
+assert(nav._isCurrentPage("/workbench", "/") === false, "/workbench is NOT current on / (Sprint 14: / is the home page, not a Workbench alias)");
+assert(nav._isCurrentPage("/", "/") === true, "Home is current on /");
+assert(nav._isCurrentPage("/", "/workbench") === false, "Home is NOT current on /workbench");
 assert(nav._isCurrentPage("/triage", "/triage") === true, "/triage is current on /triage");
 assert(nav._isCurrentPage("/triage", "/triage/scenario-b") === true, "/triage stays current on /triage/scenario-b");
 assert(nav._isCurrentPage("/triage", "/triage/scenario-c") === true, "/triage stays current on /triage/scenario-c");
-assert(nav._isCurrentPage("/learn", "/learn/java-core") === true, "/learn stays current on a nested /learn/* route");
+assert(nav._isCurrentPage("/showcase/senior-java-ai-transformation", "/showcase/another-slug") === true,
+  "Showcase stays current on any /showcase/* slug");
 assert(
   nav._isCurrentPage("/showcase/senior-java-ai-transformation", "/showcase/senior-java-ai-transformation") === true,
   "Role Showcase is current on its own real page"
@@ -91,13 +104,18 @@ assert(nav._isCurrentPage("/dashboard", "/workbench") === false, "/dashboard is 
 //          unification -- present everywhere else (Triage, Role
 //          Showcase, Learn's own page). ------------------------------
 
-for (const hiddenPath of ["/workbench", "/dashboard", "/usage", "/"]) {
-  assert(nav._isHiddenOnPage(["/workbench", "/dashboard", "/usage"], hiddenPath) === true,
-    `Learn must be hidden on ${hiddenPath} (Owner instruction 2026-09-13)`);
+// Sprint 14: no destination uses hiddenOn any more (Learn left public nav),
+// but the MECHANISM is still asserted -- dropping these assertions with the
+// last user would silently delete a real per-page exclusion capability.
+assert(nav.CANONICAL_NAV_DESTINATIONS.every((d) => !d.hiddenOn),
+  "no canonical destination currently needs hiddenOn (Learn left public nav in Sprint 14)");
+for (const hiddenPath of ["/workbench", "/usage"]) {
+  assert(nav._isHiddenOnPage(["/workbench", "/usage"], hiddenPath) === true,
+    `hiddenOn mechanism still excludes ${hiddenPath}`);
 }
-for (const visiblePath of ["/triage", "/triage/scenario-b", "/learn", "/showcase/senior-java-ai-transformation"]) {
-  assert(nav._isHiddenOnPage(["/workbench", "/dashboard", "/usage"], visiblePath) === false,
-    `Learn must remain visible on ${visiblePath}`);
+for (const visiblePath of ["/triage", "/", "/showcase/senior-java-ai-transformation"]) {
+  assert(nav._isHiddenOnPage(["/workbench", "/usage"], visiblePath) === false,
+    `hiddenOn mechanism still leaves ${visiblePath} visible`);
 }
 assert(nav._isHiddenOnPage(undefined, "/workbench") === false, "a destination with no hiddenOn is never hidden");
 
@@ -108,6 +126,10 @@ assert(nav._isHiddenOnPage(undefined, "/workbench") === false, "a destination wi
 
 const WEB_DIR = path.join(__dirname, "web");
 const PAGES_THAT_MUST_USE_CANONICAL_NAV = [
+  // Sprint 14: home.html and the durable-agent case study are recruiter-facing
+  // and must obey the same rule -- they were the most likely place for a
+  // hand-authored nav to reappear, since both use a light theme of their own.
+  "home.html", "case-study-durable-agent.html",
   "workbench.html", "dashboard.html", "usage.html", "learn.html",
   "triage.html", "triage-b.html", "triage-c.html", "showcase.html",
 ];
@@ -115,7 +137,9 @@ const PAGES_THAT_MUST_USE_CANONICAL_NAV = [
 for (const filename of PAGES_THAT_MUST_USE_CANONICAL_NAV) {
   const html = fs.readFileSync(path.join(WEB_DIR, filename), "utf-8");
   assert(html.includes('<script src="/nav.js">'), `${filename} must load the shared /nav.js`);
-  assert(/<nav class="top-nav" id="top-nav">\s*<\/nav>/.test(html),
+  // attributes such as aria-label are allowed on the placeholder; what is not
+  // allowed is content inside it.
+  assert(/<nav class="top-nav" id="top-nav"[^>]*>\s*<\/nav>/.test(html),
     `${filename} must have an EMPTY <nav id="top-nav"> placeholder, not its own hardcoded links`);
   // The exact real defect class: a page hand-authoring its own <a
   // href="/workbench">-style links inside the top nav instead of
@@ -129,7 +153,7 @@ for (const filename of PAGES_THAT_MUST_USE_CANONICAL_NAV) {
 //         the canonical list and prove this exact test suite fails ----
 
 (function proveRegressionDetectsTheRealDefect() {
-  const mutated = nav.CANONICAL_NAV_DESTINATIONS.filter((d) => d.label !== "Role Showcase");
+  const mutated = nav.CANONICAL_NAV_DESTINATIONS.filter((d) => d.label !== "Showcase");
   const stillHasShowcase = mutated.some((d) => d.label === "Role Showcase");
   assert(stillHasShowcase === false, "sanity: the mutated list genuinely lacks Role Showcase");
   // This mirrors exactly what assertion #1 above would report if

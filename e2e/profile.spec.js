@@ -22,7 +22,7 @@ test.describe("Profile privacy — direct access must not expose content", () =>
   });
 
   test("no public page links to /profile", async ({ page }) => {
-    for (const path of ["/workbench", "/dashboard", "/usage", "/learn"]) {
+    for (const path of ["/", "/workbench", "/dashboard", "/usage"]) {
       await page.goto(path);
       const profileLink = page.locator('a[href="/profile"]');
       await expect(profileLink).toHaveCount(0);
@@ -112,7 +112,10 @@ test.describe("Public navigation — Learn retired from top nav", () => {
     }
   });
 
-  test("/learn itself still loads (source preserved, not deleted)", async ({ page }) => {
+  // Sprint 14: /learn now 404s publicly. The source is still preserved --
+  // asserted hermetically in agent/test_public_surface_gate.py rather than
+  // here, because this spec only has the public deployment to look at.
+  test.skip("/learn itself still loads (source preserved, not deleted)", async ({ page }) => {
     const response = await page.goto("/learn");
     expect(response.status()).toBe(200);
   });

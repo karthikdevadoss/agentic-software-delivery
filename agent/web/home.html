@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Karthikeyan Devadoss — Senior Backend / Software Engineer (Java, Spring &amp; Agentic AI)</title>
+<meta name="description" content="Enterprise Java/Spring backend engineer building and operating a production-deployed Agentic AI platform with human control, durable workflows and measurable quality.">
+<style>
+  /* Sprint 14: this page deliberately does NOT load /style.css. That sheet is
+     the dark engineering-console theme shared by Workbench, Triage and Usage;
+     the home page is the recruiter-facing surface and uses a light, calm
+     direction instead (docs/homepage-options/2026-09-29/option-a-recruiter-30s).
+     The .top-nav rules below are therefore restated locally so nav.js renders
+     correctly without pulling in the dark theme. */
+  :root {
+    --ink: #14161a;
+    --soft: #545a62;
+    --line: #dcdfe3;
+    --paper: #fbfaf8;
+    --card: #ffffff;
+    --accent: #1f4d3d;
+    --accent-ink: #123026;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font: 17px/1.62 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 22px; }
+  a { color: var(--accent); }
+  a:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+
+  /* nav */
+  /* The nav must share the content column's box exactly. An earlier version
+     put the horizontal padding on .navwrap and centred a 860px nav inside the
+     remaining width, which started the nav 22px to the LEFT of the content --
+     visible as a misaligned menu, and invisible to every DOM assertion. */
+  .top-nav {
+    display: flex; flex-wrap: wrap; row-gap: .5rem; gap: 1.2rem; align-items: center;
+    padding: 18px 22px; max-width: 860px; margin: 0 auto;
+  }
+  .top-nav a { color: var(--soft); text-decoration: none; font-size: .88rem; font-weight: 600;
+               padding-bottom: .15rem; border-bottom: 2px solid transparent; }
+  .top-nav a:hover { color: var(--ink); }
+  .top-nav a strong { color: var(--accent); border-bottom: 2px solid var(--accent);
+                      padding-bottom: .15rem; font-weight: 700; }
+  .navwrap { border-bottom: 1px solid var(--line); }
+
+  /* hero */
+  header { padding: 52px 0 6px; }
+  h1 { font-size: clamp(30px, 5.6vw, 44px); line-height: 1.1; letter-spacing: -.025em;
+       margin: 0 0 10px; font-weight: 660; }
+  .role { font-size: clamp(18px, 2.6vw, 21px); color: var(--accent); font-weight: 620;
+          margin: 0 0 20px; letter-spacing: -.01em; }
+  .lede { font-size: 18px; color: var(--soft); margin: 0 0 20px; max-width: 60ch; }
+  .meta { font-size: 15px; color: var(--soft); margin: 0 0 14px; }
+  .meta b { color: var(--ink); font-weight: 600; }
+  .sep { font-size: 15px; color: var(--soft); border-left: 3px solid var(--line);
+         padding: 6px 0 6px 14px; margin: 0 0 8px; max-width: 62ch; }
+
+  /* proof cards */
+  .proof { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin: 40px 0 0; }
+  .pcard { background: var(--card); border: 1px solid var(--line); padding: 22px 20px;
+           display: flex; flex-direction: column; }
+  .pcard h2 { font-size: 18px; line-height: 1.3; margin: 0 0 10px; font-weight: 650; letter-spacing: -.01em; }
+  .pcard p { margin: 0 0 16px; color: var(--soft); font-size: 15.5px; flex: 1; }
+  .pcard .go { font-size: 15px; font-weight: 640; text-decoration: none; }
+  .pcard .go:hover { text-decoration: underline; }
+  .pcard .go2 { display: block; margin-top: 9px; font-size: 14px; font-weight: 600;
+                color: var(--soft); text-decoration: none; }
+  .pcard .go2:hover { color: var(--accent); text-decoration: underline; }
+
+  h2.sec { font-size: 12px; letter-spacing: .15em; text-transform: uppercase; color: var(--soft);
+           margin: 58px 0 18px; font-weight: 700; }
+
+  /* two columns */
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 36px; }
+  .cols h3 { font-size: 13px; letter-spacing: .1em; text-transform: uppercase; margin: 0 0 12px;
+             font-weight: 700; color: var(--ink); }
+  .cols ul { margin: 0; padding-left: 18px; color: var(--soft); font-size: 16px; }
+  .cols li { margin-bottom: 5px; }
+
+  /* evidence rows */
+  .ev { border-top: 1px solid var(--line); }
+  .erow { display: grid; grid-template-columns: 1fr 200px; gap: 20px; padding: 18px 0;
+          border-bottom: 1px solid var(--line); align-items: start; }
+  .erow h3 { font-size: 17px; margin: 0 0 5px; font-weight: 640; letter-spacing: -.005em; }
+  .erow p { margin: 0; color: var(--soft); font-size: 15.5px; }
+  .estat { font-size: 12px; font-weight: 700; letter-spacing: .04em; color: var(--accent);
+           text-transform: uppercase; margin: 0 0 7px; }
+  .erow .side { padding-top: 2px; }
+  .erow .side a { font-size: 14.5px; font-weight: 600; text-decoration: none; }
+  .erow .side a:hover { text-decoration: underline; }
+
+  /* scope */
+  .scope { background: var(--card); border: 1px solid var(--line); padding: 22px 24px; margin-top: 8px; }
+  .scope p { margin: 0 0 10px; color: var(--soft); font-size: 16px; }
+  .scope p:last-child { margin-bottom: 0; }
+
+  /* tiles */
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .tile { display: block; background: var(--card); border: 1px solid var(--line); padding: 18px 18px 20px;
+          text-decoration: none; color: inherit; }
+  .tile:hover { border-color: var(--accent); }
+  .tile b { display: block; font-size: 16px; font-weight: 650; margin-bottom: 6px; color: var(--accent); }
+  .tile span { display: block; font-size: 15px; color: var(--soft); }
+  .tele { margin: 16px 0 0; font-size: 14.5px; }
+
+  /* background */
+  .emp { margin: 0 0 12px; }
+  .emp span { display: inline-block; margin: 0 16px 6px 0; font-weight: 640; }
+  .bg p { color: var(--soft); margin: 0; max-width: 66ch; }
+
+  /* bottom */
+  .bottom { margin: 54px 0 0; padding-top: 30px; border-top: 3px solid var(--ink);
+            display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+  .btn { display: inline-block; padding: 13px 22px; text-decoration: none; font-weight: 640;
+         font-size: 16px; border: 1.5px solid var(--accent); color: #fff; background: var(--accent); }
+  .btn:hover { background: var(--accent-ink); border-color: var(--accent-ink); }
+  .bottom .lnk { font-size: 15.5px; font-weight: 600; text-decoration: none; }
+  .bottom .lnk:hover { text-decoration: underline; }
+  footer { margin: 40px 0 64px; padding-top: 20px; border-top: 1px solid var(--line);
+           font-size: 14px; color: var(--soft); }
+
+  @media (max-width: 820px) {
+    .proof { grid-template-columns: 1fr; }
+    .tiles { grid-template-columns: 1fr 1fr; }
+    .cols { grid-template-columns: 1fr; gap: 26px; }
+  }
+  @media (max-width: 560px) {
+    header { padding-top: 34px; }
+    .tiles { grid-template-columns: 1fr; }
+    .erow { grid-template-columns: 1fr; gap: 8px; }
+    .bottom .btn { flex: 1 1 100%; text-align: center; }
+  }
+</style>
+</head>
+<body>
+
+<div class="navwrap"><nav class="top-nav" id="top-nav" aria-label="Main"></nav></div>
+
+<div class="wrap">
+
+  <header>
+    <h1>Karthikeyan Devadoss</h1>
+    <p class="role">Senior Backend / Software Engineer — Java, Spring &amp; Agentic AI</p>
+    <p class="lede">Enterprise Java/Spring backend engineer building and operating a production-deployed Agentic AI platform with human control, durable workflows and measurable quality.</p>
+    <p class="meta"><b>Berlin</b> · English · Open to full-time Senior / Lead IC roles in Germany</p>
+    <p class="sep">Current client engagement: NRG Energy. The AI platform shown here is my own system, not an NRG product.</p>
+  </header>
+
+  <section class="proof" aria-label="Three proof points">
+    <article class="pcard">
+      <h2>An AI agent that cannot approve its own writes</h2>
+      <p>The model can investigate and propose changes, but deterministic code controls the write boundary. Human approval is bound to the exact approved change.</p>
+      <!-- #verified-run-panel is a real element id in workbench.html; the link
+           inside it is resolved client-side from /api/workbench/verified-run.
+           An earlier draft used #verified-run, which does not exist. -->
+      <a class="go" href="/workbench#verified-run-panel">See the verified workflow →</a>
+    </article>
+    <article class="pcard">
+      <h2>A workflow that survives a crash</h2>
+      <p>A stateful LangGraph workflow checkpoints its progress, pauses for human approval, survives restart and prevents duplicate side effects.</p>
+      <a class="go" href="/case-study/durable-agent">Read the crash-recovery case study →</a>
+    </article>
+    <article class="pcard">
+      <h2>AI quality is measured, not assumed</h2>
+      <p>Retrieval and agent behaviour are checked against labelled evaluation sets and CI gates instead of being judged only from successful demos.</p>
+      <a class="go" href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/eval_runner.py">See the evaluation gate →</a>
+      <a class="go2" href="/ask-codebase">Try Ask the Codebase →</a>
+    </article>
+  </section>
+
+  <h2 class="sec">What I build</h2>
+  <div class="cols">
+    <div>
+      <h3>Enterprise backend</h3>
+      <ul>
+        <li>Java 21 / Spring Boot</li>
+        <li>REST &amp; GraphQL APIs</li>
+        <li>Spring Security / JWT</li>
+        <li>PostgreSQL</li>
+        <li>AWS</li>
+        <li>Testing / CI</li>
+        <li>Distributed-service and production troubleshooting</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Agentic AI</h3>
+      <ul>
+        <li>Tool-using agents</li>
+        <li>Human-in-the-loop controls</li>
+        <li>Durable LangGraph workflows</li>
+        <li>RAG / retrieval</li>
+        <li>MCP</li>
+        <li>Deterministic AI controls</li>
+        <li>Evaluation</li>
+        <li>AI observability</li>
+        <li>Usage / token / cost telemetry</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="sec">Verified evidence</h2>
+  <div class="ev">
+
+    <div class="erow">
+      <div>
+        <p class="estat">Running in production</p>
+        <h3>Human approval boundary</h3>
+        <p>A change proposed by the model is applied only after a person approves it, and the approval is tied to the exact file and content that was approved. The approve step is not something the model can call.</p>
+      </div>
+      <div class="side"><a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/write_tools.py">How the boundary works →</a></div>
+    </div>
+
+    <div class="erow">
+      <div>
+        <p class="estat">Running in production</p>
+        <h3>Durable LangGraph workflow</h3>
+        <p>Long-running work saves its progress as it goes, so it can pause for a human decision and continue after a restart without repeating anything it already did.</p>
+      </div>
+      <div class="side"><a href="/case-study/durable-agent">Read the case study →</a></div>
+    </div>
+
+    <div class="erow">
+      <div>
+        <p class="estat">Measured on every build</p>
+        <h3>Retrieval with labelled evaluation</h3>
+        <p>Search quality is scored against a hand-labelled set of questions and expected answers. The build fails if the scores drop below the recorded thresholds.</p>
+      </div>
+      <div class="side"><a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/eval_runner.py">See the evaluation gate →</a></div>
+    </div>
+
+    <div class="erow">
+      <div>
+        <p class="estat">Implemented and tested</p>
+        <h3>MCP server for tool integration</h3>
+        <p>The platform's read-only repository tools are also exposed over the Model Context Protocol, so other AI clients can use them. This runs locally rather than as a hosted service.</p>
+      </div>
+      <div class="side"><a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/mcp_server.py">See the MCP server →</a></div>
+    </div>
+
+    <div class="erow">
+      <div>
+        <p class="estat">Running in production</p>
+        <h3>Single model gateway with a kill switch</h3>
+        <p>Every call to a language model goes through one place, which checks what the call is for and can be switched off entirely. A test fails the build if any code tries to bypass it.</p>
+      </div>
+      <div class="side"><a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/reasoning_gateway.py">See the gateway →</a></div>
+    </div>
+
+    <div class="erow">
+      <div>
+        <p class="estat">Running in production</p>
+        <h3>Durable event ledger with token and cost telemetry</h3>
+        <p>Every meaningful step and every model call is written to a durable log, including real token counts. If the log's database is unreachable the events are held locally and sent later rather than lost.</p>
+      </div>
+      <div class="side"><a href="/usage">Open the telemetry view →</a></div>
+    </div>
+
+  </div>
+
+  <h2 class="sec">Current scope boundaries</h2>
+  <div class="scope">
+    <p>This platform does not claim capabilities it has not implemented. It currently uses one model provider, local cosine retrieval over small corpora rather than a managed vector database, and manually triggered deployment scripts.</p>
+    <p>Multi-provider routing, managed vector search and hybrid retrieval remain future work.</p>
+  </div>
+
+  <h2 class="sec">Explore the live system</h2>
+  <div class="tiles">
+    <a class="tile" href="/workbench"><b>Workbench</b><span>See the agent investigate, propose, wait for human authority and verify a change.</span></a>
+    <a class="tile" href="/ask-codebase"><b>Ask the Codebase</b><span>Ask technical questions against the actual repository with grounded retrieval.</span></a>
+    <a class="tile" href="/triage"><b>Triage</b><span>Work through a contained software defect: reproduction, AI diagnosis, a proposed patch, real tests and a human approval step.</span></a>
+    <a class="tile" href="/showcase/senior-java-ai-transformation"><b>Role Showcase</b><span>See how the backend and AI work maps to real engineering responsibilities.</span></a>
+    <a class="tile" href="https://agentic-delivery-customer-app-production.up.railway.app"><b>Java App</b><span>Open the Java/Spring application the platform operates against.</span></a>
+  </div>
+  <p class="tele"><a href="/usage">Usage / telemetry →</a></p>
+
+  <h2 class="sec">Enterprise engineering background</h2>
+  <div class="bg">
+    <p class="emp">
+      <span>NRG Energy</span><span>Blue Cross Blue Shield Association</span><span>Marsh</span>
+    </p>
+    <p>Backend engineering across energy, healthcare and insurance systems where integration correctness, security, production reliability and maintainability matter.</p>
+  </div>
+
+  <div class="bottom">
+    <a class="btn" href="/workbench">View the Workbench</a>
+    <a class="lnk" href="https://github.com/karthikdevadoss">GitHub</a>
+    <a class="lnk" href="https://www.linkedin.com/in/karthikeyan-devdoss/">LinkedIn</a>
+    <a class="lnk" href="/showcase/senior-java-ai-transformation">Role Showcase</a>
+  </div>
+
+  <footer>
+    This site sets no cookies and uses no analytics or third-party trackers.
+  </footer>
+
+</div>
+
+<script src="/nav.js"></script>
+</body>
+</html>

@@ -143,13 +143,20 @@ def check_xml_comments() -> list[dict]:
     violations = []
     proc = subprocess.run(
         ["git", "ls-files"], cwd=str(REPO_ROOT), capture_output=True, text=True, check=True,
+        encoding="utf-8", errors="replace",
     )
     for path in proc.stdout.splitlines():
         if not path.endswith(_XML_LIKE_SUFFIXES):
             continue
+        # encoding is pinned: text=True alone decodes with the platform locale
+        # codec (cp1252 on Windows), which raises on any committed file
+        # containing bytes that codec cannot map and leaves stdout None --
+        # the gate then died with a TypeError instead of reporting a
+        # violation. Found 2026-09-29 on a committed HTML file with
+        # typographic quotes.
         show = subprocess.run(
             ["git", "show", f"HEAD:{path}"], cwd=str(REPO_ROOT),
-            capture_output=True, text=True,
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
         )
         if show.returncode != 0:
             continue

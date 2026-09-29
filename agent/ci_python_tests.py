@@ -93,6 +93,7 @@ HERMETIC_MODULES = [
     # has via fetch-depth: 0 for verify_change.py.
     # Hermetic by construction: the model is injected, the corpus is a
     # fixture, and no network or private repo is required.
+    "test_public_surface_gate",   # Sprint 14: recruiter-facing release guards
     "test_standing_interview",
     "test_state_brief",
     "test_static_gate",

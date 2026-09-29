@@ -27,15 +27,25 @@
 // generalized fix: a destination can name the specific pages it must NOT
 // appear on, keeping ONE canonical source (no per-page duplicate lists)
 // while still honoring a real, narrower Owner decision.
+// Sprint 14 (2026-09-29): the canonical recruiter-facing set. "/" is now a
+// real home page rather than an alias for Workbench, so Home leads. Three
+// destinations were deliberately removed from PUBLIC navigation:
+//   * Learn and JD Match -- Owner decision, they become private/authenticated
+//     tools; their public routes now 404 in production (see web_server.py's
+//     PRIVATE_SURFACES_ENABLED gate). Implementation, datasets and tests are
+//     all preserved.
+//   * Dashboard -- de-emphasized, not deleted. It is the densest surface on
+//     the site (3,470 words) and a poor second click for a recruiter; it stays
+//     reachable as a deep link from Usage.
+// `hiddenOn` is retained as a mechanism (no destination currently uses it)
+// because removing it would delete the only per-page exclusion capability.
 const CANONICAL_NAV_DESTINATIONS = [
+  { href: "/", label: "Home" },
   { href: "/workbench", label: "Workbench" },
   { href: "/triage", label: "Triage" },
-  { href: "/dashboard", label: "Dashboard" },
+  { href: "/ask-codebase", label: "Ask Codebase" },
+  { href: "/showcase/senior-java-ai-transformation", label: "Showcase" },
   { href: "/usage", label: "Usage" },
-  { href: "/learn", label: "Learn", hiddenOn: ["/workbench", "/dashboard", "/usage"] },
-  { href: "/ask-codebase", label: "Ask the Codebase" },
-  { href: "/showcase/senior-java-ai-transformation", label: "Role Showcase" },
-  { href: "/jd-match", label: "JD Match" },
   // BL-079: gated, not unconditional. The Owner's condition was that Standing
   // Interview may appear in the live nav ONLY if the production page can
   // actually answer, and the corpus is delivered at deploy time rather than
@@ -49,23 +59,18 @@ const CANONICAL_NAV_DESTINATIONS = [
 
 function _isCurrentPage(href, pathname) {
   if (href === pathname) return true;
-  // "/" and "/workbench" both serve the Workbench page (see
-  // agent/web_server.py's route table); Triage's own sub-scenarios
-  // (/triage/scenario-b, /triage/scenario-c) should still bold "Triage"
-  // as the current top-level section.
-  if (href === "/workbench" && pathname === "/") return true;
+  // Sprint 14: "/" is its own page now, so the old "/workbench" === "/"
+  // aliasing rule is gone -- keeping it would bold Workbench while the
+  // visitor is on Home. Triage's sub-scenarios still bold "Triage" as the
+  // current top-level section, and the showcase slug bolds "Showcase".
   if (href === "/triage" && pathname.startsWith("/triage/")) return true;
-  if (href === "/learn" && pathname.startsWith("/learn/")) return true;
+  if (href.startsWith("/showcase/") && pathname.startsWith("/showcase/")) return true;
   return false;
 }
 
-// "/" serves the same page as "/workbench" (see _isCurrentPage above) --
-// hiddenOn must treat them as the same page too, or Learn would
-// incorrectly reappear on "/" while staying hidden on "/workbench".
 function _isHiddenOnPage(hiddenOn, pathname) {
   if (!hiddenOn) return false;
-  const normalized = pathname === "/" ? "/workbench" : pathname;
-  return hiddenOn.includes(normalized);
+  return hiddenOn.includes(pathname);
 }
 
 function renderCanonicalNav(containerId = "top-nav") {

@@ -14,23 +14,22 @@
 
 const { test, expect } = require("@playwright/test");
 
-const CANONICAL_LABELS = ["Workbench", "Triage", "Dashboard", "Usage", "Learn", "Ask the Codebase", "Role Showcase", "JD Match"];
+const CANONICAL_LABELS = ["Home", "Workbench", "Triage", "Ask Codebase", "Showcase", "Usage"];
 
-// AEQ-027 (2026-09-17): Learn is deliberately hidden on these 3 pages
-// only, per the real, dated Owner instruction (2026-09-13, see
-// e2e/profile.spec.js) that predates AEQ-024's nav unification and was
-// never reconciled with it -- see agent/web/nav.js's `hiddenOn`.
-const PAGES_WHERE_LEARN_IS_HIDDEN = new Set(["/workbench", "/dashboard", "/usage"]);
+// Sprint 14: Learn left public navigation entirely (Owner decision), so the
+// per-page hiding rule no longer applies to any destination. The set is kept
+// empty rather than deleted so the mechanism stays visible to the next reader.
+const PAGES_WHERE_LEARN_IS_HIDDEN = new Set();
 
 const PAGES = [
+  "/",
   "/workbench",
   "/triage",
   "/triage/scenario-b",
   "/triage/scenario-c",
-  "/dashboard",
   "/usage",
-  "/learn",
   "/ask-codebase",
+  "/case-study/durable-agent",
   "/showcase/senior-java-ai-transformation",
 ];
 
@@ -45,7 +44,7 @@ test.describe("Public navigation consistency", () => {
     const learnHidden = PAGES_WHERE_LEARN_IS_HIDDEN.has(path);
     const expectedLabels = learnHidden ? CANONICAL_LABELS.filter((l) => l !== "Learn") : CANONICAL_LABELS;
 
-    test(`${path} renders all ${expectedLabels.length} canonical destinations, including Role Showcase`, async ({ page }) => {
+    test(`${path} renders all ${expectedLabels.length} canonical destinations, including Showcase`, async ({ page }) => {
       await page.goto(path);
       const labels = await visibleNavLabels(page);
       for (const expected of expectedLabels) {
@@ -54,9 +53,9 @@ test.describe("Public navigation consistency", () => {
       if (learnHidden) {
         expect(labels, `${path}'s nav must NOT include "Learn" (Owner instruction 2026-09-13)`).not.toContain("Learn");
       }
-      // The actual originally-reported symptom: Role Showcase specifically
+      // The actual originally-reported symptom: Showcase specifically
       // must be a real, clickable, visible link -- not merely text.
-      await expect(page.locator("#top-nav a", { hasText: "Role Showcase" }))
+      await expect(page.locator("#top-nav a", { hasText: "Showcase" }))
         .toHaveAttribute("href", "/showcase/senior-java-ai-transformation");
     });
 
@@ -69,32 +68,34 @@ test.describe("Public navigation consistency", () => {
     });
   }
 
-  test("real browser journey: Role Showcase -> Workbench -> Usage -> Triage -> Dashboard -> Role Showcase, Role Showcase never disappears", async ({ page }) => {
+  test("real browser journey: Showcase -> Workbench -> Usage -> Triage -> Home -> Showcase, Showcase never disappears", async ({ page }) => {
     await page.goto("/showcase/senior-java-ai-transformation");
     // Current page is still a real <a> (bolded via <strong>), matching the
     // original hardcoded pages' own design (e.g. <a href="/workbench">
     // <strong>Workbench</strong></a>) -- nav.js preserves this, it doesn't
     // remove the self-link.
-    await expect(page.locator("#top-nav a", { hasText: "Role Showcase" })).toBeVisible();
-    await expect(page.locator("#top-nav a strong", { hasText: "Role Showcase" })).toBeVisible();
+    await expect(page.locator("#top-nav a", { hasText: "Showcase" })).toBeVisible();
+    await expect(page.locator("#top-nav a strong", { hasText: "Showcase" })).toBeVisible();
 
     await page.getByRole("link", { name: "Workbench", exact: true }).click();
     await expect(page).toHaveURL(/\/workbench$/);
-    await expect(page.locator("#top-nav a", { hasText: "Role Showcase" })).toBeVisible();
+    await expect(page.locator("#top-nav a", { hasText: "Showcase" })).toBeVisible();
 
     await page.getByRole("link", { name: "Usage", exact: true }).click();
     await expect(page).toHaveURL(/\/usage$/);
-    await expect(page.locator("#top-nav a", { hasText: "Role Showcase" })).toBeVisible();
+    await expect(page.locator("#top-nav a", { hasText: "Showcase" })).toBeVisible();
 
     await page.getByRole("link", { name: "Triage", exact: true }).click();
     await expect(page).toHaveURL(/\/triage$/);
-    await expect(page.locator("#top-nav a", { hasText: "Role Showcase" })).toBeVisible();
+    await expect(page.locator("#top-nav a", { hasText: "Showcase" })).toBeVisible();
 
-    await page.getByRole("link", { name: "Dashboard", exact: true }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
-    await expect(page.locator("#top-nav a", { hasText: "Role Showcase" })).toBeVisible();
+    // Sprint 14: Dashboard left public navigation, so the journey now goes
+    // through Home instead -- the new canonical first destination.
+    await page.getByRole("link", { name: "Home", exact: true }).click();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.locator("#top-nav a", { hasText: "Showcase" })).toBeVisible();
 
-    await page.getByRole("link", { name: "Role Showcase", exact: true }).click();
+    await page.getByRole("link", { name: "Showcase", exact: true }).click();
     await expect(page).toHaveURL(/\/showcase\/senior-java-ai-transformation$/);
   });
 });

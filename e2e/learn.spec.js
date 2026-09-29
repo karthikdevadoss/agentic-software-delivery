@@ -10,6 +10,15 @@
 
 const { test, expect } = require("@playwright/test");
 
+// Sprint 14: /learn and /jd-match are no longer public routes -- they 404 on
+// the public deployment and are registered only when PRIVATE_SURFACES_ENABLED
+// is set (agent/web_server.py). This spec is preserved, not deleted: it still
+// runs whenever the private surface is enabled.
+const PRIVATE_SURFACES = ["1", "true", "yes", "on"].includes(
+  String(process.env.PRIVATE_SURFACES_ENABLED || "").toLowerCase());
+test.skip(!PRIVATE_SURFACES, "private surface: set PRIVATE_SURFACES_ENABLED to run");
+
+
 test.describe("Learn recursive journey", () => {
   test("landing page shows domains, not a flat card dump", async ({ page }) => {
     await page.goto("/learn");

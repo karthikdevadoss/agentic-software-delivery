@@ -277,9 +277,29 @@
     .field-value { text-align: left; }
     .plan-stats { gap: var(--sp-6); }
   }
+  /* Sprint 14: this app is deployed separately from the portfolio platform,
+     so it deliberately does NOT carry the platform's canonical navigation --
+     it is a demo target application, not a portfolio page. What it did lack
+     was any way back: a recruiter who opened it from the portfolio was
+     stranded with no return path. One persistent link fixes that. */
+  .portfolio-return {
+    background: var(--ink); padding: 0.55rem var(--sp-4); text-align: left;
+  }
+  .portfolio-return a {
+    color: #fff; font-size: 0.85rem; font-weight: 600; text-decoration: none;
+    font-family: inherit;
+  }
+  .portfolio-return a:hover { text-decoration: underline; }
+  .portfolio-return a:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 </style>
 </head>
 <body>
+
+<!-- Persistent return path to the portfolio home page. Sits outside both the
+     login view and the app view so it is present on every screen. -->
+<div class="portfolio-return">
+  <a href="https://agentic-platform-backend-production.up.railway.app/" id="back-to-portfolio">&larr; Back to Portfolio</a>
+</div>
 
 <!-- ================= LOGIN VIEW ================= -->
 <div id="login-view">

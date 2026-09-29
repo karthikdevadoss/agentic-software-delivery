@@ -318,7 +318,8 @@ function renderNav(main, showcase) {
     ["ASK THE CODEBASE", "/ask-codebase"],
     ["VIEW DASHBOARD", "/dashboard"],
     ["VIEW USAGE", "/usage"],
-    ["VIEW LEARN", "/learn"],
+    // Sprint 14: "VIEW LEARN" removed. /learn is no longer a public route
+    // (Owner decision), so this button would have become a dead link.
   ];
   links.forEach(([label, url]) => {
     if (!url) return;

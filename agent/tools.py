@@ -191,13 +191,23 @@ def read_file(path: str) -> str:
         raise RepoToolError(f"file type not allowed for reading: {path!r}")
 
     raw_bytes = resolved.read_bytes()
-    truncated = len(raw_bytes) > MAX_FILE_BYTES
-    raw_bytes = raw_bytes[:MAX_FILE_BYTES]
 
+    # Decode BEFORE truncating. Truncating the raw bytes first splits any
+    # multi-byte UTF-8 sequence that happens to straddle MAX_FILE_BYTES, and
+    # the decode then fails -- which this function used to report as "file is
+    # not valid UTF-8 text", a false statement about a valid file. Real
+    # incident (2026-09-29, Sprint 14 release gate): eight test_rag_index
+    # errors on a Markdown file whose em-dash sat on the 20_000-byte
+    # boundary. Truncating the decoded string cannot split a character, and a
+    # genuinely invalid file still raises below.
     try:
         text = raw_bytes.decode("utf-8")
     except UnicodeDecodeError:
         raise RepoToolError(f"file is not valid UTF-8 text: {path!r}")
+
+    truncated = len(raw_bytes) > MAX_FILE_BYTES
+    if truncated:
+        text = text[:MAX_FILE_BYTES]
 
     text = redact_secrets(text)
     rel = resolved.relative_to(REPO_ROOT).as_posix()

@@ -10,14 +10,17 @@
 const { test, expect } = require("@playwright/test");
 
 const PUBLIC_PAGES = [
-  { path: "/", title: /Workbench/, heading: /Workbench/ },
+  // Sprint 14: "/" is the recruiter-facing home page, no longer a Workbench
+  // alias. Its identity is the person, not the tool.
+  { path: "/", title: /Karthikeyan Devadoss/, heading: /Karthikeyan Devadoss/ },
+  { path: "/case-study/durable-agent", title: /halfway through an AI-written change/,
+    heading: /halfway through an AI-written change/ },
   { path: "/workbench", title: /Workbench/, heading: /Workbench/ },
   { path: "/dashboard", title: /Dashboard/, heading: /Evidence Dashboard/ },
   { path: "/usage", title: /Usage/, heading: /Usage/ },
   { path: "/triage", title: /Incident Triage Lab/, heading: /Incident Triage Lab/ },
   { path: "/triage/scenario-b", title: /Incident Triage Lab \(Scenario B\)/, heading: /Incident Triage Lab/ },
   { path: "/triage/scenario-c", title: /Incident Triage Lab \(Scenario C\)/, heading: /Incident Triage Lab/ },
-  { path: "/learn", title: /Learn/, heading: /Learn/ },
 ];
 
 test.describe("Public golden journey — page identity and real content", () => {
