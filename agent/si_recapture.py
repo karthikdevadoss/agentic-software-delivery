@@ -35,10 +35,18 @@ PROD = "https://agentic-platform-backend-production.up.railway.app"
 OUT = pathlib.Path(__file__).parent / "testdata" / "si_production_answers_after.json"
 BASELINE = pathlib.Path(__file__).parent / "testdata" / "si_production_answers.json"
 
-# The six questions carrying the defect, in the audit's own lettering. These
-# are where the fix has to show up: a and b are the Owner's two examples, and
+# The questions carrying the defect, in the audit's own lettering. This is
+# where the fix has to show up: a and b are the Owner's two examples, and
 # e/f/g/w were the next worst by volunteered-negative count.
-WORST = ["a", "b", "e", "f", "g", "w"]
+#
+# "m" is here for a different reason. It is the OVER-REFUSAL case -- "describe
+# a technical disagreement and how you resolved it", declined on all three
+# baseline draws -- and leaving it out would let
+# test_a_legitimate_interview_question_is_not_refused pass VACUOUSLY, by
+# measuring a capture that contains nothing it could fail on. A test that
+# passes because it was handed no refusable question is worse than one that
+# stays red over a known, documented, Owner-blocked corpus gap.
+WORST = ["a", "b", "e", "f", "g", "w", "m"]
 
 APPROX_USD_PER_REQUEST = 0.023   # $1.4353 / 63, from the audit's real total
 
@@ -139,10 +147,38 @@ def main() -> int:
         if rep.unsolicited:
             bad += 1
             tot += len(rep.unsolicited)
-    print(f"\nAFTER : {tot} unsolicited negatives across {bad} of "
+    # Compare against the SAME questions in the baseline, not against the
+    # 57-answer headline -- a 21-request sample and a 63-request capture are
+    # not the same measurement, and presenting one as the other would be
+    # exactly the sort of number this project exists to not produce.
+    asked = {r["question_id"] for r in records}
+    base = json.loads(BASELINE.read_text(encoding="utf-8"))
+    base_same = [r for r in base
+                 if r["question_id"] in asked and r["outcome"] == "answered"]
+    b_bad = b_tot = 0
+    for r in base_same:
+        rep = si_quality.assess(r["question"], r["answer"], r["outcome"])
+        if rep.unsolicited:
+            b_bad += 1
+            b_tot += len(rep.unsolicited)
+
+    print()
+    print(f"  LIKE FOR LIKE, questions {''.join(sorted(asked))}")
+    print(f"  BEFORE : {b_tot} unsolicited negatives across {b_bad} of "
+          f"{len(base_same)} answered")
+    print(f"  AFTER  : {tot} unsolicited negatives across {bad} of "
           f"{len(answered)} answered")
-    print("BEFORE: 37 unsolicited negatives across 21 of 57 answered "
-          "(deploy-20260929T004905Z-8533d67)")
+    refused_before = sorted({r["question_id"] for r in base
+                             if r["question_id"] in asked
+                             and r["outcome"] != "answered"})
+    refused_after = sorted({r["question_id"] for r in records
+                            if r["outcome"] != "answered"})
+    print(f"  declined before: {refused_before or 'none'}")
+    print(f"  declined after : {refused_after or 'none'}")
+    print()
+    print("  Full-baseline context (NOT like-for-like, quoted for reference):")
+    print("  37 unsolicited negatives across 21 of 57 answered, "
+          "deploy-20260929T004905Z-8533d67")
     return 0
 
 

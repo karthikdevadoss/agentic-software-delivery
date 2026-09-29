@@ -1984,3 +1984,239 @@ about geometry, which is exactly where the defect automation missed turned up.
 - `test_event_ledger` still pollutes the live ledger with far-future fixture rows.
 - Learn and JD Match are unpublished behind an environment flag, not behind authentication.
   Archive tag `pre-sprint14-public-nav` marks the last public state.
+
+---
+
+## Sprint 15 — the UI defects the Owner found by looking, and a Standing Interview that argued against itself (2026-09-29) — CLOSED
+
+### A. Scope
+
+**Planned (11 sized items, 521.5 min summed midpoint).** A test matrix with desktop-1920
+leading; the Standing Interview navigation; one shared page shell; the home page at desktop
+width; one type scale and a legibility floor; the showcase title and recruiter-facing
+vocabulary; the AI-engineering-quality ledger backfill; the Standing Interview quality oracle,
+specification fix and over-refusal work; verification and deploy.
+
+**Completed:** all eleven.
+
+**Origin.** The Owner opened the site deployed by Sprint 14 — which had reported 240/240 green
+— on his own 1920×1080 display and found ten defects. He then added, in his own words:
+*"3 - Fix the SI interview answer quality also in this sprint."* Two defect classes, one
+underlying shape: the checks were real, and they were pointed somewhere else.
+
+**Deliberately not done, and why:**
+- **The light/dark theme was not unified.** The Owner's instruction was explicit: *"do
+  alignment only. Do not unify the light/dark theme for now."* `standing-interview.html`
+  still carries hard-coded light-theme colours on a dark surface. New elements added this
+  sprint (the starter-question chips) use the page's own tokens, because declining to
+  restyle what exists is not a licence to add another element that ignores its surface.
+- **Question m is still declined.** "Describe a technical disagreement and how you resolved
+  it" refuses on every draw. This is a CORPUS gap, not a gate defect — the private books are
+  technical, retrieval genuinely finds nothing behavioural, and the model correctly refuses
+  rather than inventing a story about a disagreement that may not have happened. Loosening
+  the decline gate would be worse than the refusal. Adding behavioural material is the
+  Owner's call on his own career content; the audit parked it as SI-19.
+- **Deep technical vocabulary on the showcase was left alone.** `LOWER()/CONCAT()`,
+  `pg_trgm`, `ContractPlanService.enroll()`, `agent/risk_policy.py`. That page is evidence
+  written for an engineer; method names and file paths are the substance, not jargon to be
+  smoothed away. Only identifiers that had leaked into recruiter-facing *prose* were
+  translated, and none was deleted.
+
+### B. Time
+
+| | |
+|---|---|
+| Summed item midpoints | 521.5 min |
+| Actual | 187 min |
+| Ratio | **0.36** |
+
+| Item | Size | Est. midpoint | Actual | Ratio | Provenance |
+|---|---|---|---|---|---|
+| BL-169 test matrix | MEDIUM | 55.0 | 30 | 0.55 | apportioned |
+| BL-170 SI nav | SMALL | 30.0 | 8 | 0.27 | apportioned |
+| BL-171 shared shell | MEDIUM | 70.0 | 20 | 0.29 | apportioned |
+| BL-172 home layout | MEDIUM | 70.0 | 15 | 0.21 | apportioned |
+| BL-173 type scale | SMALL | 42.5 | 12 | 0.28 | apportioned |
+| BL-174 title + vocabulary | SMALL | 35.0 | 12 | 0.34 | measured |
+| BL-175 AEQ backfill | SMALL | 35.0 | 7 | 0.20 | measured |
+| BL-176 SI quality oracle | LARGE | 35.0 | 18 | 0.51 | measured |
+| BL-177 SI specification fix | MEDIUM | 32.0 | 9 | 0.28 | measured |
+| BL-178 SI over-refusal | MEDIUM | 32.0 | 6 | 0.19 | measured |
+| BL-179 verify + deploy | MEDIUM | 85.0 | 50 | 0.59 | measured |
+
+**Honest limit on these numbers.** Six items are MEASURED from real artifact timestamps
+bracketing the work. The first five completed before this session's context compaction and
+were not individually timestamped; their combined span (85 min) is real, the split between
+them is an APPORTIONMENT, and is labelled as such in `docs/BACKLOG.json`'s
+`actual_minutes_provenance`. This sprint had no per-item timer, which is itself a finding
+below.
+
+---
+
+## Section 1 — Learnings from wrong ESTIMATION
+
+**1.1 — The ratio is 0.36, and it is the fifth sprint in a row under 0.6.** The recorded
+calibration ratios are 0.39 (MEDIUM/MEDIUM/apply_known_pattern, n=9), 1.29
+(SMALL/MEDIUM/apply_known_pattern, n=8) and 0.21 (LARGE/MEDIUM/first_of_kind, n=3). This
+sprint landed at 0.36 overall. **Verdict: ESTIMATION WRONG, consistently and in one
+direction.** The estimates are roughly 3× the real cost. Evidence: the table above.
+
+**1.2 — The one item that ran closest to its estimate is the one that required real
+thinking.** BL-176 (the quality oracle, LARGE, first_of_kind) came in at 0.51 and BL-179
+(verification) at 0.59 — the two highest ratios in the sprint. The items that ran furthest
+under (BL-178 at 0.19, BL-175 at 0.20, BL-172 at 0.21) were mechanical once the decision was
+made. **The estimate error is not uniform: it is largest where the work is mechanical.** A
+flat multiplier would therefore be the wrong correction. Evidence: 0.19–0.21 for mechanical
+items against 0.51–0.59 for design and verification work.
+
+**1.3 — BL-173 was sized SMALL and was not small in the way that mattered.** It came in at
+0.28 by the clock, so by ratio it looks like every other item. But the 12px floor turned out
+to need a sweep of **44 declarations across 9 stylesheets**, against the 3 pages the defect
+register named — and I only discovered that after the guard had already gone green. The
+sizing was right about effort and wrong about SCOPE, and the clock cannot see that
+distinction. **Verdict: ESTIMATION WRONG on scope, not on effort.**
+
+---
+
+## Section 2 — Learnings from IMPLEMENTATION issues
+
+**2.1 — I fixed the three pages the register named instead of the rule.** The Owner's
+register listed showcase (10.88px), dashboard (11.2px) and usage (11.52px). I bumped
+`showcase.css` and moved on, and the guard agreed the pages were clean. A source sweep later
+found 44 sub-floor declarations across 9 stylesheets. **When a defect is an instance of a
+RULE, fix the rule and sweep for every instance — a register is a sample, not an
+inventory.** Evidence: `agent/web/*.css`, 44 declarations raised.
+
+**2.2 — My own guard reported clean on a defect that was really there, because it measured
+the page before the data arrived.** `.summary-label` ("Known Cost Total", 10.88px) and
+`.badge st-ok` ("PRODUCTION ACTIVE", 11.2px) only exist once the API responds. The 12px
+check waited for the `<h1>` and then measured — and the h1 is in the static HTML. It passed
+both pages. I found them by taking a screenshot and printing the geometry beside it, which
+is the same way every defect in this sprint was originally found. **This is the Sprint 14
+lesson recurring inside Sprint 15's own fix for the Sprint 14 lesson.** Fixed, then
+re-proven RED against the seeded defect before being trusted again.
+
+**2.3 — The "something to click above the fold" fix existed only while the page was
+loading.** I put the link row inside `<main>`; `usage.js` does `main.innerHTML = ...` once
+its data arrives and wiped it. The weaker guard had agreed the page was fine. Same root
+cause as 2.2 — a check that samples one moment of a page's life, on a page whose content
+arrives in two stages. Moved into `<header>`, which survives.
+
+**2.4 — I made the guard flaky, then made it slow, before making it correct.** A fixed 2.5s
+sleep lost a race under four workers (one false failure). Adding `networkidle` fixed the race
+and pushed the nine-page loops from 12s to 28s — under the 30s default alone, over it under
+parallel load, so a flake became a timeout. The correct answer was a real wait CONDITION plus
+an explicit timeout for tests that legitimately visit nine pages. **A guard that reports a
+defect that is not there costs exactly as much trust as one that misses a defect that is.**
+
+**2.5 — Two suites run concurrently produced three phantom failures.** `interview-walkthrough`
+failed twice, on different tests, and the hermetic count moved between 3, 4 and 5 — every
+time while a second suite was running. Run alone: 226 passed with exactly the 5 failures
+proven pre-existing, and 30/30 on the walkthrough spec under `--repeat-each=3`. **Do not
+report a failure count from a machine running two suites at once.**
+
+**2.6 — What went right, and is worth keeping: the SI fix was not allowed to start until the
+measurement was red.** The audit's sequencing constraint said build the oracle and prove it
+red against the six rejected answers BEFORE touching a prompt line. Holding to that produced
+a real number (37 unsolicited negatives across 21 of 57) that independently corroborated the
+audit's own hand count of 38 across 22 — two counts landing one apart, from different code.
+Had I changed the prompt first, there would have been no way to tell a working fix from an
+absent measurement.
+
+**2.7 — The frozen test fixture encoded the defect.** `NEW_KAFKA_GENERIC`, labelled "the
+shape the Owner froze", contained the exact two sentences he now objects to, and the live
+answers were faithful to it. The fixture moved, not the gate — following the precedent
+already set two comments below it in the same file ("later instruction wins"). **A frozen
+fixture is a record of what was wanted THEN; when the owner of the requirement changes it,
+the fixture is the thing that is now wrong.**
+
+---
+
+## Section 3 — Neither, but still needed
+
+**3.1 — Instrument per-item timing.** Five of eleven actuals in this retro are
+apportionments because the work predated a context compaction and nothing recorded when each
+item started. The calibration loop is the Owner's permanent standing process and it deserves
+real inputs. A start/stop marker written into the backlog item at the moment work begins
+would make every future retro's table measured rather than partly reconstructed.
+
+**3.2 — The AEQ ledger is now a named close-out step.** Sprint 14 recorded its defects in
+commits, the retro and the backlog, and wrote nothing to
+`docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml`. Two sprints later the same defect class
+recurred with no warning on file. AEQ-030/031/032 are backfilled and
+`.claude/rules/sprint-process.md` Phase 2b now states the question every retro must answer.
+
+**3.3 — The five pre-existing Playwright failures deserve their own item.** Session History,
+the verified run and the customer-app login gate fail on this machine because the local
+environment has no ledger data and no running Spring app. They pass in production. Right now
+every run requires me to remember that, which is exactly the condition under which a real
+regression gets waved through as "one of the known ones". They should either be skipped with
+a stated reason or given local fixtures.
+
+**3.4 — For the sprint as a whole: the Owner found these defects, and he should not have
+had to.** Both this sprint's defect classes reached him through a green suite. The guards
+added here close these specific holes, but the generalisable rule is the one now in AEQ-030:
+*a test matrix is a claim about coverage, and the agent writes the matrix — when the agent
+chooses both the assertions and the conditions they run under, a green count measures only
+the intersection of its own two choices.* The condition list has to come from how the thing
+is really used, and the final check has to include looking at it.
+
+**2.8 — My own fix introduced two regressions, and the pre-deploy acceptance gate caught
+both before anything shipped.** The spec rewrite told the model not to volunteer a
+limitation. It over-applied that to questions that *directly ask* one: "Did NRG use Kafka?"
+and "Tell me about Kafka at NRG" both stopped stating the absence, which is the entire
+answer to those questions. The gate failed 4 of 15 and `set -euo pipefail` aborted the
+script before `railway up` ran, so production stayed on Sprint 14 throughout.
+
+This is the single most important thing that happened in this sprint, and it is worth being
+precise about why. Every local suite was green — 136 Python tests, 67 UI guards, 226
+Playwright — and the thing that caught it was the one gate that calls a real model with the
+real corpus and reads what comes back. **A prompt change cannot be verified by any test that
+does not run the model.** The unit tests verified that the prompt CONTAINS the new rule;
+only the acceptance replay could show that the model OVER-APPLIED it.
+
+The fix was to make the direct-answer case the FIRST thing the prompt says, with worked
+examples, before the rule it is an exception to — a limitation the question asked for is not
+a volunteered limitation, and the model needed that stated rather than inferred from a
+numbered exception three paragraphs down. Two other real findings came out of the same run:
+"opens on a limitation" was reclassified soft (it had refused a good answer to "How does the
+human approval step work on your platform?" outright), and the `the source material` leak
+pattern got the question-aware exemption its sibling pattern already had, because an answer
+about how RAG retrieval works has to name what it retrieves from.
+
+**2.9 — The acceptance gate is a sample, not a measurement, and I nearly reported it as
+one.** Across four runs this sprint with no code change between two of them, it returned 4,
+1, 0 and 2 failures. It calls a real model, so it samples a distribution. After the 0-failure
+run I was one step from writing "ACCEPTANCE PASSED — 15 of 15" into the retro as the
+sprint's verification, and the very next run failed 2. **A single green run of a
+non-deterministic gate is evidence, not proof, and should be reported with its run count.**
+The gate is still the right gate — it is the only thing all sprint that caught a real
+regression — but its verdict needs a sample size attached.
+
+**2.10 — One of those two failures was the checker being wrong, not the answer.** "Tell me
+about Kafka at NRG" was failed for "does not state the absence" by an answer that said *"that's
+the messaging setup I worked with there, **not Kafka**"*. The check accepts "didn't use",
+"was not", "not part of", "never used" — and not "not Kafka". **This is the same defect
+class as the `_LIMIT_MARKER` phrase list this sprint exists to replace, and I reintroduced
+it by trusting a sibling phrase list I had not looked at.** A fixed vocabulary cannot
+enumerate how a person says a thing. Fixed, and verified in both directions: the new
+phrasings are accepted and an answer that genuinely never mentions the absence still fails.
+
+**2.11 — The prompt block I rewrote was carrying something else.** The
+volunteered-limitation rewrite replaced the paragraph that used to say "be honest about the
+limits of your own involvement" — which was also the place the answer's own *first-person
+framing* lived. A later run produced an answer about NRG with no "I" and no "we" anywhere in
+it: documentation about a system, not someone remembering their job. **When replacing a
+block of a prompt, check what else that block was doing.** First person is now restated
+where the new rule lives, with the failing answer as the worked counter-example.
+
+**3.5 — The acceptance gate needs a sample size, and the deploy script needs to know that.**
+Right now `scripts/deploy_platform_with_si_corpus.sh` runs the replay once and aborts on any
+failure. Given the distribution observed this sprint (4, 1, 0, 2 failures on an unchanged
+codebase for two of those runs), that makes a deploy a coin-flip on a marginal case, and it
+makes "it passed" mean less than it sounds. Two changes worth proposing rather than making
+unilaterally, since both change what a deploy costs: run each question N times and gate on a
+threshold rather than on zero failures in one draw; and record the per-question pass rate
+over time, so a question that is genuinely 50/50 is visible as such instead of appearing as
+an intermittent deploy failure. This needs the Owner's call because N draws is N times the
+model spend on every deploy.
