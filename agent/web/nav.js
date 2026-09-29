@@ -35,6 +35,7 @@ const CANONICAL_NAV_DESTINATIONS = [
   { href: "/learn", label: "Learn", hiddenOn: ["/workbench", "/dashboard", "/usage"] },
   { href: "/ask-codebase", label: "Ask the Codebase" },
   { href: "/showcase/senior-java-ai-transformation", label: "Role Showcase" },
+  { href: "/jd-match", label: "JD Match" },
   // BL-079: gated, not unconditional. The Owner's condition was that Standing
   // Interview may appear in the live nav ONLY if the production page can
   // actually answer, and the corpus is delivered at deploy time rather than

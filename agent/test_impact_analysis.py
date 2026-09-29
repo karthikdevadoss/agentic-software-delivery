@@ -139,6 +139,12 @@ FRONTEND_PATH_TO_SPECS = {
     "agent/web/usage.js": ["e2e/usage.spec.js"],
     "agent/web/learn.html": ["e2e/learn.spec.js"],
     "agent/web/learn.js": ["e2e/learn.spec.js"],
+    # Sprint 13 / BL-097: JD Match. The backend module is mapped too, because a
+    # validation change is exactly what the rendered-result spec must catch.
+    "agent/web/jd-match.html": ["e2e/jd-match.spec.js"],
+    "agent/web/jd-match.js": ["e2e/jd-match.spec.js"],
+    "agent/web/jd-match.css": ["e2e/jd-match.spec.js"],
+    "agent/jd_match.py": ["e2e/jd-match.spec.js"],
     "app/src/main/resources/static/index.html": [
         "e2e/customer-app-update-email.spec.js",
         "e2e/customer-app-frontend.spec.js",

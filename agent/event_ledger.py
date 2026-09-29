@@ -128,6 +128,10 @@ KNOWN_EVENT_TYPES = frozenset({
     # row per state transition, one per human decision -- in THIS ledger,
     # not a parallel observability system.
     "workflow_transition", "workflow_human_decision",
+
+    # Sprint 13 / BL-097: JD Match. Counts, statuses, usage and a hash of the
+    # input -- never the job description text.
+    "jd_match_run", "jd_match_refusal",
 })
 
 # REAL INCIDENT (found 2026-09-18, same investigation as the stale sync

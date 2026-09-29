@@ -38,9 +38,18 @@ const EXPECTED_DESTINATIONS = [
   { href: "/learn", label: "Learn", hiddenOn: ["/workbench", "/dashboard", "/usage"] },
   { href: "/ask-codebase", label: "Ask the Codebase" },
   { href: "/showcase/senior-java-ai-transformation", label: "Role Showcase" },
+  { href: "/jd-match", label: "JD Match" },
 ];
-assertDeepEqual(nav.CANONICAL_NAV_DESTINATIONS, EXPECTED_DESTINATIONS,
-  "canonical nav destination set must be exactly the 7 intended public engineering surfaces");
+// BL-079 added a GATED entry (Standing Interview, shown only when the server
+// reports a loaded corpus). The unconditional set is what this guard pins;
+// the gated entry is asserted separately below, with its endpoint.
+const unconditional = nav.CANONICAL_NAV_DESTINATIONS.filter((d) => !d.requiresEndpoint);
+assertDeepEqual(unconditional, EXPECTED_DESTINATIONS,
+  "canonical unconditional nav destination set must be exactly the intended public engineering surfaces");
+const gated = nav.CANONICAL_NAV_DESTINATIONS.filter((d) => d.requiresEndpoint);
+assertDeepEqual(gated.map((d) => [d.href, d.label, d.requiresEndpoint, d.requiresKey]),
+  [["/standing-interview", "Standing Interview", "/api/standing-interview/status", "loaded"]],
+  "the only gated destination is Standing Interview, gated on the corpus-status endpoint");
 
 // Role Showcase must genuinely be present -- the exact real defect.
 assert(

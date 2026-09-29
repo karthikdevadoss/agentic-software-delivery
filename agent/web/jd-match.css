@@ -1,0 +1,31 @@
+/* JD Match -- follows ask-codebase.css's conventions; nothing new in the shell. */
+#jd-text { width: 100%; box-sizing: border-box; font: inherit; padding: 0.6rem; resize: vertical; }
+.jd-form-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin-top: 0.5rem; }
+.jd-secondary { background: transparent; border: 1px solid currentColor; }
+.jd-summary { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-bottom: 0.75rem; }
+.jd-summary-line { font-weight: 600; }
+.jd-flag { font-size: 0.85rem; padding: 0.15rem 0.5rem; border: 1px solid currentColor; border-radius: 3px; }
+.jd-refusal { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; }
+.jd-status-pill { display: inline-block; font-size: 0.75rem; letter-spacing: 0.04em; padding: 0.15rem 0.5rem; border-radius: 3px; white-space: nowrap; }
+.jd-status-demo { background: #1f7a4d; color: #fff; }
+.jd-status-partial { background: #b7791f; color: #fff; }
+.jd-status-none { background: #6b7280; color: #fff; }
+.jd-table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; font-size: 0.92rem; }
+.jd-table th, .jd-table td { text-align: left; vertical-align: top; padding: 0.5rem; border-top: 1px solid rgba(127,127,127,0.3); }
+.jd-req { width: 28%; }
+.jd-why { width: 30%; }
+.jd-note { font-size: 0.8rem; opacity: 0.8; margin-top: 0.25rem; }
+.jd-cap { margin-bottom: 0.6rem; }
+.jd-cap-name { font-weight: 600; }
+.jd-cap-level { font-size: 0.78rem; opacity: 0.8; }
+.jd-cap-link { display: block; font-size: 0.8rem; word-break: break-all; }
+.jd-cap-note { font-size: 0.8rem; opacity: 0.85; margin-top: 0.2rem; }
+.jd-none { opacity: 0.6; }
+@media (max-width: 720px) {
+  .jd-table, .jd-table thead, .jd-table tbody, .jd-table tr, .jd-table td, .jd-table th { display: block; width: auto; }
+  .jd-table thead { display: none; }
+  .jd-table tr { border-top: 2px solid rgba(127,127,127,0.4); padding: 0.4rem 0; }
+  .jd-table td { border-top: none; padding: 0.25rem 0.3rem; }
+  .jd-req::before { content: "Requirement: "; font-weight: 600; }
+  .jd-why::before { content: "Why: "; font-weight: 600; }
+}

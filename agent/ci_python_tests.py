@@ -50,6 +50,7 @@ from pathlib import Path
 HERMETIC_MODULES = [
     "test_acceptance_contract",
     "test_durable_workflow",          # BL-093/094: MemorySaver + a local git repo, no network
+    "test_jd_match",                  # BL-097: injected model + injected embedder, no network
     "test_agent_decision_eval_runner",
     "test_agent_loop",
     "test_aggregate_evidence",

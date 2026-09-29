@@ -64,7 +64,9 @@ def _capability_matrix() -> list:
     rows = []
     for cap in registry.values():
         status = state_labels.get(cap.get("production_state"), cap.get("production_state", "NOT CAPTURED YET"))
-        evidence = "; ".join(cap.get("evidence_links") or []) or cap.get("engineering_problem_solved", "-")
+        # BL-096: evidence_links are now clickable URLs only; the prose that
+        # used to sit in that field lives in evidence_note. Show both.
+        evidence = "; ".join((cap.get("evidence_note") or []) + (cap.get("evidence_links") or [])) or cap.get("engineering_problem_solved", "-")
         gap = "-" if cap.get("production_state") == "PRODUCTION_ACTIVE" else (cap.get("production_state") or "").replace("_", " ")
         rows.append({"area": cap.get("display_name", cap.get("id")), "status": status, "evidence": evidence, "gap": gap or "-"})
     return rows

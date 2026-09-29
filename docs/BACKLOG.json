@@ -2454,13 +2454,14 @@
       "size_rationale": "Rubric MEDIUM: one YAML file plus its loader/tests, deterministic checks exist. suggest-estimate -> COMPUTED n=7, median_ratio 0.39, suggested_midpoint 21.4 min. ADOPTED per process; recorded as a prediction to be scored.",
       "deviated_from_suggestion": false,
       "category": "delivery",
-      "status": "backlog",
+      "status": "done",
       "sprint": "Sprint 13 (owner approved 2026-09-29, three-task autonomous sprint)",
       "created_at": "2026-09-29",
-      "started_at": null,
+      "started_at": "2026-09-29",
       "created_at_commit": "bac7cea",
       "commit_shas": [],
-      "session_ids": []
+      "session_ids": [],
+      "completed_at": "2026-09-29"
     },
     {
       "id": "BL-097",
@@ -2473,13 +2474,14 @@
       "size_rationale": "Rubric LARGE: backend module + route + page + eval set, and the two-step structured-output-with-deterministic-validation pattern is new here (SI is conceptually close, not reusable code). suggest-estimate -> INSUFFICIENT_HISTORY n=0; raw range adopted.",
       "deviated_from_suggestion": false,
       "category": "delivery",
-      "status": "backlog",
+      "status": "done",
       "sprint": "Sprint 13 (owner approved 2026-09-29, three-task autonomous sprint)",
       "created_at": "2026-09-29",
-      "started_at": null,
+      "started_at": "2026-09-29",
       "created_at_commit": "bac7cea",
       "commit_shas": [],
-      "session_ids": []
+      "session_ids": [],
+      "completed_at": "2026-09-29"
     },
     {
       "id": "BL-098",
@@ -2492,10 +2494,10 @@
       "size_rationale": "Acceptance depends on a real model run over a labelled eval set plus a live deploy; investigation_only for the same reason as BL-091. suggest-estimate -> INSUFFICIENT_HISTORY n=0; raw range adopted.",
       "deviated_from_suggestion": false,
       "category": "delivery",
-      "status": "backlog",
+      "status": "active",
       "sprint": "Sprint 13 (owner approved 2026-09-29, three-task autonomous sprint)",
       "created_at": "2026-09-29",
-      "started_at": null,
+      "started_at": "2026-09-29",
       "created_at_commit": "bac7cea",
       "commit_shas": [],
       "session_ids": []

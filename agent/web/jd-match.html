@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JD Match — Agentic Software Delivery</title>
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/jd-match.css">
+</head>
+<body>
+
+<header>
+  <h1>JD Match <span class="sub">— your job description against verified evidence</span></h1>
+  <p class="tagline">
+    Paste a job description. Requirement by requirement, see what this platform genuinely
+    demonstrates, with a link to the proof — and an honest "not yet demonstrated" where
+    there is none.
+  </p>
+  <nav class="top-nav" id="top-nav"></nav>
+</header>
+
+<main id="jd-main">
+
+  <section class="panel">
+    <h2>Paste a job description</h2>
+    <form id="jd-form">
+      <textarea id="jd-text" maxlength="8000" rows="10"
+        placeholder="Paste the requirements or responsibilities section of a role here (up to 8,000 characters)."></textarea>
+      <div class="jd-form-row">
+        <button type="submit" id="jd-submit">MATCH AGAINST EVIDENCE</button>
+        <button type="button" id="jd-sample" class="jd-secondary">USE A SAMPLE JOB DESCRIPTION</button>
+        <span class="hint" id="jd-charcount">0 / 8000</span>
+      </div>
+    </form>
+    <p class="hint">
+      Two model calls per submission, one match per minute per instance, a daily cap. Nothing
+      you paste is stored — only a hash of it and the resulting counts.
+    </p>
+  </section>
+
+  <section class="panel" id="jd-result-panel" hidden>
+    <h2>Result</h2>
+    <div id="jd-summary" class="jd-summary"></div>
+    <div id="jd-result"></div>
+  </section>
+
+  <section class="panel">
+    <h2>How this stays honest</h2>
+    <p>
+      The AI only <em>proposes</em>. It extracts the requirements from your text, and it may
+      pick capabilities <em>only from a shortlist that code built</em> from a verified
+      registry. Then code decides what you see: any capability the model names that is not
+      on that shortlist is dropped; a "demonstrated" with no valid evidence becomes
+      "not yet demonstrated"; a status can never exceed the verification level recorded for
+      the capability; every link comes from the registry, never from model text; and every
+      reason is scanned for claims the evidence cannot carry (employer work, scale numbers,
+      certifications, contact details) and withheld on a hit.
+    </p>
+    <p class="hint">
+      Truth over impressiveness: a false "demonstrated" is a worse outcome here than a
+      missing feature.
+    </p>
+  </section>
+
+</main>
+
+<script src="/nav.js"></script>
+<script src="/jd-match.js"></script>
+</body>
+</html>

@@ -61,6 +61,7 @@ import interview_walkthrough_data
 import ask_codebase
 import standing_interview
 import durable_workflow
+import jd_match
 import demo_execution
 import estimation
 import triage_execution
@@ -2175,6 +2176,26 @@ async def workflow_continue(request: Request):
     return JSONResponse(result, status_code=409 if result.get("status") in ("busy", "refused") else 200)
 
 
+# --- JD Match (Sprint 13, BL-097) -------------------------------------------
+# Public page: paste a job description, see requirement-by-requirement what
+# this platform genuinely demonstrates, with clickable proof from the
+# capability registry. The model proposes; agent/jd_match.py's code decides.
+async def jd_match_page(request: Request):
+    return FileResponse(str(WEB_DIR / "jd-match.html"))
+
+
+async def jd_match_api(request: Request):
+    body = await request.json()
+    jd = (body.get("jd") or "")[: jd_match.MAX_JD_CHARS + 1]
+    result = await run_in_threadpool(jd_match.match, jd)
+    code = {"COOLDOWN": 429, "DAILY_CAP": 429, "TEMPORARILY_UNAVAILABLE": 503}.get(result.get("status"), 200)
+    return JSONResponse(result, status_code=code)
+
+
+async def jd_match_sample(request: Request):
+    return JSONResponse({"jd": jd_match.SAMPLE_JD})
+
+
 routes = [
     Route("/api/runs", start_run, methods=["POST"]),
     Route("/api/runs/mock", start_mock_run, methods=["POST"]),
@@ -2201,6 +2222,8 @@ routes = [
     Route("/api/showcase/{slug}", get_showcase_data, methods=["GET"]),
     Route("/api/interview-walkthrough", get_interview_walkthrough_data, methods=["GET"]),
     Route("/api/ask-codebase", ask_codebase_api, methods=["GET"]),
+    Route("/api/jd-match", jd_match_api, methods=["POST"]),
+    Route("/api/jd-match/sample", jd_match_sample, methods=["GET"]),
     Route("/api/workflow/start", workflow_start, methods=["POST"]),
     Route("/api/workflow/{workflow_id}", workflow_describe, methods=["GET"]),
     Route("/api/workflow/{workflow_id}/decide", workflow_decide, methods=["POST"]),
@@ -2246,6 +2269,7 @@ routes = [
     Route("/showcase/{slug}", showcase_page, methods=["GET"]),
     Route("/ask-codebase", ask_codebase_page, methods=["GET"]),
     Route("/standing-interview", standing_interview_page, methods=["GET"]),
+    Route("/jd-match", jd_match_page, methods=["GET"]),
     Route("/triage", triage_page, methods=["GET"]),
     Route("/triage/scenario-b", triage_page_b, methods=["GET"]),
     Route("/triage/scenario-c", triage_page_c, methods=["GET"]),

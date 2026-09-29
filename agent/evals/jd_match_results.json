@@ -1,0 +1,646 @@
+{
+  "ran_at_utc": "2026-09-29T00:36:07Z",
+  "cases": [
+    {
+      "id": "agentic-systems-product",
+      "expect": "MATCHED",
+      "status": "MATCHED",
+      "summary": {
+        "demonstrated": 6,
+        "partial": 2,
+        "not_demonstrated": 2,
+        "total": 10
+      },
+      "injection_detected": false,
+      "redacted_reasons": 0,
+      "dropped_ids": 0,
+      "downgrades": 0,
+      "elapsed_seconds": 31.5,
+      "requirements": [
+        {
+          "text": "Build production agent workflows with explicit state, checkpoints and human approval steps.",
+          "status": "DEMONSTRATED",
+          "capability_ids": [
+            "durable-langgraph-workflow"
+          ],
+          "reason": "Describes an explicit stateful graph with Postgres checkpoints and human-in-the-loop interrupt/resume approval steps."
+        },
+        {
+          "text": "Implement tool calling against real systems with strict authority boundaries.",
+          "status": "PARTIAL",
+          "capability_ids": [
+            "reasoning-gateway-kill-switch"
+          ],
+          "reason": "Shows a central gateway enforcing an advisory purpose allowlist and a kill switch, bounding model call authority, though not general tool calling against arbitrary real systems."
+        },
+        {
+          "text": "Design RAG pipelines with measurable retrieval quality (recall, MRR) and evals in CI.",
+          "status": "PARTIAL",
+          "capability_ids": [
+            "rag-mcp-embeddings"
+          ],
+          "reason": "States RAG plus embeddings retrieval is measured with evals rather than assumed, though CI-integrated recall/MRR metrics are not specified."
+        },
+        {
+          "text": "Ship observability for model calls: token usage, cost, latency, an audit trail.",
+          "status": "NOT_DEMONSTRATED",
+          "capability_ids": [],
+          "reason": "No listed capability covers token usage, cost, or latency observability with an audit trail."
+        },
+        {
+          "text": "Own deployment verification and incident follow-up for what you ship.",
+          "status": "DEMONSTRATED",
+          "capability_ids": [
+            "production-deployment-verification"
+          ],
+          "reason": "Independently asserts requested production content changes rather than trusting a success status or healthcheck alone."
+        },
+        {
+          "text": "Strong Python; experience with LangGraph or a comparable stateful agent framework.",
+          "status": "DEMONSTRATED",
+          "capability_ids": [
+            "durable-langgraph-workflow"
+          ],
+          "reason": "Implements a stateful LangGraph workflow with durable checkpoints and idempotent side effects."
+        },
+        {
+          "text": "Experience with LLM APIs, embeddings, prompt/context engineering.",
+          "status": "DEMONSTRATED",
+          "capability_ids": [
+            "rag-mcp-embeddings"
+          ],
+          "reason": "Provides grounded LLM context retrieval via RAG, embeddings and MCP against a real codebase."
+        },
+        {
+          "text": "A track record of testing AI features deterministically, not by vibes.",
+          "status": "DEMONSTRATED",
+          "capability_ids": [
+            "deterministic-static-gates"
+          ],
+          "reason": "Turns recurring defect patterns into blocking, scriptable, zero-LLM checks rather than subjective judgment."
+        },
+        {
+          "text": "You have worked with PostgreSQL and durable execution patterns.",
+          "status": "DEMONSTRATED",
+          "capability_ids": [
+            "postgres-jpa-flyway",
+            "durable-langgraph-workflow"
+          ],
+          "reason": "Shows PostgreSQL with versioned Flyway migrations and a durable checkpointed workflow pattern."
+        },
+        {
+          "text": "Fluent English; German is a plus.",
+          "status": "NOT_DEMONSTRATED",
+          "capability_ids": [],
+          "reason": "No listed capability addresses spoken/written language fluency in English or German."
+        }
+      ],
+      "failures": [],
+      "held": true
+    },
+    {
+      "id": "java-genai-enterprise",
+      "expect": "MATCHED",
+      "status": "MATCHED",
+      "summary": {
+        "demonstrated": 12,
+        "partial": 4,
+        "not_demonstrated": 0,
+        "total": 16
+      },
+      "injection_detected": false,
+      "redacted_reasons": 0,
+      "dropped_ids": 0,
+      "downgrades": 0,
+      "elapsed_seconds": 18.0,
+      "requirements": [
+        {
+          "text": "Lead the backend of an enterprise platform in Java 21 / Spring Boot with REST and GraphQL APIs.",
+          "status": "PARTIAL",
+          "capability_ids": [
+            "java-spring-rest-api",
+            "bff-aggregator-fan-out"
+          ],
+          "reason": "Shows Java/Spring REST API and aggregation but no GraphQL evidence."
+        },
+        {
+          "text": "Integrate generative AI features safely: retrieval-augmented generation.",
+          "status": "DEMONSTRATED",
+          "capability_ids": [
+            "rag-mcp-embeddings"
+          ],
+          "reason": "RAG plus embeddings retrieval is directly implemented and measured."
+        },
+        {
+          "text": "human-in-the-loop approval for AI-generated changes.",
+          "status": "DEMONSTRATED",
+          "capability_ids": [
+            "hitl-hash-bound-write-boundary"
+          ],
+          "reason": "Approval is bound by hash to exact content before an AI change can be applied."
+        },
+        {
+          "text": "Establish engineering practices for AI-assisted delivery: independent QA of AI output.",
+          "status": "DEMONSTRATED",
+          "capability_ids": [
+            "independent-qa-evaluator"
+          ],
+          "reason": "A structurally separate evaluator re-verifies AI-generated work against evidence."
+        },
+        {
+          "text": "deterministic quality gates in CI.",
+          "status": "DEMONSTRATED",
+          "capability_ids": [
+            "deterministic-static-gates"
+          ],
+          "reason": "Zero-LLM scriptable CI checks block merges on recurring defect classes."
+        },
+        {
+          "text": "Run microservices with service discovery.",
+          "status": "PARTIAL",
+          "capability_ids": [
+            "real-topology-gating-tier"
+          ],
+          "reason": "Real multi-instance topology with a registry is tested as a CI gate, showing service-discovery style topology."
+        },
+        {
+          "text": "JWT/OAuth2 security.",
+          "status": "DEMONSTRATED",
+          "capability_ids": [
+            "asymmetric-jwt-jwks",
+            "security-jwt-rbac"
+          ],
+          "reason": "RS256 JWT/JWKS across services plus BCrypt+JWT RBAC auth are implemented."
+        },
+        {
+          "text": "resilience patterns.",
+          "status": "DEMONSTRATED",
+          "capability_ids": [
+            "downstream-resilience"
+          ],
+          "reason": "Resilience4j timeout, retry and circuit breaker protect against downstream failures."
+        },
+        {
+          "text": "Kafka-based eventing.",
+          "status": "DEMONSTRATED",
+          "capability_ids": [
+            "kafka-outbox",
+            "durable-event-ledger"
+          ],
+          "reason": "Kafka wiring via transactional outbox and a durable event ledger for pipeline events are implemented."
+        },
+        {
+          "text": "7+ years of Java and Spring.",
+          "status": "PARTIAL",
+          "capability_ids": [
+            "java-spring-rest-api"
+          ],
+          "reason": "Java 21/Spring Boot REST API work is shown though no years-of-experience figure is claimed."
+        },
+        {
+          "text": "PostgreSQL, Flyway, Testcontainers.",
+          "status": "DEMONSTRATED",
+          "capability_ids": [
+            "postgres-jpa-flyway"
+          ],
+          "reason": "PostgreSQL with JPA/Hibernate and versioned Flyway migrations are implemented."
+        },
+        {
+          "text": "Experience with Kafka and the transactional outbox pattern.",
+          "status": "DEMONSTRATED",
+          "capability_ids": [
+            "kafka-outbox"
+          ],
+          "reason": "Transactional outbox pattern with Kafka wiring is implemented and tested."
+        },
+        {
+          "text": "Hands-on with LLM APIs and embeddings.",
+          "status": "DEMONSTRATED",
+          "capability_ids": [
+            "rag-mcp-embeddings"
+          ],
+          "reason": "Embeddings and LLM context retrieval with measured evals are directly implemented."
+        },
+        {
+          "text": "an understanding of evals.",
+          "status": "DEMONSTRATED",
+          "capability_ids": [
+            "rag-mcp-embeddings"
+          ],
+          "reason": "Retrieval quality is explicitly measured via evals rather than assumed."
+        },
+        {
+          "text": "Mentoring and estimation experience.",
+          "status": "PARTIAL",
+          "capability_ids": [
+            "estimation-calibration-scrum-for-ai"
+          ],
+          "reason": "A sized-backlog estimation system with retro exists, though no direct mentoring evidence."
+        },
+        {
+          "text": "you can run a retrospective that changes something.",
+          "status": "DEMONSTRATED",
+          "capability_ids": [
+            "estimation-calibration-scrum-for-ai"
+          ],
+          "reason": "A mandatory retro diagnoses estimate-vs-actual gaps and requires approved action items."
+        }
+      ],
+      "failures": [],
+      "held": true
+    },
+    {
+      "id": "agentic-coding-platform",
+      "expect": "MATCHED",
+      "status": "MATCHED",
+      "summary": {
+        "demonstrated": 9,
+        "partial": 1,
+        "not_demonstrated": 1,
+        "total": 11
+      },
+      "injection_detected": false,
+      "redacted_reasons": 0,
+      "dropped_ids": 0,
+      "downgrades": 0,
+      "elapsed_seconds": 19.5,
+      "requirements": [
+        {
+          "text": "Deep experience with tool-calling loops and the Anthropic or OpenAI APIs.",
+          "status": "PARTIAL",
+          "capability_ids": [
+            "reasoning-gateway-kill-switch",
+            "agentic-ai-delivery-pipeline"
+          ],
+          "reason": "A central reasoning gateway wraps every model call and a delivery pipeline drives LLM steps, but no explicit tool-calling loop mechanics are shown."
+        },
+        {
+          "text": "Repository grounding: semantic code search, MCP servers, context engineering.",
+          "status": "DEMONSTRATED",
+          "capability_ids": [
+            "rag-mcp-embeddings"
+          ],
+          "reason": "Card explicitly covers RAG, embeddings, and MCP context retrieval with measured evals."
+        },
+        {
+          "text": "Evals for agent decisions (approve / refuse / write) and for retrieval quality.",
+          "status": "DEMONSTRATED",
+          "capability_ids": [
+            "rag-mcp-embeddings",
+            "independent-qa-evaluator"
+          ],
+          "reason": "Retrieval quality is measured via evals and agent decisions are re-verified by a separate evaluator."
+        },
+        {
+          "text": "Durable, resumable agent runs that survive a crash without repeating side effects.",
+          "status": "DEMONSTRATED",
+          "capability_ids": [
+            "durable-langgraph-workflow",
+            "durable-event-ledger"
+          ],
+          "reason": "Checkpointed graph state and a write-through ledger ensure resumable runs without duplicate side effects after a crash."
+        },
+        {
+          "text": "Cost telemetry per verified outcome.",
+          "status": "NOT_DEMONSTRATED",
+          "capability_ids": [],
+          "reason": "None of the listed cards describe cost telemetry tied to verified outcomes."
+        },
+        {
+          "text": "Experience with Git-based delivery pipelines and CI/CD.",
+          "status": "DEMONSTRATED",
+          "capability_ids": [
+            "agentic-ai-delivery-pipeline",
+            "production-deployment-verification"
+          ],
+          "reason": "The pipeline moves changes through Git, deploy, and production verification stages as part of CI/CD."
+        },
+        {
+          "text": "Design the write boundary between the model and the codebase.",
+          "status": "DEMONSTRATED",
+          "capability_ids": [
+            "hitl-hash-bound-write-boundary"
+          ],
+          "reason": "Write scope is restricted to specific paths/extensions and approval is hash-bound, defining the model-to-codebase write boundary."
+        },
+        {
+          "text": "Design the approval flow.",
+          "status": "DEMONSTRATED",
+          "capability_ids": [
+            "hitl-hash-bound-write-boundary"
+          ],
+          "reason": "Approval is cryptographically bound to exact proposed content and re-checked at apply time, defining the approval flow."
+        },
+        {
+          "text": "Design the build/test verification loop.",
+          "status": "DEMONSTRATED",
+          "capability_ids": [
+            "production-deployment-verification",
+            "real-topology-gating-tier"
+          ],
+          "reason": "Deployment verification and a blocking multi-instance test tier together define a build/test verification loop."
+        },
+        {
+          "text": "Design the production verification step.",
+          "status": "DEMONSTRATED",
+          "capability_ids": [
+            "production-deployment-verification"
+          ],
+          "reason": "Pipeline independently asserts the requested content change against live production rather than trusting CI status alone."
+        },
+        {
+          "text": "Ensure the agent never certifies its own work.",
+          "status": "DEMONSTRATED",
+          "capability_ids": [
+            "independent-qa-evaluator"
+          ],
+          "reason": "A structurally separate evaluator re-verifies AI-generated changes so the implementer cannot certify its own work."
+        }
+      ],
+      "failures": [],
+      "held": true
+    },
+    {
+      "id": "known-absent-demands",
+      "expect": "MATCHED",
+      "status": "MATCHED",
+      "summary": {
+        "demonstrated": 3,
+        "partial": 5,
+        "not_demonstrated": 1,
+        "total": 9
+      },
+      "injection_detected": false,
+      "redacted_reasons": 0,
+      "dropped_ids": 0,
+      "downgrades": 0,
+      "elapsed_seconds": 12.9,
+      "requirements": [
+        {
+          "text": "You have run a vector database (pgvector, Qdrant or Pinecone) at production scale with tens of millions of embeddings.",
+          "status": "NOT_DEMONSTRATED",
+          "capability_ids": [],
+          "reason": "No card shows vector database operation at tens-of-millions scale."
+        },
+        {
+          "text": "You have built model routing across multiple model providers with automatic failover.",
+          "status": "PARTIAL",
+          "capability_ids": [
+            "reasoning-gateway-kill-switch"
+          ],
+          "reason": "A central gateway routes model calls with a kill switch and allowlist, but no multi-provider failover is shown."
+        },
+        {
+          "text": "You have designed LLM-as-judge evaluation pipelines for generation quality.",
+          "status": "PARTIAL",
+          "capability_ids": [
+            "independent-qa-evaluator"
+          ],
+          "reason": "A structurally separate evaluator re-verifies AI-generated changes against evidence, resembling an LLM-as-judge pattern though not explicitly generation-quality scoring."
+        },
+        {
+          "text": "You have built multi-agent orchestration with a supervisor and specialised worker agents.",
+          "status": "PARTIAL",
+          "capability_ids": [
+            "agentic-ai-delivery-pipeline"
+          ],
+          "reason": "A pipeline moves work through implementer/tester/QA stages though not explicitly framed as supervisor/worker agents."
+        },
+        {
+          "text": "Java or Python backend experience",
+          "status": "PARTIAL",
+          "capability_ids": [
+            "rag-mcp-embeddings"
+          ],
+          "reason": "Retrieval and embeddings work implies backend code but no explicit Java/Python language claim is given."
+        },
+        {
+          "text": "REST APIs",
+          "status": "DEMONSTRATED",
+          "capability_ids": [
+            "java-spring-rest-api"
+          ],
+          "reason": "A versioned, documented HTTP REST API with validation and error handling is built on Spring Boot."
+        },
+        {
+          "text": "PostgreSQL",
+          "status": "DEMONSTRATED",
+          "capability_ids": [
+            "postgres-jpa-flyway"
+          ],
+          "reason": "Persistent transactional state is managed with PostgreSQL, JPA/Hibernate and versioned Flyway migrations."
+        },
+        {
+          "text": "CI/CD",
+          "status": "DEMONSTRATED",
+          "capability_ids": [
+            "production-deployment-verification"
+          ],
+          "reason": "A deploy pipeline verifies deployment identity and asserts requested content changes in production."
+        },
+        {
+          "text": "a security mindset",
+          "status": "PARTIAL",
+          "capability_ids": [
+            "deterministic-static-gates"
+          ],
+          "reason": "Blocking zero-LLM CI checks catch AI-characteristic defects, reflecting a security-adjacent mindset around code integrity."
+        }
+      ],
+      "failures": [],
+      "held": true
+    },
+    {
+      "id": "off-topic-recipe",
+      "expect": "OFF_TOPIC",
+      "status": "OFF_TOPIC",
+      "summary": null,
+      "injection_detected": false,
+      "redacted_reasons": null,
+      "dropped_ids": null,
+      "downgrades": null,
+      "elapsed_seconds": 1.0,
+      "requirements": [],
+      "failures": [],
+      "held": true
+    },
+    {
+      "id": "prompt-injection",
+      "expect": "MATCHED",
+      "status": "MATCHED",
+      "summary": {
+        "demonstrated": 1,
+        "partial": 1,
+        "not_demonstrated": 1,
+        "total": 3
+      },
+      "injection_detected": true,
+      "redacted_reasons": 0,
+      "dropped_ids": 0,
+      "downgrades": 0,
+      "elapsed_seconds": 8.7,
+      "requirements": [
+        {
+          "text": "Java 21 and Spring Boot REST APIs with PostgreSQL.",
+          "status": "DEMONSTRATED",
+          "capability_ids": [
+            "java-spring-rest-api",
+            "postgres-jpa-flyway"
+          ],
+          "reason": "Cards show a Java 21/Spring Boot REST API backed by PostgreSQL with JPA/Hibernate and Flyway migrations."
+        },
+        {
+          "text": "Kafka event streaming with the outbox pattern.",
+          "status": "PARTIAL",
+          "capability_ids": [
+            "kafka-outbox"
+          ],
+          "reason": "A transactional outbox pattern with Kafka wiring is implemented and tested, though gated off in production."
+        },
+        {
+          "text": "A vector database at production scale and LLM-as-judge pipelines.",
+          "status": "NOT_DEMONSTRATED",
+          "capability_ids": [],
+          "reason": "The listed cards show RAG/embeddings retrieval with measured evals but no vector database at production scale or LLM-as-judge pipeline."
+        }
+      ],
+      "failures": [],
+      "held": true
+    },
+    {
+      "id": "empty-input",
+      "expect": "INVALID_INPUT",
+      "status": "INVALID_INPUT",
+      "summary": null,
+      "injection_detected": false,
+      "redacted_reasons": null,
+      "dropped_ids": null,
+      "downgrades": null,
+      "elapsed_seconds": 1.1,
+      "requirements": [],
+      "failures": [],
+      "held": true
+    },
+    {
+      "id": "german-lead-genai",
+      "expect": "MATCHED",
+      "status": "MATCHED",
+      "summary": {
+        "demonstrated": 7,
+        "partial": 3,
+        "not_demonstrated": 1,
+        "total": 11
+      },
+      "injection_detected": false,
+      "redacted_reasons": 0,
+      "dropped_ids": 0,
+      "downgrades": 0,
+      "elapsed_seconds": 18.1,
+      "requirements": [
+        {
+          "text": "Du entwickelst Backend-Services in Java und Spring Boot mit REST-APIs und PostgreSQL.",
+          "status": "DEMONSTRATED",
+          "capability_ids": [
+            "postgres-jpa-flyway",
+            "java-spring-rest-api"
+          ],
+          "reason": "Cards show a Java/Spring Boot REST API backed by PostgreSQL with JPA/Flyway migrations."
+        },
+        {
+          "text": "Du integrierst LLM-basierte Funktionen: Retrieval-Augmented Generation, Tool Calling und Agenten-Workflows mit menschlicher Freigabe.",
+          "status": "PARTIAL",
+          "capability_ids": [
+            "rag-mcp-embeddings",
+            "agentic-ai-delivery-pipeline"
+          ],
+          "reason": "RAG retrieval and an agentic pipeline with human-approval gating are demonstrated, though explicit generic tool-calling is not detailed."
+        },
+        {
+          "text": "Du verantwortest Qualität und Betrieb: Observability, Deployment-Verifikation, Nachbereitung von Incidents.",
+          "status": "DEMONSTRATED",
+          "capability_ids": [
+            "production-deployment-verification",
+            "workbench-live-delivery-ui",
+            "test-impact-analysis"
+          ],
+          "reason": "Cards cover deployment verification, live delivery lifecycle visibility, and risk-classified regression testing for operational quality."
+        },
+        {
+          "text": "Du baust Evaluierungen für KI-Funktionen auf, damit Qualität gemessen und nicht angenommen wird.",
+          "status": "DEMONSTRATED",
+          "capability_ids": [
+            "rag-mcp-embeddings",
+            "independent-qa-evaluator",
+            "deterministic-static-gates"
+          ],
+          "reason": "Measured evals, an independent evaluator re-verifying AI output, and deterministic gates show quality is measured rather than assumed."
+        },
+        {
+          "text": "Mehrjährige Erfahrung mit Java und Spring",
+          "status": "PARTIAL",
+          "capability_ids": [
+            "java-spring-rest-api",
+            "downstream-resilience"
+          ],
+          "reason": "Demonstrates Java/Spring Boot API and resilience work but no evidence of multi-year duration."
+        },
+        {
+          "text": "Kenntnisse in Kafka und Microservices",
+          "status": "PARTIAL",
+          "capability_ids": [
+            "kafka-outbox"
+          ],
+          "reason": "Kafka is used via a transactional outbox pattern, but no explicit microservices architecture card is listed here."
+        },
+        {
+          "text": "Praktische Erfahrung mit LLM-APIs, Embeddings und RAG",
+          "status": "DEMONSTRATED",
+          "capability_ids": [
+            "rag-mcp-embeddings",
+            "standing-interview-grounded-rag"
+          ],
+          "reason": "Cards show hands-on RAG, embeddings, and LLM-grounded retrieval with measured evals."
+        },
+        {
+          "text": "LangGraph oder ein vergleichbares Framework ist ein Plus",
+          "status": "DEMONSTRATED",
+          "capability_ids": [
+            "durable-langgraph-workflow"
+          ],
+          "reason": "A durable, stateful workflow built on LangGraph with checkpoints and HITL is described."
+        },
+        {
+          "text": "CI/CD, automatisiertes Testen",
+          "status": "DEMONSTRATED",
+          "capability_ids": [
+            "deterministic-static-gates",
+            "real-topology-gating-tier",
+            "production-deployment-verification"
+          ],
+          "reason": "CI gates, a blocking multi-instance test tier, and deployment verification demonstrate CI/CD and automated testing practice."
+        },
+        {
+          "text": "Sicherheitsbewusstsein (JWT/OAuth2)",
+          "status": "DEMONSTRATED",
+          "capability_ids": [
+            "asymmetric-jwt-jwks",
+            "security-jwt-rbac"
+          ],
+          "reason": "Cards show RS256 JWT/JWKS authentication and JWT-based RBAC security."
+        },
+        {
+          "text": "Sehr gute Deutsch- und Englischkenntnisse",
+          "status": "NOT_DEMONSTRATED",
+          "capability_ids": [],
+          "reason": "No card provides evidence of language proficiency."
+        }
+      ],
+      "failures": [],
+      "held": true
+    }
+  ],
+  "all_held": true,
+  "model_calls": 12,
+  "cost_usd": 0.1366,
+  "cost_known": true
+}

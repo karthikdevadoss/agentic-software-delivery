@@ -53,6 +53,11 @@ ADVISORY_PURPOSES = frozenset({
     "NOVEL_IMPLEMENTATION_PROPOSAL",
     "SEMANTIC_ADVERSARIAL_TEST_IDEAS",
     "HUMAN_EXPLANATION",
+    # Sprint 13 / BL-097 (Owner-authorised 7th purpose): JD Match's two
+    # advisory calls -- extract requirements from an untrusted job
+    # description, and propose a status per requirement from a code-built
+    # shortlist. Every proposal is validated by code before it is shown.
+    "JD_REQUIREMENT_MATCHING",
 })
 
 
