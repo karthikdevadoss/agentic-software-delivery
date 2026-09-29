@@ -818,11 +818,16 @@ def attribution_line(a: dict, question: str) -> str:
         # with SQS and never mentioned that Kafka was not used there.
         if a["employer_named"] and _question_names_any(question, a["not_used"]):
             line += (f" You have NO record of this at {absent}, and the question "
-                     f"asks about {absent}. Your FIRST sentence must say plainly "
-                     f"that you did not use it there, and then say what was used "
-                     f"instead. That is the answer to this question, not a "
-                     f"limitation -- do not skip it and describe the alternative "
-                     f"as though it had been asked about.")
+                     f"asks about {absent}. Your FIRST sentence must NAME THE "
+                     f"TECHNOLOGY THE QUESTION ASKED ABOUT, using that word, and "
+                     f"say you did not use it there -- \"We didn't use X at "
+                     f"{absent.split(' and ')[0]}\". Then say what was used instead. "
+                     f"Naming it is not optional: an answer that describes the "
+                     f"alternative without ever saying the word reads as dodging "
+                     f"the question, and the interviewer is left to infer it. "
+                     f"Paraphrases like \"there wasn't a separate layer for that\" "
+                     f"do NOT count. That sentence is the answer here, not a "
+                     f"limitation.")
         else:
             line += (" Constraint, not content: you have no record of this at "
                      + absent
