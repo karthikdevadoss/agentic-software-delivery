@@ -175,6 +175,17 @@ REFUSAL = ("That's not something I've got a specific example of to hand. Ask me 
 NO_CORPUS = ("The knowledge base isn't loaded on this instance, so I can't answer "
              "from it. I won't guess.")
 
+# Shown when the model itself cannot be reached. Deliberately says the question
+# was fine and the failure is on this side -- a visitor who gets a bare error
+# assumes they did something wrong, or that the whole site is broken. It must
+# never surface the provider's own message, which can carry account and billing
+# detail that is nobody's business on a public page.
+MODEL_UNAVAILABLE = (
+    "I can't generate an answer right now — this interview surface briefly "
+    "couldn't reach the service it uses to write answers. Nothing is wrong "
+    "with your question. Please try again in a few minutes."
+)
+
 SYSTEM_PROMPT = """You are answering interview questions AS Karthik, in first person.
 
 ABSOLUTE RULES
@@ -1132,6 +1143,26 @@ def build_user_prompt(question: str, hits: list[dict], policy_line: str = "") ->
             "Answer in first person, using only the excerpts above and your standing summary.")
 
 
+def _retry_call(**kwargs):
+    """reasoning_gateway.call for a RETRY, degrading instead of raising.
+
+    A retry exists to improve an answer that already exists. If the model
+    cannot be reached for it, that is a failed retry -- which every caller
+    below already handles -- and not a reason to turn a working request into
+    an HTTP 500. The primary call is handled separately, in answer(), because
+    there a failure genuinely has no answer to fall back to.
+
+    Real incident 2026-09-29: the Anthropic credit balance was exhausted and
+    every grounded question on the live page returned a raw 500.
+    """
+    import reasoning_gateway
+    try:
+        return reasoning_gateway.call(**kwargs)
+    except Exception as exc:
+        return {"text": "", "model_called": False,
+                "denial_reason": type(exc).__name__}
+
+
 def answer(question: str, corpus: Corpus | None = None, create_fn=None) -> dict:
     """The whole path. Always returns a dict with a user-safe `answer` and an
     operational `outcome` the caller logs. Never raises into the request."""
@@ -1175,14 +1206,34 @@ def answer(question: str, corpus: Corpus | None = None, create_fn=None) -> dict:
                        "families": policy.get("families")} if policy else None)
 
     import reasoning_gateway
-    result = reasoning_gateway.call(
-        purpose="HUMAN_EXPLANATION",
-        system_prompt=system_prompt,
-        user_message=build_user_prompt(question, hits, policy_line),
-        max_tokens=MAX_ANSWER_TOKENS,
-        create_fn=create_fn,
-        model=os.environ.get("CLAUDE_MODEL", "claude-sonnet-5"),
-    )
+    try:
+        result = reasoning_gateway.call(
+            purpose="HUMAN_EXPLANATION",
+            system_prompt=system_prompt,
+            user_message=build_user_prompt(question, hits, policy_line),
+            max_tokens=MAX_ANSWER_TOKENS,
+            create_fn=create_fn,
+            model=os.environ.get("CLAUDE_MODEL", "claude-sonnet-5"),
+        )
+    except Exception as exc:
+        # REAL INCIDENT, 2026-09-29: the Anthropic credit balance was exhausted
+        # and every grounded question on the live page returned a raw HTTP 500.
+        # reasoning_gateway.call() RAISES on an API error rather than returning
+        # a denial, and nothing caught it -- so a recruiter mid-question saw a
+        # server error page with no way to tell whether the site was broken,
+        # their question was bad, or the system was simply out of credit. This
+        # project's own rule is that the operator must never be unable to tell
+        # whether the system is working, degraded or failed.
+        #
+        # Distinct from no_model (no key, LLM mode off) on purpose: those are
+        # configuration states, this is a live dependency failing, and the two
+        # have different fixes.
+        return {"outcome": "model_unavailable", "grounded": False,
+                "answer": MODEL_UNAVAILABLE, "hits": hits, "best_score": best,
+                "policy": policy_summary,
+                # The exception CLASS only. Its message can carry provider
+                # billing detail, which does not belong in a response or a log.
+                "denial_reason": type(exc).__name__}
     if not result.get("model_called") or not result.get("text"):
         # A denial is a real, distinct state -- no key, LLM mode off, or an
         # empty reply. Say so honestly; never fall through to an answer.
@@ -1206,7 +1257,7 @@ def answer(question: str, corpus: Corpus | None = None, create_fn=None) -> dict:
         # One corrective retry for an extension-only hit. The retry's text is
         # re-scanned in full below; nothing that fails the scan is shipped.
         leak_retried = True
-        retry = reasoning_gateway.call(
+        retry = _retry_call(
             purpose="HUMAN_EXPLANATION",
             system_prompt=system_prompt,
             user_message=(build_user_prompt(question, hits, policy_line)
@@ -1241,7 +1292,7 @@ def answer(question: str, corpus: Corpus | None = None, create_fn=None) -> dict:
     # hold; restating them is the thing that already failed.
     voice = voice_violations(text, question)
     if voice:
-        retry = reasoning_gateway.call(
+        retry = _retry_call(
             purpose="HUMAN_EXPLANATION",
             system_prompt=system_prompt,
             user_message=(build_user_prompt(question, hits, policy_line)

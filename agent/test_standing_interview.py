@@ -1385,3 +1385,61 @@ class QaFoundRegisterTestCase(unittest.TestCase):
                      "We didn't use Kafka at NRG; the async work ran on SQS. Done.",
                      "The topic came up in a design review and we chose SQS. Done."):
             self.assertEqual([v for v in si.voice_violations(text) if "search talk" in v or "confirmed real" in v], [], text)
+
+
+class ModelUnavailableTestCase(unittest.TestCase):
+    """REAL INCIDENT, 2026-09-29. The Anthropic credit balance was exhausted
+    and every grounded question on the live page returned a raw HTTP 500 --
+    reasoning_gateway.call() raises on an API error and nothing caught it. A
+    recruiter mid-question saw a server error page with no way to tell whether
+    the site was broken, their question was bad, or the system was out of
+    credit.
+
+    Verified against production while it was happening: /standing-interview
+    returned 200, a private-topic question (which refuses before any model
+    call) answered correctly, and every question needing the model returned
+    500. Pre-existing since before Sprint 15 -- Sprint 14's code does the same
+    -- and exposed rather than caused by the credit exhaustion.
+    """
+
+    def setUp(self):
+        self.corpus = make_corpus_v2()
+        self.strong = [dict(self.corpus.chunks[0], score=0.82)]
+
+    @staticmethod
+    def _exploding(**kwargs):
+        raise RuntimeError(
+            "Your credit balance is too low to access the Anthropic API. "
+            "Please go to Plans & Billing to upgrade or purchase credits.")
+
+    def test_an_api_failure_is_an_honest_answer_not_an_exception(self):
+        with mock.patch.object(si, "retrieve", return_value=self.strong):
+            out = si.answer("q", self.corpus, create_fn=self._exploding)
+        self.assertEqual("model_unavailable", out["outcome"])
+        self.assertEqual(si.MODEL_UNAVAILABLE, out["answer"])
+        self.assertFalse(out["grounded"])
+
+    def test_the_provider_message_never_reaches_the_visitor_or_the_record(self):
+        """The provider's own text carries account and billing detail. Only the
+        exception CLASS is kept."""
+        with mock.patch.object(si, "retrieve", return_value=self.strong):
+            out = si.answer("q", self.corpus, create_fn=self._exploding)
+        blob = json.dumps(out).lower()
+        for forbidden in ("credit balance", "plans & billing", "purchase credits"):
+            self.assertNotIn(forbidden, blob,
+                             f"provider billing detail leaked into the response: {forbidden}")
+        self.assertEqual("RuntimeError", out["denial_reason"])
+
+    def test_model_unavailable_is_distinct_from_no_model(self):
+        """no_model is a configuration state (no key, LLM off); this is a live
+        dependency failing. They have different fixes, so they are different
+        outcomes and a dashboard must be able to tell them apart."""
+        self.assertNotEqual("no_model", "model_unavailable")
+        with mock.patch.object(si, "retrieve", return_value=self.strong):
+            out = si.answer("q", self.corpus, create_fn=self._exploding)
+        self.assertNotEqual("no_model", out["outcome"])
+
+    def test_the_visitor_is_told_their_question_was_fine(self):
+        """A bare error makes a visitor assume they did something wrong."""
+        self.assertIn("nothing is wrong with your question",
+                      si.MODEL_UNAVAILABLE.lower())

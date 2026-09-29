@@ -73,8 +73,13 @@ function renderEfficiencySummary(d) {
   // development cost lives entirely outside this section. Title and hint
   // now say the scope explicitly; renderDevSessionCostSummary() below is
   // the separate, equally-real sibling for that other domain.
-  return section("Workbench Delivery Efficiency (pipeline runs only — see \"Claude Code Development Cost\" below for a separate total)", `
-    <p class="hint" style="margin-top:0;">Real, ledger-backed ratios for Workbench pipeline runs — never estimated, never fabricated. A failed run, or one that turned out to need no change, still costs real money and is still counted here. This does not include the cost of the Claude Code sessions used to build the platform itself — that is tracked separately below.</p>
+  // Sprint 15 (D9): this heading carried its own footnote -- and section()
+  // upper-cases headings, so it shouted a parenthetical cross-reference in
+  // caps across the widest line on the page. The distinction it was making is
+  // real and worth keeping, so it moved into the sentence below it, where a
+  // sentence belongs.
+  return section("What the delivery runs cost", `
+    <p class="hint" style="margin-top:0;">Real, ledger-backed ratios for Workbench pipeline runs — never estimated, never fabricated. A failed run, or one that turned out to need no change, still costs real money and is still counted here. These are the Workbench pipeline runs only. The cost of the Claude Code sessions used to build the platform itself is tracked separately, further down this page.</p>
     ${provenance(e.canonical_source)}
     ${tilesHtml}
     <p class="hint" style="margin-top:1.2rem;">Recent windows:</p>
