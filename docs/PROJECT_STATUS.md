@@ -1038,3 +1038,15 @@ mechanism defect fixed with a fail-first test; one exposed a Railway cutover rac
 marker. Production 15/15 on two consecutive remote runs; independent QA: all 8 claims CONFIRMED on its own single production gate run (15/15, exit 0); one real residual found by reading a fresh answer -- audit register in a new shape ('a confirmed real async flow'), fixed in the tree as a family ban and riding the next deploy; symlink-security tests skip on this Windows machine (environmental, pre-existing).
 Tasks 2 (durable LangGraph workflow) and 3 (JD Match) follow in the same sprint.
 
+# Current Reality (2026-09-29) — Sprint 13 Task 2: a durable, stateful software-change workflow on LangGraph
+
+Live at `945f224` as a new parallel path beside the untouched Workbench run path.
+LangGraph graph with a real human-in-the-loop interrupt; checkpoints in two new
+tables in the ledger's Postgres; `durability="sync"` because the framework's
+default was observed losing a boundary checkpoint under a real kill; the apply
+stage is idempotent by construction (workspace derived from the workflow id,
+own commit found by binding hash). Crash drill: 22 of 22 assertions in one run
+after six runs that each found something real. Production: a workflow survived
+a real `railway redeploy` while waiting for approval, then completed its whole
+pipeline inside the container; after the restart, continue on the COMPLETED workflow -> refused, a second approve -> refused, and a wrong binding on a fresh workflow -> REJECTED (binding mismatch). Not verified on production: a kill
+during the pipeline (local drill only). Task 3 (JD Match) follows.

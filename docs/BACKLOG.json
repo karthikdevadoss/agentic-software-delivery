@@ -2393,7 +2393,9 @@
       "created_at": "2026-09-29",
       "started_at": "2026-09-29",
       "created_at_commit": "bac7cea",
-      "commit_shas": [],
+      "commit_shas": [
+        "945f224"
+      ],
       "session_ids": [],
       "completed_at": "2026-09-29"
     },
@@ -2413,7 +2415,9 @@
       "created_at": "2026-09-29",
       "started_at": "2026-09-29",
       "created_at_commit": "bac7cea",
-      "commit_shas": [],
+      "commit_shas": [
+        "945f224"
+      ],
       "session_ids": [],
       "completed_at": "2026-09-29"
     },
@@ -2428,13 +2432,16 @@
       "size_rationale": "First deploy of a new runtime dependency and a schema change together, and the first production restart drill. Confidence LOW. suggest-estimate -> INSUFFICIENT_HISTORY n=0; raw range adopted.",
       "deviated_from_suggestion": false,
       "category": "delivery",
-      "status": "active",
+      "status": "done",
       "sprint": "Sprint 13 (owner approved 2026-09-29, three-task autonomous sprint)",
       "created_at": "2026-09-29",
       "started_at": "2026-09-29",
       "created_at_commit": "bac7cea",
-      "commit_shas": [],
-      "session_ids": []
+      "commit_shas": [
+        "945f224"
+      ],
+      "session_ids": [],
+      "completed_at": "2026-09-29"
     },
     {
       "id": "BL-096",
