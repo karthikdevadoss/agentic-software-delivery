@@ -1,3 +1,7 @@
+/* Sprint 15 (D6): nothing on a public page renders below 12.5px.
+   Anything smaller is uncomfortable on a 1920 display, which is the width
+   the Owner actually uses. Enforced here at source AND asserted per page by
+   e2e/ui-standards.spec.js -- do not reintroduce a 0.6-0.72rem badge or tag. */
 /* Showcase-specific styling, additive to style.css's shared design tokens. */
 
 .sc-cta-row {
@@ -33,7 +37,7 @@
 }
 .sc-req-row:last-child { border-bottom: none; }
 .sc-req-row .sc-req-text { color: var(--text); font-size: 0.92rem; }
-.sc-req-row .sc-req-arrow { color: var(--muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.2rem; }
+.sc-req-row .sc-req-arrow { color: var(--muted); font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.2rem; }
 .sc-req-row .sc-cap-name { color: var(--accent); font-weight: 700; font-size: 0.92rem; }
 .sc-req-row .sc-cap-meta { color: var(--muted); font-size: 0.82rem; margin-top: 0.2rem; }
 
@@ -45,7 +49,7 @@
   display: inline-block;
   padding: 0.15rem 0.55rem;
   border-radius: 999px;
-  font-size: 0.7rem;
+  font-size: 12.5px; /* Sprint 15: was 0.7rem (11.2px), below the 12px floor */
   font-weight: 700;
   letter-spacing: 0.03em;
   margin-left: 0.5rem;
@@ -127,7 +131,7 @@
 .sc-live-badge {
   background: #124a35;
   color: var(--green);
-  font-size: 0.68rem;
+  font-size: 12.5px; /* Sprint 15: was 0.68rem (10.88px), below the 12px floor */
   font-weight: 700;
   letter-spacing: 0.04em;
   padding: 0.15rem 0.5rem;
@@ -139,7 +143,7 @@
 .sc-story-field:last-of-type { border-bottom: none; }
 .sc-story-field-label {
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: 12.5px; /* Sprint 15: was 0.72rem (11.52px), below the 12px floor */
   text-transform: uppercase;
   letter-spacing: 0.05em;
   font-weight: 700;
@@ -168,7 +172,7 @@
 .sc-how-to-grid { margin: 0; }
 .sc-how-to-grid dt {
   color: var(--muted);
-  font-size: 0.68rem;
+  font-size: 12.5px; /* Sprint 15: was 0.68rem (10.88px), below the 12px floor */
   font-weight: 700;
   letter-spacing: 0.05em;
   margin-top: 0.55rem;
@@ -189,7 +193,7 @@
 .sc-story-compact-title { font-weight: 700; font-size: 0.87rem; }
 .sc-story-compact-line { color: var(--muted); font-size: 0.82rem; margin-top: 0.2rem; line-height: 1.5; max-width: 60ch; }
 .sc-story-compact-links { display: flex; flex-direction: column; gap: 0.3rem; flex-shrink: 0; text-align: right; }
-.sc-story-compact-links a { color: var(--accent); text-decoration: none; font-size: 0.78rem; font-weight: 600; white-space: nowrap; }
+.sc-story-compact-links a { color: var(--accent); text-decoration: none; font-size: 12.5px; font-weight: 600; white-space: nowrap; }
 .sc-story-compact-links a:hover { text-decoration: underline; }
 
 .sc-det-list { list-style: none; padding: 0; margin: 0; }
@@ -197,9 +201,19 @@
 .sc-det-list li:last-child { border-bottom: none; }
 .sc-det-claim { font-weight: 700; font-size: 0.88rem; color: var(--text); }
 .sc-det-mechanism { font-size: 0.85rem; color: var(--muted); margin-top: 0.25rem; line-height: 1.55; }
-.sc-det-evidence { font-size: 0.76rem; color: var(--accent); margin-top: 0.3rem; }
+.sc-det-evidence { font-size: 12.5px; color: var(--accent); margin-top: 0.3rem; }
 
 @media (max-width: 640px) {
   .sc-story-compact { flex-direction: column; }
   .sc-story-compact-links { flex-direction: row; text-align: left; }
 }
+
+/* Sprint 15 (D8): a long role title in a 1200px shell has no reason to run the
+   full width. Capping the measure makes it wrap at word boundaries; the
+   explicit break rules stop a hyphenated compound splitting across lines. */
+#sc-title {
+  max-width: 22ch;
+  overflow-wrap: break-word;
+  hyphens: manual;
+}
+@media (min-width: 900px) { #sc-title { max-width: 34ch; } }

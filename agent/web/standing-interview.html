@@ -6,7 +6,47 @@
   /* Deliberately plain and close to the rest of the platform: this is an
      interview surface, not a chat product. No avatars, no typing dots, no
      streaming theatre -- a question, a pause, an answer. */
-  .si-wrap { max-width: 760px; margin: 0 auto; padding: 0 1rem 4rem; }
+  /* Sprint 15 (Owner-reported): the nav used to sit OUTSIDE this container, so
+     it had no width and no centring -- at 1920 it spanned the whole viewport
+     and started at x=0 with "Home" clipped against the window edge, 596px
+     away from the content it belongs to. It now shares the same shell. */
+  .si-wrap { max-width: 1200px; margin: 0 auto; padding: 0 2rem 4rem; }
+  .si-navwrap { border-bottom: 1px solid var(--border); }
+  .si-navwrap .top-nav {
+    max-width: 1200px; margin: 0 auto; padding: 0.9rem 2rem; margin-top: 0;
+  }
+  .si-intro, .si-hint, .si-form { max-width: 68ch; }
+
+  /* D7 for this page. The Owner's screenshot showed a title, one input, and
+     then a large empty void below the fold line -- technically "above the
+     fold" but with nothing in it. A visitor who has never used this does not
+     know what it can answer, so the most useful thing to put in that space is
+     the questions themselves. These are real questions from the 2026-09-29
+     audit capture that the corpus answers well; they are not a demo script. */
+  .si-suggest { max-width: 68ch; margin: 0 0 2rem; }
+  .si-suggest-label { font-size: 12.5px; color: #777; margin: 0 0 0.6rem;
+    text-transform: uppercase; letter-spacing: 0.04em; }
+  .si-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 0; margin: 0;
+    list-style: none; }
+  /* These are NEW elements, so they take the page's own tokens rather than
+     the hard-coded light-theme colours the older rules in this file use.
+     The Owner's Sprint 15 instruction was alignment only -- do not unify the
+     light/dark theme yet -- which is a reason not to restyle what exists, not
+     a licence to add another element that ignores the surface it sits on. */
+  .si-chips button {
+    font: inherit; font-size: 0.9rem; cursor: pointer; text-align: left;
+    padding: 0.45rem 0.85rem; border-radius: 999px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    transition: border-color 0.12s ease, color 0.12s ease;
+  }
+  .si-chips button:hover {
+    border-color: var(--accent, #4a9eff);
+    color: var(--accent, #4a9eff);
+  }
+  .si-chips button[disabled] { opacity: 0.5; cursor: default; }
+  .si-a, .si-q { max-width: 68ch; }
   .si-intro { color: #555; font-size: 0.95rem; line-height: 1.55; margin: 0 0 1.5rem; }
   .si-form { display: flex; gap: 0.6rem; align-items: stretch; margin-bottom: 0.5rem; }
   .si-form input[type=text] {
@@ -36,7 +76,7 @@
   }
 </style>
 
-<nav class="top-nav" id="top-nav"></nav>
+<div class="si-navwrap"><nav class="top-nav" id="top-nav" aria-label="Main"></nav></div>
 
 <div class="si-wrap">
   <h1>Standing Interview</h1>
@@ -60,6 +100,11 @@
   </form>
   <p class="si-hint">One question at a time. Typed answers only — no audio.</p>
 
+  <div class="si-suggest" id="si-suggest">
+    <p class="si-suggest-label">Or start with one of these</p>
+    <ul class="si-chips" id="si-chips"></ul>
+  </div>
+
   <div id="si-thread"></div>
 </div>
 
@@ -80,15 +125,42 @@
         offline.hidden = false;
         input.disabled = true;
         askBtn.disabled = true;
+        // Do not offer questions the instance cannot answer.
+        for (const b of chips.querySelectorAll("button")) b.disabled = true;
       }
     })
     .catch(() => { /* leave the form usable; the ask call will report honestly */ });
+
+  // Real questions from the audit capture, chosen because the corpus answers
+  // them from actual hands-on material rather than thinly.
+  const SUGGESTED = [
+    "How did you use Spring Security at NRG?",
+    "What is your current role and what does it involve?",
+    "Walk me through how you handled concurrency at NRG",
+    "What API work did you do at BCBSA?",
+    "Explain your experience with Kafka",
+    "How does the human approval step work in your platform?",
+  ];
 
   function el(tag, cls, text) {
     const n = document.createElement(tag);
     if (cls) n.className = cls;
     if (text !== undefined) n.textContent = text;
     return n;
+  }
+
+  const chips = document.getElementById("si-chips");
+  const suggest = document.getElementById("si-suggest");
+  for (const q of SUGGESTED) {
+    const li = document.createElement("li");
+    const b = el("button", null, q);
+    b.type = "button";
+    b.addEventListener("click", () => {
+      input.value = q;
+      form.requestSubmit();
+    });
+    li.appendChild(b);
+    chips.appendChild(li);
   }
 
   form.addEventListener("submit", async (ev) => {

@@ -1,3 +1,7 @@
+/* Sprint 15 (D6): nothing on a public page renders below 12.5px.
+   Anything smaller is uncomfortable on a 1920 display, which is the width
+   the Owner actually uses. Enforced here at source AND asserted per page by
+   e2e/ui-standards.spec.js -- do not reintroduce a 0.6-0.72rem badge or tag. */
 main#sessions-main { max-width: 1100px; }
 
 .session-row {
@@ -30,7 +34,7 @@ main#sessions-main { max-width: 1100px; }
 .score-breakdown li { display: flex; justify-content: space-between; padding: 0.2rem 0; border-bottom: 1px solid var(--border); }
 .score-breakdown li:last-child { border-bottom: none; }
 
-.tag-type { padding: 0.1rem 0.5rem; border-radius: 4px; font-size: 0.7rem; background: #2a2e3a; color: var(--muted); }
+.tag-type { padding: 0.1rem 0.5rem; border-radius: 4px; font-size: 12.5px; background: #2a2e3a; color: var(--muted); }
 .tag-type.product_runtime { background: #1e3a5f; color: #7db4ff; }
 .tag-type.benchmark { background: #2a2e3a; color: var(--muted); }
 .tag-type.development { background: #124a35; color: var(--green); }
@@ -76,7 +80,7 @@ main#sessions-main { max-width: 1100px; }
 .hist-session-card:hover { border-color: var(--accent); }
 .hist-row-top { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
 .hist-goal { font-size: 0.85rem; margin-top: 0.35rem; }
-.hist-meta { display: flex; flex-wrap: wrap; gap: 0.7rem; color: var(--muted); font-size: 0.78rem; margin-top: 0.3rem; }
+.hist-meta { display: flex; flex-wrap: wrap; gap: 0.7rem; color: var(--muted); font-size: 12.5px; margin-top: 0.3rem; }
 
 .load-more-btn {
   width: 100%; padding: 0.6rem; background: #1a1d24; color: var(--text); border: 1px solid var(--border);
@@ -92,13 +96,13 @@ main#sessions-main { max-width: 1100px; }
    vs DERIVED vs UNKNOWN previously all looked like identical plain
    text) ------------------------------------------------------------- */
 .provenance-badge {
-  font-size: 0.68rem; font-weight: 700; letter-spacing: 0.02em;
+  font-size: 12.5px; font-weight: 700; letter-spacing: 0.02em;
   padding: 0.12rem 0.5rem; border-radius: 999px; white-space: nowrap;
 }
 .provenance-live { background: #124a35; color: var(--green); }
 .provenance-partial { background: #3a2a2a; color: var(--amber); }
 
-.value-note { font-size: 0.72rem; margin-left: 0.35rem; padding: 0.05rem 0.4rem; border-radius: 4px; }
+.value-note { font-size: 12.5px; margin-left: 0.35rem; padding: 0.05rem 0.4rem; border-radius: 4px; }
 .note-exact { color: var(--green); background: rgba(62,207,142,0.1); }
 .note-derived { color: var(--amber); background: rgba(230,180,80,0.1); }
 .note-unknown { color: var(--muted); background: rgba(139,147,167,0.08); font-style: italic; }
@@ -112,18 +116,18 @@ main#sessions-main { max-width: 1100px; }
   display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.75rem;
 }
 .summary-stat { border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem 0.7rem; background: #0d0f14; }
-.summary-label { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 0.2rem; }
+.summary-label { font-size: 12.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 0.2rem; }
 .summary-value { font-size: 0.92rem; font-weight: 600; overflow-wrap: anywhere; }
 
 .full-session-id { font-family: "SF Mono", Consolas, monospace; font-size: 0.8rem; color: var(--muted); overflow-wrap: anywhere; margin: 0; }
 
-.score-breakdown-note { list-style: none; padding: 0.3rem 0 0.5rem; color: var(--muted); font-size: 0.78rem; font-style: italic; }
+.score-breakdown-note { list-style: none; padding: 0.3rem 0 0.5rem; color: var(--muted); font-size: 12.5px; font-style: italic; }
 
 .raw-capture-details summary { cursor: pointer; color: var(--accent); font-size: 0.85rem; }
 .raw-capture-text {
   white-space: pre-wrap; word-break: break-word; margin-top: 0.6rem; padding: 0.75rem;
   background: #0d0f14; border: 1px solid var(--border); border-radius: 6px;
-  font-family: "SF Mono", Consolas, monospace; font-size: 0.78rem; max-height: 400px; overflow-y: auto;
+  font-family: "SF Mono", Consolas, monospace; font-size: 12.5px; max-height: 400px; overflow-y: auto;
 }
 
 .cost-coverage-grid { margin-bottom: 0.75rem; }

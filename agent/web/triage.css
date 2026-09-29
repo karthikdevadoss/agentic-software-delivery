@@ -1,3 +1,7 @@
+/* Sprint 15 (D6): nothing on a public page renders below 12.5px.
+   Anything smaller is uncomfortable on a 1920 display, which is the width
+   the Owner actually uses. Enforced here at source AND asserted per page by
+   e2e/ui-standards.spec.js -- do not reintroduce a 0.6-0.72rem badge or tag. */
 #scenario-panel { border-color: var(--amber); }
 
 .triage-step { position: relative; }
@@ -5,7 +9,7 @@
 
 .evidence-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 0.5rem; }
 .evidence-table th, .evidence-table td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border); }
-.evidence-table th { color: var(--muted); font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.evidence-table th { color: var(--muted); font-weight: 700; font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.04em; }
 
 .verdict {
   display: inline-block; padding: 0.4rem 0.9rem; border-radius: 6px;
@@ -36,7 +40,7 @@
 .approval-panel h2 { color: var(--amber); font-size: 1rem; text-transform: none; letter-spacing: normal; }
 .approval-panel h2::before { display: none; }
 .approval-box { max-width: 360px; margin-top: 0.75rem; }
-.approval-box label { display: block; font-size: 0.78rem; font-weight: 600; margin: 0.6rem 0 0.25rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
+.approval-box label { display: block; font-size: 12.5px; font-weight: 600; margin: 0.6rem 0 0.25rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
 .approval-box label:first-of-type { margin-top: 0; }
 .approval-box select, .approval-box input {
   width: 100%; padding: 0.5rem 0.6rem; background: #0d0f14; color: var(--text);

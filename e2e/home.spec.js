@@ -9,8 +9,15 @@
 
 const { test, expect } = require("@playwright/test");
 
+// Sprint 14 correction (Owner, 2026-09-29): DESKTOP IS THE PRIMARY TARGET and
+// 1280 is not desktop -- it is a small laptop. The Owner's own bug report came
+// from 1920x1080, a width this matrix never tested, which is exactly why a
+// broken navigation on /standing-interview reached him rather than a test.
+// 1920 now leads the list; 1280 is kept because it is a real laptop size.
 const VIEWPORTS = [
-  ["desktop", 1280, 900],
+  ["desktop-1920", 1920, 1080],
+  ["desktop-1440", 1440, 900],
+  ["laptop-1280", 1280, 900],
   ["tablet", 768, 1024],
   ["mobile", 390, 844],
 ];
@@ -208,10 +215,21 @@ test.describe("Layout, accessibility and browser quality", () => {
   // its own horizontal padding, so it started 22px to the LEFT of the content
   // column -- a visibly crooked menu that no "does the element exist" check
   // can see. Alignment is now asserted numerically.
+  // WIDENED after the Owner's 2026-09-29 bug report: this was checking two
+  // pages. /standing-interview's nav spans the full viewport and sits at x=0
+  // with "Home" clipped at the edge, 596px away from its own content -- and no
+  // test looked. Every public page is checked now, at every viewport.
   for (const [vpName, width, height] of VIEWPORTS) {
     for (const [pageName, route, firstSelector] of [
       ["home", "/", "h1"],
       ["case study", "/case-study/durable-agent", "h1"],
+      ["workbench", "/workbench", "h1"],
+      ["triage", "/triage", "h1"],
+      ["ask codebase", "/ask-codebase", "h1"],
+      ["showcase", "/showcase/senior-java-ai-transformation", "h1"],
+      ["usage", "/usage", "h1"],
+      ["standing interview", "/standing-interview", "h1"],
+      ["dashboard", "/dashboard", "h1"],
     ]) {
       test(`${pageName} nav aligns with the content column at ${vpName}`, async ({ page }) => {
         await page.setViewportSize({ width, height });

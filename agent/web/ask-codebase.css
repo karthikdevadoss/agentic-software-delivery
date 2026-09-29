@@ -1,3 +1,7 @@
+/* Sprint 15 (D6): nothing on a public page renders below 12.5px.
+   Anything smaller is uncomfortable on a 1920 display, which is the width
+   the Owner actually uses. Enforced here at source AND asserted per page by
+   e2e/ui-standards.spec.js -- do not reintroduce a 0.6-0.72rem badge or tag. */
 /* Ask the Codebase -- additive to style.css's shared design tokens. */
 
 #ac-form textarea {
@@ -43,7 +47,7 @@
 .ac-status-pill {
   padding: 0.25rem 0.7rem;
   border-radius: 999px;
-  font-size: 0.72rem;
+  font-size: 12.5px;
   font-weight: 700;
   letter-spacing: 0.03em;
 }
@@ -64,7 +68,7 @@
   gap: 0.7rem;
   align-items: center;
   margin-bottom: 0.4rem;
-  font-size: 0.75rem;
+  font-size: 12.5px;
 }
 .ac-evidence-rank { color: var(--accent); font-weight: 700; }
 .ac-evidence-score { color: var(--muted); font-family: "SF Mono", Consolas, monospace; }
@@ -88,7 +92,7 @@
   border-radius: 6px;
   padding: 0.7rem 0.85rem;
   font-family: "SF Mono", Consolas, monospace;
-  font-size: 0.78rem;
+  font-size: 12.5px;
   line-height: 1.5;
   white-space: pre-wrap;
   overflow-x: auto;

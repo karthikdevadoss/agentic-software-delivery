@@ -131,18 +131,34 @@ MANDATORY_TRIGGERS = [
 # navigation + search. Both specs are mapped here so a change to
 # index.html selects the full real coverage that exists today, not just
 # the first, narrower spec.
+# Sprint 15: ui-standards.spec.js checks the whole public surface at once --
+# the shared 1200px shell, one body size, one h1 scale, a 12px legibility
+# floor, and what is visible above a real browser fold. Every file that can
+# move any of those has to be able to trigger it, which is why it is mapped
+# from the shared stylesheets as well as from each page: the Owner's defects
+# came from style.css and dashboard.css, not from the pages themselves.
+_UI_STANDARDS = "e2e/ui-standards.spec.js"
+
 FRONTEND_PATH_TO_SPECS = {
     # Sprint 14: the recruiter-facing home page and the durable-agent case
     # study. nav.js is mapped here too -- it renders the canonical navigation
     # that home.spec.js asserts, so a nav change must be able to trigger it.
-    "agent/web/home.html": ["e2e/home.spec.js"],
-    "agent/web/case-study-durable-agent.html": ["e2e/home.spec.js"],
-    "agent/web/nav.js": ["e2e/home.spec.js", "e2e/nav-consistency.spec.js"],
-    "agent/web/workbench.html": ["e2e/workbench-catalogue.spec.js"],
+    "agent/web/home.html": ["e2e/home.spec.js", _UI_STANDARDS],
+    "agent/web/case-study-durable-agent.html": ["e2e/home.spec.js", _UI_STANDARDS],
+    "agent/web/nav.js": ["e2e/home.spec.js", "e2e/nav-consistency.spec.js", _UI_STANDARDS],
+    # The shared shell and type scale. A one-line change in either of these
+    # moves every page at once -- which is exactly what happened in Sprint 15.
+    "agent/web/style.css": [_UI_STANDARDS, "e2e/nav-consistency.spec.js"],
+    "agent/web/dashboard.css": [_UI_STANDARDS],
+    "agent/web/showcase.css": [_UI_STANDARDS],
+    "agent/web/showcase.js": [_UI_STANDARDS],
+    "agent/web/dashboard.html": [_UI_STANDARDS],
+    "agent/web/standing-interview.html": [_UI_STANDARDS],
+    "agent/web/workbench.html": ["e2e/workbench-catalogue.spec.js", _UI_STANDARDS],
     "agent/web/workbench.js": ["e2e/workbench-catalogue.spec.js"],
-    "agent/web/workbench.css": ["e2e/workbench-catalogue.spec.js"],
-    "agent/web/usage.html": ["e2e/usage.spec.js"],
-    "agent/web/usage.js": ["e2e/usage.spec.js"],
+    "agent/web/workbench.css": ["e2e/workbench-catalogue.spec.js", _UI_STANDARDS],
+    "agent/web/usage.html": ["e2e/usage.spec.js", _UI_STANDARDS],
+    "agent/web/usage.js": ["e2e/usage.spec.js", _UI_STANDARDS],
     "agent/web/learn.html": ["e2e/learn.spec.js"],
     "agent/web/learn.js": ["e2e/learn.spec.js"],
     # Sprint 13 / BL-097: JD Match. The backend module is mapped too, because a

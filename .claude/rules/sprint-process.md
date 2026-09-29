@@ -106,6 +106,36 @@ just per-item numbers), and its full data (comparison table, verdicts,
 evidence, discussion, action items) is stored permanently in
 docs/RETRO_LOG.md -- never left only in chat.
 
+### Phase 2b: the defect ledger is a close-out step, not an optional one (added 2026-09-29)
+**Real incident, Sprint 14.** The sprint fixed real defects, recorded them in
+its commits, its retro and its backlog, and deployed — and
+`docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml` received **nothing**. Two sprints
+later the same class of defect (a test matrix that measured the agent's own
+chosen conditions, so a green count proved only the intersection of its two
+choices) recurred, and the one document whose entire job is to record how this
+agent characteristically gets things wrong had no entry that would have warned
+anybody. It was backfilled as AEQ-030..032 in Sprint 15.
+
+So, before a sprint is reported as complete, answer this explicitly, in the
+retro, even when the answer is "none":
+
+> **Did this sprint find a defect that was CAUSED BY how an AI agent works —
+> a remembered API, a self-written test matrix, a prompt read as a
+> requirement, a self-graded claim, a blind spot shared with the reviewer?
+> If yes, it gets an AEQ entry. If no, say so.**
+
+The bar is that specific on purpose. Not every bug belongs here — an ordinary
+typo or a misread requirement does not. What belongs is a defect whose *root
+cause* is a property of agentic development, because those are the ones that
+recur in a shape nobody recognises. A sprint retro that does not answer this
+question is not finished.
+
+The entry names the real prompt, the real evidence and the real production
+result. `production_evidence: PENDING` is a legitimate value when the fix is
+not yet deployed and is strongly preferred over filling the field with a local
+pass — recording a local result as production evidence is itself one of the
+habits this ledger exists to catch.
+
 ### Phase 3: every activity carries a category (added 2026-09-20, Owner directive)
 Every backlog item gets a `category`: `delivery` (real product/feature
 work) or `scrum_process` (sizing/retro/rubric/process-infrastructure

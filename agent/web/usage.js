@@ -74,7 +74,8 @@ function renderEfficiencySummary(d) {
   // now say the scope explicitly; renderDevSessionCostSummary() below is
   // the separate, equally-real sibling for that other domain.
   return section("Workbench Delivery Efficiency (pipeline runs only — see \"Claude Code Development Cost\" below for a separate total)", `
-    <p class="hint" style="margin-top:0;">Real, ledger-backed ratios for Workbench pipeline runs — never estimated, never fabricated. A failed or no-change run's real cost is still counted (see ${esc(e.canonical_source)}). This does NOT include Claude Code development-session cost — that is tracked separately below.</p>
+    <p class="hint" style="margin-top:0;">Real, ledger-backed ratios for Workbench pipeline runs — never estimated, never fabricated. A failed run, or one that turned out to need no change, still costs real money and is still counted here. This does not include the cost of the Claude Code sessions used to build the platform itself — that is tracked separately below.</p>
+    ${provenance(e.canonical_source)}
     ${tilesHtml}
     <p class="hint" style="margin-top:1.2rem;">Recent windows:</p>
     ${windowsHtml}
@@ -102,19 +103,70 @@ function renderDeliveryPathShare(d) {
 // BL-058: lifetime cost broken out per real terminal outcome class (COMPLETED, FAILED,
 // NO_CHANGE_NEEDED, DEPLOYMENT_STATUS_UNKNOWN, or whatever the ledger actually holds) --
 // answers "what does a FAILED run cost us" as its own, never-hidden-inside-COMPLETED number.
+// --- Sprint 15 (D9): plain English on the surface, raw identifiers kept ------
+// The Owner's screenshot review flagged `delivery_events`,
+// `event_type=run_usage_summary` and `DEPLOYMENT_STATUS_UNKNOWN` rendering
+// straight onto a page a recruiter reads. These render the same facts as
+// English, and keep the machine value one click away rather than deleting it.
+
+const OUTCOME_LABELS = {
+  COMPLETED: "Completed",
+  FAILED: "Failed",
+  NO_CHANGE_NEEDED: "No change was needed",
+  DEPLOYMENT_STATUS_UNKNOWN: "Deployed, outcome unconfirmed",
+};
+
+const CATEGORY_LABELS = {
+  product_runtime: "Product runtime \u2014 real Workbench pipeline runs",
+  product_development: "Product development \u2014 building this platform",
+  portfolio_demo: "Portfolio demo \u2014 recruiter-facing walkthroughs",
+  trainer_demo: "Trainer demo \u2014 live teaching sessions",
+  yogacrm_pilot: "YogaCRM pilot \u2014 a real external pilot",
+  customer_production: "Customer production \u2014 paid customer traffic",
+};
+
+// Fallback for any value not in the maps above, so a new ledger enum degrades
+// to "Deployment status unknown" rather than shouting DEPLOYMENT_STATUS_UNKNOWN.
+function humanLabel(raw) {
+  const key = String(raw == null ? "" : raw);
+  if (OUTCOME_LABELS[key]) return OUTCOME_LABELS[key];
+  if (CATEGORY_LABELS[key]) return CATEGORY_LABELS[key];
+  if (!key) return "Unknown";
+  const words = key.toLowerCase().replace(/[_=]+/g, " ").trim();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+// Sprint 15 (D9): "2026-09-29" is how the ledger stores a date; this is how a
+// visitor reads one.
+function humanDateLong(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ""));
+  if (!m) return String(iso || "");
+  const MONTHS = ["January", "February", "March", "April", "May", "June", "July",
+                  "August", "September", "October", "November", "December"];
+  return `${Number(m[3])} ${MONTHS[Number(m[2]) - 1]} ${m[1]}`;
+}
+
+// The provenance string is real evidence and is never dropped -- it is put
+// behind a summary a non-engineer can read.
+function provenance(raw) {
+  if (!raw) return "";
+  return `<details class="prov"><summary>Where this number comes from</summary>` +
+         `<code>${esc(raw)}</code></details>`;
+}
+
 function renderCostByOutcomeClass(e) {
   const rows = e.cost_by_outcome_class;
   if (!rows || rows.length === 0) return "";
   const body = rows.map(r => `<tr>
-    <td>${esc(r.outcome_class)}</td>
+    <td>${esc(humanLabel(r.outcome_class))}<br><code class="raw-enum">${esc(r.outcome_class)}</code></td>
     <td>${r.run_count}</td>
     <td>${r.total_cost_usd != null ? fmtUsd(r.total_cost_usd) : "unknown"}</td>
     <td>${r.avg_cost_usd != null ? fmtUsd(r.avg_cost_usd) : "unknown"}</td>
     <td class="hint">${esc(r.cost_provenance)}</td>
   </tr>`).join("");
-  return `<p class="hint" style="margin-top:1.2rem;">Lifetime cost by real outcome class — a failed run's cost is never folded into or hidden by the COMPLETED total:</p>
+  return `<p class="hint" style="margin-top:1.2rem;">What each kind of outcome has cost over the platform's lifetime. A run that failed is reported on its own line — its cost is never folded into, or hidden behind, the successful total:</p>
   <table class="cap-table"><thead><tr>
-    <th>Outcome class</th><th>Runs</th><th>Total cost</th><th>Avg cost/run</th><th>Cost provenance</th>
+    <th>How the run ended</th><th>Runs</th><th>Total cost</th><th>Avg cost/run</th><th>Cost provenance</th>
   </tr></thead><tbody>${body}</tbody></table>`;
 }
 
@@ -141,7 +193,8 @@ function renderDevSessionCostSummary(d) {
     </div>`;
   };
   return section("Claude Code Development Cost (building this platform — separate from Workbench above)", `
-    <p class="hint" style="margin-top:0;">Real cost of Claude Code development sessions (writing/debugging this platform's own code), computed from real captured tokens via the same versioned pricing table every other cost figure on this site uses. Entirely separate from Workbench pipeline-run cost above — the two are never combined into one number. See ${esc(dc.canonical_source)}.</p>
+    <p class="hint" style="margin-top:0;">Real cost of Claude Code development sessions (writing/debugging this platform's own code), computed from real captured tokens via the same versioned pricing table every other cost figure on this site uses. Entirely separate from Workbench pipeline-run cost above — the two are never combined into one number.</p>
+    ${provenance(dc.canonical_source)}
     <div class="econ-grid">
       ${windowCard(`Today (${dc.display_timezone})`, dc.today)}
       ${windowCard(`This week (${dc.display_timezone})`, dc.this_week)}
@@ -266,7 +319,7 @@ function renderSessionRow(s, index) {
 }
 
 function renderToday(d) {
-  let html = `<p class="hint">Local date: ${esc(d.today_date)}</p>`;
+  let html = `<p class="hint">Figures below are for ${esc(humanDateLong(d.today_date))}.</p>`;
   if (!d.today_sessions.length) {
     html += `<p class="hint">No sessions recorded today yet.</p>`;
   } else {
@@ -325,14 +378,15 @@ function renderEventLedger(d) {
     return `<li><code>${esc(e.event_type)}</code> <span class="hint">[${src}]</span>${detail} <span class="hint">${esc(e.timestamp_utc)}</span></li>`;
   }).join("");
   return section("Event Ledger (live)", `
-    <p class="hint" style="margin-top:0;">Evidence source: REMOTE EVENT LEDGER (Railway Postgres) &middot; Events captured: ${el.events_captured} &middot; distinguishes PRODUCT_DEVELOPMENT (building this platform) from PRODUCT_RUNTIME (Workbench runs)</p>
+    <p class="hint" style="margin-top:0;">Every entry below was written to a hosted Postgres database as it happened — ${el.events_captured} of them so far. Work spent building this platform is recorded separately from work the platform itself performed, so neither total can quietly absorb the other.</p>
     <ul class="ledger-recent">${rows}</ul>
   `);
 }
 
 function renderConsumptionCategories(d) {
-  const items = d.consumption_categories.map(c => `<li>${esc(c)}</li>`).join("");
-  return section("Consumption Categories (schema)", `<p class="hint">Every session/run is tagged with exactly one of these — never mixed together for economics.</p><ul>${items}</ul>`);
+  const items = d.consumption_categories.map(c =>
+    `<li>${esc(humanLabel(c))} <code class="raw-enum">${esc(c)}</code></li>`).join("");
+  return section("What the spending is split into", `<p class="hint">Every session and every run is filed under exactly one of these. They are never added together into a single figure, because a demo and a paying customer are not the same kind of cost.</p><ul>${items}</ul>`);
 }
 
 function renderDevSessionControls() {

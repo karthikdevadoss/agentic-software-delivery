@@ -1,3 +1,7 @@
+/* Sprint 15 (D6): nothing on a public page renders below 12.5px.
+   Anything smaller is uncomfortable on a 1920 display, which is the width
+   the Owner actually uses. Enforced here at source AND asserted per page by
+   e2e/ui-standards.spec.js -- do not reintroduce a 0.6-0.72rem badge or tag. */
 :root {
   --bg: #0b0d12;
   --panel: #14171f;
@@ -22,20 +26,36 @@ body {
     radial-gradient(1200px 400px at 20% -10%, rgba(91,147,255,0.08), transparent),
     var(--bg);
   color: var(--text);
-  line-height: 1.5;
+  /* Sprint 15: 17px to match the home page. The dark pages were 16px, so body
+     text changed size as the visitor moved between pages. */
+  font-size: 17px;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
 }
 
+/* Sprint 15: ONE shell for the whole public surface. Before this, header used
+   max-width 1000 + 32px padding while main used 1000 + 20px, so the header sat
+   12px right of its own panels; usage/dashboard used 1100 and sat 62px out;
+   and home/case-study used 860/700, so every navigation shifted the page
+   sideways by 60-140px. --shell is the single source of that geometry now. */
+:root {
+  --shell: 1200px;
+  --shell-pad: 2rem;
+  --prose: 68ch;          /* 50-75 characters is the readable band */
+}
+
 header {
-  padding: 2.25rem 2rem 1.5rem;
+  padding: 2.25rem var(--shell-pad) 1.5rem;
   border-bottom: 1px solid var(--border);
-  max-width: 1000px;
+  max-width: var(--shell);
   margin: 0 auto;
 }
 
-h1 { margin: 0 0 0.35rem; font-size: 1.65rem; font-weight: 700; letter-spacing: -0.01em; }
+/* Sprint 15: was 1.65rem (26.4px) against home's 44px -- a page title that
+   read as body text. clamp keeps it sane on a phone. */
+h1 { margin: 0 0 0.5rem; font-size: clamp(28px, 2.4vw, 34px); font-weight: 700; letter-spacing: -0.015em; line-height: 1.15; }
 h1 .sub { color: var(--muted); font-weight: 400; }
-.tagline { margin: 0; color: var(--muted); font-size: 0.95rem; max-width: 640px; }
+.tagline { margin: 0; color: var(--muted); font-size: 1rem; max-width: var(--prose); }
 
 .top-nav { margin-top: 0.9rem; display: flex; flex-wrap: wrap; row-gap: 0.5rem; gap: 1.25rem; align-items: center; }
 .top-nav a { color: var(--muted); text-decoration: none; font-size: 0.88rem; font-weight: 600; padding-bottom: 0.15rem; border-bottom: 2px solid transparent; transition: color .15s, border-color .15s; }
@@ -59,9 +79,11 @@ a:focus-visible, button:focus-visible, input:focus-visible {
 }
 
 main {
-  max-width: 1000px;
+  max-width: var(--shell);
   margin: 0 auto;
-  padding: 2rem 1.25rem 4.5rem;
+  /* padding-x MUST match header's, or the header and the panels below it do
+     not share a left edge -- that was the 12px offset on four pages. */
+  padding: 2rem var(--shell-pad) 4.5rem;
 }
 
 .panel {
@@ -130,7 +152,7 @@ button.secondary { background: #2a2e3a; color: var(--muted); font-weight: 500; }
   margin-left: 0.75rem;
   padding: 0.3rem 0.75rem;
   border-radius: 999px;
-  font-size: 0.75rem;
+  font-size: 12.5px;
   font-weight: 700;
   letter-spacing: 0.03em;
   vertical-align: middle;
@@ -219,4 +241,66 @@ button.secondary { background: #2a2e3a; color: var(--muted); font-weight: 500; }
   font-size: 0.8rem;
   max-height: 220px;
   overflow-y: auto;
+}
+
+/* Sprint 15, minimum legible size. Measured on production 2026-09-29:
+   showcase rendered text at 10.88px, dashboard at 11.2px, usage at 11.52px.
+   Anything under 12px is uncomfortable on a 1920 display, so the floor is
+   enforced here rather than left to each component. */
+/* Targeted, not blanket. The first attempt used
+   `body, p, li, ... { font-size: max(1em, 12px) }`, which resolved to 1em of
+   the ROOT (16px) and silently overrode the 17px body set above -- a rule
+   meant to raise a floor instead lowered the baseline on seven pages. Only
+   the classes that actually rendered below 12px are named here. */
+.hint, .tiny, .note, .badge, .exec-note, .econ-note,
+.sc-live-badge, .sc-story-field-label, .sc-status-pill,
+.st-ok, .st-warn, .st-bad { font-size: 12.5px; }
+
+/* Sprint 15: Usage and Dashboard offered a visitor nothing to act on in the
+   first screen -- measured 0 interactive elements above the fold outside the
+   navigation. A primary action above the fold is one of the few landing-page
+   findings with a consistent effect size, so both pages now carry one. */
+.fold-actions { margin: 0.9rem 0 0; display: flex; flex-wrap: wrap; gap: 1.25rem; }
+.fold-actions a { color: var(--accent); font-weight: 600; font-size: 0.95rem; text-decoration: none; }
+.fold-actions a:hover { text-decoration: underline; }
+
+/* Sprint 15 (D9). The Owner's review found raw ledger identifiers --
+   `delivery_events`, `event_type=run_usage_summary`,
+   `DEPLOYMENT_STATUS_UNKNOWN` -- printed into sentences on a page recruiters
+   read. The identifiers are real provenance and are not deleted; they are
+   folded behind a summary written in English. Closed by default so the page
+   reads as prose, one click from open so no evidence is lost. */
+details.prov {
+  margin: 0.6rem 0 0;
+  font-size: 12.5px;
+  color: var(--muted);
+  max-width: var(--prose);
+}
+details.prov > summary {
+  cursor: pointer;
+  display: inline-block;
+  padding: 0.15rem 0;
+  color: var(--muted);
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+details.prov > summary:hover { color: var(--text); }
+details.prov > code {
+  display: block;
+  margin-top: 0.45rem;
+  padding: 0.5rem 0.65rem;
+  background: rgba(127, 127, 127, 0.10);
+  border-radius: 3px;
+  overflow-wrap: anywhere;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+/* The machine value kept alongside its English label: present and copyable,
+   visibly secondary to the words next to it. */
+code.raw-enum {
+  font-size: 12.5px;
+  color: var(--muted);
+  opacity: 0.85;
+  overflow-wrap: anywhere;
 }

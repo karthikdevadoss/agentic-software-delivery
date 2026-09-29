@@ -57,6 +57,12 @@ import os
 import pathlib
 import re
 
+# SI-04 (Sprint 15). The answer-quality oracle. It is imported rather than
+# reimplemented so the runtime voice gate and the test suite that scores
+# production answers cannot drift apart -- the previous phrase-list version of
+# this rule passed every one of the six answers the Owner rejected.
+import si_quality
+
 # Loads agent/.env's ANTHROPIC_API_KEY into the process environment. Same
 # recurrence as the 2026-09-14 backend_planning.py bug in docs/LESSONS.md:
 # reasoning_gateway.py reads ANTHROPIC_API_KEY from os.environ but does NOT
@@ -158,8 +164,14 @@ def _model_declined(text: str) -> bool:
 # The single standard refusal. One short line, no lecture, no hint about what
 # the corpus does or does not contain -- a refusal that explains itself in
 # detail is an information leak and it also reads badly in an interview.
-REFUSAL = ("I don't have a grounded answer for that one. Ask me about the backend "
-           "systems I've worked on, or about the AI platform I've built.")
+# Sprint 15: "a grounded answer" is retrieval vocabulary, not something a
+# person says in an interview -- and this line is what a recruiter sees, so it
+# is the one sentence on the surface most likely to read as a machine. It also
+# used to open on "I don't have", which is the shape the answers were being
+# corrected away from everywhere else.
+REFUSAL = ("That's not something I've got a specific example of to hand. Ask me "
+           "about the backend systems I've worked on, or about the AI delivery "
+           "platform I built.")
 NO_CORPUS = ("The knowledge base isn't loaded on this instance, so I can't answer "
              "from it. I won't guess.")
 
@@ -173,10 +185,12 @@ ABSOLUTE RULES
   or book titles, no chapter or section numbers, no file paths, no phrases
   like "according to", "the document says", "my notes", "the corpus", "the
   excerpt". Just answer as someone who did the work and remembers it.
-- Be honest about the limits of your own involvement. If the excerpts say
-  something was a system-level fact rather than your personal work, say so
-  plainly -- "I didn't design that; I implemented the filter against it" is a
-  better answer than a vague claim of ownership.
+- Never overstate your own involvement. If the excerpts say something was a
+  system-level fact rather than your personal work, describe what you did
+  rather than claiming the whole: "I implemented the filter against the
+  platform's token flow" is the shape. That is a ban on OVERCLAIMING, not an
+  instruction to DISCLAIM -- do not volunteer "I didn't design that" unless
+  the sentence would otherwise read as a claim that you did.
 - Never state a date, employer, title or metric that is not in the excerpts.
 - When the excerpts or your standing summary describe something as the team's
   work or in the passive ("the call was parallelized"), say it that way -- "we
@@ -202,10 +216,10 @@ LEAD WITH WHERE YOU ACTUALLY USED IT
 When the question names no employer ("explain your experience with X"), start
 with the employer where you actually did hands-on work with X, whichever one
 that is -- NOT the most recent one, and never with a place that did not use
-it. Give that employer the bulk of the answer. Then, in one or two short
-sentences at the end, say where else it did or did not come up and what was
-used instead there. Somewhere it was not used is a closing footnote, never the
-opening line.
+it. Give that employer the answer. Do NOT close by touring the employers
+where it did not come up -- that was not asked, and it turns a confident
+answer into a coverage report. Name another employer only when the question
+asks across your career AND the answer is incomplete without it.
 
 When the question DOES name one employer, answer only about that employer.
 
@@ -214,9 +228,9 @@ Some questions arrive with a line that begins "Your own record says". It names
 the employer(s) where the work actually happened and the employer(s) where it
 was not used. Lead with the first employer it names and give that employer the
 answer. Do not give a paragraph to an employer it marks as not used, and do not
-mention an employer it does not name at all. An absence gets one closing
-sentence, and only when the question is generic or names that employer. Never
-tour every employer.
+mention an employer it does not name at all. An employer marked "not used" is
+a CONSTRAINT on what you may claim, not a fact to recite: say nothing about it
+unless the question names that employer. Never tour every employer.
 
 LEAVE OUT AN EMPLOYER YOU HAVE NOTHING TO SAY ABOUT
 If the excerpts for one employer contain nothing substantive about the
@@ -226,13 +240,30 @@ silence: it spends the interviewer's attention on nothing and it makes the
 whole answer read as a coverage report. Two employers answered well beats
 three employers listed.
 
-WHAT YOU DID, AND WHERE THAT STOPPED
-State the hands-on work plainly, then the boundary of it in one sentence --
-what you wrote, versus what someone else ran. Then stop. At most ONE short
-sentence anywhere in the answer about something you cannot recall; pick the
-single thing an interviewer is most likely to ask next (exact names, exact
-settings) and leave it at that. Never write a paragraph about your own limits,
-never list several things you cannot say, and never open with one.
+ANSWER THE QUESTION THAT WAS ASKED, AND STOP
+State the hands-on work plainly. Then stop.
+
+Do NOT volunteer a limitation. Not what you did not set up, not what you do
+not remember, not what someone else ran, not what a different employer did not
+use. None of that was asked for, and an answer that reaches for it sounds like
+someone arguing against themselves.
+
+There are exactly three times a limit belongs in an answer:
+  1. The question asks for one ("have you used X", "what are your gaps").
+  2. Leaving it out would imply something false -- you would be taken to have
+     built or owned something you did not.
+  3. The interviewer has asked a follow-up that needs it.
+Outside those three, the correct number of volunteered limitations is ZERO.
+
+This is not a budget to spend. A previous version of this instruction asked
+for "the boundary in one sentence" and allowed "at most one sentence about
+something you cannot recall"; measured against 57 real production answers,
+that produced 37 volunteered negatives across 21 of them, because a permitted
+sentence reads as a required one. If the question does not ask, write none.
+
+When rule 2 does apply, it is one clause inside a sentence about the work --
+"I wrote the producer and consumer code against those topics" -- not a
+sentence, not a paragraph, and never the closing line. Never open with one.
 
 NEVER SAY, BECAUSE A PERSON DOES NOT TALK LIKE THIS
 Nothing about how you looked the answer up. No "census", no "zero hits", no
@@ -288,10 +319,16 @@ you built. An interviewer asks about the things you touched; volunteering
 textbook material reads as covering for not having done the work, and it is
 also the fastest way to state something that is not true.
 
-NEVER CLAIM TO HAVE OWNED THE ARCHITECTURE. You implemented within designs
-that a lead or architect owned, and you say so in one clause when it matters.
-"I implemented the filter against the platform's token flow" is the shape;
-"I designed the overall architecture" is not something you would say.
+NEVER CLAIM TO HAVE OWNED THE ARCHITECTURE. "I designed the overall
+architecture" is not something you would say. Describe what you built instead:
+"I implemented the filter against the platform's token flow" is the shape.
+
+That is a ban on overclaiming, NOT an instruction to disclaim. Do not
+volunteer that a lead or an architect owned the design -- saying what you
+built already says what you built, and adding "though the architecture came
+from the architect" hands away credit nobody asked you to give up. Name the
+architect's ownership only if the question asks who designed it, or if the
+sentence would otherwise read as a claim that you did.
 
 LENGTH
 Six to ten spoken lines. Always finish the final sentence.
@@ -702,19 +739,28 @@ def attribution_line(a: dict, question: str) -> str:
         parts.append("used or worked alongside at " + " and ".join(a["used"]))
     if a["system"]:
         parts.append("part of the wider system but not your own work at " + " and ".join(a["system"]))
-    if a["not_used"]:
-        parts.append("not used at " + " and ".join(a["not_used"]))
+    # SI-03. "not used at X" used to be appended to the same speakable list as
+    # the rest, and the model duly spoke it -- the Kafka answers volunteered
+    # "Kafka wasn't part of the stack at my other employers" when nobody had
+    # asked about other employers. An absence is a CONSTRAINT on what may be
+    # claimed, not a fact to recite, so it is now stated as one and kept out
+    # of the "your own record says" list entirely.
     line = "Your own record says: " + "; ".join(parts) + "."
     first = (a["lead"] or a["used"] or a["system"])
     if a["employer_named"]:
         line += " The question names an employer; answer only about that employer."
     elif a["career_wide"]:
-        line += (" The question asks across your career: say where you used it, then in "
-                 "one sentence where you did not.")
+        line += (" The question asks across your career: say where you used it. "
+                 "Name an employer who did not use it ONLY if the question cannot "
+                 "be answered without it.")
     elif first:
-        line += (f" Lead with {first[0]} and give it the answer. Do not give a paragraph "
-                 "to any employer marked not used, and do not mention an employer that "
-                 "is not named here; an absence is at most one closing sentence.")
+        line += (f" Lead with {first[0]} and give it the answer. Do not mention an "
+                 "employer that is not named here.")
+    if a["not_used"]:
+        line += (" Constraint, not content: you have no record of this at "
+                 + " and ".join(a["not_used"])
+                 + ", so never claim work there. Do NOT say so in the answer "
+                   "unless the question asks about that employer by name.")
     return line
 
 
@@ -826,6 +872,25 @@ _LIMIT_MARKER = re.compile(
 
 MAX_LIMIT_SENTENCES = 2
 
+# SI-04/BL-144. Not every violation deserves the same consequence, and getting
+# this wrong is how a quality gate becomes a availability problem.
+#
+# A volunteered limitation is worth a RETRY -- the model usually drops it when
+# told to. It is NOT worth refusing the question outright: a good answer
+# carrying one unasked caveat is plainly better for the Owner than the standard
+# "I don't have that recorded" line, and the audit registered over-refusal as
+# its own defect (question m was declined on all three production draws).
+#
+# Leaks, truncation, invented details, banned vocabulary and tense errors stay
+# hard: each of those ships something false or breaks confidentiality, and a
+# refusal really is the better outcome there.
+SOFT_VIOLATION = "volunteers a limitation nobody asked for"
+
+
+def only_soft_violations(violations: list[str]) -> bool:
+    """True when every violation is a retry-worthy style problem."""
+    return bool(violations) and all(v.startswith(SOFT_VIOLATION) for v in violations)
+
 
 def _sentences(text: str) -> list[str]:
     return [p.strip() for p in re.split(r'(?<=[.!?])\s+', text.strip()) if p.strip()]
@@ -890,6 +955,37 @@ def voice_violations(text: str, question: str | None = None) -> list[str]:
     if not re.search(r'''[.!?]["'”’)\]]*$''', sents[-1]):
         bad.append("stops mid-sentence")
 
+    # SI-04. This used to be a phrase list with a budget of two, and it was
+    # wrong in both halves. The phrase list missed most real limitation
+    # wording -- "I didn't set up the brokers", "I didn't administer the
+    # cluster", "Kafka wasn't part of the stack" all scored zero -- and the
+    # budget of two told the model that two volunteered limitations were
+    # acceptable, so it reliably produced them.
+    #
+    # The gate now uses the same four-category oracle the test suite scores
+    # production answers with (agent/si_quality.py), so the rule has exactly
+    # one definition. It is question-aware: a negative the question actually
+    # invited is not a violation, which is why "have you used Terraform" can
+    # still be answered "no".
+    # Only with the question in hand. "Unsolicited" is a RELATION between the
+    # question and the answer -- without the question there is no way to tell
+    # a volunteered caveat from a direct answer to "have you used Terraform",
+    # and guessing in either direction is worse than not checking. The
+    # sentence-count checks below still apply either way.
+    report = si_quality.assess(question, text, "answered") if question else None
+    for n in (report.unsolicited if report else []):
+        bad.append("%s -- %s (%r)"
+                   % (SOFT_VIOLATION, n.category, n.sentence[:90]))
+    for t in (report.tense_errors if report else []):
+        # A tense error states a false fact about current employment, so it is
+        # never soft -- it is closer to an invented detail than to a stylistic
+        # slip.
+        bad.append("tense: %s" % t[:120])
+
+    # Kept from the phrase-list version so the "essay about what he cannot
+    # say" contract keeps its own distinct message: many limitation sentences
+    # is a different failure from one volunteered clause, and the retry prompt
+    # reads better when it says so.
     n_limits = sum(1 for x in sents if _LIMIT_MARKER.search(x))
     if n_limits > MAX_LIMIT_SENTENCES:
         bad.append("spends %d sentences on what you cannot say (at most %d)"
@@ -1095,6 +1191,14 @@ def answer(question: str, corpus: Corpus | None = None, create_fn=None) -> dict:
         retry_text = (retry.get("text") or "").strip()
         retry_voice = voice_violations(retry_text, question) if retry_text else ["is empty"]
         if retry_text and not retry_voice and not leaks(retry_text, question):
+            text, result = retry_text, retry
+        elif (retry_text and not leaks(retry_text, question)
+                and only_soft_violations(retry_voice)):
+            # The retry is still volunteering a caveat, but that is all that is
+            # wrong with it. Ship it. Refusing here would replace a real,
+            # grounded, honest answer with the standard "I don't have that
+            # recorded" line -- strictly worse for the person asking, and the
+            # exact over-refusal shape the audit registered as its own defect.
             text, result = retry_text, retry
         else:
             # Twice is a real problem with this question, not a bad roll.

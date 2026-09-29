@@ -548,16 +548,30 @@ OLD_KAFKA_GENERIC = (
 
 # The shape the Owner froze, written out so a future change that breaks it
 # fails here rather than in production.
+#
+# SPRINT 15, and this is a deliberate specification change, not a test being
+# loosened to go green. The previous frozen shape ended:
+#
+#     "... I don't have the exact retry, DLQ or offset-handling implementation
+#      preserved, and broker administration wasn't mine. Elsewhere Kafka
+#      wasn't part of the picture - at NRG the async work was SQS with a
+#      dead-letter queue, and at Marsh we didn't use Kafka at all."
+#
+# Those two sentences ARE the Owner's 2026-09-29 complaint. The three live
+# production Kafka answers he rejected say almost exactly that, and they were
+# faithful to this fixture -- which is the point. The frozen shape encoded the
+# older requirement that an answer state its boundary and footnote the
+# employers that did not use the technology. The Owner's later instruction
+# supersedes it: state the work, then stop.
+#
+# Same precedent as the FHIR clause two comments down -- later instruction
+# wins, and the fixture moves rather than the gate.
 NEW_KAFKA_GENERIC = (
     "My hands-on Kafka experience is from BCBSA. I worked on producer/consumer "
     "application code that propagated member, coverage and claims changes "
     "between backend services, keeping the downstream data current as changes "
-    "landed upstream. That was real application-level coding "
-    "on my end, not a system I only observed running. I don't have the exact "
-    "retry, DLQ or offset-handling implementation preserved, and broker "
-    "administration wasn't mine. Elsewhere Kafka wasn't part of the picture - "
-    "at NRG the async work was SQS with a dead-letter queue, and at Marsh we "
-    "didn't use Kafka at all."
+    "landed upstream. That was real application-level coding on my end, on the "
+    "services that produced and consumed those events."
 )
 # Sprint 13: the frozen shape used to say "keeping a FHIR-facing normalized data
 # view current" -- the Owner's 2026-09-29 Q3 rule is that a Kafka answer does not
@@ -756,8 +770,28 @@ class VoiceSpecInPromptTestCase(unittest.TestCase):
         self.assertIn("preparation material, not memory", low)
         self.assertIn("delivery guarantees", low)
 
-    def test_the_prompt_caps_the_limitation_talk(self):
-        self.assertIn("at most one short", si.SYSTEM_PROMPT.lower())
+    def test_the_prompt_forbids_volunteering_a_limitation(self):
+        """Sprint 15. This used to assert the prompt CAPPED limitation talk at
+        "at most one short" sentence. That cap was the defect: measured over 57
+        real production answers, a permitted sentence read as a required one
+        and produced 37 volunteered negatives across 21 of them. The budget is
+        now zero, so the assertion is on the stronger rule -- and on the
+        absence of the old permissive wording, since leaving that in place
+        anywhere in the prompt would reinstate the behaviour."""
+        low = si.SYSTEM_PROMPT.lower()
+        self.assertIn("do not volunteer a limitation", low)
+        self.assertIn("the correct number of volunteered limitations is zero", low)
+        for reinstates_the_defect in (
+            "at most one short",
+            "then the boundary of it in one sentence",
+            "an absence gets one closing",
+            "say where else it did or did not come up",
+            "and you say so in one clause",
+        ):
+            self.assertNotIn(
+                reinstates_the_defect, low,
+                f"the prompt still invites a volunteered limitation: "
+                f"{reinstates_the_defect!r}")
 
 
 if __name__ == "__main__":
@@ -882,7 +916,21 @@ class AttributionTestCase(unittest.TestCase):
         line = si.attribution_line(a, "explain your experience with kafka")
         self.assertIn("BCBSA", line)
         self.assertIn("NRG Energy", line)
-        self.assertRegex(line.lower(), r"not used|did not use")
+        # Sprint 15 (SI-03): the line used to append "not used at NRG Energy"
+        # to the same speakable list as everything else, and the model duly
+        # spoke it -- the Kafka answers volunteered an absence about employers
+        # nobody had asked about. The employer must still be NAMED, so no work
+        # is ever claimed there; it is now framed as a constraint on claims
+        # rather than as content to recite.
+        low = line.lower()
+        self.assertIn("nrg energy", low,
+                      "the employer with no record must still be named")
+        self.assertRegex(low, r"no record|not used|did not use")
+        self.assertIn("never claim work there", low)
+        self.assertRegex(
+            low, r"do not say so|unless the question asks",
+            "naming the absent employer must not double as permission to "
+            "recite it")
         self.assertNotIn("Marsh", line)          # nothing recorded -> not mentioned
 
     def test_naming_an_employer_or_asking_career_wide_lifts_the_exclusion(self):

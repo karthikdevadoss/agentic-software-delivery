@@ -1,3 +1,7 @@
+/* Sprint 15 (D6): nothing on a public page renders below 12.5px.
+   Anything smaller is uncomfortable on a 1920 display, which is the width
+   the Owner actually uses. Enforced here at source AND asserted per page by
+   e2e/ui-standards.spec.js -- do not reintroduce a 0.6-0.72rem badge or tag. */
 main { max-width: 1150px; }
 
 #learn-search {
@@ -32,10 +36,10 @@ main { max-width: 1150px; }
 .topic-def { flex: 1; }
 .topic-card-footer { margin-top: 0.6rem; padding-top: 0.5rem; border-top: 1px solid var(--border); }
 .topic-def { color: var(--muted); font-size: 0.85rem; line-height: 1.5; }
-.topic-related { margin-top: 0.5rem; font-size: 0.76rem; color: var(--muted); }
+.topic-related { margin-top: 0.5rem; font-size: 12.5px; color: var(--muted); }
 
 .ev-badge {
-  font-size: 0.65rem;
+  font-size: 12.5px;
   font-weight: 700;
   padding: 0.15rem 0.45rem;
   border-radius: 999px;
@@ -84,7 +88,7 @@ main { max-width: 1150px; }
   background: rgba(91,147,255,0.06);
 }
 .deep-interview-q { font-weight: 700; margin-bottom: 0.4rem; }
-.deep-evidence { margin-top: 0.6rem; font-size: 0.76rem; color: var(--muted); }
+.deep-evidence { margin-top: 0.6rem; font-size: 12.5px; color: var(--muted); }
 .deep-evidence code { background: #1a1d24; padding: 0.1rem 0.35rem; border-radius: 4px; }
 
 /* Recursive Learn Wikipedia navigation ---------------------------------- */
@@ -110,7 +114,7 @@ main { max-width: 1150px; }
 .learn-section-block { margin: 0.9rem 0; padding-bottom: 0.6rem; border-bottom: 1px solid var(--border); }
 .learn-section-block:last-child { border-bottom: none; }
 .learn-section-block h4 {
-  font-size: 0.78rem; letter-spacing: 0.04em; color: var(--accent, #5b93ff);
+  font-size: 12.5px; letter-spacing: 0.04em; color: var(--accent, #5b93ff);
   text-transform: uppercase; margin-bottom: 0.35rem;
 }
 .learn-section-block p, .learn-section-block ul { color: var(--muted); font-size: 0.9rem; line-height: 1.55; }
@@ -138,18 +142,18 @@ main { max-width: 1150px; }
 }
 .search-result:hover { border-color: var(--accent, #5b93ff); }
 .search-result-title { font-weight: 700; font-size: 0.9rem; }
-.search-result-path { font-size: 0.75rem; color: var(--muted); margin-top: 0.15rem; }
+.search-result-path { font-size: 12.5px; color: var(--muted); margin-top: 0.15rem; }
 
 .back-link { display: inline-block; margin-bottom: 0.75rem; color: var(--accent, #5b93ff); text-decoration: none; font-size: 0.85rem; }
 .back-link:hover { text-decoration: underline; }
 
 /* Domain vs. topic visual distinction ------------------------------------ */
 .domain-kind-tag {
-  font-size: 0.62rem; font-weight: 700; letter-spacing: 0.06em;
+  font-size: 12.5px; font-weight: 700; letter-spacing: 0.06em;
   color: var(--accent, #5b93ff); background: rgba(91,147,255,0.12);
   padding: 0.12rem 0.4rem; border-radius: 4px; flex-shrink: 0;
 }
-.depth-hint { font-size: 0.75rem; color: var(--muted); }
+.depth-hint { font-size: 12.5px; color: var(--muted); }
 .depth-hint-leaf { font-style: italic; opacity: 0.8; }
 
 /* Experience-classification badges — DELIBERATELY separate from the
@@ -158,7 +162,7 @@ main { max-width: 1150px; }
    was a real UI-audit defect (see docs/UI_AUDIT_OPEN_ITEMS.md and
    docs/LESSONS.md) -- never reuse .ev-badge colors for this taxonomy. */
 .exp-badge {
-  font-size: 0.63rem; font-weight: 700; letter-spacing: 0.02em;
+  font-size: 12.5px; font-weight: 700; letter-spacing: 0.02em;
   padding: 0.15rem 0.5rem; border-radius: 999px; white-space: nowrap;
   border: 1px solid transparent;
 }
@@ -172,7 +176,7 @@ main { max-width: 1150px; }
    taxonomy from experience classification (how much interview weight a
    topic carries, not how it's evidenced). */
 .priority-badge {
-  font-size: 0.63rem; font-weight: 700; letter-spacing: 0.02em;
+  font-size: 12.5px; font-weight: 700; letter-spacing: 0.02em;
   padding: 0.15rem 0.5rem; border-radius: 999px; white-space: nowrap;
   border: 1px solid transparent;
 }

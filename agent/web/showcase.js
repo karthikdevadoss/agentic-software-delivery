@@ -332,6 +332,17 @@ function renderNav(main, showcase) {
   main.appendChild(panel);
 }
 
+
+// Sprint 15 (D9): dates are stored ISO and read aloud in English. "2026-09-29"
+// is a field value; "29 Sep 2026" is what a visitor expects to see.
+function humanDate(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ""));
+  if (!m) return String(iso || "");
+  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${Number(m[3])} ${MONTHS[Number(m[2]) - 1]} ${m[1]}`;
+}
+
 async function main() {
   const slug = slugFromPath();
   const main_el = document.getElementById("sc-main");
@@ -361,11 +372,18 @@ async function main() {
   }
 
   document.title = showcase.title + " — Showcase";
-  document.getElementById("sc-title").innerHTML =
-    (showcase.title || "Showcase") + ' <span class="sub">— evidence-backed, not a technology badge list</span>';
+  // Sprint 15 (D8): the h1 used to carry the role title AND the editorial
+  // line in one heading, which wrapped mid-word at 1920 as "evidence-" /
+  // "backed". The title is now just the title; the argument moved to the
+  // sentence beneath it, where it reads as a sentence.
+  document.getElementById("sc-title").textContent = showcase.title || "Showcase";
   document.getElementById("sc-target-role").textContent =
-    "Target role: " + (showcase.target_role || "") +
-    (showcase.last_verified ? `  ·  Last verified ${showcase.last_verified}` : "");
+    "Every claim on this page links to a real run you can open — evidence, not a " +
+    "list of technology badges." +
+    (showcase.target_role ? ` Written for a ${showcase.target_role} role.` : "") +
+    // D9: "Last verified 2026-09-29" is how the file stores it, not how a
+    // person reads it.
+    (showcase.last_verified ? ` Checked ${humanDate(showcase.last_verified)}.` : "");
 
   main_el.innerHTML = "";
   renderCaveat(main_el, showcase.unresolved_capability_ids, showcase.unresolved_requirement_texts);

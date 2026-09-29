@@ -956,3 +956,96 @@ defects:
     commit: "540619a"
     production_evidence: "Direct read-only SQL query against the real production Postgres ledger confirmed the real incident session's model_usage row exists with the exact real token counts; the fixed session_history.py, run locally against the real database, computed $439.866923 -- independently matching manual arithmetic performed directly against the raw transcript files before any code fix existed. Full deploy-and-verify against the live production URL performed the same night this entry was written; see docs/PROJECT_STATE.json's next_action for the exact verification transcript."
     recurrence_status: MONITORING
+
+  - defect_id: AEQ-030
+    title: "A 240/240 green production verification shipped ten UI defects the Owner found by opening the site on his own screen -- because 'desktop' in the test matrix meant 1280px and the width he actually uses, 1920, was never tested once"
+    requirement_run_id: "Sprint 14 (BL-155..BL-168), deployed at b39462c; defects reported by the Owner 2026-09-29 as a document of 13 desktop Chrome screenshots"
+    original_prompt: "EXACT: \"D:\\iphone in this folder i have kept a document named 'UI-screenshotswithbugs'. It has screenshots of our platform and i see lot of UI bugs and weird UI issues.\" Followed, after the agent wrongly assumed the screenshots were from a phone because of the folder name, by: \"i dont know why you are checking from iPhone - you should be able to take care of desktop as your primary test.\""
+    analysis_confidence: EXACT
+    model_provider_version: "claude-opus-5[1m], Claude Code CLI"
+    tools_context_used: "Playwright/Chromium driven directly against the live production URL and against a local server, measuring real getBoundingClientRect() geometry and getComputedStyle() font sizes at five viewport widths; a scrollWidth-vs-clientWidth tree walk for overflow; screenshots read back visually rather than only asserted on."
+    model_interpreted_as: "'Verified across desktop, tablet and mobile' -- where the agent itself had chosen 1280 as the desktop width and then treated its own choice as coverage."
+    expected_behavior: "A public site verified as production-ready should not have a navigation bar 596px out of alignment with its own content, three different content-column widths, a 40% variation in page-title size, and text rendering at 10.88px -- all visible at a glance on the display the Owner actually owns."
+    actual_behavior: "Ten defects (D1-D10, docs/UI_DEFECTS_2026-09-29.md), every one reproducible in Chromium at 1920 and none needing a phone to find. Worst: /standing-interview rendered its nav OUTSIDE the centring container, so it spanned the full viewport from x=0 with 'Home' clipped against the window edge while the page content sat at x=596. The home page left 1060px -- 55% of the screen -- empty."
+    stage_introduced: "test design, Sprint 14 -- the defects were introduced across several sprints, but the reason they survived to production was the matrix, which was written in Sprint 14"
+    stage_detected: owner_flagged_symptom_with_screenshots
+    detection_method: "The Owner opened the deployed site and looked at it. No automated check fired, because none of them asked any of these questions."
+    root_cause: "Two compounding gaps, both of them gaps in what was ASKED rather than in what was ASSERTED. (1) The viewport list was [1280, 768, 390] and 1280 was labelled 'desktop'. Every assertion was relative to the viewport it ran in, so a layout that wasted 55% of a 1920 screen passed at 1280 without a single failure -- the suite was not wrong, it was aimed somewhere else. (2) The nav-alignment check covered 2 of 9 pages (home, case-study), and the worst defect in the product was on one of the other 7. A green count says nothing about the questions nobody asked; 240/240 measured the coverage of the assertions, not the coverage of the surface."
+    gaps:
+      prompt_gap: false
+      context_rag_gap: false
+      test_gap: true
+      test_oracle_gap: true
+      harness_gap: false
+      environment_gap: false
+      tool_deployment_gap: false
+    product_fix: "One shared shell across the whole public surface: --shell 1200px / --shell-pad 2rem / --prose 68ch tokens in agent/web/style.css, adopted by main, header, dashboard.css's #dash-main, home.html, case-study-durable-agent.html and standing-interview.html, so every page's content begins at the same x and the layout stops jumping on navigation. One body size (17px, was 16 on seven pages) and one h1 scale (was 26.4px against home's 44). A 12px legibility floor applied at source in showcase.css. standing-interview.html's nav moved inside a .si-navwrap sharing the same shell. Research basis for 1200: the readable container for a 1920 screen is 1140-1280, with prose capped separately at 68ch to keep line length inside the 50-75 character band."
+    new_product_regression_test: "e2e/ui-standards.spec.js -- 67 assertions across 9 pages x 5 viewports INCLUDING 1920: nav-aligns-with-content (all 9 pages, not 2), one-content-column-sitewide, body-size-consistent, h1-is-a-title (spread <=8px and each >=30px), no-text-below-12px, and two above-the-fold checks. Observed RED against production as it stood -- 12 failing, then 5, 3, 2, 0 as each fix landed -- so every one of them has been seen to fail for its intended reason. The fold checks run at 1920x940, not 1920x1080, because a real browser spends roughly 140px of the screen on tabs and the address bar; testing the full 1080 quietly flatters the layout and had already misled the agent's own first reading of defect D7, which it corrected."
+    new_harness_process_regression: "Generalized rule: a test matrix is a claim about coverage, and the agent writes the matrix. When the agent chooses both the assertions and the conditions they run under, a green count measures only the intersection of its own two choices. The condition list -- viewport widths, locales, data volumes, screen sizes -- must be taken from how the thing is REALLY used (here: the Owner's own 1920x1080 display) and not from a convenient default. Corollary, learned the same day: when a check is added mid-sprint to fix a specific defect, it must be applied to every surface of the same kind immediately, not only to the page the defect was on -- the alignment check covering 2 of 9 pages is how the worst defect in the product survived."
+    future_prompt_clause_learned: "'Tests passed' and 'the UI is correct' are different claims, and only the second one is what the Owner asked for. Before reporting a visual surface as done, look at it -- at the real width, in a real browser -- and treat the screenshot as the evidence, not the assertion count. The agent had in fact been told this in the Sprint 14 contract ('Do NOT treat tests passed as equivalent to UI is correct') and still reported 240/240 as verification."
+    deterministic_rule_or_tooling: "VIEWPORTS in e2e/ui-standards.spec.js now leads with desktop-1920 and the PUBLIC_PAGES list is the full public surface, so a page added without being added to that list is visible as an omission in one place. SHELL_MAX/MIN_LEGIBLE_PX/BODY_PX are named constants -- the standard is stated once and every page is measured against it, rather than each page being checked against itself."
+    commit: "see the commit introducing this ledger entry"
+    production_evidence: "PENDING -- the fixes are verified locally (67/67) and are NOT yet deployed at the time this entry is written. This field is deliberately left as PENDING rather than filled with the local result: a local pass is not production evidence, and recording it as such is the exact habit this ledger exists to catch."
+    recurrence_status: OPEN
+
+  - defect_id: AEQ-031
+    title: "Two pages deliberately unpublished were still served at their .html paths, because the guard asked about /learn and the static mount answered /learn.html"
+    requirement_run_id: "Sprint 14 (BL-163): unpublish Learn and JD Match from the recruiter-facing surface without deleting them"
+    original_prompt: "Sprint 14 contract: remove Learn and JD Match from the public navigation, keeping the code in the repository for later"
+    analysis_confidence: EXACT
+    model_provider_version: "claude-opus-5[1m], Claude Code CLI"
+    tools_context_used: "Manual HTTP probing of the running server by hand, path by path, after the automated guard had already reported clean."
+    model_interpreted_as: "'The route is unpublished' -- verified by asserting that the route the agent had explicitly written a 404 for returned 404."
+    expected_behavior: "An unpublished page is unreachable at every path that serves it."
+    actual_behavior: "/learn returned 404 from the explicit route, while /learn.html returned 200 through Mount('/', StaticFiles(html=True)), which shadows nothing and serves any file present on disk. Same for /jd-match.html. The page was fully readable by anyone who guessed the extension."
+    stage_introduced: implementation
+    stage_detected: agent_self_found_by_manual_probing_after_a_green_automated_check
+    detection_method: "Typing the .html URL into the running server by hand. No test found it, because the test asked the same question the implementation had already answered."
+    root_cause: "The guard was written from the implementation's own model of the system (there is a route for /learn, so test /learn) rather than from the system's real surface (a static mount serves every file in the directory, under every path that resolves to it). A test derived from the code under test inherits that code's blind spots -- the same failure shape as a model checking its own work."
+    gaps:
+      prompt_gap: false
+      context_rag_gap: false
+      test_gap: true
+      test_oracle_gap: true
+      harness_gap: false
+      environment_gap: false
+      tool_deployment_gap: false
+    product_fix: "PRIVATE_SURFACES_ENABLED env gate (opt-in, default off) plus explicit 404 routes registered BEFORE the static mount, shadowing it for every unpublished path including the .html spellings."
+    new_product_regression_test: "agent/test_public_surface_gate.py -- 25 CI-blocking tests that enumerate every unpublished surface and assert 404 for EVERY spelling that can reach it (bare path, .html, and with the gate both on and off), rather than for the one spelling the implementation happened to define."
+    new_harness_process_regression: "Generalized rule: when a framework feature serves a whole class of paths (a static mount, a catch-all route, a wildcard proxy), a negative assertion must enumerate the class, not an instance. Ask 'what are all the ways this can be reached' as a separate question from 'what did I write a handler for' -- the second is the implementation's model of the system and the test must not be derived from it."
+    future_prompt_clause_learned: "Unpublishing is a security-shaped change even when it is framed as a content change: the acceptance criterion is unreachability, not absence-from-navigation. Probe it by hand at least once before believing a green suite."
+    deterministic_rule_or_tooling: "Explicit 404 routes registered before Mount('/'), so route ordering -- not test discipline -- is what closes the hole."
+    commit: "b39462c"
+    production_evidence: "Both paths verified returning 404 against the deployed production URL after the Sprint 14 deployment."
+    recurrence_status: RESOLVED
+
+  - defect_id: AEQ-032
+    title: "The Standing Interview volunteered 37 self-deprecating statements nobody asked for across 21 of 57 production answers -- because the prompt INSTRUCTED it to, and not one of 134 test cases was looking at answer quality"
+    requirement_run_id: "Owner-reported 2026-09-29: 'It answers so crazily for some questions'; root-caused by the SI truth audit, docs/audits/SI_AUDIT_2026-09-29.md; fixed in Sprint 15 (BL-176..BL-178)"
+    original_prompt: "EXACT: \"3 - Fix the SI interview answer quality also in this sprint.\" The underlying complaint was raised earlier with two concrete examples: the production Kafka answers and the production Marsh answers."
+    analysis_confidence: EXACT
+    model_provider_version: "claude-opus-5[1m] (analysis and fix); the answers themselves generated by claude-sonnet-5 in production"
+    tools_context_used: "63 real requests against the live production API, archived verbatim; a four-category sentence classifier run over all 63 and every one of its 45 raw hits inspected by hand (7 were its own false positives); the shipped leak scan, voice gate, neighbour check and acceptance gate re-run against the six rejected answers to establish that each returned empty."
+    model_interpreted_as: "The model was OBEYING. 'State the hands-on work plainly, then the boundary of it in one sentence' and 'At most ONE short sentence anywhere in the answer about something you cannot recall' were read, correctly, as instructions -- a permitted sentence reads as a required one."
+    expected_behavior: "An interview answer states the work and stops. A limitation appears only when the question asks for one, or when leaving it out would imply something false."
+    actual_behavior: "37 unsolicited negatives across 21 of 57 answered production answers (RECALL_LIMIT 15, SCOPE_LIMIT 11, ABSENCE 7, OWNERSHIP_DISCLAIMER 4). The Marsh question was worst at 3-5 per draw, every draw. A Kafka answer volunteered 'I didn't set up the brokers, and I don't remember the retry, offset or dead-letter configuration', then closed with 'Kafka wasn't part of the stack at my other employers' -- an absence about employers nobody had asked about."
+    stage_introduced: "specification -- Sprints 11-13, each of which ADDED a limitation instruction to fix a different complaint, and none of which measured the cumulative effect"
+    stage_detected: owner_flagged_symptom_independently_root_caused
+    detection_method: "Owner judgement on reading the live answers. Every automated gate passed all six answers he rejected."
+    root_cause: "Three prompt sites instructed the behaviour and one gate budgeted it. (1) SYSTEM_PROMPT required a boundary sentence and allowed one recall-limit sentence. (2) The ownership rule said 'you say so in one clause when it matters', instructing a disclaimer rather than merely banning an overclaim. (3) attribution_line() appended 'not used at X' to the same speakable list as everything else, turning a RETRIEVAL CONSTRAINT into recitable content -- and the career-wide branch explicitly asked for 'one sentence where you did not'. (4) The runtime gate's _LIMIT_MARKER was a phrase list that missed most real limitation wording ('I didn't administer the cluster' scored zero) with MAX_LIMIT_SENTENCES = 2, so the gate's own budget told the model two were acceptable. Underneath all four: 0 of 134 test cases scored answer quality, so nothing could have caught it. A sprint can be 117/117 green on a dimension it does not measure."
+    gaps:
+      prompt_gap: true
+      context_rag_gap: false
+      test_gap: true
+      test_oracle_gap: true
+      harness_gap: false
+      environment_gap: false
+      tool_deployment_gap: false
+    product_fix: "agent/si_quality.py -- a four-category oracle (ABSENCE / SCOPE_LIMIT / RECALL_LIMIT / OWNERSHIP_DISCLAIMER) that classifies a RELATION (did the question invite this?) rather than a vocabulary, so its categories stay stable where its patterns are incomplete. All four prompt sites rewritten: the budget is now explicitly ZERO with three named exceptions, the ownership rule bans overclaiming without instructing disclaiming, and attribution_line states an absence as a constraint ('never claim work there... do NOT say so in the answer unless the question asks about that employer by name'). The runtime voice gate now imports the SAME oracle the test suite uses, so the rule has exactly one definition and cannot drift. Violations are split hard/soft: a volunteered limitation triggers a retry but is SHIPPED rather than refused if the retry still carries one, because replacing a good grounded answer with a refusal is a worse outcome and over-refusal was its own registered defect."
+    new_product_regression_test: "agent/test_si_quality.py, 17 cases over agent/testdata/si_production_answers.json -- the 63 real production answers, parsed out of the audit's Appendix A. Proven in BOTH directions before the prompt was touched: the oracle REJECTS all six answers the Owner objected to (so its clean result means something) and ACCEPTS a clean answer, a correct refusal, and a capability probe answered 'no'. The quality bar itself is measured on a POST-DEPLOY re-capture (agent/si_recapture.py) and fails, rather than skips, until that capture exists -- a skip reads as green, and SKIPPED is not PASSED."
+    new_harness_process_regression: "Generalized rule, and the important one: when the Owner complains about OUTPUT QUALITY, check whether the system was instructed to produce it before concluding the model misbehaved. Here the model was obeying a specification written across three sprints, each of which added a limitation instruction to fix a different complaint and none of which measured the cumulative effect. Second rule: a quality dimension nobody measures cannot be defended by any number of passing tests in other dimensions -- the honest report of a 117/117 run is '117 of 117 assertions about correctness, zero about quality', not 'verified'."
+    future_prompt_clause_learned: "A permission in a prompt is read as a requirement. 'At most one sentence about X' does not cap X at one, it makes one the target -- measured here at 37 across 21 answers. When the desired count is zero, the prompt must say zero and say why, and the enforcement must not budget a non-zero number either."
+    deterministic_rule_or_tooling: "One oracle, imported by both the runtime gate and the test suite, so a future loosening of the gate shows up as a test failure rather than as a quieter production surface. si_quality.SOFT_VIOLATION makes the hard/soft distinction a named constant rather than a judgement at the call site."
+    commit: "see the commit introducing this ledger entry"
+    production_evidence: "PENDING -- the specification fix is verified locally (119/119 on the existing SI suite, 14/17 on the new quality suite with the 3 post-deploy cases correctly failing as UNVERIFIED) and is NOT yet deployed. Evidence requires re-running the archived questions against production via agent/si_recapture.py and scoring the result; a prompt diff is not evidence that model behaviour changed."
+    recurrence_status: OPEN

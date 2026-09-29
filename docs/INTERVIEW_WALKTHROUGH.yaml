@@ -244,14 +244,14 @@ stories:
     path_id: senior-java-backend
     featured: false
     title: "Kafka -- Transactional Outbox, At-Least-Once, Idempotent Consumer"
-    one_line: "A preference write must never fail or block on a downstream event publish -- transactional outbox pattern, implemented and integration-tested, honestly labeled NOT_PRODUCTION_PROVISIONED (gated off after a real log-flood incident from an unreachable broker)."
+    one_line: "A preference write must never fail or block on a downstream event publish -- transactional outbox pattern, implemented and integration-tested, built and integration-tested, then deliberately left switched off in production after a real log-flood incident from an unreachable broker -- and labelled that way rather than counted as shipped."
     doc_path: "docs/interview-scenarios/05-kafka-transactional-outbox.md"
 
   - id: redis-cache-aside
     path_id: senior-java-backend
     featured: false
     title: "Active-Plan Cache -- Cache-Aside, Fail-Open Design"
-    one_line: "A customer's active plan is read far more often than it changes -- cache-aside with explicit invalidation on write, implemented and integration-tested, honestly labeled NOT_PRODUCTION_PROVISIONED."
+    one_line: "A customer's active plan is read far more often than it changes -- cache-aside with explicit invalidation on write, implemented and integration-tested, built and integration-tested, but not switched on in production -- and labelled that way rather than counted as shipped."
     doc_path: "docs/interview-scenarios/06-redis-cache-aside.md"
 
   - id: security-attack-matrix

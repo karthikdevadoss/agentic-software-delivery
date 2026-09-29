@@ -1,3 +1,7 @@
+/* Sprint 15 (D6): nothing on a public page renders below 12.5px.
+   Anything smaller is uncomfortable on a 1920 display, which is the width
+   the Owner actually uses. Enforced here at source AND asserted per page by
+   e2e/ui-standards.spec.js -- do not reintroduce a 0.6-0.72rem badge or tag. */
 /* The requirement input is the primary action of the whole page --
    give it a command-bar treatment instead of looking like just another
    panel in a generic stack. */
@@ -50,7 +54,7 @@
   display: inline-block;
   padding: 0.15rem 0.6rem;
   border-radius: 999px;
-  font-size: 0.72rem;
+  font-size: 12.5px;
   font-weight: 700;
   letter-spacing: 0.02em;
 }
@@ -100,7 +104,7 @@
   transition: all 0.15s ease;
 }
 .milestone-label {
-  font-size: 0.6rem;
+  font-size: 12.5px;
   font-weight: 600;
   letter-spacing: 0.005em;
   color: var(--muted);
@@ -164,7 +168,7 @@
 .milestone-detail-head { margin-bottom: 0.3rem; }
 .milestone-state-tag {
   display: inline-block;
-  font-size: 0.68rem;
+  font-size: 12.5px;
   font-weight: 700;
   letter-spacing: 0.03em;
   padding: 0.1rem 0.5rem;
@@ -250,8 +254,8 @@
 .estimate-label {
   margin: 0 0 0.5rem;
   font-weight: 700;
-  font-size: 0.78rem;
+  font-size: 12.5px;
   letter-spacing: 0.04em;
   color: var(--accent);
 }
-.estimate-basis { margin: 0.5rem 0 0; font-size: 0.78rem; }
+.estimate-basis { margin: 0.5rem 0 0; font-size: 12.5px; }
