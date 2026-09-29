@@ -1234,12 +1234,29 @@ def answer(question: str, corpus: Corpus | None = None, create_fn=None) -> dict:
                 # The exception CLASS only. Its message can carry provider
                 # billing detail, which does not belong in a response or a log.
                 "denial_reason": type(exc).__name__}
-    if not result.get("model_called") or not result.get("text"):
-        # A denial is a real, distinct state -- no key, LLM mode off, or an
-        # empty reply. Say so honestly; never fall through to an answer.
+    if not result.get("model_called"):
+        # No key, or LLM mode off. A configuration state.
         return {"outcome": "no_model", "grounded": False, "answer": NO_CORPUS,
                 "hits": hits, "best_score": best, "policy": policy_summary,
                 "denial_reason": result.get("denial_reason")}
+
+    if not result.get("text"):
+        # The model WAS called and returned nothing. Caught in the real
+        # post-fix capture, 2026-09-30: this used to share the branch above
+        # and so told a visitor "The knowledge base isn't loaded on this
+        # instance" while the corpus was demonstrably loaded with 361 chunks.
+        # That is a false statement about the system's own state, made to the
+        # person the site exists to impress.
+        #
+        # An empty reply is a transient (reasoning_gateway documents extended
+        # thinking consuming the whole max_tokens budget as a real cause), so
+        # it is reported as one: same honest "try again" shape as an
+        # unreachable model, because from the visitor's side it is the same
+        # thing and retrying is the same correct response.
+        return {"outcome": "model_empty_reply", "grounded": False,
+                "answer": MODEL_UNAVAILABLE, "hits": hits, "best_score": best,
+                "policy": policy_summary,
+                "denial_reason": "model returned no text"}
     text = result["text"].strip()
 
     if _model_declined(text):

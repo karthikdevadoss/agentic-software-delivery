@@ -1443,3 +1443,44 @@ class ModelUnavailableTestCase(unittest.TestCase):
         """A bare error makes a visitor assume they did something wrong."""
         self.assertIn("nothing is wrong with your question",
                       si.MODEL_UNAVAILABLE.lower())
+
+
+class EmptyModelReplyTestCase(unittest.TestCase):
+    """Found in the real post-fix production capture, 2026-09-30.
+
+    One draw of "describe a technical disagreement" came back telling the
+    visitor "The knowledge base isn't loaded on this instance, so I can't
+    answer from it" -- while the deployed corpus was loaded with 361 chunks
+    and the two draws either side of it answered normally.
+
+    The cause: `not model_called or not text` shared one branch, so a model
+    that WAS called and returned an empty string produced the no-corpus
+    message. That is a false statement about the system's own state, made to
+    the person the site exists to impress.
+    """
+
+    def setUp(self):
+        self.corpus = make_corpus_v2()
+        self.strong = [dict(self.corpus.chunks[0], score=0.82)]
+
+    def test_an_empty_reply_does_not_claim_the_corpus_is_missing(self):
+        def empty(**kwargs):
+            return mock.MagicMock(content=[])
+
+        with mock.patch.object(si, "retrieve", return_value=self.strong):
+            out = si.answer("q", self.corpus, create_fn=empty)
+
+        self.assertNotEqual("no_model", out["outcome"])
+        self.assertEqual("model_empty_reply", out["outcome"])
+        self.assertNotIn("knowledge base isn't loaded", out["answer"],
+                         "a loaded corpus was reported as missing")
+        self.assertEqual(si.MODEL_UNAVAILABLE, out["answer"])
+
+    def test_a_genuinely_absent_model_still_says_so(self):
+        """The other branch must keep working -- this fix splits them, it does
+        not remove one."""
+        with mock.patch.object(si, "retrieve", return_value=self.strong), \
+             mock.patch.dict(si.os.environ, {}, clear=True):
+            out = si.answer("q", self.corpus)
+        self.assertEqual("no_model", out["outcome"])
+        self.assertEqual(si.NO_CORPUS, out["answer"])

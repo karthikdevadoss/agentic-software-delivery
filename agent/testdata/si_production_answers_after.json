@@ -1,0 +1,191 @@
+[
+  {
+    "question_id": "a",
+    "draw": 1,
+    "question": "explain your experience with Kafka",
+    "outcome": "answered",
+    "answer": "I worked with Kafka at BCBSA, in the member, coverage and claims interoperability services. I wrote the producer and consumer code on the application side: a backend service processes a change to a member, coverage, or claim, publishes an event, and a downstream consumer picks it up and applies the update. That kept the receiving services current without needing a synchronous call back to the source system for every change.\n\nThe domain events I worked with were centered on member, coverage and claims changes, tied into the Home Plan, Host Plan and BlueCard concepts we worked with. It let different services stay in sync with each other without tight coupling between them.",
+    "grounded": true,
+    "captured_utc": "2026-09-29T22:56:56Z"
+  },
+  {
+    "question_id": "a",
+    "draw": 2,
+    "question": "explain your experience with Kafka",
+    "outcome": "answered",
+    "answer": "At BCBSA I wrote the application-side Kafka producer and consumer code for member, coverage and claims changes. The flow was that a backend service would process a relevant change, publish an event, and a downstream consumer would pick it up and apply the update on its side, so that service stayed current without needing a synchronous call back for every read. That let us decouple the services handling those domain changes from the ones that needed to reflect them, which mattered given how many internal consumers were relying on that data being current. I worked within the member and coverage change context specifically, so the events I was producing and consuming were tied to those business changes. That was my main hands-on experience with Kafka.",
+    "grounded": true,
+    "captured_utc": "2026-09-29T22:57:17Z"
+  },
+  {
+    "question_id": "a",
+    "draw": 3,
+    "question": "explain your experience with Kafka",
+    "outcome": "answered",
+    "answer": "My hands-on Kafka experience is from BCBSA. I wrote the application-side producer and consumer code that handled member, coverage and claims changes: a service would process a change, publish an event, and a downstream consumer would pick it up and apply the update. That meant the receiving side stayed current without the source service having to synchronously coordinate with every consumer on every change.\n\nThe work sat in the member and interoperability API space, where I was mapping backend service logic around those domain changes. I was focused on that application-level code rather than the broker or cluster side of things.",
+    "grounded": true,
+    "captured_utc": "2026-09-29T22:57:37Z"
+  },
+  {
+    "question_id": "b",
+    "draw": 1,
+    "question": "explain your project at marsh in detail",
+    "outcome": "answered",
+    "answer": "At Marsh I worked on M2 Broker, the engineering platform behind the Bluestream digital-insurance brand. It exposed reusable APIs and configurable experiences across different clients, carriers and insurance products, and Insure My Tesla was one concrete product built on top of it. Spring Boot formed the core backend API layer there, sitting behind an Apigee-managed edge that handled client authentication and OAuth2-facing controls, and my work sat inside that boundary.\n\nMy main hands-on work was building and updating Apache Camel routes for carrier integrations, along with the carrier-specific JSON mappings into the platform's common insurance model. I wrote JUnit tests for my own code, took part in peer reviews, and validated my integrations end to end through the secured API path. I also contributed directly to the IMT-Germany analysis and documentation, working as a data modeler and system analyst on that piece, and I personally edited the architecture document for that effort.\n\nThat carrier-mapping and integration work is really what I'd point to as the core of what I built at Marsh.",
+    "grounded": true,
+    "captured_utc": "2026-09-29T22:58:02Z"
+  },
+  {
+    "question_id": "b",
+    "draw": 2,
+    "question": "explain your project at marsh in detail",
+    "outcome": "answered",
+    "answer": "At Marsh I worked on a digital-insurance platform internally called M2 Broker, publicly branded as Bluestream, part of Marsh's Affinity business. It exposed reusable APIs and configurable experiences across different clients, products, markets and insurers. Insure My Tesla was one concrete product that ran on it, not the whole platform — a real use case that helped anchor the integration work.\n\nMy day-to-day was Java and Spring Boot backend development on the m2Broker API layer. External traffic came in through a managed API edge secured with OAuth2 and JWT, and I built and validated the REST endpoints and integration logic behind that boundary. A big part of my work was Apache Camel — I built and updated carrier-specific integration routes, writing the JSON mappings that took each carrier's payload format and transformed it into a common, ACORD-oriented insurance model so the rest of the platform could work with one consistent shape of data regardless of which carrier was on the other end.\n\nI wrote JUnit tests for my own code and took part in end-to-end validation of my integrations through that secured API path, along with regular peer code reviews with the team. I also contributed directly to the IMT-Germany analysis and documentation, working as a data modeler and system analyst and personally editing the architecture document for that effort. That gave me a good grounding in how a single platform gets adapted across markets — the same core model, different carrier and regulatory shapes layered on top.",
+    "grounded": true,
+    "captured_utc": "2026-09-29T22:58:25Z"
+  },
+  {
+    "question_id": "b",
+    "draw": 3,
+    "question": "explain your project at marsh in detail",
+    "outcome": "answered",
+    "answer": "At Marsh I worked on the M2 Broker platform, which was the engineering name for what was publicly branded Bluestream — a digital insurance platform Marsh Affinity used to expose reusable APIs and configurable experiences across different clients, products, markets and insurers. Insure My Tesla was one concrete product built on top of that platform, and I worked on the IMT-Germany piece specifically, contributing to the analysis and documentation and personally editing the architecture document for it.\n\nMy day-to-day work was Java and Spring Boot backend development on the m2Broker API layer, plus building and updating Apache Camel routes for carrier integrations. A lot of the carrier-facing work involved mapping carrier-specific JSON payloads into a common normalized insurance model so the platform could talk to different insurers consistently. Requests came in through a managed API edge that handled authentication and API management, and got routed down into the Spring Boot services, with Camel handling the integration-heavy paths.\n\nI wrote JUnit tests for my own code, took part in peer code reviews, and validated my changes end to end through that secured API path before they went out. I also carried the Data Modeler/System Analyst role on the IMT-Germany work alongside the backend development. That was a formative stretch for me — I moved from a junior into a stronger backend developer over that engagement.",
+    "grounded": true,
+    "captured_utc": "2026-09-29T22:58:49Z"
+  },
+  {
+    "question_id": "e",
+    "draw": 1,
+    "question": "how did you use Spring Security at NRG",
+    "outcome": "answered",
+    "answer": "At NRG my hands-on security work centered on JWT filters within the classic aggregator, and I have repeated commits there across multiple periods. I worked on the FusionAuth/JWT side specifically - implementing and maintaining the JWT security filters that sat in the request path for the aggregator and supporting services. SiteMinder, LDAP and Cognito were also live in that identity estate, and I worked in a codebase where SiteMinder and FusionAuth configuration existed concurrently in the same module, but that broader identity architecture wasn't something I designed - my depth is on the FusionAuth/JWT piece.\n\nLater on, when I did the 2025 Lambda work, there was a FusionAuth token-authorizer piece in that serverless layer as well, consistent with the same identity approach carrying into that layer. Beyond the filter and token work, I also handled JWT key changes as part of a multi-week hardening effort on invoice and bill-history access, making sure those identifiers and the tokens protecting them couldn't be substituted or guessed.",
+    "grounded": true,
+    "captured_utc": "2026-09-29T22:59:08Z"
+  },
+  {
+    "question_id": "e",
+    "draw": 2,
+    "question": "how did you use Spring Security at NRG",
+    "outcome": "answered",
+    "answer": "At NRG, my hands-on security work was mainly on the JWT filter side within Spring Security, and I have repeated commits there across multiple periods. I worked on the JWT filters that sit in the classic aggregator, handling how tokens were validated and passed through as requests moved through the service layer. The identity picture around it was broader — SiteMinder, LDAP and Cognito were all live in the same estate, and the aggregator's own configuration had SiteMinder and FusionAuth settings genuinely coexisting rather than one replacing the other — but that overall identity architecture wasn't something I designed. My depth was in the FusionAuth/JWT piece itself: writing and maintaining the security filters, and dealing with JWT key changes as part of hardening work like the invoice and bill-history identifier project. So it was targeted, filter-level Spring Security work rather than owning the whole authentication strategy.",
+    "grounded": true,
+    "captured_utc": "2026-09-29T22:59:21Z"
+  },
+  {
+    "question_id": "e",
+    "draw": 3,
+    "question": "how did you use Spring Security at NRG",
+    "outcome": "answered",
+    "answer": "At NRG my hands-on work with Spring Security was mainly around JWT filters in the classic aggregator — I have repeated commits touching security filter logic across multiple periods there. That side of the identity picture, FusionAuth and JWT, is where I have the real depth: writing and maintaining the filters that validated tokens as requests came through the aggregator into the downstream services.\n\nSiteMinder, LDAP and Cognito were also live in that same environment, and I worked in and around code that had to coexist with them, but that broader identity architecture wasn't something I designed — my direct work was on the FusionAuth/JWT filter side. That included the security hardening I did on invoice and bill-history access, which went along with JWT key changes to make sure those identifiers couldn't be guessed or substituted.",
+    "grounded": true,
+    "captured_utc": "2026-09-29T22:59:35Z"
+  },
+  {
+    "question_id": "f",
+    "draw": 1,
+    "question": "tell me about your AWS Lambda work",
+    "outcome": "answered",
+    "answer": "My main hands-on AWS work at NRG was in 2025 with Lambda. I wrote Lambda functions along with their SAM templates and OpenAPI definitions, and I tested them locally with SAM against dev before they went further. I also helped push a domain-grouped module layout for the Lambda functions, working with a peer -- we initially leaned toward a fully fragmented design, but that created too many small modules and pipelines, so the team moved to a hybrid common-plus-domain structure once we saw the operational and build-management cost of the fragmented approach.\n\nThe wider platform had a lot of scale around it -- well over a hundred functions across a couple dozen module directories, with global defaults like a set memory and timeout, VPC attachment, and X-Ray tracing, plus a mixed cold-start strategy using SnapStart on most functions and provisioned concurrency on a smaller set of latency-sensitive ones. That estate-wide design wasn't something I personally selected; my depth was in writing and testing individual functions and shaping the module grouping, not in IAM, VPC, or deployment pipeline ownership -- those stayed with the lead and DevOps.\n\nOn the async side, I worked with SQS queues and dead-letter queues tied into the Lambda flows -- for example, JWT issuance enqueuing onto an account-mapping processing queue as part of token issuance -- and there was a scheduled Lambda-version cleanup job running weekly as a byproduct of publishing new versions on every deploy.",
+    "grounded": true,
+    "captured_utc": "2026-09-29T22:59:54Z"
+  },
+  {
+    "question_id": "f",
+    "draw": 2,
+    "question": "tell me about your AWS Lambda work",
+    "outcome": "answered",
+    "answer": "My main hands-on AWS work was in 2025 at NRG, writing Lambda functions along with their SAM templates and OpenAPI definitions, and testing them locally with SAM against dev before they went further. I worked within a serverless layer that had well over a hundred functions organized across domain modules like profile, registration, billing, history, and a few others, and I helped push a domain-grouped module layout with a peer. That fully fragmented approach created too many small modules and pipelines to manage, so the team ended up adjusting toward a hybrid common-plus-domain structure — a case of adapting the idea once we saw the operational cost rather than sticking with it for its own sake.\n\nOn the async side, I worked with SQS queues and dead-letter queues as part of that Lambda layer — for example, JWT issuance enqueuing onto an account-mapping processing queue as part of token flow. I also worked with things like DynamoDB and other supporting services as part of that stack, though I'd describe that as working around those capabilities rather than owning their design. Deployment concerns like IAM roles, VPC configuration, and the broader pipeline setup stayed with the lead and DevOps, not something I owned personally.",
+    "grounded": true,
+    "captured_utc": "2026-09-29T23:00:09Z"
+  },
+  {
+    "question_id": "f",
+    "draw": 3,
+    "question": "tell me about your AWS Lambda work",
+    "outcome": "answered",
+    "answer": "At NRG, my main serverless work was in 2025. I wrote Lambda functions along with their SAM templates and OpenAPI definitions, and tested them locally with SAM against dev before anything went further. I also helped push a domain-grouped module layout with a peer — we initially leaned toward a fully fragmented design, but that created too many small modules and pipelines to manage, so the team moved to a hybrid common-plus-domain structure instead. That's a decision I'm glad we adjusted once we saw the operational cost, rather than sticking with the original idea for its own sake.\n\nOn the platform side, the estate had well over a hundred Lambda functions organized across a couple dozen domain modules like profile, registration, payment, billing, and history services, with a shared common layer plus a Dynatrace layer and a CloudWatch Insights layer attached globally. Cold starts were handled with two strategies — SnapStart on most functions, and provisioned concurrency on a smaller set of latency-sensitive ones — but that estate-wide cold-start policy was a system-level decision, not something I personally selected. Async work off Lambda ran through SQS queues with dead-letter queues, one real example being JWT issuance enqueuing onto an account-mapping-processing queue.\n\nI worked with the single API Gateway resource for the SAM project and with things like DynamoDB, S3, and Secrets Manager as they came up in that work, but IAM, VPC configuration, and deployment pipelines stayed with the lead and DevOps rather than being something I owned.",
+    "grounded": true,
+    "captured_utc": "2026-09-29T23:00:26Z"
+  },
+  {
+    "question_id": "g",
+    "draw": 1,
+    "question": "what API work did you do at BCBSA",
+    "outcome": "answered",
+    "answer": "At BCBSA I worked on Java and Spring backend services in the shared data-services environment, building out member, coverage, and claims interoperability work. I worked directly with FHIR resource objects in Java as part of that interoperability work, handling the data that flowed through BCBSA's shared services. The APIs I worked on were consumed internally — other BCBSA and Blue Plan applications, not public-facing third-party apps. That data was DB2-backed, and I worked with SQL views as part of understanding and exposing that data through the shared services layer. Home Plan, Host Plan, and BlueCard were the real domain concepts I worked within, since a lot of this was about normalizing and coordinating data for inter-Plan scenarios like members moving between Plans. Alongside the API-facing work, I also wrote the application-side code that published and consumed events around member, coverage, and claims changes, so downstream systems could pick up changes without every consumer having to coordinate directly with the source service.",
+    "grounded": true,
+    "captured_utc": "2026-09-29T23:00:39Z"
+  },
+  {
+    "question_id": "g",
+    "draw": 2,
+    "question": "what API work did you do at BCBSA",
+    "outcome": "answered",
+    "answer": "At BCBSA I worked on Java and Spring backend services in the shared data-services environment, and the API work centered on our member, coverage and claims interoperability services. I worked directly with FHIR resource objects in Java as part of that flow, building out the resource/object handling that fed into normalized data used across the shared services layer.\n\nThe consumers on that side were internal BCBS and BCBSA applications - things like Home Plan and Host Plan coordination under the BlueCard model - rather than any public-facing or third-party app integration. So the API work I did was really about getting member, coverage and claims data into a consistent shape and making it available to other internal systems that needed it for inter-Plan coordination, backed by DB2 and SQL views on the data side. I was careful throughout to keep sensitive healthcare data out of application logs given the nature of that data.",
+    "grounded": true,
+    "captured_utc": "2026-09-29T23:00:55Z"
+  },
+  {
+    "question_id": "g",
+    "draw": 3,
+    "question": "what API work did you do at BCBSA",
+    "outcome": "answered",
+    "answer": "At BCBSA I worked on Java and Spring backend services in the shared data-services environment, building out member, coverage and claims interoperability work. I worked directly with FHIR resource objects in Java as part of that interoperability work, handling member, coverage and claims data.\n\nThe API consumers on that side were internal BCBS and BCBSA applications rather than public-facing ones — think Plan-to-BCBSA or Plan-to-Plan coordination, like Home Plan and Host Plan context under BlueCard, and a separate flow for historical data when a member moved between Plans. So the shape of the work was standardized, FHIR-shaped data and APIs consumed by other internal systems needing normalized member and claims information, not a third-party consumer-facing product. Underneath that, the services were DB2-backed, and I was careful never to write sensitive member or claims data into logs given the healthcare context.",
+    "grounded": true,
+    "captured_utc": "2026-09-29T23:01:10Z"
+  },
+  {
+    "question_id": "w",
+    "draw": 1,
+    "question": "walk me through how you handled concurrency at NRG",
+    "outcome": "answered",
+    "answer": "At NRG the clearest concurrency work I did was on the dashboard's readProduct flow. It was calling out to several downstream services one after another - profile and contract data coming from SAP, plus offers, content, and Vivint flags - and that sequential chain was making the page slow. We parallelized those calls using CompletableFuture so they ran concurrently instead of one after another, and the load time dropped from several seconds down to roughly a second.\n\nThat said, I wouldn't describe it as a general concurrency strategy across the codebase. Async and parallel patterns like that were the exception, not the norm - most flows, including things like the DOD/Vivint-eligibility checks, stayed sequential and blocking. We reached for CompletableFuture specifically where a flow was fanning out to multiple slow downstream calls and the latency was visible to users, not as a default coding style.\n\nBeyond that specific flow, I didn't build out a broader reactive or async story there - no WebClient or reactive stack, nothing like that. It was targeted: identify the slow fan-out call, parallelize it, verify the improvement, move on.",
+    "grounded": true,
+    "captured_utc": "2026-09-29T23:01:26Z"
+  },
+  {
+    "question_id": "w",
+    "draw": 2,
+    "question": "walk me through how you handled concurrency at NRG",
+    "outcome": "answered",
+    "answer": "The main concurrency work I did on the retail dashboard was parallelizing the profile fan-out call. It used to hit several downstream services one after another - profile and contract data, offers, content, some flags - and that added up to a few seconds of load time. We rewrote it using CompletableFuture so those calls ran in parallel instead of sequentially, and the load time came down to around a second.\n\nThat was a targeted fix for one slow flow, not a general pattern we applied everywhere. Most of the rest of the codebase stayed sequential and blocking - the eligibility flow I worked on elsewhere, for example, was straightforward synchronous calls, and that was normal for that codebase. So concurrency at NRG was something we reached for on a specific known bottleneck, applied deliberately, and left it there rather than rearchitecting the broader service layer around it.",
+    "grounded": true,
+    "captured_utc": "2026-09-29T23:01:49Z"
+  },
+  {
+    "question_id": "w",
+    "draw": 3,
+    "question": "walk me through how you handled concurrency at NRG",
+    "outcome": "answered",
+    "answer": "At NRG the clearest concurrency work I did was on the dashboard's readProduct flow. That call fanned out to several downstream services - SAP-backed profile and contract data, offers, content, and Vivint eligibility flags - and it was originally sequential, calling each one after another. We parallelized it using CompletableFuture, and the load time dropped from several seconds down to roughly a second. That's reflected in a commit I made in mid-2024 for the async changes on readProduct.\n\nI'd be careful not to make that sound like a general pattern across the codebase, though. Async and parallel calls were the exception, not the norm - most flows, including things like the DOD/Vivint-eligibility check, stayed strictly sequential and blocking. We reached for CompletableFuture specifically where a slow, multi-service fan-out was hurting a user-facing load time, not as a default coding style.\n\nBeyond that specific flow, the resilience story around concurrent calls leaned on per-integration timeout configuration - each downstream REST client had its own connect and read timeouts configured, generally in the 15 to 45 second range - rather than anything like a circuit breaker or bulkhead library, which weren't part of that stack.",
+    "grounded": true,
+    "captured_utc": "2026-09-29T23:02:05Z"
+  },
+  {
+    "question_id": "m",
+    "draw": 1,
+    "question": "describe a technical disagreement and how you resolved it",
+    "outcome": "answered",
+    "answer": "The clearest technical disagreement I can walk through came up while I was building my own delivery platform, in the context of how a coding agent should decide what to trust when starting a new session.\n\nThe setup was that every fresh session was contractually required to read through several append-only state documents before starting any work, and those documents had grown stale and bloated over time — old queue items marked as still open when they'd been resolved, status sections that were months out of date, a lot of narrative that didn't actually answer what version was live, what was verified, or what was still open. The real disagreement was about which source should govern when the documents disagreed with what the repository actually showed.\n\nI resolved it by writing a component that acts as a read-only view over those documents rather than a new document itself — it writes nothing, so it can never become another drifting source of truth. I built it to fail loudly instead of silently omitting anything, so a renamed heading or an unrecognized status causes it to exit non-zero rather than produce a summary that looks complete but isn't. And I set an explicit precedence order: real repository evidence outranks what the owner currently says, which outranks committed documents, which outranks old dated narrative.\n\nThat approach cut the mandatory startup context by over 90 percent without deleting any of the underlying history, and more importantly it settled the actual disagreement — instead of trusting whichever document was most recently written, the system now always defers to what the code itself shows.",
+    "grounded": true,
+    "captured_utc": "2026-09-29T23:02:28Z"
+  },
+  {
+    "question_id": "m",
+    "draw": 2,
+    "question": "describe a technical disagreement and how you resolved it",
+    "outcome": "no_model",
+    "answer": "The knowledge base isn't loaded on this instance, so I can't answer from it. I won't guess.",
+    "grounded": false,
+    "captured_utc": "2026-09-29T23:02:50Z"
+  },
+  {
+    "question_id": "m",
+    "draw": 3,
+    "question": "describe a technical disagreement and how you resolved it",
+    "outcome": "ungrounded_model_declined",
+    "answer": "That's not something I've got a specific example of to hand. Ask me about the backend systems I've worked on, or about the AI delivery platform I built.",
+    "grounded": false,
+    "captured_utc": "2026-09-29T23:03:13Z"
+  }
+]
