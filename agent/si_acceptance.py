@@ -221,10 +221,15 @@ def _check_nrg_async(text):
         bad.append("does not mention the dead-letter queue")
     if _any(text, "jms"):
         bad.append("volunteers JMS (Owner rule 2026-09-29)")
-    if _any(text, "kafka") and not _any(text, "didn't use kafka", "did not use kafka",
-                                        "not kafka", "no kafka", "wasn't kafka",
-                                        "rather than kafka", "instead of kafka",
-                                        "kafka wasn't", "kafka was not"):
+    # THIRD instance of the same defect in this one file. This was a
+    # hand-written phrase list, and it failed a correct answer that said
+    # "async processing ran on SQS ... RATHER THAN a message broker like
+    # Kafka" -- the list did hold "rather than kafka", and the model had put
+    # three words in between. _states_absence_of() exists precisely for this
+    # and had been written an hour earlier; not applying it here was the
+    # mistake, and it is why retro item 2.18 says fix the class, not the
+    # instance.
+    if _any(text, "kafka") and not _states_absence_of(text, "kafka"):
         bad.append("mentions Kafka at NRG without saying it was not used")
     return bad
 
@@ -324,7 +329,10 @@ def _first_person(text: str) -> bool:
 _NEGATION = re.compile(
     r"\b(no|not|n't|never|without|didn|didn't|did not|wasn't|was not|"
     r"weren't|were not|don't|do not|doesn't|does not|hadn't|had not|"
-    r"haven't|have not|other than|instead of)\b", re.I)
+    # "rather than" and "as opposed to" added 2026-09-30 after a correct answer
+    # was failed for saying "ran on SQS ... RATHER THAN a message broker like
+    # Kafka". They are negations in English and were simply missing.
+    r"haven't|have not|other than|instead of|rather than|as opposed to)\b", re.I)
 
 # A negated sentence about the speaker's MEMORY is not a statement that the
 # thing was absent -- it is the opposite, an admission that it may have been
