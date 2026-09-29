@@ -184,17 +184,7 @@ def _check_kafka_at_bcbsa(text):
 
 def _check_kafka_absent_at_nrg(text):
     bad = []
-    # Sprint 15: "not kafka" and "other than kafka" added after a real gate run
-    # failed an answer that stated the absence perfectly well -- "that's the
-    # messaging setup I worked with there, NOT KAFKA" -- in a phrasing this
-    # list did not happen to contain. Same defect class as the _LIMIT_MARKER
-    # phrase list this sprint replaced: a fixed vocabulary cannot enumerate how
-    # a person says a thing, and a checker that rejects a correct answer
-    # teaches the wrong lesson just as expensively as one that accepts a wrong
-    # answer.
-    if not _any(text, "no kafka", "not kafka", "other than kafka",
-                "wasn't", "was not", "didn't use", "did not use",
-                "not part of", "not used", "never used"):
+    if not _states_absence_of(text, "kafka"):
         bad.append("does not state the absence")
     if not _any(text, "sqs"):
         bad.append("does not name the real async mechanism (SQS)")
@@ -326,6 +316,42 @@ def _check_voice(text, min_words=35):
 
 def _first_person(text: str) -> bool:
     return bool(re.search(r"\b(i|i'm|i'd|i've|my|me|we|our)\b", text, re.I))
+
+
+# Negation words, kept separate from any particular verb. This is the whole
+# point of the function below.
+_NEGATION = re.compile(
+    r"\b(no|not|n't|never|without|didn|didn't|did not|wasn't|was not|"
+    r"weren't|were not|don't|do not|doesn't|does not|hadn't|had not|"
+    r"haven't|have not|other than|instead of)\b", re.I)
+
+
+def _states_absence_of(text: str, thing: str) -> bool:
+    """Does the answer tell the interviewer this thing was NOT used?
+
+    Sentence-scoped negation, NOT a phrase list, and the history is the reason.
+    Three separate real gate runs this sprint failed correct answers because
+    the accepted-phrasing list did not happen to contain the words the model
+    chose:
+
+        "that's the messaging setup I worked with there, NOT KAFKA"
+        "We DIDN'T HAVE Kafka in the picture at NRG."
+        (the list knew "didn't use", "was not", "not part of", "never used")
+
+    Each time the fix was to add another phrase, and each time a new phrasing
+    appeared. A fixed vocabulary cannot enumerate how a person says a thing --
+    which is the same finding that replaced the _LIMIT_MARKER phrase list
+    earlier in this sprint, applied one layer later than it should have been.
+    A checker that rejects a correct answer is as expensive as one that accepts
+    a wrong one: it teaches the model, and the next engineer, the wrong lesson.
+
+    So: find a sentence that mentions the thing AND carries a negation. That
+    is what "stating the absence" actually is, independent of wording.
+    """
+    for sentence in _sentences(text):
+        if thing.lower() in sentence.lower() and _NEGATION.search(sentence):
+            return True
+    return False
 
 
 # (question, must_be_answered, extra checks, require_first_person)
