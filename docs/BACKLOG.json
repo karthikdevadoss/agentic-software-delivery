@@ -4510,6 +4510,31 @@
       "actual_ratio": null,
       "actual_minutes_provenance": "MEASURED: 21:14 -> 22:04, incl. the 12px source sweep, the guard timing hole, fold-actions relocation and 3 full suite runs",
       "completion_note": "Playwright 226 passed / 5 pre-existing local-env failures (proven pre-existing against a stashed baseline before any fix). Hermetic Python 757 tests, 3 failures -- all three deliberately RED pending the post-deploy SI re-capture. Screenshots inspected by eye at 1920x940, which is how two further real defects were found after the suite was green."
+    },
+    {
+      "id": "BL-180",
+      "title": "P0 incident: the Standing Interview 500'd on an exhausted credit balance, and the endpoint had no spend cap at all",
+      "description": "Two defects, one incident. (1) reasoning_gateway.call() raises on an API error and no caller caught it, so every grounded question returned a raw HTTP 500 -- PRE-EXISTING, Sprint 14's code does the same. (2) /api/standing-interview/ask is a public POST with no auth, no rate limit and no daily cap, while the Workbench next door has had both for months. DONE WHEN: an API failure is an honest message rather than a 500, and the endpoint cannot cost more than a stated daily budget.",
+      "topics": "incident, cost-control, Standing Interview",
+      "size": "MEDIUM",
+      "estimate_range": "40-70 min",
+      "confidence": "MEDIUM",
+      "pattern_type": "apply_known_pattern",
+      "size_rationale": "Unsized before starting: it was a live P0 found during Sprint 15 verification, and the Owner's standing rule is that work still gets registered rather than happening invisibly. Recorded honestly as an AFTER-THE-FACT sizing -- it is NOT a prediction and must not be fed to the calibration loop as one.",
+      "deviated_from_suggestion": false,
+      "category": "stabilisation",
+      "status": "done",
+      "sprint": "Sprint 15 (added mid-sprint, 2026-09-30, Owner-requested cap)",
+      "created_at": "2026-09-30",
+      "completed_at": "2026-09-30",
+      "actual_minutes": 55,
+      "actual_minutes_provenance": "MEASURED: incident found 22:05, cap deployed 22:52",
+      "session_ids": [
+        "585446aa-0fdc-4e80-b49a-e9a8fcd46e06"
+      ],
+      "estimate_is_retrospective": true,
+      "completion_note": "agent/standing_interview.py returns outcome 'model_unavailable' with a message that never leaks provider billing detail; both retry sites degrade through _retry_call() instead of crashing. agent/si_budget.py enforces a $1/day budget (set in dollars, converted from the real measured $0.023/answer) plus a per-visitor 5s cooldown and 25/day ceiling, checked BEFORE the billed call, counting only requests that reach the model. 15 tests; the wiring is proven separately from the module by seeding the check out and watching the endpoint test go red. Deployed and verified live: the 500 is now HTTP 200 with an honest message.",
+      "commit_shas": []
     }
   ],
   "_calibration_process": {
