@@ -1473,6 +1473,13 @@ async def home_page(request: Request):
     return FileResponse(str(WEB_DIR / "home.html"))
 
 
+async def private_surface_not_found(request: Request):
+    """A private surface's raw filename must not fall through to the static
+    mount. Registered ahead of Mount("/") only when private surfaces are
+    disabled; see PRIVATE_SURFACES_ENABLED."""
+    return PlainTextResponse("404 Not Found", status_code=404)
+
+
 async def case_study_durable_agent_page(request: Request):
     """Sprint 14: the durable-agent crash-recovery case study, linked from the
     home page's second proof card. Static; every claim on it was revalidated
@@ -2337,6 +2344,26 @@ routes = [
     Route("/sessions", redirect_sessions_to_usage, methods=["GET"]),
     # Internal/debug tool — deliberately not in public navigation.
     Route("/control-plane", control_plane_page, methods=["GET"]),
+    # These shadow the static mount below. Without them, StaticFiles serves
+    # /learn.html and /jd-match.html verbatim even though /learn and /jd-match
+    # are unregistered -- a real leak found on 2026-09-29 by probing the mount
+    # directly. Keep this block immediately above the Mount: routes match in
+    # order, and moving the Mount above it would silently re-open the hole.
+    *(
+        []
+        if PRIVATE_SURFACES_ENABLED
+        else [
+            Route("/learn.html", private_surface_not_found, methods=["GET"]),
+            Route("/jd-match.html", private_surface_not_found, methods=["GET"]),
+            Route("/learn.js", private_surface_not_found, methods=["GET"]),
+            Route("/learn.css", private_surface_not_found, methods=["GET"]),
+            Route("/jd-match.js", private_surface_not_found, methods=["GET"]),
+            Route("/jd-match.css", private_surface_not_found, methods=["GET"]),
+            Route("/learn-data.json", private_surface_not_found, methods=["GET"]),
+            Route("/learn-tree.json", private_surface_not_found, methods=["GET"]),
+            Route("/learn-deep-topics.json", private_surface_not_found, methods=["GET"]),
+        ]
+    ),
     Mount("/", app=StaticFiles(directory=str(WEB_DIR), html=True), name="static"),
 ]
 

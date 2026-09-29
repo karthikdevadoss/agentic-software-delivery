@@ -320,8 +320,15 @@ class PrivateSurfaceGateTestCase(unittest.TestCase):
 
     def test_learn_and_jd_match_are_not_publicly_reachable(self):
         client = self._client_without_flag()
+        # The .html/.js/.css/.json forms matter as much as the clean URLs:
+        # the app ends in a StaticFiles mount, so a file in agent/web/ is a
+        # public URL unless something shadows it. Removing the routes alone
+        # left /learn.html serving a full page (found 2026-09-29).
         for path in ("/learn", "/learn/java-core", "/jd-match",
-                     "/api/jd-match/sample", "/api/learn/tree"):
+                     "/api/jd-match/sample", "/api/learn/tree",
+                     "/learn.html", "/jd-match.html",
+                     "/learn.js", "/learn.css", "/jd-match.js", "/jd-match.css",
+                     "/learn-data.json", "/learn-tree.json", "/learn-deep-topics.json"):
             with self.subTest(path=path):
                 self.assertEqual(client.get(path).status_code, 404,
                                  f"{path} must not be reachable on the public deployment")
