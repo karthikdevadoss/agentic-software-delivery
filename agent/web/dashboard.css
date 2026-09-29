@@ -96,7 +96,15 @@ details.raw-state summary:hover { text-decoration: underline; }
 .cap-table {
   width: 100%; border-collapse: collapse; font-size: 0.85rem;
   display: block; overflow-x: auto; max-width: 100%;
+  /* table-layout:fixed keeps the internal table box from sizing to its widest
+     cell, which is what still pushed the document sideways at 390px even with
+     the element itself scrolling. Long values then wrap instead of forcing
+     width -- better on a phone than a horizontal scrollbar anyway. */
+  table-layout: fixed;
 }
+.cap-table th, .cap-table td { overflow-wrap: anywhere; word-break: break-word; }
+/* Belt and braces: no panel may size itself to content wider than the column. */
+.panel { max-width: 100%; }
 .cap-table th, .cap-table td { text-align: left; padding: 0.65rem 0.7rem; border-bottom: 1px solid var(--border); vertical-align: top; }
 .cap-table tbody tr:hover { background: var(--panel-hover); }
 .cap-table th { color: var(--muted); font-weight: 700; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; }
