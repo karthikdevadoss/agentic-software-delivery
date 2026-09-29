@@ -1061,3 +1061,25 @@ capability registry was made link-clean first (45 evidence links, all valid). Ev
 against the real model; production submission validated with zero violations; 24/24
 browser checks against production. Sprint 13 closed with its retro in docs/RETRO_LOG.md;
 action items await the Owner.
+
+# Current Reality (2026-09-29) — Sprint 14: the front door is a person, not a console
+
+Until today `/` served the Workbench. A recruiter opening the link from a CV met an internal
+delivery console that never said whose work it was. `/` is now a recruiter-facing home page:
+who he is, three proof points, six pieces of evidence each linking to the running thing, an
+explicit statement of what the platform does NOT do, and a plain separation saying the AI
+platform is his own system and not an NRG product. `/case-study/durable-agent` carries the
+crash-recovery story with its honest limits. Learn and JD Match are unpublished — routes and
+filenames both 404 — without a line of their implementation being deleted. The Java customer
+app finally has a way back to the portfolio.
+
+Two defects mattered more than the feature work, because both were requirement violations that
+every automated check passed: the navigation sat 22px off the content column (found by looking
+at a screenshot), and `/learn.html` served a full page through the static mount (found by
+typing the URL). Both now have regressions. A third, a 56px mobile overflow, took three
+attempts because the diagnostic was wrong — "find the widest element" cannot see an element
+that wraps its own overflow; comparing scrollWidth to clientWidth down the tree found it at
+once.
+
+Production at `b39462c`: 240/240 UI checks across three viewports, remote Standing Interview
+acceptance 15/15, zero known UI defects at close.

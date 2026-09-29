@@ -1724,3 +1724,263 @@ wearing an `apply_known_pattern` label.
 - JD Match's shortlist is a cosine over 22 registry entries; a broad requirement can be
   assessed against a neighbour. Cooldown and daily cap are per instance.
 - Playwright E2E's pre-existing non-blocking failure was not touched.
+
+
+## Sprint 14 — recruiter-facing homepage, public-navigation cleanup, durable-agent case study (2026-09-29) — CLOSED
+
+### A. Scope
+
+**Planned (11 sized items, 452 min summed midpoint).** Homepage at `/`; durable-agent case
+study; canonical navigation; Learn/JD Match unpublished; independent re-verification of six
+evidence rows; forbidden-claim and truth guards; bounded truth-smoke of linked pages; the full
+UI acceptance matrix at three viewports; deploy and production verification; qa-evaluator
+stranger check; retro plus backlog write-back.
+
+**Completed:** all eleven.
+
+**Deliberately not done, and why:**
+- **No CV button.** No PDF exists in the repository and the contract forbade placeholders, so
+  the slot was left out entirely rather than shipped dead. `BL-153`.
+- **Standing Interview is nav-only, not a homepage CTA.** The 2026-09-29 SI audit found it
+  volunteering unsolicited negatives on 39% of answered questions and refusing one legitimate
+  interview question 3 of 3 times. Fronting the site with it would have led on the weakest
+  surface. `BL-155`.
+- **Dashboard de-emphasized, not rewritten.** 3,470 words and 13 jargon terms, measured. Out of
+  public nav, still reachable from Usage. `BL-157`.
+- **Privacy notice / Impressum not written.** Both need decisions this executor cannot make, and
+  one collides with the Owner's own rule against publishing a home address. `BL-150`, `BL-151`.
+
+### B. Time
+
+| | |
+|---|---|
+| Summed item midpoints | 452 min |
+| Actual wall-clock | ~218 min |
+| Ratio | 0.48 |
+
+Single executor, so the summed and wall-clock figures answer the same question this time —
+unlike Sprint 13, where overlapping waits made them diverge.
+
+### C. Defects discovered
+
+| # | Defect | Found by | Should an existing test have caught it? | Root cause | Regression added |
+|---|---|---|---|---|---|
+| D1 | `tools.py` reported "file is not valid UTF-8 text" about a perfectly valid file | The hermetic suite (8 `test_rag_index` errors) | Yes — and it did, once a file existed that triggered it | Raw bytes truncated at 20,000 then decoded, splitting a multi-byte character | Covered by the existing suite, now green |
+| D2 | `static_gate.py` XML-comment gate died with `TypeError: NoneType` | The hermetic suite | Yes — and it did | `subprocess.run(text=True)` with no encoding decodes with the Windows locale codec; any committed file it cannot map kills the gate | Covered by the existing suite |
+| D3 | **Navigation sat 22px left of the content column** | **Screenshot inspection. No automated check saw it** | **No. Every DOM, overflow and existence assertion passed** | Nav lived in a wrapper with its own horizontal padding while the content column had its own | **Yes** — numeric alignment assertion at all three viewports |
+| D4 | **`/learn.html` and `/jd-match.html` served a full page, 200** | **Manual probing of the static mount before deploy** | **No — my own new guard asked only about `/learn` and `/jd-match`** | The app ends in `Mount("/", StaticFiles(html=True))`; unregistering a route does not unpublish a filename | **Yes** — guard widened to 14 paths including `.html`, `.js`, `.css` and the three `learn-*.json` files |
+| D5 | The forbidden-claim guard could not see an overclaim written inside the scope-boundaries block | **Seeded mutation M1** | No — the guard was new and wrong | The block was excluded wholesale so it could legitimately name absent capabilities | **Yes** — the check is now sentence-scoped: a forbidden term must share a sentence with a negation marker |
+| D6 | The first proof card deep-linked to `/workbench#verified-run`, an anchor that does not exist | Reading `workbench.html` before shipping | No test existed | Invented an anchor from memory instead of checking | **Yes** — anchor targets are verified against the target page's real element ids |
+| D8 | **`/usage` and `/dashboard` scrolled the whole page sideways** | **The production UI matrix** | **No — nothing measured horizontal overflow on those pages before this sprint** | A wide `.cap-table` dragged the document with it; `overflow-x` needs `display:block` on a `<table>` | **Yes** — 6 assertions, both routes x three viewports |
+| D7 | `test_event_ledger` leaves far-future mock rows in the live ledger and then fails on them | The suite, before any sprint change | It is the test | Accumulated fixture rows from prior runs | No — pre-existing, CI-excluded, `BL-162` |
+
+D3, D4 and D8 are the three that matter for the Owner's question about the framework. All
+were **real defects that every automated check passed**, and each was caught by a different kind
+of human attention: D3 by looking at a screenshot, D4 by typing a URL by hand, D8 by running the
+production matrix at three viewports instead of one.
+
+D8 is worth singling out. It was pre-existing and on pages this sprint never edited, and
+`/usage` is one click from the home page in the canonical navigation — so a recruiter opening
+the site on a phone would have met a page that scrolled sideways. It was fixed rather than
+deferred precisely because the release standard is zero known defects on recruiter-visible
+surfaces, not zero defects in code this sprint happened to touch.
+
+### C2. Deploy attempts
+
+Four platform deploys, which is itself a finding:
+
+| # | Outcome |
+|---|---|
+| 1 | Succeeded. Uploaded after the static-mount fix landed, so production got the correct build |
+| 2 | **Aborted at its own local SI acceptance gate** — a leak false positive on "How does your RAG retrieval work in the Standing Interview?", 1 of 15. Exactly the 1-in-3 flake this morning's SI audit measured on that same question. Not touched, not worked around: the gate is a safety control and the sprint contract forbade modifying SI |
+| 3 | Succeeded, 15/15 local and 15/15 remote |
+| 4 | **Aborted.** Railway's new container did not answer with the new marker inside the script's 60-poll window, so the script refused to run its remote gate against an unknown build. The build then landed roughly a minute after the script gave up -- the abort was a timeout, not a failure |
+| 5 | The table-layout overflow fix -- cleared desktop and tablet, left mobile still scrolling 56px |
+| 6 | The real overflow fix: a `.hint` paragraph, not the table |
+
+Deploy 4's abort is worth recording as a real finding rather than a hiccup: the
+marker-gated cutover the last sprint added did exactly its job (it refused to certify a build
+it could not identify), but its 60-poll window is now too short for a cold Railway build. The
+remote acceptance gate it skipped was run by hand afterwards and passed 15/15.
+
+Two customer-app deploys: the first went live and then stopped serving the new build during
+rollout; the second stuck, confirmed by 8 consecutive probes plus a browser check at two
+viewports. **Every deploy rebuilds the full 361-chunk corpus (~10 minutes) even when the change
+is CSS and copy** — that was the single largest time cost in this sprint and is worth a
+conditional rebuild.
+
+### D. Testing-framework assessment
+
+**1. Which existing tests genuinely protected this release?** The nav guard
+(`test_nav_frontend.js`) pinned the exact canonical destination list and forced every nav change
+to be deliberate. The TIA drift guard caught that the new browser spec was unreachable from any
+source path. The showcase freshness guard refused a stale `last_verified`. The hermetic suite
+caught D1 and D2. `test_jd_match`'s route test correctly went red the moment its route was
+gated. Four separate guards fired on real changes; none was ceremonial.
+
+**2. Which existing tests were irrelevant?** The Java/customer-app specs and the microservice
+suites — the customer-app change was one HTML element and its own specs could not run locally.
+The SI suites were irrelevant by design, since the sprint did not touch that surface.
+
+**3. Which UI defects were discovered only by browser/screenshot/manual review?** D3
+(alignment) and D4 (static-mount leak). Neither had any automated signal.
+
+**4. Why did existing automation miss them?** D3: every assertion asked *does this element
+exist / does the page overflow*, and the answer to both was correct — a crooked menu is neither.
+No check compared two elements' geometry until this sprint added one. D4: the guard encoded the
+*requirement as I had phrased it* ("/learn must 404"), not the requirement as it actually is
+("Learn must be unreachable"). A filename is a URL, and the test author forgot it.
+
+**5. Were any tests green while visible behaviour was wrong?** **Yes, twice.** The full hermetic
+suite was 740/740 green while `/learn.html` served a complete page to anybody, and while the
+home page's navigation was visibly crooked at every viewport.
+
+**6. Did any suite only test HTTP 200 instead of correctness?** The pre-existing
+`golden-journey` spec checks title and heading, which is more than 200 but still identity rather
+than correctness. The new `home.spec.js` deliberately asserts counts, statuses, geometry,
+keyboard focus and no-JavaScript rendering instead.
+
+**7. Were any relevant tests skipped?** Four hermetic skips, all pre-existing and environmental:
+three Windows symlink tests and one that needs an `IMPLEMENTED`-only registry entry that does
+not exist. Twenty Playwright tests skipped, of which the Learn/JD Match/PDF specs are skipped
+*by this sprint's design* and are recorded as such. None of the skips covers changed behaviour.
+
+**8. Did browser/E2E coverage protect all changed surfaces?** Not at the start — the home page,
+the case study and the customer-app return link had no coverage at all. It does now, except the
+customer-app link, which is asserted hermetically because its own specs cannot run without the
+Java app on :8080 (`BL-161`).
+
+**9. What missing test was added?** `agent/test_public_surface_gate.py` (25 tests, CI-blocking):
+forbidden-claim scanning that distinguishes a positive claim from a disclaimer, private-surface
+404s across 14 paths, page structure, dead links, anchor targets and the customer app's return
+path. Plus `e2e/home.spec.js` (32 tests) covering three viewports, nav order, alignment,
+heading order, link names, keyboard focus and a no-JavaScript render.
+
+**10. What recruiter-facing bug classes can the framework now catch automatically?** A
+forbidden or overstated claim on either new page; a private surface becoming reachable by route
+*or by filename*; a missing/extra proof card or evidence row; a status upgraded beyond its
+evidence; a dead internal link or non-existent anchor; nav drift in membership, order or label;
+horizontal overflow and off-screen elements at three viewports; console and page errors; broken
+heading order; an unnamed link; a missing focus ring; content that only renders with JavaScript;
+and now element-to-element misalignment.
+
+**11. Which classes still need a human?** Whether the copy is *persuasive*; whether the visual
+hierarchy leads the eye correctly; whether spacing and typography look considered; whether a
+claim is *true* as opposed to merely consistent with the registry — the MCP row was corrected
+only because a person read the module and saw it was a stdio server; and whether the page reads
+as honest rather than defensive.
+
+### E. Test counts (measured, not estimated)
+
+| | |
+|---|---|
+| Hermetic Python suites executed | 41 modules via `ci_python_tests.py` |
+| Hermetic tests run / passed / failed / skipped | 740 / 736 / 0 / 4 |
+| Node harnesses | 4 files, 195 passed, 0 failed |
+| Java customer-app suite (`mvnw test`) | 162 run, 0 failures, 0 errors, 21 skipped, coverage gates met |
+| Playwright tests passed / failed / skipped / not-run | 112 / 5 / 20 / 7 |
+| Playwright failures that are pre-existing | 5 of 5, proven by re-running with the sprint's changes stashed |
+| New guard tests added | 25 hermetic + 38 browser |
+| Seeded mutations run / caught | 6 / 6 (2 initially missed, exposing D5, then fixed) |
+| Local screenshots captured | 33 |
+| Production screenshots captured and inspected | 30 (10 surfaces x 3 viewports), 6 inspected in full |
+| Production checks | **240 / 240** |
+| Routes verified in production | 10 pages + 5 private paths |
+| Viewport checks | 3 per page (1280x900, 768x1024, 390x844) |
+
+### E2. Independent stranger read (advisory)
+
+A `qa-evaluator` instance was given ONLY the rendered page text and one
+screenshot, with no project context, and asked fourteen questions a recruiter
+would ask. It answered 1-10 correctly from the page alone -- including "is this
+an NRG product?", which it called the cleanest line on the page.
+
+**Two of its criticisms were truthfulness problems and were fixed the same
+hour:** the section heading said "Verified evidence" when nothing independent
+had verified anything, and "Running in production" never said *whose*
+production. Both are now corrected.
+
+**Four were recorded rather than acted on**, because they would change content
+the Owner specified: no backend evidence among the six rows (its stated
+single biggest weakness -- "impressive AI hobbyist, unknown backend
+engineer"), no numbers under the measured-quality claim, no contact route, and
+"Standing Interview" unexplained in the nav. `BL-164` through `BL-167`.
+
+Its own stated limit, quoted because it matters: it clicked nothing, so every
+"not evidenced" judgement means *not evidenced on this page*, not false.
+
+### F. UI quality verdict
+
+UI_RELEASE_CONFIDENCE: **MEDIUM-HIGH**
+
+Higher than any previous sprint because two requirement violations were caught *before* deploy
+and both now have automated regressions. Not HIGH, for one honest reason: **both of those
+defects were found by a human, not by the suite.** A framework that needed a person to look at a
+screenshot and to type a URL by hand is not yet a framework I would trust alone on a
+recruiter-facing release. What changed this sprint is that the same two classes cannot recur
+silently.
+
+KNOWN_UI_DEFECTS_AT_CLOSE: **0**
+
+### G. Process lessons
+
+**Worked.** Re-verifying the six evidence rows against code rather than trusting
+`PORTFOLIO_CAPABILITIES.yaml` caught the MCP overstatement — the registry was not wrong, but it
+would have been read as a production claim on a recruiter-facing page. Seeding mutations
+immediately after writing a guard found a hole in that guard within minutes. Probing the static
+mount by hand found the leak that the test I had *just written* could not see.
+
+**A diagnostic that was wrong three times running.** The mobile overflow took three attempts
+because the diagnostic was wrong, not because the fix was hard. "Find every element whose
+bounding rect extends past the viewport" finds nothing when the culprit already wraps its own
+overflow — and it pointed confidently at a wide table that genuinely was wide and genuinely was
+not the cause. Walking the tree comparing `scrollWidth` to `clientWidth` found the real
+element, a `.hint` paragraph with an unbreakable string, in a single pass. That is now the
+first thing to reach for on any horizontal-overflow report.
+
+**Wasted time.** Announcing "starting now" at the end of a turn and then stopping — the sprint
+lost a night to that, and it is a pure process failure with no technical content. Separately, a
+`.replace()` that silently matched nothing was reported as success because the script printed
+unconditionally; the same class of mistake as reporting a test green without reading its output.
+
+**Testing-framework weakness.** Guards encode the requirement *as the author phrased it*. D4 is
+the clean example: "/learn returns 404" and "Learn is unreachable" are not the same sentence,
+and only the second is the Owner's actual requirement.
+
+**Design-contract weakness.** The contract specified page content in detail and said nothing
+about geometry, which is exactly where the defect automation missed turned up.
+
+### H. Action items (three fixed sections; NOT sized; Owner approval required before any is acted on)
+
+**1. Estimation-mistake improvements**
+- Sprint 13's calibration was applied for the first time here: six of eleven items adopted a
+  COMPUTED suggestion. Record this sprint's actuals so the `LARGE/MEDIUM/first_of_kind` class
+  stops being n=3.
+- Size UI work by *surfaces x viewports x interaction classes*, not by page count. The matrix,
+  not the markup, was the cost.
+
+**2. Implementation-mistake improvements**
+- Never end a turn with a statement of intent. Either execute or say plainly that nothing has
+  started.
+- A patch script must assert its anchor matched before reporting success. Print the verified
+  post-condition, never an unconditional "done".
+- When unpublishing anything, enumerate *every* way it can be addressed — route, filename,
+  static mount, asset, data file — before writing the guard.
+
+**3. Neither, but still needed**
+- SPRINT AS A WHOLE: the release standard asked for zero known UI defects and the only reason
+  that was achieved is that a human looked at a screenshot and typed a URL. Make both steps an
+  explicit, named gate in the release checklist rather than something the executor happens to
+  do, because the next executor may not.
+- Extend the forbidden-claim scan to every recruiter-visible page, not just the two new ones
+  (`BL-163`).
+- Fix the live-infra tests that fail for want of data, so a red test always means a regression
+  (`BL-160`, `BL-161`, `BL-162`).
+
+### I. Carried forward
+
+- Production commit: `b39462c`.
+- Five Playwright failures remain, all proven pre-existing and environmental.
+- `test_event_ledger` still pollutes the live ledger with far-future fixture rows.
+- Learn and JD Match are unpublished behind an environment flag, not behind authentication.
+  Archive tag `pre-sprint14-public-nav` marks the last public state.
