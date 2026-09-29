@@ -28,6 +28,7 @@ import argparse
 import json
 import re
 import sys
+import time
 import urllib.error
 import urllib.request
 
@@ -494,13 +495,46 @@ def ask_local(question: str) -> dict:
             "retry_violations": r.get("retry_violations")}
 
 
+# The deployed endpoint enforces a per-visitor cooldown (si_budget.
+# SI_PER_VISITOR_MIN_SECONDS, 5s). This gate fires 15 questions in a row from
+# one address, so without pacing it rate limits ITSELF -- which is exactly
+# what happened on the first gated deploy after the cap shipped: the whole
+# post-deploy replay died on HTTP 429, with nothing wrong with any answer.
+#
+# Deliberately a little above the cooldown, not exactly equal to it: equal
+# values race on clock granularity and network jitter.
+_REMOTE_PACING_SECONDS = 7.0
+_last_remote_call_at = 0.0
+
+
 def ask_remote(base_url: str, question: str) -> dict:
+    global _last_remote_call_at
+    gap = time.monotonic() - _last_remote_call_at
+    if _last_remote_call_at and gap < _REMOTE_PACING_SECONDS:
+        time.sleep(_REMOTE_PACING_SECONDS - gap)
+
     req = urllib.request.Request(
         base_url.rstrip("/") + "/api/standing-interview/ask",
         data=json.dumps({"question": question}).encode("utf-8"),
         headers={"Content-Type": "application/json"}, method="POST")
-    with urllib.request.urlopen(req, timeout=180) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    try:
+        with urllib.request.urlopen(req, timeout=180) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        if exc.code == 429:
+            # Report it as what it is. A gate that dies on its own rate limit
+            # must not read as an answer-quality failure -- those have
+            # completely different fixes, and confusing them would send the
+            # next person editing prompts when the real problem is pacing.
+            raise RuntimeError(
+                "the deployed spend cap rate limited this gate (HTTP 429). "
+                "This is NOT an answer-quality failure. Raise "
+                "_REMOTE_PACING_SECONDS above si_budget."
+                "SI_PER_VISITOR_MIN_SECONDS, or wait for the daily window."
+            ) from None
+        raise
+    finally:
+        _last_remote_call_at = time.monotonic()
 
 
 def run(base_url: str | None) -> int:
