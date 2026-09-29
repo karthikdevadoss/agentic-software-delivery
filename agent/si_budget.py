@@ -39,6 +39,8 @@ HONEST LIMITATIONS, stated rather than discovered later
 
 from __future__ import annotations
 
+import hmac
+import os
 import threading
 import time
 
@@ -61,6 +63,37 @@ SI_PER_VISITOR_MIN_SECONDS = 5
 # One visitor's ceiling for a day. Well above a real interview conversation,
 # well below the daily budget, so one client cannot consume everyone's.
 SI_PER_VISITOR_DAILY_MAX = 25
+
+# OPERATOR EXEMPTION.
+#
+# Found the hard way, 2026-09-30: a deploy runs the acceptance gate twice (15
+# questions before upload, 15 against the deployed host) = 30 requests. The
+# per-visitor ceiling is 25 and the whole daily budget is 43. So the cap I
+# wrote made this project's own deploy verification IMPOSSIBLE TO RUN -- not
+# just once, but on every future deploy. A control that blocks the thing that
+# proves the product works is not a good control.
+#
+# The gate is operator traffic, not a visitor, so it identifies itself.
+#
+# FAILS CLOSED, deliberately: when SI_OPERATOR_TOKEN is unset or empty there is
+# no exemption and no way to obtain one, so a misconfigured deploy loses its
+# exemption rather than the public endpoint silently losing its cap. The token
+# is compared with compare_digest and is never logged, echoed or included in
+# any response.
+_OPERATOR_HEADER = "x-si-operator"
+
+
+def is_operator(headers) -> bool:
+    """True only for a request carrying the configured operator token."""
+    expected = os.environ.get("SI_OPERATOR_TOKEN") or ""
+    if not expected:
+        return False                      # fail closed
+    try:
+        supplied = headers.get(_OPERATOR_HEADER, "") or ""
+    except Exception:
+        return False
+    return bool(supplied) and hmac.compare_digest(supplied, expected)
+
 
 # --- state ------------------------------------------------------------------
 _lock = threading.Lock()

@@ -252,5 +252,76 @@ class VisitorIdentityTestCase(unittest.TestCase):
         self.assertLessEqual(len(web_server._visitor_key(Req())), 64)
 
 
+class OperatorExemptionTestCase(unittest.TestCase):
+    """The acceptance gate runs 30 questions per deploy against a 25/day
+    visitor ceiling, so the cap made this project's own deploy verification
+    impossible to run. Operator tooling identifies itself.
+
+    The security property that matters is FAIL CLOSED: with no token
+    configured there is no exemption and no way to get one, so a
+    misconfigured deploy loses its exemption rather than the public endpoint
+    silently losing its cap.
+    """
+
+    def setUp(self):
+        si_budget._reset_for_tests()
+
+    def test_no_token_configured_means_no_exemption(self):
+        with mock.patch.dict(si_budget.os.environ, {}, clear=True):
+            self.assertFalse(si_budget.is_operator({"x-si-operator": "anything"}))
+
+    def test_an_empty_token_cannot_be_matched_by_an_empty_header(self):
+        """The dangerous shape: '' == '' would exempt every request."""
+        with mock.patch.dict(si_budget.os.environ, {"SI_OPERATOR_TOKEN": ""}, clear=True):
+            self.assertFalse(si_budget.is_operator({"x-si-operator": ""}))
+            self.assertFalse(si_budget.is_operator({}))
+
+    def test_a_wrong_token_is_not_exempt(self):
+        with mock.patch.dict(si_budget.os.environ, {"SI_OPERATOR_TOKEN": "right"}, clear=True):
+            self.assertFalse(si_budget.is_operator({"x-si-operator": "wrong"}))
+            self.assertFalse(si_budget.is_operator({}))
+
+    def test_the_correct_token_is_exempt(self):
+        with mock.patch.dict(si_budget.os.environ, {"SI_OPERATOR_TOKEN": "right"}, clear=True):
+            self.assertTrue(si_budget.is_operator({"x-si-operator": "right"}))
+
+    def test_the_operator_still_gets_counted_against_the_daily_spend(self):
+        """Exempt from the visitor LIMITS, not from the accounting. A gate run
+        spends real money; leaving it out would make the Owner's spend figure
+        lie."""
+        si_budget.record_answer("operator")
+        self.assertEqual(1, si_budget.status()["answers_today"])
+
+    def test_the_endpoint_honours_the_token(self):
+        from starlette.testclient import TestClient
+        import web_server
+
+        calls = []
+
+        def fake_answer(question, *a, **kw):
+            calls.append(question)
+            return {"answer": "an answer", "grounded": True, "outcome": "answered"}
+
+        with mock.patch.object(web_server.standing_interview, "answer", fake_answer),              mock.patch.dict(si_budget.os.environ, {"SI_OPERATOR_TOKEN": "tok"}, clear=True):
+            client = TestClient(web_server.app)
+            hdr = {"x-si-operator": "tok"}
+            for _ in range(3):      # far inside the 5s cooldown
+                r = client.post("/api/standing-interview/ask",
+                                json={"question": "q"}, headers=hdr)
+                self.assertEqual(200, r.status_code)
+            self.assertEqual(3, len(calls))
+
+            # And traffic WITHOUT the token is still limited. Its FIRST
+            # request is legitimately allowed -- that visitor has no history --
+            # so the limit is proven on the second, inside the cooldown. (The
+            # first version of this test asserted 429 on the first request and
+            # failed for that reason: the test was wrong, not the code.)
+            first = client.post("/api/standing-interview/ask", json={"question": "q"})
+            self.assertEqual(200, first.status_code)
+            second = client.post("/api/standing-interview/ask", json={"question": "q"})
+            self.assertEqual(429, second.status_code,
+                             "the exemption leaked to unauthenticated traffic")
+
+
 if __name__ == "__main__":
     unittest.main()

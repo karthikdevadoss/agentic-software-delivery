@@ -1745,8 +1745,14 @@ async def standing_interview_ask(request: Request):
     # public POST with no auth and every request is billed; the Workbench has
     # had a cooldown and a daily cap for months and this had neither. See
     # agent/si_budget.py for the numbers and their honest limitations.
+    # Operator tooling (the acceptance gate) is not a visitor and must not be
+    # budgeted as one -- a deploy runs 30 questions against a 25/day visitor
+    # ceiling, so the cap made this project's own deploy verification
+    # impossible to run. Inert unless SI_OPERATOR_TOKEN is set; see si_budget.
+    operator = await run_in_threadpool(si_budget.is_operator, request.headers)
     visitor = _visitor_key(request)
-    verdict = await run_in_threadpool(si_budget.check, visitor)
+    verdict = {"allowed": True} if operator else await run_in_threadpool(
+        si_budget.check, visitor)
     if not verdict["allowed"]:
         return JSONResponse(
             {"answer": verdict["message"], "grounded": False,
@@ -1760,7 +1766,11 @@ async def standing_interview_ask(request: Request):
     # model call costs nothing, so charging it against a visitor's allowance
     # would let two private questions lock out a real recruiter.
     if result.get("outcome") not in ("private_topic", "no_model", "model_unavailable"):
-        await run_in_threadpool(si_budget.record_answer, visitor)
+        # Recorded even for an operator. The exemption is from the per-visitor
+        # LIMITS, not from the accounting -- a gate run spends real money and
+        # the Owner's spend figure must include it, or the number lies.
+        await run_in_threadpool(si_budget.record_answer,
+                                "operator" if operator else visitor)
 
     if not result.get("grounded") or result.get("outcome") != "answered":
         await run_in_threadpool(
