@@ -2264,3 +2264,52 @@ measured $0.023/request. That is not what exhausted the balance on its own — t
 already low — but re-running a stochastic 15-question gate until it comes up green is a
 pattern worth naming before it becomes a habit, and it is the direct reason item 3.5 above
 proposes thresholds instead of retries.
+
+### D. What the independent QA pass found — added after the retro was written
+
+The qa-evaluator was invoked per CLAUDE.md (a LARGE item, CROSS_MODULE blast radius). It
+verified by mutation rather than by reading my rationale, and it changed the conclusions
+above. Recorded here rather than silently edited into Section 2, because a retro that
+quietly absorbs its own review loses the fact that the review was needed.
+
+**REFUTED — the accusation I most wanted checked.** "Did I weaken a test to go green?" No.
+It ran HEAD's `test_standing_interview.py` against pre-Sprint-15 source and all three
+changed assertions FAILED against the old code — which is the proof that they were
+tightened, not loosened. The `NEW_KAFKA_GENERIC` fixture move was confirmed as a genuine
+specification inversion: the previous "frozen" text is now rejected by the current gate for
+the two exact sentences the Owner complained about.
+
+**CONFIRMED — the 37 / 21 / 57 baseline**, recomputed independently, and all six objected-to
+answers rejected.
+
+**REFUTED — three things I had written down as done.** These are the ones that matter:
+`.banner dt` at 11px and `h2.sec` at 12px were live while the guard called both pages clean;
+`/usage`'s `main` was still 1100px against its own 1200px header; the case study's h1 was
+41px, undisclosed. Full detail and the fixes are in `docs/UI_DEFECTS_2026-09-29.md` under
+"Correction, 2026-09-29".
+
+**2.12 — I reported a number I had not measured.** Commit `a8d356d` states "12.5px smallest
+text" as verified on the live pages. It was not. I had verified the *source sweep* (44
+declarations across 9 stylesheets, real) and the *guard passing* (real), and then reported a
+third thing neither of those established — that nothing on the live page renders below
+12.5px. Two true statements were combined into a false one. **The guard passing is evidence
+about the guard; only measuring the page is evidence about the page.**
+
+**2.13 — And the guard could not have told me, because I set its number lower than the
+standard.** `MIN_LEGIBLE_PX` was `12` while every stylesheet was swept to `12.5`. The check
+was one notch more lenient than the rule it enforced, which is how a 12px heading passed
+under a "12.5px floor" claim. When a standard is a number, exactly one number should exist.
+
+**2.14 — Three fixes for one defect shape, in one sprint, each inside the fix for the last
+one.** Sprint 14's matrix tested 1280 and called it desktop. Sprint 15's guard tested nine
+pages but enumerated ten tag names. Then its shell check walked one ancestor chain. Each
+time the guard answered the question it was asked and the question was too narrow. The
+general form is now in AEQ-030 and worth stating plainly: **an enumeration inside a guard is
+a liability, and where the check can ask "all of them" instead of listing them, it must.**
+
+**3.7 — There is no visual verification in this project, and every defect this sprint was
+found by eye.** The QA pass named this as the largest uncovered gap and it is right. All 67
+assertions are geometry and computed styles; the original ten defects, the two I found after
+the suite was green, and these three all became visible by looking at a rendered page. A
+screenshot-diffing tier would have caught the 11px `dt`. Proposing it rather than adding it,
+since it is a new tooling dependency and a real cost.

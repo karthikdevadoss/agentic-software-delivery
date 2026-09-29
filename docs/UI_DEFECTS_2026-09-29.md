@@ -131,3 +131,46 @@ Your note *"It answers so crazily for some questions"* on Standing Interview is 
 ## One thing this sprint could not fix
 
 `/standing-interview` declines "describe a technical disagreement and how you resolved it" on every draw. That is a **corpus gap**, not a gate defect: the private books are technical, so retrieval genuinely finds nothing behavioural and the model correctly refuses rather than inventing a story about a disagreement that may not have happened. Loosening the decline gate would be worse than the refusal. Adding behavioural/STAR material to the corpus is the Owner's call on his own career content — the audit parked it as SI-19.
+
+---
+
+# Correction, 2026-09-29 — D6 and D9 were marked FIXED prematurely
+
+An independent QA pass checked the resolution table above against the **live**
+pages and found three claims in it that did not hold. All three are corrected
+in code now; the record of having got them wrong stays here, because the reason
+they were missed is more useful than the fix.
+
+| Claim as written above | What was actually true | Why the guard agreed with me |
+|---|---|---|
+| D6 "12.5px floor" | `.banner dt` rendered at **11px** on the case study and `h2.sec` at **12px** on home — on the live site | The guard's selector list was `p,li,span,td,th,div,a,small,button,label`, which **excludes `h2` and `dt`**. `MIN_LEGIBLE_PX` was also still `12`, not `12.5`. |
+| D2/D4 "one 1200px shell everywhere" | `main#sessions-main` was still **1100px** on `/usage`, a 100px disagreement with its own 1200px header | The guard walked **up from the `h1`**. On `/usage` the `h1` lives in the header, so `main` was never measured. Taking the widest container per page then hid it a second time. |
+| D5 "one h1 scale" | home 38px, case study **41px**, dark pages 34px | The guard only asserted spread ≤ 8px. 41 − 34 = 7, so it passed by luck. |
+
+**The common cause, and it is the third time this exact shape appeared in one
+sprint:** a guard only ever checks what its author thought to enumerate. A tag
+list, a single ancestor chain, a tolerance wide enough to swallow the case. This
+is the same finding as AEQ-030 — *the agent writes the matrix, so a green count
+measures the intersection of its own two choices* — recurring inside the fix
+written for AEQ-030.
+
+**What changed, so it cannot recur the same way:**
+- The text-size check now iterates `document.querySelectorAll("*")`. Enumerating
+  tag names was the bug; asking every element is the fix.
+- `MIN_LEGIBLE_PX` is `12.5`, the same number the stylesheets apply. The guard's
+  number and the code's number have to be one number.
+- The shell check measures the real containers and asserts a page agrees with
+  **itself** before comparing it to other pages — nesting-aware, so home's
+  `<header>` inside `.wrap` is not a false positive while `/usage`'s sibling
+  `<header>`/`<main>` mismatch is caught.
+- The source sweep now covers inline `<style>` blocks in the two bespoke HTML
+  pages, not only `agent/web/*.css`. That omission is why two 12px rules
+  survived the first sweep.
+
+Every one of these was re-proven RED against the seeded original defect before
+being trusted.
+
+**Also corrected:** commit `a8d356d`'s message states "12.5px smallest text" as
+verified on the live pages. That was false when written — 11px and 12px text was
+live at that moment. The commit message cannot be amended after pushing; this
+note is the correction of record.

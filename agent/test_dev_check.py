@@ -6,6 +6,8 @@ unit-testing is that the dispatch table itself is well-formed and that
 commands' real external behavior (those are exercised for real by
 running the tool itself, per its own docstring)."""
 
+import contextlib
+import io
 import unittest
 from unittest import mock
 
@@ -39,13 +41,29 @@ class DispatchTableTestCase(unittest.TestCase):
 
     def test_production_verify_never_reports_ok_for_a_mismatched_status(self):
         """A real regression class this tool must never have: silently
-        treating an unexpected HTTP status as success."""
+        treating an unexpected HTTP status as success.
+
+        stdout is captured, and that is not cosmetic. Uncaptured, this test
+        printed six lines like
+
+            FAIL  https://...up.railway.app/workbench  -> HTTP 500 (expected 200)
+
+        into the output of a PASSING run. An independent reviewer reading the
+        CI log took them for a live production outage and spent real time
+        chasing it before curling the routes and finding them all healthy.
+        Simulated failure output that is indistinguishable from real failure
+        output is an observability defect in its own right.
+        """
+        captured = io.StringIO()
         with mock.patch.object(dev_check.urllib.request, "urlopen") as mock_urlopen:
             mock_resp = mock.MagicMock()
             mock_resp.status = 500
             mock_urlopen.return_value.__enter__.return_value = mock_resp
-            rc = dev_check.production_verify()
+            with contextlib.redirect_stdout(captured):
+                rc = dev_check.production_verify()
         self.assertNotEqual(rc, 0)
+        # The tool must still SAY what went wrong -- captured, not silenced.
+        self.assertIn("500", captured.getvalue())
 
 
 if __name__ == "__main__":

@@ -336,9 +336,31 @@ class ProductionAnswerQuality(unittest.TestCase):
     def test_production_answers_volunteer_no_unsolicited_negatives(self):
         """The Owner's complaint, measured. Budget: zero.
 
-        RED when written -- 39% of answered production questions volunteered at
-        least one negative nobody asked for. Goes green only when the prompt
-        spec stops instructing the model to do it (SI-01, SI-02, SI-03).
+        KNOWN TENSION, raised by an independent review and recorded here
+        rather than quietly resolved in whichever direction was convenient.
+        This test asserts ZERO. The runtime does NOT hard-enforce zero: a
+        volunteered limitation triggers one retry, and if the retry still
+        carries one but is otherwise clean, standing_interview.answer() SHIPS
+        it rather than refusing (see SOFT_VIOLATION and only_soft_violations).
+        So the runtime can emit an answer this test rejects, and the test may
+        be unsatisfiable on a draw where the model is stubborn.
+
+        That is deliberate, and the direction matters: the test is STRICTER
+        than the runtime, never looser. The alternative -- refusing whenever a
+        retry still volunteers a caveat -- replaces a real, grounded, honest
+        answer with "I don't have that recorded", and over-refusal is its own
+        registered defect (question m, declined on all three baseline draws).
+        Availability at the edge was chosen over a clean number.
+
+        If the post-fix capture shows residual negatives, the legitimate fixes
+        are a second retry or a better prompt. Loosening THIS number is not
+        one of them -- it is the Owner's complaint, and it is the one thing in
+        this file that must not move.
+
+        RED when written -- 37 volunteered negatives across 21 of 57 answered
+        production answers, measured by this oracle (the audit's independent
+        hand count was 38 across 22). Goes green only when a post-fix capture
+        exists and shows none.
         """
         offenders = []
         total = 0

@@ -325,6 +325,16 @@ _NEGATION = re.compile(
     r"weren't|were not|don't|do not|doesn't|does not|hadn't|had not|"
     r"haven't|have not|other than|instead of)\b", re.I)
 
+# A negated sentence about the speaker's MEMORY is not a statement that the
+# thing was absent -- it is the opposite, an admission that it may have been
+# there and is not recalled. "I don't have the exact offsets for Kafka"
+# mentions Kafka and carries a negation and means nothing about whether Kafka
+# was used.
+_RECALL_NOT_ABSENCE = re.compile(
+    r"\b(don'?t|do not|didn'?t|did not|can'?t|cannot|couldn'?t)\s+"
+    r"(\w+\s+){0,3}(remember|recall|have the|have exact|know the|"
+    r"tell you|speak to|say which|say what)\b", re.I)
+
 
 def _states_absence_of(text: str, thing: str) -> bool:
     """Does the answer tell the interviewer this thing was NOT used?
@@ -349,8 +359,18 @@ def _states_absence_of(text: str, thing: str) -> bool:
     is what "stating the absence" actually is, independent of wording.
     """
     for sentence in _sentences(text):
-        if thing.lower() in sentence.lower() and _NEGATION.search(sentence):
-            return True
+        low = sentence.lower()
+        if thing.lower() not in low or not _NEGATION.search(sentence):
+            continue
+        # An independent review found the residual hole: "I don't have the
+        # exact offsets for Kafka" mentions Kafka and carries a negation, but
+        # states a RECALL limit, not an absence -- it would have counted as
+        # answering "did you use Kafka here?" when it does the opposite.
+        # A negated recall is about the speaker's memory; an absence is about
+        # the thing not being there.
+        if _RECALL_NOT_ABSENCE.search(sentence):
+            continue
+        return True
     return False
 
 

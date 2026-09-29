@@ -32,7 +32,13 @@ const PUBLIC_PAGES = [
 // 1140-1280. Prose inside it is capped separately at ~68ch.
 const SHELL_MAX = 1200;
 const SHELL_TOLERANCE = 40;      // pages may differ slightly, not structurally
-const MIN_LEGIBLE_PX = 12;       // nothing smaller may carry real text
+// 12.5, not 12. The source sweep set every stylesheet to 12.5px, but this
+// constant was left at 12 -- so the guard was quietly one notch more lenient
+// than the standard it was supposed to be enforcing, and a 12px heading passed
+// while the close-out claimed "12.5px smallest text". An independent review
+// caught the gap. The number the guard asserts and the number the code applies
+// have to be the same number.
+const MIN_LEGIBLE_PX = 12.5;
 const BODY_PX = 17;              // one body size across the public surface
 
 // Most of these pages paint their real content from an API call, so a fixed
@@ -114,22 +120,55 @@ test.describe("UI standard: one content column across the whole site", () => {
       await page.goto(route);
       await settle(page);
       widths[name] = await page.evaluate(() => {
-        const h1 = document.querySelector("h1");
-        let el = h1, best = 0;
-        while (el && el !== document.body) {
-          const w = el.getBoundingClientRect().width;
-          if (w > best && w <= window.innerWidth) best = w;
-          el = el.parentElement;
+        // Measure the CONTAINERS, not the h1's ancestor chain. Walking up from
+        // the h1 only ever sees the container the h1 happens to live in -- on
+        // /usage the h1 sits in a 1200px <header> while <main> was still
+        // 1100px, so the page shipped a 100px mismatch that this check
+        // reported as compliant. An independent review found it by measuring
+        // main directly.
+        const found = [];
+        for (const sel of ["main", "header", ".wrap", ".si-wrap"]) {
+          for (const el of document.querySelectorAll(sel)) {
+            const w = el.getBoundingClientRect().width;
+            if (w > 0 && w <= window.innerWidth) found.push({ sel, el, w: Math.round(w) });
+          }
         }
-        return Math.round(best);
+        // Only TOP-LEVEL containers. home.html puts its <header> INSIDE .wrap,
+        // so the header is legitimately narrower by the wrap's padding -- that
+        // is correct nesting, not a layout defect, and comparing it against its
+        // own parent is a false positive. What matters is whether containers
+        // that sit SIDE BY SIDE agree: on /usage, <header> and <main> are
+        // siblings and were 1200 and 1100.
+        const top = found.filter(
+          (a) => !found.some((b) => b.el !== a.el && b.el.contains(a.el)));
+        const boxes = {};
+        for (const t of top) boxes[t.sel] = t.w;
+        return boxes;
       });
     }
-    const values = Object.values(widths);
+    // WITHIN a page first. Taking the widest container per page hid the real
+    // defect: /usage had a 1200px <header> and an 1100px <main>, so the page
+    // disagreed with ITSELF by 100px and the across-pages check still saw a
+    // compliant 1200. Every container on one page must agree before comparing
+    // pages to each other.
+    for (const [name, boxes] of Object.entries(widths)) {
+      const vals = Object.values(boxes);
+      expect(vals.length, `${name}: found no layout container to measure`).toBeGreaterThan(0);
+      const inner = Math.max(...vals) - Math.min(...vals);
+      expect(inner,
+        `${name} disagrees with itself -- its own containers are different widths, so the page shifts sideways as you scroll past the header: ${JSON.stringify(boxes)}`)
+        .toBeLessThanOrEqual(SHELL_TOLERANCE);
+    }
+
+    // Then across pages, so navigating does not move the column.
+    const perPage = Object.fromEntries(
+      Object.entries(widths).map(([n, b]) => [n, Math.max(...Object.values(b))]));
+    const values = Object.values(perPage);
     const spread = Math.max(...values) - Math.min(...values);
     expect(spread,
-      `content column differs across pages, so the layout jumps when you navigate: ${JSON.stringify(widths)}`)
+      `content column differs across pages, so the layout jumps when you navigate: ${JSON.stringify(perPage)}`)
       .toBeLessThanOrEqual(SHELL_TOLERANCE);
-    for (const [name, w] of Object.entries(widths)) {
+    for (const [name, w] of Object.entries(perPage)) {
       expect(Math.abs(w - SHELL_MAX),
         `${name} column is ${w}px, target ${SHELL_MAX}px`).toBeLessThanOrEqual(SHELL_TOLERANCE * 2);
     }
@@ -177,7 +216,16 @@ test.describe("UI standard: type is consistent and legible", () => {
       await settle(page);
       const tooSmall = await page.evaluate((floor) => {
         const bad = [];
-        for (const el of document.querySelectorAll("p,li,span,td,th,div,a,small,button,label")) {
+        // EVERY element, not a hand-written list of tag names. The list used
+        // to be "p,li,span,td,th,div,a,small,button,label", which excluded
+        // <h2> and <dt> -- and an 11px <dt> on the case study plus a 12px
+        // <h2> on the home page sat on the live site while this check
+        // reported both pages clean. That is the same defect the whole sprint
+        // exists to fix (a guard measuring only what its author thought to
+        // enumerate), reintroduced inside the fix for it. Enumerating tags is
+        // the bug; asking every element is the fix.
+        for (const el of document.querySelectorAll("*")) {
+          if (el.closest("svg")) continue;
           const text = (el.textContent || "").trim();
           if (!text || text.length < 6 || el.children.length) continue;
           const r = el.getBoundingClientRect();

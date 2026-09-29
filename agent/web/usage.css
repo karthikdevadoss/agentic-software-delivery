@@ -2,7 +2,11 @@
    Anything smaller is uncomfortable on a 1920 display, which is the width
    the Owner actually uses. Enforced here at source AND asserted per page by
    e2e/ui-standards.spec.js -- do not reintroduce a 0.6-0.72rem badge or tag. */
-main#sessions-main { max-width: 1100px; }
+/* Sprint 15: was 1100px while every other page's main is 1200 -- the
+   layout still jumped 100px navigating to /usage. Missed by the shell
+   guard, which measured the h1's ancestors and so only ever saw the
+   1200px header this page's h1 lives in. */
+main#sessions-main { max-width: var(--shell); }
 
 .session-row {
   border: 1px solid var(--border);
