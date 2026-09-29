@@ -2417,3 +2417,24 @@ that is the gate working.** The instruction now requires naming the technology,
 with the paraphrase failure mode named explicitly — and it was verified NOT to
 apply to the generic "explain your experience with Kafka", which is the Owner's
 original complaint and had to stay fixed.
+
+**2.18 — I fixed the instance and not the class, and it bit me forty minutes
+later.** Adding a per-visitor cooldown to a public endpoint breaks every
+internal tool that talks to that endpoint in a loop. I hit this with
+`si_recapture.py` (1s sleep against a 5s cooldown), fixed *that script*, and
+then the acceptance gate — which fires 15 questions in a row from one address —
+died on HTTP 429 in the post-deploy replay of the very deploy that shipped the
+cap. Nothing was wrong with any answer.
+
+The generalisable rule, which is the only part worth keeping: **when you add a
+rate limit to an endpoint, the blast radius is every caller you own, not the
+one you happened to be running.** The moment the cooldown constant existed,
+the right move was to grep for everything that POSTs to that route and pace all
+of them, rather than wait for each to fail in turn.
+
+Two details that made the second fix better than the first: the pacing is
+deliberately *above* the cooldown rather than equal to it (equal values race on
+clock granularity and network jitter), and a 429 now raises with an explicit
+"this is NOT an answer-quality failure" message — because in a deploy log a
+pacing problem and a bad answer look identical, and they send the next person
+in completely opposite directions.
