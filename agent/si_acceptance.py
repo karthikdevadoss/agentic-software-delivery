@@ -184,7 +184,16 @@ def _check_kafka_at_bcbsa(text):
 
 def _check_kafka_absent_at_nrg(text):
     bad = []
-    if not _any(text, "no kafka", "wasn't", "was not", "didn't use", "did not use",
+    # Sprint 15: "not kafka" and "other than kafka" added after a real gate run
+    # failed an answer that stated the absence perfectly well -- "that's the
+    # messaging setup I worked with there, NOT KAFKA" -- in a phrasing this
+    # list did not happen to contain. Same defect class as the _LIMIT_MARKER
+    # phrase list this sprint replaced: a fixed vocabulary cannot enumerate how
+    # a person says a thing, and a checker that rejects a correct answer
+    # teaches the wrong lesson just as expensively as one that accepts a wrong
+    # answer.
+    if not _any(text, "no kafka", "not kafka", "other than kafka",
+                "wasn't", "was not", "didn't use", "did not use",
                 "not part of", "not used", "never used"):
         bad.append("does not state the absence")
     if not _any(text, "sqs"):
