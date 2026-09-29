@@ -123,6 +123,11 @@ KNOWN_EVENT_TYPES = frozenset({
     "dev_session_started", "dev_session_ended",
     "user_prompt_submitted", "dev_turn_stopped",
     "subagent_started", "subagent_stopped",
+
+    # Sprint 13 / BL-093: durable workflow (agent/durable_workflow.py). One
+    # row per state transition, one per human decision -- in THIS ledger,
+    # not a parallel observability system.
+    "workflow_transition", "workflow_human_decision",
 })
 
 # REAL INCIDENT (found 2026-09-18, same investigation as the stale sync

@@ -49,6 +49,7 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 HERMETIC_MODULES = [
     "test_acceptance_contract",
+    "test_durable_workflow",          # BL-093/094: MemorySaver + a local git repo, no network
     "test_agent_decision_eval_runner",
     "test_agent_loop",
     "test_aggregate_evidence",
@@ -115,6 +116,7 @@ HERMETIC_MODULES = [
 # ---------------------------------------------------------------------------
 LIVE_INFRA_MODULES = {
     "test_backend_execution": "spawns a real web_server subprocess",
+    "test_workflow_checkpointer": "BL-094: real Postgres checkpoint tables via EVENT_LEDGER_DATABASE_URL",
     # --- The four below were MISCLASSIFIED as hermetic and were caught by the
     # first real CI run (2026-09-25, run 36172353680), not by local testing.
     # Root cause of the misclassification: "hermetic" was judged from grepping

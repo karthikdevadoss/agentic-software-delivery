@@ -85,3 +85,35 @@ CREATE INDEX IF NOT EXISTS idx_delivery_events_activity_class ON delivery_events
 -- historical pre-fix rows still aggregate correctly.
 ALTER TABLE delivery_events ADD COLUMN IF NOT EXISTS cost_usd DOUBLE PRECISION;
 ALTER TABLE delivery_events ADD COLUMN IF NOT EXISTS pricing_version TEXT;
+
+-- Sprint 13 (BL-093): durable workflow checkpoints, applied by
+-- event_ledger.ensure_schema() alongside delivery_events. One row per
+-- LangGraph checkpoint (whole checkpoint, typed-serialised) and one row per
+-- pending write, so an approval interrupt and its resume survive a restart.
+CREATE TABLE IF NOT EXISTS workflow_checkpoints (
+    thread_id              TEXT NOT NULL,
+    checkpoint_ns          TEXT NOT NULL DEFAULT '',
+    checkpoint_id          TEXT NOT NULL,
+    parent_checkpoint_id   TEXT,
+    checkpoint_type        TEXT NOT NULL,
+    checkpoint             BYTEA NOT NULL,
+    metadata_type          TEXT NOT NULL,
+    metadata               BYTEA NOT NULL,
+    created_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (thread_id, checkpoint_ns, checkpoint_id)
+);
+CREATE TABLE IF NOT EXISTS workflow_checkpoint_writes (
+    thread_id              TEXT NOT NULL,
+    checkpoint_ns          TEXT NOT NULL DEFAULT '',
+    checkpoint_id          TEXT NOT NULL,
+    task_id                TEXT NOT NULL,
+    idx                    INTEGER NOT NULL,
+    channel                TEXT NOT NULL,
+    blob_type              TEXT NOT NULL,
+    blob                   BYTEA NOT NULL,
+    task_path              TEXT NOT NULL DEFAULT '',
+    created_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (thread_id, checkpoint_ns, checkpoint_id, task_id, idx)
+);
+CREATE INDEX IF NOT EXISTS workflow_checkpoints_thread_latest
+    ON workflow_checkpoints (thread_id, checkpoint_ns, checkpoint_id DESC);

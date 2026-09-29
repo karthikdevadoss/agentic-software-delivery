@@ -60,6 +60,7 @@ import showcase_data
 import interview_walkthrough_data
 import ask_codebase
 import standing_interview
+import durable_workflow
 import demo_execution
 import estimation
 import triage_execution
@@ -2099,6 +2100,81 @@ async def stop_dev_session_route(request: Request):
     return JSONResponse(rec, status_code=status_code)
 
 
+# --- Durable workflow (Sprint 13, BL-093) ----------------------------------
+# A PARALLEL path to the Workbench run above; that path is untouched. The
+# graph, the checkpoint store and the authority rules live in
+# agent/durable_workflow.py; these handlers only carry HTTP in and out.
+# /decide is the ONLY way a human decision enters the graph, and it is a
+# plain HTTP endpoint the model has no tool for -- same shape as /decide
+# on the Workbench path.
+_WORKFLOW_CHECKPOINTER = None
+_WORKFLOW_LOCK = threading.Lock()
+
+
+def _workflow_checkpointer():
+    global _WORKFLOW_CHECKPOINTER
+    if _WORKFLOW_CHECKPOINTER is None:
+        import workflow_checkpointer
+        _WORKFLOW_CHECKPOINTER = workflow_checkpointer.PostgresWorkflowCheckpointer()
+    return _WORKFLOW_CHECKPOINTER
+
+
+def _workflow_guarded(fn):
+    """One workflow step at a time in this process (the graph's own
+    idempotency handles a duplicate that arrives after the lock is released)."""
+    def run():
+        if not _WORKFLOW_LOCK.acquire(timeout=0.5):
+            return {"status": "busy", "reason": "another workflow step is executing"}
+        try:
+            return fn()
+        finally:
+            _WORKFLOW_LOCK.release()
+    return run
+
+
+async def workflow_start(request: Request):
+    body = await request.json()
+    requirement = (body.get("requirement") or "").strip()[:durable_workflow.MAX_REQUIREMENT_CHARS + 1]
+    if not requirement:
+        return JSONResponse({"error": "requirement is required"}, status_code=400)
+    result = await run_in_threadpool(_workflow_guarded(
+        lambda: durable_workflow.start_workflow(requirement, _workflow_checkpointer())))
+    return JSONResponse(result, status_code=409 if result.get("status") == "busy" else 200)
+
+
+async def workflow_describe(request: Request):
+    wid = request.path_params["workflow_id"]
+    result = await run_in_threadpool(lambda: durable_workflow.describe_workflow(wid, _workflow_checkpointer()))
+    return JSONResponse(result, status_code=404 if result.get("status") == "not_found" else 200)
+
+
+async def workflow_decide(request: Request):
+    """Human approve/reject. Carries the binding hash of the exact proposal the
+    human saw; the graph refuses a mismatch. Recorded as its own event type."""
+    wid = request.path_params["workflow_id"]
+    body = await request.json()
+    decision = (body.get("decision") or "").strip().lower()
+    binding = (body.get("binding") or "").strip()
+    if decision not in ("approve", "reject") or len(binding) != 64:
+        return JSONResponse({"error": "decision must be approve|reject and binding the 64-char proposal hash"}, status_code=400)
+    await run_in_threadpool(lambda: event_ledger.record_event(
+        "workflow_human_decision", source="durable_workflow", activity_class="PRODUCT_RUNTIME",
+        run_id=wid, status=decision, actor_type="human", actor_role="operator",
+        payload={"workflow_id": wid, "decision": decision, "binding": binding}))
+    result = await run_in_threadpool(_workflow_guarded(
+        lambda: durable_workflow.resume_workflow(wid, decision, binding, "human-http", _workflow_checkpointer())))
+    return JSONResponse(result, status_code=409 if result.get("status") in ("busy", "refused") else 200)
+
+
+async def workflow_continue(request: Request):
+    """Resume after a process death. No decision is carried or accepted here;
+    a workflow still waiting for approval stays waiting."""
+    wid = request.path_params["workflow_id"]
+    result = await run_in_threadpool(_workflow_guarded(
+        lambda: durable_workflow.continue_workflow(wid, _workflow_checkpointer())))
+    return JSONResponse(result, status_code=409 if result.get("status") in ("busy", "refused") else 200)
+
+
 routes = [
     Route("/api/runs", start_run, methods=["POST"]),
     Route("/api/runs/mock", start_mock_run, methods=["POST"]),
@@ -2125,6 +2201,10 @@ routes = [
     Route("/api/showcase/{slug}", get_showcase_data, methods=["GET"]),
     Route("/api/interview-walkthrough", get_interview_walkthrough_data, methods=["GET"]),
     Route("/api/ask-codebase", ask_codebase_api, methods=["GET"]),
+    Route("/api/workflow/start", workflow_start, methods=["POST"]),
+    Route("/api/workflow/{workflow_id}", workflow_describe, methods=["GET"]),
+    Route("/api/workflow/{workflow_id}/decide", workflow_decide, methods=["POST"]),
+    Route("/api/workflow/{workflow_id}/continue", workflow_continue, methods=["POST"]),
     Route("/api/standing-interview/status", standing_interview_status, methods=["GET"]),
     Route("/api/standing-interview/ask", standing_interview_ask, methods=["POST"]),
     Route("/api/standing-interview/feedback", standing_interview_feedback, methods=["POST"]),

@@ -38,7 +38,25 @@ guarantee holds through this specific real call site, not just in
 | Process dies during deployment | Recovery relies on `wait_for_new_deployment()`'s real, independent check of Railway's actual deployment state on the *next* attempt — since deployment identity is timestamp-verified (AEQ-009's fix) rather than assumed from the dead process's own state, a fresh check correctly discovers whatever Railway's real state actually is | Pre-existing (AEQ-009, `docs/ESCAPED_DEFECT_COMPILER.md`) |
 | QA/evaluator unavailable | Not applicable to the Triage promotion path specifically (no QA-evaluator gate sits between approval and promotion in this pipeline) — the closest analogous real property is Section 11's drill above (a downstream dependency being unreachable doesn't block the real action) | This session (Section 11/12 drill) |
 
-## Honest gap
+## Honest gap -- CLOSED for the durable workflow (2026-09-29, Sprint 13, BL-094)
+
+The paragraph below was written when no test simulated an actual process
+crash. That is no longer true for the durable software-change workflow
+(`agent/durable_workflow.py`, LangGraph + `agent/workflow_checkpointer.py` on
+the ledger's Postgres). `agent/workflow_drill.py --run-all` kills a REAL child
+process (TerminateProcess / SIGKILL) at two boundaries -- after the git commit
+but before LangGraph checkpoints the apply node, and after the apply checkpoint
+but before compile -- and a FRESH process resumes from the persisted state.
+Result at `the Sprint 13 Task 2 commit (built on 3d53074)`: 22 of 22 assertions held in one foreground run at 2026-09-29 00:01Z (run 7; runs 1-6 each found or were killed by something real -- see docs/LESSONS.md). Evidence: `agent/.workflow_drill_evidence/20260929T000136Z.json`
+(gitignored per-run record; this paragraph is the committed summary).
+
+Scope of the closure, stated so it is not oversold: the drill proves the
+durable-workflow path. The isolated-workspace Workbench and Triage paths keep
+the "retry the whole operation fresh" model described above and are NOT
+crash-drilled; see docs/DECISIONS.md (Sprint 13) for why the durable path
+deliberately supersedes that model for itself only.
+
+### Original text (superseded for the durable workflow, still true elsewhere)
 
 No test simulates an actual process **crash mid-git-operation** (e.g.,
 killed between `commit_change()` succeeding and `push_change()` starting)

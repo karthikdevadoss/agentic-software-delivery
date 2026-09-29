@@ -84,3 +84,7 @@ playwright/.cache/
 #     is empty, and that .gitignore does NOT re-ignore this path
 # It shows in `git status` as `??`, which is visible rather than silent.
 # Never `git add` it.
+
+# Durable-workflow crash-drill evidence (derived/local per-run record -- see agent/workflow_drill.py;
+# the committed record of a drill is the summary in docs/DURABLE_EXECUTION_RECOVERY.md)
+agent/.workflow_drill_evidence/

@@ -545,6 +545,34 @@
       "verification_required": "After the next deploy: /api/standing-interview/status shows a newer deploy_marker; the remote gate passes; a fresh 'Did NRG use Kafka?' answer contains neither phrase. Then set resolved.",
       "created_at_commit": "0eadf92",
       "triage_log": []
+    },
+    {
+      "id": "ACT-022",
+      "source": "workflow_drill_sprint13",
+      "title": "demo_catalogue's footer_text anchor cannot match the real index.html (a <span> sits inside the footer)",
+      "priority": "medium",
+      "status": "open",
+      "scope": "agent/demo_catalogue.py OPERATIONS[footer_text].anchor_pattern; app/src/main/resources/static/index.html line with <footer class=\"app-footer\">",
+      "reason": "Found by the first run of the durable-workflow crash drill (2026-09-29): 'Change the footer text to ...' fails deterministically with 'anchor pattern for operation footer_text did not match the current file -- refusing to guess'. The anchor's ([^<]*) cannot cross the <span id=\"build-info\"> the real footer now contains. The public Workbench demo's footer operation fails the same way; heading_text and subtitle_text apply cleanly. Fail-closed behaviour is correct; the operation is simply dead. Not auto-fixed: the right fix (anchor that tolerates the span, or retire the operation and its SUGGESTED_EXAMPLES entry) is a small product decision.",
+      "evidence": "python -c: demo_catalogue.apply_operation(real index.html, 'footer_text', 'x') -> RuntimeError; heading_text and subtitle_text -> OK (lines 291/292).",
+      "safe_to_auto_execute": false,
+      "verification_required": "After the fix, all three catalogue operations apply to the real file in the hermetic tests, and the public Workbench footer example runs end to end.",
+      "created_at_commit": "the Sprint 13 Task 2 commit (built on 3d53074)",
+      "triage_log": []
+    },
+    {
+      "id": "ACT-023",
+      "source": "qa_evaluator_sprint13",
+      "title": "Owner decision: leak_blocked rows now persist up to 600 chars of the text that FAILED the confidentiality scan (private ledger, secrets-only redaction)",
+      "priority": "low",
+      "status": "open",
+      "scope": "agent/standing_interview.py leak_blocked/voice_rejected results (model_reply); agent/web_server.py _log_si_event payload; event_ledger._redact_payload (secrets only)",
+      "reason": "Sprint 13 added the refused model text to leak_blocked/voice_rejected rows so a refusal can be diagnosed without a replay that may not reproduce it (gate run 4 did not). The independent QA pass verified the tradeoff rather than accepting the code comment: the ledger IS private and single-operator, the rows are NOT marked training-eligible (training_eligibility is None), but _redact_payload masks credential-shaped values only -- a book identifier or private path in the refused text would be stored verbatim in Postgres. Deliberate and documented; the Owner should confirm it or ask for the refused text to be leak-pattern-redacted before storage.",
+      "evidence": "QA report addendum B, 2026-09-29; agent/standing_interview.py model_reply text[:600]; event_ledger.py:236-260.",
+      "safe_to_auto_execute": false,
+      "verification_required": "Owner says keep (close as verified) or redact (apply leaks()-pattern masking to model_reply before record_event; test observed failing first).",
+      "created_at_commit": "the Sprint 13 Task 2 commit (built on 3d53074)",
+      "triage_log": []
     }
   ]
 }

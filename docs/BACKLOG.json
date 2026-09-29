@@ -2388,13 +2388,14 @@
       "size_rationale": "Rubric XLARGE: genuinely novel here (no suspend/persist/resume pattern exists -- current approval is a blocking in-process prompt), cross-cutting (new dependency, new table, new endpoints, new event types), first integration of LangGraph and first checkpoint store. Per the rubric, risk and effort sized separately: architecture/integration risk HIGH -> confidence LOW; per-component effort: graph+checkpointer ~90-150, endpoints+ledger wiring ~50-90, dependency/Docker/CI ~40-60. suggest-estimate -> INSUFFICIENT_HISTORY n=0; raw range adopted.",
       "deviated_from_suggestion": false,
       "category": "delivery",
-      "status": "backlog",
+      "status": "done",
       "sprint": "Sprint 13 (owner approved 2026-09-29, three-task autonomous sprint)",
       "created_at": "2026-09-29",
-      "started_at": null,
+      "started_at": "2026-09-29",
       "created_at_commit": "bac7cea",
       "commit_shas": [],
-      "session_ids": []
+      "session_ids": [],
+      "completed_at": "2026-09-29"
     },
     {
       "id": "BL-094",
@@ -2407,13 +2408,14 @@
       "size_rationale": "Rubric LARGE: multiple sub-asks, and DURABLE_EXECUTION_RECOVERY.md names the crash drill as a never-before-built gap. first_of_kind for exactly that reason. suggest-estimate -> INSUFFICIENT_HISTORY n=0; raw range adopted.",
       "deviated_from_suggestion": false,
       "category": "delivery",
-      "status": "backlog",
+      "status": "done",
       "sprint": "Sprint 13 (owner approved 2026-09-29, three-task autonomous sprint)",
       "created_at": "2026-09-29",
-      "started_at": null,
+      "started_at": "2026-09-29",
       "created_at_commit": "bac7cea",
       "commit_shas": [],
-      "session_ids": []
+      "session_ids": [],
+      "completed_at": "2026-09-29"
     },
     {
       "id": "BL-095",
@@ -2426,10 +2428,10 @@
       "size_rationale": "First deploy of a new runtime dependency and a schema change together, and the first production restart drill. Confidence LOW. suggest-estimate -> INSUFFICIENT_HISTORY n=0; raw range adopted.",
       "deviated_from_suggestion": false,
       "category": "delivery",
-      "status": "backlog",
+      "status": "active",
       "sprint": "Sprint 13 (owner approved 2026-09-29, three-task autonomous sprint)",
       "created_at": "2026-09-29",
-      "started_at": null,
+      "started_at": "2026-09-29",
       "created_at_commit": "bac7cea",
       "commit_shas": [],
       "session_ids": []
