@@ -75,8 +75,32 @@ echo "==> Corpus OK: ${CHUNKS} chunks, untracked, NOT gitignored, not dockerigno
 # The real gate, against the real corpus and a real model, BEFORE upload.
 # Sprint 11: the generic-Kafka defect was invisible to every hermetic test and
 # visible in exactly this replay, so a green unit suite is not sufficient here.
-echo "==> Acceptance replay against the local corpus (real model calls)"
-python agent/si_acceptance.py
+#
+# SKIP_MODEL_GATE exists for exactly one situation, added 2026-09-30: the
+# Anthropic credit balance is exhausted, so the gate CANNOT run at all -- and
+# the changes waiting to ship are the fix for the 500s that exhaustion causes,
+# plus CSS and a spend cap, none of which can make a model answer worse. The
+# gate protects ANSWER QUALITY; skipping it is only defensible when nothing in
+# the deploy can affect answer quality, and the Owner has said so.
+#
+# It is loud, it is recorded in the deploy marker, and it is never the default.
+# If you are reaching for it because the gate is failing, that is the gate
+# working -- fix the answer, not the script.
+if [[ "${SKIP_MODEL_GATE:-}" == "1" ]]; then
+  echo
+  echo "############################################################"
+  echo "## ACCEPTANCE GATE SKIPPED -- SKIP_MODEL_GATE=1"
+  echo "## Answer quality is NOT verified by this deploy."
+  echo "## Only legitimate when the gate cannot run (no API credit)"
+  echo "## AND nothing shipping can change a model answer."
+  echo "############################################################"
+  echo
+  MARKER_SUFFIX="-nogate"
+else
+  echo "==> Acceptance replay against the local corpus (real model calls)"
+  python agent/si_acceptance.py
+  MARKER_SUFFIX=""
+fi
 
 # Deploy identity marker. REAL INCIDENT (2026-09-29, Sprint 13): the poll
 # below used to stop at the first '"loaded":true', which the NEW container
@@ -87,7 +111,7 @@ python agent/si_acceptance.py
 # untracked-but-uploaded directory as the corpus, and is reported by the
 # status endpoint; the gate does not run until the remote marker matches
 # on three consecutive polls and the old container has had time to drain.
-MARKER="deploy-$(date -u +%Y%m%dT%H%M%SZ)-$(git rev-parse --short HEAD)"
+MARKER="deploy-$(date -u +%Y%m%dT%H%M%SZ)-$(git rev-parse --short HEAD)${MARKER_SUFFIX}"
 echo "$MARKER" > agent/.si_corpus/deploy_marker.txt
 echo "==> Deploy marker: $MARKER"
 
@@ -121,8 +145,14 @@ curl -fsS "$HOST/api/standing-interview/status"; echo
 # The implementer does not get the last word on its own production success:
 # the same assertions that had to pass locally must now pass over HTTP against
 # the deployed host, or this exits non-zero and the page is NOT live.
-echo "==> Acceptance replay against the DEPLOYED host"
-python agent/si_acceptance.py --base-url "$HOST"
+if [[ "${SKIP_MODEL_GATE:-}" == "1" ]]; then
+  echo "==> Post-deploy acceptance replay SKIPPED (SKIP_MODEL_GATE=1)."
+  echo "    Answer quality on this deploy is UNVERIFIED. Run"
+  echo "    'python agent/si_acceptance.py --base-url $HOST' once credit is restored."
+else
+  echo "==> Acceptance replay against the DEPLOYED host"
+  python agent/si_acceptance.py --base-url "$HOST"
+fi
 
 echo
 echo "==> Standing Interview is live and answering: $HOST/standing-interview"
