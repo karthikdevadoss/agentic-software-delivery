@@ -2364,3 +2364,56 @@ production records how it was verified. The risk is that it becomes the easy
 path the next time the gate is merely *failing*. The comment in the script says
 it directly: if you are reaching for this because the gate is failing, that is
 the gate working — fix the answer, not the script.
+
+### F. The measurement, 2026-09-30 — what the sprint was actually for
+
+The Owner topped up the API credit and the post-fix capture finally ran: 21 real
+requests against live production, scored by the same oracle that had been proven
+red against the six answers he objected to, compared **like-for-like** against
+the same questions in the pre-fix baseline rather than against the 57-answer
+headline.
+
+```
+questions a b e f g m w
+BEFORE :  28 unsolicited negatives across 14 of 18 answered
+AFTER  :   0 unsolicited negatives across  0 of 19 answered
+```
+
+That is the complaint — *"it answers so crazily for some questions"* — measured
+gone, on the real service, by a detector that was shown to catch the original
+defect before the fix existed.
+
+**2.15 — I stated a cause too confidently, and the measurement corrected me.**
+I wrote, in the retro and in two state documents, that question m's refusal was
+a *corpus gap*: the books are technical, retrieval genuinely finds nothing
+behavioural, so the model correctly declines. The capture answered it on 1 of 3
+draws, with a real grounded story — a genuine disagreement from building this
+platform, about which source governs when the state documents conflict. **The
+material was there the whole time; retrieval reaches it inconsistently.** That
+is a different problem with a different fix, and I had closed the question
+early with a confident-sounding explanation instead of leaving it open. The test
+stays red, because 1 of 3 is not fixed.
+
+**2.16 — The capture found a defect that every other gate had passed.** One draw
+told the visitor *"The knowledge base isn't loaded on this instance, so I can't
+answer from it"* while the deployed corpus held 361 chunks and the draws either
+side answered normally. `not model_called or not text` shared one branch, so a
+model that WAS called and returned an empty string produced the no-corpus
+message — a false statement about the system's own state, made to the person the
+site exists to impress. At that moment 772 hermetic tests, 67 UI guards and a
+15/15 acceptance run were all green. **Only asking the real service, 21 times,
+surfaced it.**
+
+**2.17 — And then the gate refused the deploy, correctly.** The first gated
+deploy after the fix failed on "Tell me about Kafka at NRG": the answer
+described SQS and closed with *"there wasn't a separate event-streaming layer
+running alongside it"* — never once saying the word Kafka. The instruction said
+"say plainly that you did not use it there", and the model complied with the
+sentiment while paraphrasing around the noun. An interviewer who asked about one
+specific thing is left inferring. **The temptation here is the reason
+`SKIP_MODEL_GATE` was written hours earlier, and the script's own comment
+answers it: if you are reaching for the bypass because the gate is FAILING,
+that is the gate working.** The instruction now requires naming the technology,
+with the paraphrase failure mode named explicitly — and it was verified NOT to
+apply to the generic "explain your experience with Kafka", which is the Owner's
+original complaint and had to stay fixed.
