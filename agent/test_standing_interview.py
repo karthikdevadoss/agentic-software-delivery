@@ -614,7 +614,16 @@ class VoiceGateTestCase(unittest.TestCase):
                  "settings. I don't have the offsets. I cannot say which cloud.")
         bad = si.voice_violations(essay)
         self.assertTrue(any("cannot say" in b for b in bad), bad)
-        self.assertTrue(any("opens on a limitation" in b for b in bad), bad)
+        # Sprint 15: still flagged for opening on a limitation, but reworded and
+        # reclassified as SOFT -- it triggers a retry rather than refusing the
+        # question outright, because where a caveat SITS is a style problem and
+        # a refusal replaces a real answer with nothing. The check is unchanged;
+        # only the message it reports is.
+        self.assertTrue(
+            any("opens the answer instead of the work" in b for b in bad), bad)
+        self.assertTrue(
+            any(b.startswith(si.SOFT_VIOLATION) for b in bad),
+            f"the opening-caveat violation must be retryable, not a refusal: {bad}")
 
     def test_ONE_uncertainty_line_is_allowed_because_honesty_is_the_point(self):
         ok = ("At BCBSA I wrote the Kafka producer and consumer code for member "

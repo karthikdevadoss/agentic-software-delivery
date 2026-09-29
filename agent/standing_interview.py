@@ -243,13 +243,27 @@ three employers listed.
 ANSWER THE QUESTION THAT WAS ASKED, AND STOP
 State the hands-on work plainly. Then stop.
 
-Do NOT volunteer a limitation. Not what you did not set up, not what you do
-not remember, not what someone else ran, not what a different employer did not
-use. None of that was asked for, and an answer that reaches for it sounds like
+FIRST, THE CASE THAT IS NOT A LIMITATION AT ALL. If the question asks whether
+you used something, or asks about a technology at a place that did not use it
+-- "Did NRG use Kafka?", "Have you used Terraform?", "Tell me about Kafka at
+NRG" -- then saying you did not use it IS THE ANSWER. Say it plainly and
+immediately, then say what was used instead:
+  "We didn't use Kafka at NRG. The async work there ran on SQS with a
+   dead-letter queue and some scheduled jobs."
+That is a direct answer to a direct question. It is never "volunteering"
+anything, and the rule below does not apply to it. Dodging it, or answering
+about a different employer instead, is a worse failure than any of the ones
+the rule below is about.
+
+NOW THE RULE. When the question did NOT ask, do NOT volunteer a limitation.
+Not what you did not set up, not what you do not remember, not what someone
+else ran, not what a DIFFERENT employer than the one asked about did not use.
+None of that was asked for, and an answer that reaches for it sounds like
 someone arguing against themselves.
 
 There are exactly three times a limit belongs in an answer:
-  1. The question asks for one ("have you used X", "what are your gaps").
+  1. The question asks for one ("have you used X", "did Y use X", "what are
+     your gaps"). See above -- there it is the answer, not a limit.
   2. Leaving it out would imply something false -- you would be taken to have
      built or owned something you did not.
   3. The interviewer has asked a follow-up that needs it.
@@ -727,6 +741,21 @@ def attribution_for(question: str, corpus: "Corpus") -> dict:
     }
 
 
+def _question_names_any(question: str, employers: list[str]) -> bool:
+    """Does the question itself name one of these employers?
+
+    Matched on the first word of the recorded name ("NRG Energy" -> "NRG"),
+    because the matrix stores full legal-ish names and an interviewer types
+    the short one.
+    """
+    q = (question or "").lower()
+    for name in employers:
+        head = name.split()[0].lower() if name.split() else ""
+        if head and re.search(r"\b" + re.escape(head) + r"\b", q):
+            return True
+    return False
+
+
 def attribution_line(a: dict, question: str) -> str:
     """The one line the model is given about who leads. Names only employers
     the matrix recorded; an employer with no row is simply not mentioned."""
@@ -757,10 +786,29 @@ def attribution_line(a: dict, question: str) -> str:
         line += (f" Lead with {first[0]} and give it the answer. Do not mention an "
                  "employer that is not named here.")
     if a["not_used"]:
-        line += (" Constraint, not content: you have no record of this at "
-                 + " and ".join(a["not_used"])
-                 + ", so never claim work there. Do NOT say so in the answer "
-                   "unless the question asks about that employer by name.")
+        absent = " and ".join(a["not_used"])
+        # The question names an employer that did NOT use the thing being asked
+        # about. Saying so is not a volunteered limitation -- it is the answer,
+        # and an answer that quietly describes SQS instead leaves the
+        # interviewer thinking the Kafka question was dodged.
+        #
+        # This has to be a REQUIREMENT, not a permission. The first version of
+        # this line merely allowed it ("do not say so unless the question asks
+        # about that employer by name"), and the real acceptance gate caught
+        # the result: asked "Tell me about Kafka at NRG", the model answered
+        # with SQS and never mentioned that Kafka was not used there.
+        if a["employer_named"] and _question_names_any(question, a["not_used"]):
+            line += (f" You have NO record of this at {absent}, and the question "
+                     f"asks about {absent}. Your FIRST sentence must say plainly "
+                     f"that you did not use it there, and then say what was used "
+                     f"instead. That is the answer to this question, not a "
+                     f"limitation -- do not skip it and describe the alternative "
+                     f"as though it had been asked about.")
+        else:
+            line += (" Constraint, not content: you have no record of this at "
+                     + absent
+                     + ", so never claim work there. Do NOT say so in the answer "
+                       "unless the question asks about that employer by name.")
     return line
 
 
@@ -991,13 +1039,34 @@ def voice_violations(text: str, question: str | None = None) -> list[str]:
         bad.append("spends %d sentences on what you cannot say (at most %d)"
                    % (n_limits, MAX_LIMIT_SENTENCES))
     if _LIMIT_MARKER.search(sents[0]):
-        bad.append("opens on a limitation instead of on the work")
+        # Soft, for the same reason the others are: this is about where a
+        # sentence sits, not about anything false being said. The acceptance
+        # gate caught the cost of treating it as hard -- "How does the human
+        # approval step work on your platform?" was refused outright on a
+        # retry whose ONLY remaining problem was that it opened on a caveat,
+        # replacing a real grounded answer with "I don't have that recorded".
+        bad.append(f"{SOFT_VIOLATION} -- it opens the answer instead of the work")
     return bad
 
 
 # The provenance-VERB pattern is identified by content so that a question
 # about the retrieval system itself can be exempted from it -- and only it.
 _PROVENANCE_VERB_LEAK = next(p for p in _LEAK_PATTERNS if "knowledge base|material" in p.pattern)
+
+# Sprint 15 (BL-144, the audit's "leak false positive"). The same exemption,
+# for the same reason, on the pattern that catches "the source material".
+# Asked "How does your RAG retrieval work in the Standing Interview?", the
+# model has to name what it retrieves FROM -- that is the answer, not a
+# citation leaking a private source. The acceptance gate failed this question
+# as leak_blocked on every run while the answer was correct and useful.
+#
+# Deliberately still scanned for every other question, and deliberately still
+# a leak when the question is not about the retrieval system: the pattern
+# protects against an answer about NRG saying "the source material says",
+# which remains exactly as forbidden as before.
+_SOURCE_NOUN_LEAK = next(
+    (p for p in _LEAK_PATTERNS if "source (material|document" in p.pattern), None
+)
 
 
 def leaks(text: str, question: str | None = None) -> list[str]:
@@ -1009,8 +1078,10 @@ def leaks(text: str, question: str | None = None) -> list[str]:
     in the `rag` family that one pattern is skipped; book ids, "according
     to", private paths, pantheon names, "excerpt" and file extensions are
     still scanned, and for any other question nothing changes."""
-    skip = _PROVENANCE_VERB_LEAK if (question and "rag" in rewrite_families(question)) else None
-    return [p.pattern for p in _LEAK_PATTERNS if p is not skip and p.search(text)]
+    about_rag = bool(question) and "rag" in rewrite_families(question)
+    skip = {_PROVENANCE_VERB_LEAK, _SOURCE_NOUN_LEAK} if about_rag else set()
+    skip.discard(None)
+    return [p.pattern for p in _LEAK_PATTERNS if p not in skip and p.search(text)]
 
 
 # The file-extension pattern, and ONLY that one, is retryable. A book number,
