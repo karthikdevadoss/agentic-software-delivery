@@ -72,8 +72,19 @@ def _ask(question: str, timeout: int = 90) -> dict:
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        if exc.code == 429:
+            # The spend cap refused us. That is the cap working, but it means
+            # this capture is INCOMPLETE -- say so loudly rather than storing
+            # the refusal text as though it were an answer.
+            raise RuntimeError(
+                "rate limited by the deployed spend cap (HTTP 429). The capture "
+                "would be incomplete; raise the sleep or wait for the daily "
+                "window to reset.") from None
+        raise
 
 
 def main() -> int:
@@ -121,7 +132,9 @@ def main() -> int:
             })
             print(f"  {qid}/draw {draw}: {data.get('outcome')} "
                   f"({len((data.get('answer') or '').split())} words)")
-            time.sleep(1.0)   # do not hammer a free-tier service
+            # Must exceed si_budget.SI_PER_VISITOR_MIN_SECONDS (5s), or this
+            # script trips the very cooldown it deployed and 429s itself.
+            time.sleep(6.0)
 
     if not records:
         print("NOTHING CAPTURED -- not writing a file. "
