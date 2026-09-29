@@ -191,5 +191,66 @@ class EndpointIsActuallyProtectedTestCase(unittest.TestCase):
         self.assertEqual(0, si_budget.status()["answers_today"],
                          "a refusal that never reached the model was charged")
 
+class VisitorIdentityTestCase(unittest.TestCase):
+    """Production sits behind Railway's proxy, so X-Forwarded-For is the path
+    that actually runs. The tests above exercise the FALLBACK, which is the
+    path production never takes -- so this covers the real one.
+
+    Without this, two different visitors behind the proxy would both key on
+    the proxy's own address, share one allowance, and lock each other out.
+    """
+
+    def setUp(self):
+        si_budget._reset_for_tests()
+
+    def test_the_forwarded_client_is_used_not_the_proxy(self):
+        import web_server
+
+        class Req:
+            def __init__(self, headers, host):
+                self.headers = headers
+                self.client = type("C", (), {"host": host})()
+
+        proxy = "10.0.0.1"
+        a = web_server._visitor_key(Req({"x-forwarded-for": f"203.0.113.7, {proxy}"}, proxy))
+        b = web_server._visitor_key(Req({"x-forwarded-for": f"203.0.113.9, {proxy}"}, proxy))
+        self.assertEqual("203.0.113.7", a)
+        self.assertNotEqual(a, b,
+                            "two visitors behind the proxy share one allowance, so one "
+                            "busy visitor would lock the other out")
+
+    def test_it_falls_back_to_the_socket_when_there_is_no_proxy_header(self):
+        import web_server
+
+        class Req:
+            headers = {}
+            client = type("C", (), {"host": "198.51.100.4"})()
+
+        self.assertEqual("198.51.100.4", web_server._visitor_key(Req()))
+
+    def test_a_missing_client_does_not_crash_the_endpoint(self):
+        """A request with no client info must be rate limited as 'unknown',
+        never raise -- an exception here would 500 the page."""
+        import web_server
+
+        class Req:
+            headers = {}
+            client = None
+
+        self.assertEqual("unknown", web_server._visitor_key(Req()))
+
+    def test_a_hostile_forwarded_header_cannot_blow_up_the_key(self):
+        """Client-supplied and therefore hostile. It is truncated, and the
+        daily budget does not depend on it at all -- which is why that limit
+        exists separately."""
+        import web_server
+
+        class Req:
+            headers = {"x-forwarded-for": "A" * 5000}
+            client = type("C", (), {"host": "10.0.0.1"})()
+
+        self.assertLessEqual(len(web_server._visitor_key(Req())), 64)
+
+
 if __name__ == "__main__":
     unittest.main()

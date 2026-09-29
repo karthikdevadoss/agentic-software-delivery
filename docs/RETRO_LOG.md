@@ -2313,3 +2313,54 @@ assertions are geometry and computed styles; the original ten defects, the two I
 the suite was green, and these three all became visible by looking at a rendered page. A
 screenshot-diffing tier would have caught the 11px `dt`. Proposing it rather than adding it,
 since it is a new tooling dependency and a real cost.
+
+### E. The outage had a second cause nobody had looked for
+
+Added 2026-09-30, after the Owner topped up and asked for a cap.
+
+The exhausted balance was the proximate cause of the 500s. It was not the only
+problem, and the other one was worse: **`/api/standing-interview/ask` is a
+public POST with no auth, no rate limit and no daily cap, and every request
+triggers a real billed model call.** The Workbench next door has had a cooldown
+and a `DAILY_CAP` for months. This endpoint, the one linked from the homepage,
+had neither.
+
+At the measured $0.023 an answer, a script looping on that URL spends $20 in
+about ninety seconds. The first anyone would know is an empty balance — which
+is precisely how this outage was discovered.
+
+**3.8 — I nearly told the Owner to top up an endpoint that had no floor.** He
+asked "how much should I buy", and the useful answer was not a number. Checking
+what protects the money before recommending spending more of it should not have
+needed prompting; it was one grep, and I only ran it because the question made
+me think about the exposure. **A cost question is a control question first.**
+
+`agent/si_budget.py` now enforces two independent limits: a daily budget in
+dollars (converted to a request count from the real measured cost, so the Owner
+sets money and the code does the arithmetic) and a per-visitor cooldown plus
+daily ceiling. They are independent on purpose — the per-visitor limit is
+evadable by rotating addresses, so the daily budget deliberately does not depend
+on identity at all.
+
+Three things in it are worth keeping as a pattern:
+- **Checked before the billed call**, and only requests that actually reach the
+  model are counted. Charging a private-topic refusal would let two private
+  questions lock out a real recruiter.
+- **The wiring is tested separately from the module.** A correct limiter the
+  route never calls protects nothing, so the endpoint test drives the real route
+  and asserts a 429 with `answer()` never invoked — proven by seeding the check
+  out and watching it go red.
+- **Its limitations are in the docstring, not discovered later.** State is
+  in-process, so a restart resets it: this is a per-container-day budget, not a
+  ledger-backed guarantee. Saying so is the difference between a control and a
+  false sense of one.
+
+**3.9 — `SKIP_MODEL_GATE` exists now, and that is a risk worth naming.** The
+deploy needed to ship while the gate that guards it could not run. The honest
+resolution was a flag that is loud, off by default, skips the post-deploy replay
+for the same stated reason rather than silently, keeps every corpus invariant
+that does not need credit, and stamps `-nogate` into the deploy marker so
+production records how it was verified. The risk is that it becomes the easy
+path the next time the gate is merely *failing*. The comment in the script says
+it directly: if you are reaching for this because the gate is failing, that is
+the gate working — fix the answer, not the script.
