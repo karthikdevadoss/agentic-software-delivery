@@ -105,6 +105,12 @@ details.raw-state summary:hover { text-decoration: underline; }
 .cap-table th, .cap-table td { overflow-wrap: anywhere; word-break: break-word; }
 /* Belt and braces: no panel may size itself to content wider than the column. */
 .panel { max-width: 100%; }
+/* THE ACTUAL CAUSE of the 56px mobile overflow, found 2026-09-29 by walking
+   the tree comparing scrollWidth to clientWidth: it was never the table. A
+   .hint paragraph carries an unbreakable string (scrollWidth 397 against a
+   292px column) that no amount of table fixing would have helped. Long
+   tokens now wrap instead of widening the document. */
+.panel .hint, .hint { overflow-wrap: anywhere; word-break: break-word; }
 .cap-table th, .cap-table td { text-align: left; padding: 0.65rem 0.7rem; border-bottom: 1px solid var(--border); vertical-align: top; }
 .cap-table tbody tr:hover { background: var(--panel-hover); }
 .cap-table th { color: var(--muted); font-weight: 700; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; }
