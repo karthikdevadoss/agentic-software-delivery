@@ -132,6 +132,12 @@ MANDATORY_TRIGGERS = [
 # index.html selects the full real coverage that exists today, not just
 # the first, narrower spec.
 FRONTEND_PATH_TO_SPECS = {
+    # Sprint 14: the recruiter-facing home page and the durable-agent case
+    # study. nav.js is mapped here too -- it renders the canonical navigation
+    # that home.spec.js asserts, so a nav change must be able to trigger it.
+    "agent/web/home.html": ["e2e/home.spec.js"],
+    "agent/web/case-study-durable-agent.html": ["e2e/home.spec.js"],
+    "agent/web/nav.js": ["e2e/home.spec.js", "e2e/nav-consistency.spec.js"],
     "agent/web/workbench.html": ["e2e/workbench-catalogue.spec.js"],
     "agent/web/workbench.js": ["e2e/workbench-catalogue.spec.js"],
     "agent/web/workbench.css": ["e2e/workbench-catalogue.spec.js"],

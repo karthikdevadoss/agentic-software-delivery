@@ -132,7 +132,6 @@ class FrontendSpecMapDriftTestCase(unittest.TestCase):
         "e2e/golden-journey.spec.js",
         "e2e/interview-walkthrough.spec.js",
         "e2e/link-integrity.spec.js",
-        "e2e/nav-consistency.spec.js",
         "e2e/pdf.spec.js",
         "e2e/profile.spec.js",
         "e2e/workbench-real-acceptance.spec.js",
