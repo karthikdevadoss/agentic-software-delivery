@@ -2438,3 +2438,26 @@ clock granularity and network jitter), and a 429 now raises with an explicit
 "this is NOT an answer-quality failure" message — because in a deploy log a
 pacing problem and a bad answer look identical, and they send the next person
 in completely opposite directions.
+
+**2.18 (closed).** The caller audit is complete and the last one is verified
+rather than reasoned about. Being rate limited by my own cap turned out to be
+the cheapest possible way to test it — the cap refuses before any model call,
+so driving a real browser against live production cost nothing. A capped
+visitor sees:
+
+> *"That's a lot of questions for one day — more than a real interview would
+> cover. Please pick this up tomorrow, or reach me directly."*
+
+No JavaScript errors, no error styling, no broken page. It works because the
+429 body carries the same `{answer, grounded, outcome}` shape as a normal
+response and `fetch` does not throw on 4xx, so the page's existing rendering
+path handles it without knowing anything about rate limits. That was luck as
+much as design — I chose the shape for consistency, not for this — and it is
+worth keeping deliberately: **an error response that matches the success shape
+degrades gracefully through code that has never heard of it.**
+
+All four callers now handle a 429 correctly: the acceptance gate (paced, with
+an explicit "this is NOT an answer-quality failure" message), the recapture
+script (paced, raises rather than storing the refusal as an answer), the
+budget test (triggers it deliberately), and the browser page (renders the
+sentence — confirmed live).
