@@ -111,6 +111,11 @@ details.raw-state summary:hover { text-decoration: underline; }
    292px column) that no amount of table fixing would have helped. Long
    tokens now wrap instead of widening the document. */
 .panel .hint, .hint { overflow-wrap: anywhere; word-break: break-word; }
+/* Same class of defect, found the same way on /dashboard: .econ-note (397px
+   of content in a 292px column) and .kv (327px) also carried unbreakable
+   strings. Applied to the text blocks rather than globally, so table columns
+   and deliberate layout are untouched. */
+.econ-note, .kv, .panel p, .panel li { overflow-wrap: anywhere; }
 .cap-table th, .cap-table td { text-align: left; padding: 0.65rem 0.7rem; border-bottom: 1px solid var(--border); vertical-align: top; }
 .cap-table tbody tr:hover { background: var(--panel-hover); }
 .cap-table th { color: var(--muted); font-weight: 700; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; }
