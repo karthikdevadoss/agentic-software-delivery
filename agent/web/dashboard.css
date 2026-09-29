@@ -87,7 +87,16 @@ details.raw-state summary:hover { text-decoration: underline; }
 .tag.real { background: var(--accent-soft); color: #8fb4ff; }
 .kv-row { display: flex; flex-wrap: wrap; gap: 0.6rem 1.1rem; color: var(--muted); margin-top: 0.4rem; font-size: 0.82rem; }
 
-.cap-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+/* Sprint 14: this table is wider than its column on narrow viewports and was
+   pushing the WHOLE PAGE sideways -- measured against production on
+   2026-09-29: /usage overflowed at 390px and /dashboard at 1280, 768 and 390.
+   A recruiter on a phone met a page that scrolled horizontally. The table now
+   scrolls inside its own box instead of dragging the document with it.
+   `display: block` is what makes overflow-x apply to a <table>. */
+.cap-table {
+  width: 100%; border-collapse: collapse; font-size: 0.85rem;
+  display: block; overflow-x: auto; max-width: 100%;
+}
 .cap-table th, .cap-table td { text-align: left; padding: 0.65rem 0.7rem; border-bottom: 1px solid var(--border); vertical-align: top; }
 .cap-table tbody tr:hover { background: var(--panel-hover); }
 .cap-table th { color: var(--muted); font-weight: 700; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; }

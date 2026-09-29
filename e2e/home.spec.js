@@ -227,6 +227,23 @@ test.describe("Layout, accessibility and browser quality", () => {
     }
   }
 
+  // REGRESSION: /usage and /dashboard scrolled horizontally because a wide
+  // .cap-table dragged the whole document sideways. Measured against
+  // production 2026-09-29 (usage at 390px; dashboard at all three widths).
+  // Usage is a canonical nav destination, so this was recruiter-visible.
+  for (const [vpName, width, height] of VIEWPORTS) {
+    for (const route of ["/usage", "/dashboard"]) {
+      test(`${route} does not scroll sideways at ${vpName}`, async ({ page }) => {
+        await page.setViewportSize({ width, height });
+        await page.goto(route);
+        await page.waitForTimeout(3000);
+        const overflow = await page.evaluate(
+          () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
+        expect(overflow, `${route} scrolls sideways at ${vpName}`).toBe(false);
+      });
+    }
+  }
+
   test("heading order on the home page is semantic", async ({ page }) => {
     await page.goto("/");
     const levels = await page.locator("h1, h2, h3").evaluateAll(
