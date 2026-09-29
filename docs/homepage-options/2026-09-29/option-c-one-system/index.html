@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Karthikeyan Devadoss — how I engineer, shown on one system</title>
+<style>
+  :root {
+    --ink: #1a1a18;
+    --soft: #5c5c56;
+    --line: #dedbd3;
+    --paper: #f4f2ec;
+    --card: #fffefb;
+    --accent: #9c3d13;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font: 17px/1.66 Georgia, "Iowan Old Style", "Palatino Linotype", Palatino, serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .sans { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  .mockflag {
+    background: #2a2d33; color: #fff; font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
+    padding: 9px 16px; text-align: center; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  .mockflag a { color: #cfd4da; }
+  .wrap { max-width: 680px; margin: 0 auto; padding: 0 22px 80px; }
+  a { color: var(--accent); }
+  a:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+
+  header { padding: 58px 0 6px; }
+  .who {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 13px; letter-spacing: .15em; text-transform: uppercase; color: var(--soft); margin: 0 0 20px;
+  }
+  h1 { font-size: clamp(30px, 6vw, 44px); line-height: 1.12; margin: 0 0 20px; font-weight: 400; letter-spacing: -.015em; }
+  .standfirst { font-size: 19px; color: var(--soft); margin: 0; max-width: 54ch; }
+
+  .banner {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    display: flex; flex-wrap: wrap; gap: 0; margin: 36px 0 0; border: 1px solid var(--line); background: var(--card);
+  }
+  .banner div { flex: 1 1 33%; padding: 16px 18px; border-right: 1px solid var(--line); }
+  .banner div:last-child { border-right: 0; }
+  .banner dt { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--soft); margin: 0 0 5px; }
+  .banner dd { margin: 0; font-size: 20px; font-weight: 650; letter-spacing: -.01em; }
+  .banner dd small { display: block; font-size: 12px; font-weight: 400; color: var(--soft); letter-spacing: 0; margin-top: 3px; }
+
+  h2 {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent);
+    margin: 50px 0 14px; font-weight: 700;
+  }
+  p { margin: 0 0 18px; }
+  .pull {
+    border-left: 3px solid var(--accent); padding: 2px 0 2px 18px; margin: 26px 0;
+    font-size: 19px; color: var(--ink);
+  }
+  .kv { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 15px; margin: 0 0 22px; }
+  .kv div { display: grid; grid-template-columns: 150px 1fr; gap: 14px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+  .kv dt { color: var(--soft); }
+  .kv dd { margin: 0; }
+  .links { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 15px; margin: 0 0 8px; }
+  .links a { margin-right: 18px; }
+
+  .caveat {
+    background: var(--card); border: 1px solid var(--line); padding: 20px 22px; margin: 34px 0 0;
+    font-size: 16px; color: var(--soft);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  .caveat strong { color: var(--ink); display: block; margin-bottom: 7px; }
+
+  .more { margin: 48px 0 0; padding-top: 28px; border-top: 3px double var(--line); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .more p { font-size: 16px; color: var(--soft); }
+  .more b { color: var(--ink); }
+  .cta { display: flex; flex-wrap: wrap; gap: 12px; margin: 26px 0 0; }
+  .btn { display: inline-block; padding: 13px 20px; text-decoration: none; font-weight: 600; font-size: 16px;
+         border: 1.5px solid var(--accent); color: var(--accent);
+         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .btn.solid { background: var(--accent); color: #fff; }
+  .btn:hover { background: #7d3010; border-color: #7d3010; color: #fff; }
+  footer { margin-top: 46px; padding-top: 20px; border-top: 1px solid var(--line);
+           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 15px; color: var(--soft); }
+  footer a { margin-right: 18px; }
+  @media (max-width: 560px) {
+    .banner div { flex: 1 1 100%; border-right: 0; border-bottom: 1px solid var(--line); }
+    .banner div:last-child { border-bottom: 0; }
+    .kv div { grid-template-columns: 1fr; gap: 2px; }
+    .cta .btn { flex: 1 1 100%; text-align: center; }
+  }
+</style>
+</head>
+<body>
+<p class="mockflag">Mockup — not live · <a href="../index.html">back to options</a></p>
+
+<div class="wrap">
+  <header>
+    <p class="who">Karthikeyan Devadoss · Berlin · Senior / Lead Backend &amp; Agentic AI</p>
+    <h1>What happens when the machine dies halfway through an AI-written change?</h1>
+    <p class="standfirst">That question is most of what separates an agent demo from an agent you can put in a delivery pipeline. Here is how I answered it, and how I proved the answer.</p>
+  </header>
+
+  <dl class="banner">
+    <div>
+      <dt>Crash drill</dt>
+      <dd>22 / 22<small>assertions, one run</small></dd>
+    </div>
+    <div>
+      <dt>Restart in production</dt>
+      <dd>Survived<small>mid-approval, real container</small></dd>
+    </div>
+    <div>
+      <dt>Duplicate writes</dt>
+      <dd>Zero<small>one commit, after the kill</small></dd>
+    </div>
+  </dl>
+
+  <h2>The problem</h2>
+  <p>An agent that edits code is a long-running process with side effects. It writes files, commits, compiles, runs tests. If it is interrupted — a restart, a deploy, a container evicted — the naive implementation either loses everything it was doing or, far worse, comes back and does the destructive half of its work a second time.</p>
+  <p>A demo never meets this. A delivery pipeline meets it constantly.</p>
+
+  <h2>The design decision</h2>
+  <p>I built the workflow as an explicit state machine on LangGraph, with every transition checkpointed into Postgres, and a human approval modelled as an interrupt rather than a blocking prompt. The part that took the real thinking was idempotency: on resume, how does the process know whether it already performed its side effect?</p>
+  <p class="pull">The answer could not be “look at a flag we wrote”, because the crash can happen between doing the work and writing the flag. It had to be derivable from the work itself.</p>
+  <p>So the workspace path is a pure function of the workflow id, and the commit carries the approval's binding hash in its subject line. On resume the process looks at the real git history and asks whether that commit is already its own. That is a question the filesystem can answer truthfully no matter when it died.</p>
+
+  <h2>How I proved it</h2>
+  <p>I wrote a drill that starts the real workflow in a child process and kills it — actually kills it, at a marker placed after the git commit and before the checkpoint. Then a fresh process resumes and has to reach the right conclusion. Twenty-two assertions across four scenarios: killed after the commit, killed at a node boundary, interrupted before approval, and a deliberately corrupted checkpoint row.</p>
+  <p>Three real defects came out of that drill, and none of them would have been found by unit tests: the workspace path was not derivable after a mid-node kill; LangGraph's default asynchronous durability lost a boundary checkpoint under a real kill; and the checkpoint store trusted its decoder instead of raising on a malformed row.</p>
+
+  <h2>What it does in production</h2>
+  <dl class="kv">
+    <div><dt>Approval</dt><dd>Bound by hash to the exact path and content. The approve function is not in the model's tool schema — there is no code path for it to approve its own change.</dd></div>
+    <div><dt>Authority</dt><dd>The model proposes. A deterministic risk policy and a write boundary decide. Every model result is labelled advisory in code, not by convention.</dd></div>
+    <div><dt>Restart test</dt><dd>A workflow was left waiting for approval, the container was restarted for real, and the fresh container reported the same checkpoint still waiting. Approved over HTTP; the pipeline then ran to completion.</dd></div>
+    <div><dt>Audit</dt><dd>Every state transition and every human decision is an append-only row in the event ledger.</dd></div>
+  </dl>
+  <p class="links">
+    <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/durable_workflow.py">The state machine</a>
+    <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/workflow_checkpointer.py">The checkpoint store</a>
+    <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/workflow_drill.py">The crash drill</a>
+  </p>
+
+  <div class="caveat">
+    <strong>The honest limit of this.</strong>
+    This runs on my own platform, which I built and operate — it is not an employer production system, and the traffic is mine. One case is still proven only locally: a kill during the pipeline itself on the production host, because the pipeline finishes in about five seconds and I have no pause hook there. On an ephemeral filesystem a lost workspace makes the apply step fail safely rather than resume, because I have not configured a durable remote for the branch. I would rather say that than let you assume otherwise.
+  </div>
+
+  <div class="more">
+    <p><b>The rest of it.</b> Backend engineering in Java and Spring — currently at NRG Energy on multi-million-customer retail energy systems, previously Blue Cross Blue Shield Association, Marsh and Northern Trust. The same platform also runs a retrieval system with a labelled evaluation set that blocks CI, a single model boundary with a kill switch, an event ledger that meters every model call, and a Java 21 / Spring Boot service with Postgres, Flyway, JWT and resilience patterns.</p>
+    <div class="cta">
+      <a class="btn solid" href="https://agentic-platform-backend-production.up.railway.app/showcase/senior-java-ai-transformation">See every capability, with its verification level</a>
+      <a class="btn" href="#cv-download-TODO">Download CV</a>
+    </div>
+  </div>
+
+  <footer>
+    <a href="https://github.com/karthikdevadoss">GitHub</a>
+    <a href="#linkedin-TODO">LinkedIn</a>
+    <a href="#cv-download-TODO">CV</a>
+    <a href="https://agentic-platform-backend-production.up.railway.app/standing-interview">Interview surface</a>
+  </footer>
+</div>
+</body>
+</html>

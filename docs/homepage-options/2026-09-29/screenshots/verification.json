@@ -1,0 +1,342 @@
+[
+ {
+  "id": "index @desktop loads",
+  "ok": true,
+  "detail": "status 200"
+ },
+ {
+  "id": "index @desktop has an h1",
+  "ok": true,
+  "detail": "\"Home page options\""
+ },
+ {
+  "id": "index @desktop carries the MOCKUP label",
+  "ok": true,
+  "detail": "\"MOCKUP — NOT LIVE · NONE OF THESE PAGES IS SERVED \""
+ },
+ {
+  "id": "index @desktop no horizontal overflow",
+  "ok": true,
+  "detail": "clean"
+ },
+ {
+  "id": "index @desktop no console errors",
+  "ok": true,
+  "detail": "none"
+ },
+ {
+  "id": "index @desktop no uncaught page errors",
+  "ok": true,
+  "detail": "none"
+ },
+ {
+  "id": "index @mobile loads",
+  "ok": true,
+  "detail": "status 200"
+ },
+ {
+  "id": "index @mobile has an h1",
+  "ok": true,
+  "detail": "\"Home page options\""
+ },
+ {
+  "id": "index @mobile carries the MOCKUP label",
+  "ok": true,
+  "detail": "\"MOCKUP — NOT LIVE · NONE OF THESE PAGES IS SERVED \""
+ },
+ {
+  "id": "index @mobile no horizontal overflow",
+  "ok": true,
+  "detail": "clean"
+ },
+ {
+  "id": "index @mobile no console errors",
+  "ok": true,
+  "detail": "none"
+ },
+ {
+  "id": "index @mobile no uncaught page errors",
+  "ok": true,
+  "detail": "none"
+ },
+ {
+  "id": "option-a-recruiter-30s @desktop loads",
+  "ok": true,
+  "detail": "status 200"
+ },
+ {
+  "id": "option-a-recruiter-30s @desktop has an h1",
+  "ok": true,
+  "detail": "\"I build backend systems, and the agentic AI that ships them.\""
+ },
+ {
+  "id": "option-a-recruiter-30s @desktop carries the MOCKUP label",
+  "ok": true,
+  "detail": "\"MOCKUP — NOT LIVE · BACK TO OPTIONS\""
+ },
+ {
+  "id": "option-a-recruiter-30s @desktop no horizontal overflow",
+  "ok": true,
+  "detail": "clean"
+ },
+ {
+  "id": "option-a-recruiter-30s @desktop no console errors",
+  "ok": true,
+  "detail": "none"
+ },
+ {
+  "id": "option-a-recruiter-30s @desktop no uncaught page errors",
+  "ok": true,
+  "detail": "none"
+ },
+ {
+  "id": "option-a-recruiter-30s @mobile loads",
+  "ok": true,
+  "detail": "status 200"
+ },
+ {
+  "id": "option-a-recruiter-30s @mobile has an h1",
+  "ok": true,
+  "detail": "\"I build backend systems, and the agentic AI that ships them.\""
+ },
+ {
+  "id": "option-a-recruiter-30s @mobile carries the MOCKUP label",
+  "ok": true,
+  "detail": "\"MOCKUP — NOT LIVE · BACK TO OPTIONS\""
+ },
+ {
+  "id": "option-a-recruiter-30s @mobile no horizontal overflow",
+  "ok": true,
+  "detail": "clean"
+ },
+ {
+  "id": "option-a-recruiter-30s @mobile no console errors",
+  "ok": true,
+  "detail": "none"
+ },
+ {
+  "id": "option-a-recruiter-30s @mobile no uncaught page errors",
+  "ok": true,
+  "detail": "none"
+ },
+ {
+  "id": "option-b-proof-wall @desktop loads",
+  "ok": true,
+  "detail": "status 200"
+ },
+ {
+  "id": "option-b-proof-wall @desktop has an h1",
+  "ok": true,
+  "detail": "\"Every claim on this page links to the running thing.\""
+ },
+ {
+  "id": "option-b-proof-wall @desktop carries the MOCKUP label",
+  "ok": true,
+  "detail": "\"MOCKUP — NOT LIVE · BACK TO OPTIONS\""
+ },
+ {
+  "id": "option-b-proof-wall @desktop no horizontal overflow",
+  "ok": true,
+  "detail": "clean"
+ },
+ {
+  "id": "option-b-proof-wall @desktop no console errors",
+  "ok": true,
+  "detail": "none"
+ },
+ {
+  "id": "option-b-proof-wall @desktop no uncaught page errors",
+  "ok": true,
+  "detail": "none"
+ },
+ {
+  "id": "option-b-proof-wall @mobile loads",
+  "ok": true,
+  "detail": "status 200"
+ },
+ {
+  "id": "option-b-proof-wall @mobile has an h1",
+  "ok": true,
+  "detail": "\"Every claim on this page links to the running thing.\""
+ },
+ {
+  "id": "option-b-proof-wall @mobile carries the MOCKUP label",
+  "ok": true,
+  "detail": "\"MOCKUP — NOT LIVE · BACK TO OPTIONS\""
+ },
+ {
+  "id": "option-b-proof-wall @mobile no horizontal overflow",
+  "ok": true,
+  "detail": "clean"
+ },
+ {
+  "id": "option-b-proof-wall @mobile no console errors",
+  "ok": true,
+  "detail": "none"
+ },
+ {
+  "id": "option-b-proof-wall @mobile no uncaught page errors",
+  "ok": true,
+  "detail": "none"
+ },
+ {
+  "id": "option-c-one-system @desktop loads",
+  "ok": true,
+  "detail": "status 200"
+ },
+ {
+  "id": "option-c-one-system @desktop has an h1",
+  "ok": true,
+  "detail": "\"What happens when the machine dies halfway through an AI-written\""
+ },
+ {
+  "id": "option-c-one-system @desktop carries the MOCKUP label",
+  "ok": true,
+  "detail": "\"MOCKUP — NOT LIVE · BACK TO OPTIONS\""
+ },
+ {
+  "id": "option-c-one-system @desktop no horizontal overflow",
+  "ok": true,
+  "detail": "clean"
+ },
+ {
+  "id": "option-c-one-system @desktop no console errors",
+  "ok": true,
+  "detail": "none"
+ },
+ {
+  "id": "option-c-one-system @desktop no uncaught page errors",
+  "ok": true,
+  "detail": "none"
+ },
+ {
+  "id": "option-c-one-system @mobile loads",
+  "ok": true,
+  "detail": "status 200"
+ },
+ {
+  "id": "option-c-one-system @mobile has an h1",
+  "ok": true,
+  "detail": "\"What happens when the machine dies halfway through an AI-written\""
+ },
+ {
+  "id": "option-c-one-system @mobile carries the MOCKUP label",
+  "ok": true,
+  "detail": "\"MOCKUP — NOT LIVE · BACK TO OPTIONS\""
+ },
+ {
+  "id": "option-c-one-system @mobile no horizontal overflow",
+  "ok": true,
+  "detail": "clean"
+ },
+ {
+  "id": "option-c-one-system @mobile no console errors",
+  "ok": true,
+  "detail": "none"
+ },
+ {
+  "id": "option-c-one-system @mobile no uncaught page errors",
+  "ok": true,
+  "detail": "none"
+ },
+ {
+  "id": "option-d-what-are-you-hiring-for @desktop loads",
+  "ok": true,
+  "detail": "status 200"
+ },
+ {
+  "id": "option-d-what-are-you-hiring-for @desktop has an h1",
+  "ok": true,
+  "detail": "\"Same engineer. Pick the role you are filling.\""
+ },
+ {
+  "id": "option-d-what-are-you-hiring-for @desktop carries the MOCKUP label",
+  "ok": true,
+  "detail": "\"MOCKUP — NOT LIVE · BACK TO OPTIONS\""
+ },
+ {
+  "id": "option-d-what-are-you-hiring-for @desktop no horizontal overflow",
+  "ok": true,
+  "detail": "clean"
+ },
+ {
+  "id": "option-d-what-are-you-hiring-for @desktop no console errors",
+  "ok": true,
+  "detail": "none"
+ },
+ {
+  "id": "option-d-what-are-you-hiring-for @desktop no uncaught page errors",
+  "ok": true,
+  "detail": "none"
+ },
+ {
+  "id": "option-d-what-are-you-hiring-for @mobile loads",
+  "ok": true,
+  "detail": "status 200"
+ },
+ {
+  "id": "option-d-what-are-you-hiring-for @mobile has an h1",
+  "ok": true,
+  "detail": "\"Same engineer. Pick the role you are filling.\""
+ },
+ {
+  "id": "option-d-what-are-you-hiring-for @mobile carries the MOCKUP label",
+  "ok": true,
+  "detail": "\"MOCKUP — NOT LIVE · BACK TO OPTIONS\""
+ },
+ {
+  "id": "option-d-what-are-you-hiring-for @mobile no horizontal overflow",
+  "ok": true,
+  "detail": "clean"
+ },
+ {
+  "id": "option-d-what-are-you-hiring-for @mobile no console errors",
+  "ok": true,
+  "detail": "none"
+ },
+ {
+  "id": "option-d-what-are-you-hiring-for @mobile no uncaught page errors",
+  "ok": true,
+  "detail": "none"
+ },
+ {
+  "id": "chooser lists 4 options",
+  "ok": true,
+  "detail": "option-a-recruiter-30s/index.html, option-b-proof-wall/index.html, option-c-one-system/index.html, option-d-what-are-you-hiring-for/index.html"
+ },
+ {
+  "id": "chooser link resolves: option-a-recruiter-30s/index.html",
+  "ok": true,
+  "detail": "C:\\Users\\Hemapriya\\agentic-software-delivery\\docs\\homepage-options\\2026-09-29\\option-a-recruiter-30s\\index.html"
+ },
+ {
+  "id": "chooser link resolves: option-b-proof-wall/index.html",
+  "ok": true,
+  "detail": "C:\\Users\\Hemapriya\\agentic-software-delivery\\docs\\homepage-options\\2026-09-29\\option-b-proof-wall\\index.html"
+ },
+ {
+  "id": "chooser link resolves: option-c-one-system/index.html",
+  "ok": true,
+  "detail": "C:\\Users\\Hemapriya\\agentic-software-delivery\\docs\\homepage-options\\2026-09-29\\option-c-one-system\\index.html"
+ },
+ {
+  "id": "chooser link resolves: option-d-what-are-you-hiring-for/index.html",
+  "ok": true,
+  "detail": "C:\\Users\\Hemapriya\\agentic-software-delivery\\docs\\homepage-options\\2026-09-29\\option-d-what-are-you-hiring-for\\index.html"
+ },
+ {
+  "id": "clicking the first option navigates",
+  "ok": true,
+  "detail": "\"I build backend systems, and the agentic AI that ships them.\""
+ },
+ {
+  "id": "back-to-options link works",
+  "ok": true,
+  "detail": "\"Home page options\""
+ },
+ {
+  "id": "option D: disclosure opens by keyboard",
+  "ok": true,
+  "detail": "1 -> 2 open"
+ }
+]

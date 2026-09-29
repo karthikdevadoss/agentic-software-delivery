@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Karthikeyan Devadoss — every claim, with its proof</title>
+<style>
+  :root {
+    --bg: #101216;
+    --panel: #171a1f;
+    --ink: #e9eaec;
+    --soft: #9aa1aa;
+    --line: #272b32;
+    --live: #6fcf97;
+    --partial: #e2b93b;
+    --absent: #7d848d;
+    --accent: #7fb2ff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .mockflag {
+    background: #f0efe9; color: #23262b; font-size: 12px; letter-spacing: .1em;
+    text-transform: uppercase; padding: 9px 16px; text-align: center;
+  }
+  .mockflag a { color: #23262b; }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 0 22px 80px; }
+  a { color: var(--accent); }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+  header { padding: 60px 0 28px; }
+  .kicker { font-size: 13px; letter-spacing: .16em; text-transform: uppercase; color: var(--soft); margin: 0 0 18px; }
+  h1 { font-size: clamp(27px, 5.4vw, 40px); line-height: 1.16; letter-spacing: -.02em; margin: 0 0 16px; font-weight: 650; max-width: 20ch; }
+  .sub { font-size: 18px; color: var(--soft); margin: 0 0 4px; max-width: 58ch; }
+  .sub strong { color: var(--ink); font-weight: 600; }
+  .rule { font-size: 15px; color: var(--soft); border-left: 3px solid var(--live); padding: 4px 0 4px 14px; margin: 26px 0 0; max-width: 58ch; }
+
+  h2.sec {
+    font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--soft);
+    margin: 48px 0 0; padding-bottom: 12px; border-bottom: 1px solid var(--line); font-weight: 700;
+  }
+
+  .row { display: grid; grid-template-columns: 96px 1fr; gap: 18px; padding: 18px 0; border-bottom: 1px solid var(--line); align-items: start; }
+  .status { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; padding-top: 3px; }
+  .s-live { color: var(--live); }
+  .s-part { color: var(--partial); }
+  .s-none { color: var(--absent); }
+  .claim { margin: 0 0 6px; font-weight: 600; font-size: 17px; letter-spacing: -.005em; }
+  .why { margin: 0 0 8px; color: var(--soft); font-size: 15px; }
+  .links a { font-size: 14px; margin-right: 16px; text-decoration: none; border-bottom: 1px solid #39404a; }
+  .links a:hover { border-bottom-color: var(--accent); }
+
+  .note {
+    background: var(--panel); border: 1px solid var(--line); padding: 20px 22px; margin: 34px 0 0;
+    font-size: 15px; color: var(--soft);
+  }
+  .note strong { color: var(--ink); display: block; margin-bottom: 7px; font-size: 16px; }
+
+  .cta { display: flex; flex-wrap: wrap; gap: 12px; margin: 40px 0 0; }
+  .btn { display: inline-block; padding: 13px 20px; text-decoration: none; font-weight: 600; font-size: 16px;
+         border: 1.5px solid var(--accent); color: var(--accent); }
+  .btn.solid { background: var(--accent); color: #0d1016; border-color: var(--accent); }
+  .btn:hover { background: #a8caff; border-color: #a8caff; color: #0d1016; }
+
+  footer { margin-top: 52px; padding-top: 22px; border-top: 1px solid var(--line); font-size: 15px; color: var(--soft); }
+  footer a { margin-right: 18px; }
+  .emp { margin: 22px 0 0; font-size: 15px; color: var(--soft); }
+  .emp b { color: var(--ink); font-weight: 600; }
+  @media (max-width: 560px) {
+    .row { grid-template-columns: 1fr; gap: 6px; }
+    .status { padding-top: 0; }
+    .cta .btn { flex: 1 1 100%; text-align: center; }
+  }
+</style>
+</head>
+<body>
+<p class="mockflag">Mockup — not live · <a href="../index.html">back to options</a></p>
+
+<div class="wrap">
+  <header>
+    <p class="kicker">Karthikeyan Devadoss · Berlin · Senior / Lead, Backend &amp; Agentic AI</p>
+    <h1>Every claim on this page links to the running thing.</h1>
+    <p class="sub">Backend engineering in <strong>Java and Spring</strong>. Currently at <strong>NRG Energy</strong>, on multi-million-customer retail energy systems. Separately, I build and operate the agentic delivery platform this page describes.</p>
+    <p class="rule">The last two rows are the ones I would want to see first if I were reading this. They are here on purpose.</p>
+  </header>
+
+  <h2 class="sec">Agentic AI — built and running</h2>
+
+  <div class="row">
+    <div class="status s-live">Live</div>
+    <div>
+      <p class="claim">Human approval the model cannot bypass</p>
+      <p class="why">Approval is bound by hash to the exact path and content approved; changing either after approval is rejected. The approve and reject functions are absent from the model's tool schema, so it has no code path to approve its own change. Both properties are asserted by tests, not by a prompt.</p>
+      <p class="links">
+        <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/write_tools.py">write_tools.py</a>
+        <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/test_write_tools.py">the tests</a>
+        <a href="https://agentic-platform-backend-production.up.railway.app/workbench">running</a>
+      </p>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="status s-live">Live</div>
+    <div>
+      <p class="claim">Durable agent workflow that survives a crash mid-run</p>
+      <p class="why">LangGraph state machine with checkpoints in Postgres, a human interrupt, and idempotent side effects. A crash drill killed a real child process after its git commit and before the checkpoint; a fresh process recognised its own commit and refused to write twice — 22 of 22 assertions in one run. In production it survived a real container restart while waiting for approval.</p>
+      <p class="links">
+        <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/durable_workflow.py">durable_workflow.py</a>
+        <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/workflow_drill.py">the crash drill</a>
+      </p>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="status s-live">Live</div>
+    <div>
+      <p class="claim">Retrieval with a labelled evaluation that blocks CI</p>
+      <p class="why">Recall@3 0.83, Recall@5 0.92, MRR 0.83 across twelve labelled cases, plus routing accuracy 1.0. Small numbers from a real set, re-run on every build; if they regress, the build fails.</p>
+      <p class="links">
+        <a href="https://agentic-platform-backend-production.up.railway.app/ask-codebase">try it</a>
+        <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/eval_runner.py">eval_runner.py</a>
+      </p>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="status s-live">Live</div>
+    <div>
+      <p class="claim">One model boundary, with an off switch</p>
+      <p class="why">Every model call in the system goes through a single gateway with an allowlist of permitted purposes and a zero-LLM kill switch. A test fails the build if any module constructs a model client directly — it caught the first version of the interview surface doing exactly that.</p>
+      <p class="links">
+        <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/reasoning_gateway.py">reasoning_gateway.py</a>
+        <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/test_reasoning_gateway_enforcement.py">the enforcement test</a>
+      </p>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="status s-live">Live</div>
+    <div>
+      <p class="claim">Grounded answering over a private corpus, with a refusal path</p>
+      <p class="why">Retrieval over my own recorded engineering knowledge. Below a grounding threshold, code refuses before the model is called. No corpus text is in the public repository — it is built separately and delivered at deploy time.</p>
+      <p class="links">
+        <a href="https://agentic-platform-backend-production.up.railway.app/standing-interview">ask it something</a>
+        <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/standing_interview.py">standing_interview.py</a>
+      </p>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="status s-live">Live</div>
+    <div>
+      <p class="claim">Every model call metered in a durable ledger</p>
+      <p class="why">A write-through event ledger in Postgres that spools locally when the remote is unreachable, so a telemetry outage degrades instead of losing rows. Real token counts per call.</p>
+      <p class="links">
+        <a href="https://agentic-platform-backend-production.up.railway.app/usage">open the ledger view</a>
+      </p>
+    </div>
+  </div>
+
+  <h2 class="sec">Backend — built and running</h2>
+
+  <div class="row">
+    <div class="status s-live">Live</div>
+    <div>
+      <p class="claim">Java 21 / Spring Boot service with the boring parts done properly</p>
+      <p class="why">PostgreSQL with JPA and Flyway migrations, BCrypt and JWT with role-based access, resilience patterns on downstream HTTP calls. A running application, not a repository.</p>
+      <p class="links">
+        <a href="https://agentic-delivery-customer-app-production.up.railway.app">open the app</a>
+        <a href="https://github.com/karthikdevadoss/agentic-software-delivery/tree/master/app/src/main/java/com/example/customer">the source</a>
+      </p>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="status s-part">Partial</div>
+    <div>
+      <p class="claim">Transactional outbox, asymmetric JWT with JWKS, aggregator fan-out</p>
+      <p class="why">Implemented and covered by tests, but not exercised in production on this platform. I would rather label them this way than let them sit in a skills list next to things that actually run.</p>
+      <p class="links">
+        <a href="https://github.com/karthikdevadoss/agentic-software-delivery">browse the repository</a>
+      </p>
+    </div>
+  </div>
+
+  <h2 class="sec">Not built here</h2>
+
+  <div class="row">
+    <div class="status s-none">Not built</div>
+    <div>
+      <p class="claim">A second model provider, with routing and failover</p>
+      <p class="why">One provider, behind one gateway. The gateway is the right seam for adding a second, and I have not needed to.</p>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="status s-none">Not built</div>
+    <div>
+      <p class="claim">A managed vector database, hybrid search, or reranking</p>
+      <p class="why">Retrieval here is plain cosine similarity over a small corpus, computed locally. At this scale that is the correct answer, and adding a vector database would be a decision I could not defend.</p>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="status s-none">Not built</div>
+    <div>
+      <p class="claim">Automated deployment</p>
+      <p class="why">Deploys are scripted but I trigger them, and the script refuses to continue if its own gate fails. Continuous delivery with automated production verification is the next thing on the list, not something I am claiming.</p>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Why I publish the last section.</strong>
+    Most of what lands in a hiring inbox in 2026 is polished and unverifiable. I would rather hand you a list you can check — including the parts that are not there — than a skills grid. Everything above is my own platform, built and operated by me. It is not an employer production system and I do not present it as one.
+  </div>
+
+  <div class="cta">
+    <a class="btn solid" href="https://agentic-platform-backend-production.up.railway.app/standing-interview">Ask my interview surface a question</a>
+    <a class="btn" href="#cv-download-TODO">Download CV</a>
+  </div>
+
+  <p class="emp"><b>NRG Energy</b> (current) · Blue Cross Blue Shield Association · Marsh · Northern Trust</p>
+
+  <footer>
+    <a href="https://github.com/karthikdevadoss">GitHub</a>
+    <a href="#linkedin-TODO">LinkedIn</a>
+    <a href="#cv-download-TODO">CV</a>
+    <a href="https://agentic-platform-backend-production.up.railway.app/showcase/senior-java-ai-transformation">Full capability map</a>
+  </footer>
+</div>
+</body>
+</html>

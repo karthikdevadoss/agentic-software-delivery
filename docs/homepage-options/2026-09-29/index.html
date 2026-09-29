@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Home page options — 2026-09-29 — MOCKUPS</title>
+<style>
+  :root {
+    --ink: #16181d;
+    --ink-soft: #52585f;
+    --line: #d9dce0;
+    --paper: #f7f6f3;
+    --accent: #7a2e1e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 20px 80px; }
+  .flag {
+    background: #2a2d33; color: #fff; font-size: 13px; letter-spacing: .08em;
+    text-transform: uppercase; padding: 10px 20px; text-align: center;
+  }
+  h1 { font-size: clamp(28px, 5vw, 40px); line-height: 1.15; margin: 48px 0 12px; letter-spacing: -.02em; }
+  .lede { font-size: 18px; color: var(--ink-soft); max-width: 60ch; margin: 0 0 8px; }
+  .meta { font-size: 14px; color: var(--ink-soft); margin: 24px 0 40px; padding-top: 16px; border-top: 1px solid var(--line); }
+  ol.opts { list-style: none; padding: 0; margin: 0; }
+  ol.opts li { border-top: 1px solid var(--line); }
+  ol.opts li:last-child { border-bottom: 1px solid var(--line); }
+  a.opt {
+    display: block; padding: 26px 0; color: inherit; text-decoration: none;
+  }
+  a.opt:hover .name, a.opt:focus-visible .name { color: var(--accent); text-decoration: underline; }
+  a.opt:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+  .tag { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+  .name { font-size: 22px; font-weight: 650; margin: 6px 0 6px; letter-spacing: -.01em; }
+  .desc { color: var(--ink-soft); margin: 0; max-width: 62ch; }
+  .for { font-size: 14px; color: var(--ink-soft); margin-top: 10px; }
+  .for b { color: var(--ink); font-weight: 600; }
+  .docs { margin-top: 44px; padding: 20px; background: #fff; border: 1px solid var(--line); }
+  .docs p { margin: 0 0 10px; }
+  .docs a { color: var(--accent); }
+  code { background: #eceae5; padding: 1px 5px; font-size: 14px; }
+</style>
+</head>
+<body>
+<p class="flag">Mockup — not live · none of these pages is served by the application</p>
+<div class="wrap">
+  <h1>Home page options</h1>
+  <p class="lede">Four distinct concepts for the first page an HR screener, recruiter or hiring manager sees. Each is a working static mockup built on verified facts only.</p>
+  <p class="meta">Prepared 2026-09-29 · Research and reasoning in <code>RESEARCH_AND_OPTIONS.md</code> · Nothing here is deployed or linked from the running platform.</p>
+
+  <ol class="opts">
+    <li>
+      <a class="opt" href="option-a-recruiter-30s/index.html">
+        <span class="tag">Option A</span>
+        <p class="name">Thirty Seconds</p>
+        <p class="desc">A scannable brief. Who he is, what he does, three pieces of proof, one click to a running system. Designed around the six-to-eight second first scan and the roughly one minute a screener gives a whole application.</p>
+        <p class="for"><b>Best for:</b> HR screener · lowest risk of misreading</p>
+      </a>
+    </li>
+    <li>
+      <a class="opt" href="option-b-proof-wall/index.html">
+        <span class="tag">Option B</span>
+        <p class="name">The Proof Wall</p>
+        <p class="desc">Every claim carries a verification level and a link to the running thing — and a short list of what is deliberately <em>not</em> built. Answers the 2026 problem directly: applications are assumed AI-polished until something is checkable.</p>
+        <p class="for"><b>Best for:</b> technical recruiter and hiring manager · strongest trust signal</p>
+      </a>
+    </li>
+    <li>
+      <a class="opt" href="option-c-one-system/index.html">
+        <span class="tag">Option C</span>
+        <p class="name">One System, In Depth</p>
+        <p class="desc">A single engineering case study told properly: the problem, the design decision, the failure drill, the measured result. Built for the reviewer who wants to see how he thinks rather than how much he has shipped.</p>
+        <p class="for"><b>Best for:</b> hiring manager and architect-level screening</p>
+      </a>
+    </li>
+    <li>
+      <a class="opt" href="option-d-what-are-you-hiring-for/index.html">
+        <span class="tag">Option D</span>
+        <p class="name">What Are You Hiring For?</p>
+        <p class="desc">Three doors — backend lead, agentic AI lead, platform architect — each mapping the same real evidence to a different role. Built for skills-based screening, where the reader is matching a requirements list rather than reading a biography.</p>
+        <p class="for"><b>Best for:</b> recruiter working from a requirements list</p>
+      </a>
+    </li>
+  </ol>
+
+  <div class="docs">
+    <p><strong>How to read these.</strong> Every claim on every mockup traces to a verified artifact in this repository or to a live production page; the trace table is in the report. Placeholders are marked <code>TODO</code> and listed as Owner decisions.</p>
+    <p><strong>Not included on any mockup, on purpose:</strong> employment dates, phone number, address, salary, certifications, invented metrics, and any claim that portfolio work ran at employer production scale.</p>
+  </div>
+</div>
+</body>
+</html>

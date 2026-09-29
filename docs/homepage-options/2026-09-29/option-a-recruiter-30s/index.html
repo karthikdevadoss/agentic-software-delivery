@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Karthikeyan Devadoss — Senior Backend &amp; Agentic AI Engineer, Berlin</title>
+<style>
+  :root {
+    --ink: #14161a;
+    --soft: #545a62;
+    --line: #dcdfe3;
+    --paper: #fbfaf8;
+    --accent: #1f4d3d;
+    --accent-ink: #123026;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font: 17px/1.62 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .mockflag {
+    background: #2a2d33; color: #fff; font-size: 12px; letter-spacing: .1em;
+    text-transform: uppercase; padding: 9px 16px; text-align: center;
+  }
+  .mockflag a { color: #cfd4da; }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 0 22px; }
+  a { color: var(--accent); }
+  a:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+
+  /* ---------- 10 seconds ---------- */
+  header { padding: 56px 0 8px; }
+  .name { font-size: 14px; letter-spacing: .14em; text-transform: uppercase; color: var(--soft); margin: 0 0 18px; }
+  h1 {
+    font-size: clamp(30px, 6.2vw, 46px); line-height: 1.1; letter-spacing: -.025em;
+    margin: 0 0 18px; font-weight: 660; max-width: 17ch;
+  }
+  h1 em { font-style: normal; color: var(--accent); }
+  .where { font-size: 17px; color: var(--soft); margin: 0 0 6px; }
+  .where strong { color: var(--ink); font-weight: 600; }
+
+  /* ---------- 30 seconds ---------- */
+  .proof { margin: 40px 0 0; padding: 0; list-style: none; }
+  .proof li { padding: 20px 0; border-top: 1px solid var(--line); }
+  .proof li:last-child { border-bottom: 1px solid var(--line); }
+  .proof h2 { font-size: 18px; margin: 0 0 4px; font-weight: 640; letter-spacing: -.01em; }
+  .proof p { margin: 0 0 8px; color: var(--soft); font-size: 16px; }
+  .proof .go { font-size: 15px; font-weight: 600; text-decoration: none; }
+  .proof .go::after { content: " →"; }
+  .proof .go:hover { text-decoration: underline; }
+
+  .actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 34px 0 10px; }
+  .btn {
+    display: inline-block; padding: 13px 20px; text-decoration: none; font-weight: 600;
+    font-size: 16px; border: 1.5px solid var(--accent); color: var(--accent); background: transparent;
+  }
+  .btn.solid { background: var(--accent); color: #fff; }
+  .btn:hover { background: var(--accent-ink); border-color: var(--accent-ink); color: #fff; }
+
+  /* ---------- 2 minutes ---------- */
+  .deep { margin: 56px 0 0; padding-top: 34px; border-top: 3px solid var(--ink); }
+  .deep h2 { font-size: 13px; letter-spacing: .13em; text-transform: uppercase; color: var(--soft); margin: 0 0 20px; font-weight: 700; }
+  .stack { margin: 0 0 30px; color: var(--soft); }
+  .stack b { color: var(--ink); font-weight: 600; }
+  .emp { margin: 0 0 28px; }
+  .emp span { display: inline-block; margin: 0 14px 6px 0; font-weight: 600; }
+  .emp .cur::after {
+    content: "current"; font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--accent); font-weight: 700; margin-left: 7px; vertical-align: 2px;
+  }
+  .honest {
+    background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--soft);
+    padding: 18px 20px; margin: 0 0 30px; font-size: 16px;
+  }
+  .honest strong { display: block; margin-bottom: 6px; }
+  .honest p { margin: 0; color: var(--soft); }
+  footer { margin: 50px 0 70px; padding-top: 22px; border-top: 1px solid var(--line); font-size: 15px; color: var(--soft); }
+  footer a { margin-right: 18px; }
+  @media (max-width: 480px) {
+    header { padding-top: 36px; }
+    .actions .btn { flex: 1 1 100%; text-align: center; }
+  }
+</style>
+</head>
+<body>
+<p class="mockflag">Mockup — not live · <a href="../index.html">back to options</a></p>
+
+<div class="wrap">
+  <header>
+    <p class="name">Karthikeyan Devadoss</p>
+    <h1>I build backend systems, and the <em>agentic AI</em> that ships them.</h1>
+    <p class="where"><strong>Berlin.</strong> Backend engineering in Java and Spring. Currently at NRG Energy, on multi-million-customer retail energy systems.</p>
+  </header>
+
+  <ul class="proof">
+    <li>
+      <h2>A delivery agent with a gate it cannot open</h2>
+      <p>An agent plans and writes code; a human approves. The approval is bound by hash to the exact file and content approved, and the approve function is not in the model's tool schema at all — so there is no code path for it to approve its own work.</p>
+      <a class="go" href="https://agentic-platform-backend-production.up.railway.app/workbench">See it running</a>
+    </li>
+    <li>
+      <h2>A workflow that survives the machine dying</h2>
+      <p>A long-running change workflow on LangGraph, checkpointed in Postgres. In a real drill it was killed after the commit and before the checkpoint; a fresh process recognised its own commit and did not write twice. It has since survived a real container restart mid-approval in production.</p>
+      <a class="go" href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/durable_workflow.py">Read the implementation</a>
+    </li>
+    <li>
+      <h2>Retrieval that is measured, not asserted</h2>
+      <p>Retrieval over this codebase with a labelled evaluation set that runs in CI and blocks the build if it regresses. Recall@3 0.83, Recall@5 0.92, MRR 0.83 over twelve labelled cases — small, honest numbers from a real set rather than a claim.</p>
+      <a class="go" href="https://agentic-platform-backend-production.up.railway.app/ask-codebase">Try the retrieval</a>
+    </li>
+  </ul>
+
+  <div class="actions">
+    <a class="btn solid" href="https://agentic-platform-backend-production.up.railway.app/standing-interview">Interview me — ask a question</a>
+    <a class="btn" href="#cv-download-TODO">Download CV (PDF)</a>
+  </div>
+
+  <section class="deep">
+    <h2>If you have two minutes</h2>
+
+    <p class="stack"><b>Backend:</b> Java 21, Spring Boot, PostgreSQL, JPA/Hibernate, Flyway, REST and GraphQL, JWT and role-based access, resilience patterns for downstream calls, distributed services. <b>Agentic AI:</b> tool-calling agents, human-in-the-loop write boundaries, retrieval-augmented generation over private corpora, MCP tools, evaluation sets in CI, a single model boundary with a kill switch, and an event ledger that records every model call.</p>
+
+    <p class="emp">
+      <span class="cur">NRG Energy</span>
+      <span>Blue Cross Blue Shield Association</span>
+      <span>Marsh</span>
+      <span>Northern Trust</span>
+    </p>
+
+    <div class="honest">
+      <strong>What this platform is, and is not.</strong>
+      <p>It is a real system I built and operate myself: it is deployed, it is used, and every capability page links to the running thing or to the source. It is not an employer production system, and I do not present it as one. It runs on a single model provider, plain vector-free cosine retrieval sized for its corpus, and a deploy I trigger by hand. Those are scope decisions, and I will tell you why I made each one.</p>
+    </div>
+
+    <p><a href="https://agentic-platform-backend-production.up.railway.app/showcase/senior-java-ai-transformation">The full capability map, with a verification level on every entry →</a></p>
+  </section>
+
+  <footer>
+    <a href="https://github.com/karthikdevadoss">GitHub</a>
+    <a href="#linkedin-TODO">LinkedIn</a>
+    <a href="#cv-download-TODO">CV</a>
+    <a href="https://agentic-delivery-customer-app-production.up.railway.app">The Java app</a>
+  </footer>
+</div>
+</body>
+</html>
