@@ -267,9 +267,11 @@ class EndToEndShapeTestCase(_Base):
         self.assertIsNone(jm.validate_input(jm.SAMPLE_JD))
 
 
-class HttpRoutesTestCase(unittest.TestCase):
+class HttpRoutesTestCase(_Base):
     """The three routes, in-process, without a model: page 200, sample JSON,
-    and an empty submission refused by validation before any model work."""
+    and an empty submission refused by validation before any model work.
+    Inherits _Base so the ledger is patched -- the first version did not,
+    and its refusals were found in the LIVE ledger (2026-09-29 00:42-00:46Z)."""
 
     def test_routes(self):
         import web_server

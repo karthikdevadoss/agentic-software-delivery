@@ -110,3 +110,19 @@ item — e.g. a one-off external-facing document).
   follow-up (not yet done): `docs/MICROSERVICES_ARCHITECTURE.md`'s Kafka
   row should be relabelled "NOT used at NRG (confirmed 2026-09-21)".
   Explicitly out of sprint per the Owner's "before we start next sprint".
+
+
+## 2026-09-28 — full system audit (out of sprint, Owner-directed)
+
+- **research / deliverable** — the Owner asked for a complete audit of the agentic
+  system with emphasis on the AI topics it covers. Read-only; produced
+  `docs/SYSTEM_AUDIT_2026-09-28.md` (untracked by design, 678 lines): inventory with
+  the command behind every number, the AI layer component by component with real
+  parameters, all 16 AI domains and every subtopic of the Learn tree, and seven
+  findings — the Learn tree's committed metrics 5× stale against its own builder,
+  three "not used" labels contradicted by the repository (CI/CD, token cost, RAG
+  evaluation), 68 `related` links resolving ambiguously through 19 duplicated slugs,
+  301 of 898 Python tests outside the CI gate, a Java-17 claim against a Java-21
+  build, prompt caching measured but never requested. No suite was executed for it.
+  Explicitly out of sprint: the Owner's "everything in a sprint" rule requires this
+  line; the audit file itself stays untracked until the Owner decides.

@@ -1050,3 +1050,14 @@ after six runs that each found something real. Production: a workflow survived
 a real `railway redeploy` while waiting for approval, then completed its whole
 pipeline inside the container; after the restart, continue on the COMPLETED workflow -> refused, a second approve -> refused, and a wrong binding on a fresh workflow -> REJECTED (binding mismatch). Not verified on production: a kill
 during the pipeline (local drill only). Task 3 (JD Match) follows.
+
+# Current Reality (2026-09-29) — Sprint 13 Task 3: JD Match, and the sprint closed
+
+Live at `8533d67`: a public page where a recruiter pastes a job description and sees,
+requirement by requirement, what this platform genuinely demonstrates with a link to the
+proof. The model only proposes; code decides what is shown (shortlist-bound ids, statuses
+capped by recorded verification levels, registry-only links, forbidden-claim scan). The
+capability registry was made link-clean first (45 evidence links, all valid). Eval 8/8
+against the real model; production submission validated with zero violations; 24/24
+browser checks against production. Sprint 13 closed with its retro in docs/RETRO_LOG.md;
+action items await the Owner.

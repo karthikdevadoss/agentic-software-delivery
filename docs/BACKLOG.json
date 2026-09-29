@@ -2321,10 +2321,14 @@
       "started_at": "2026-09-29",
       "created_at_commit": "bac7cea",
       "commit_shas": [
-        "3a45571"
+        "3a45571",
+        "8533d67"
       ],
       "session_ids": [],
-      "completed_at": "2026-09-29"
+      "completed_at": "2026-09-29",
+      "actual_minutes": 30,
+      "actual_ratio": 0.25,
+      "actual_note": "~30 min against midpoint 120.0 min = ratio 0.25. 22:05Z rules+sizing -> 22:35Z module 88/88 with map, rewrite, matrix, corpus v2. The corpus rebuild (~6 min) and the book reading were inside this. Drafts were written while nothing else ran."
     },
     {
       "id": "BL-091",
@@ -2344,10 +2348,14 @@
       "created_at_commit": "bac7cea",
       "commit_shas": [
         "3a45571",
-        "8a81a3f"
+        "8a81a3f",
+        "8533d67"
       ],
       "session_ids": [],
-      "completed_at": "2026-09-29"
+      "completed_at": "2026-09-29",
+      "actual_minutes": 26,
+      "actual_ratio": 0.39,
+      "actual_note": "~26 min against midpoint 67.5 min = ratio 0.39. 22:35Z -> 23:01Z: acceptance script extended, gate rounds 1-3 (12/15, 12/15, 15/15), then the two post-commit gate fixes (8a81a3f, eb1aeec). Each round was a real mechanism defect, none a re-roll."
     },
     {
       "id": "BL-092",
@@ -2372,10 +2380,14 @@
         "90b8a2f",
         "1b35ea0",
         "a4a00a2",
-        "0eadf92"
+        "0eadf92",
+        "8533d67"
       ],
       "session_ids": [],
-      "completed_at": "2026-09-29"
+      "completed_at": "2026-09-29",
+      "actual_minutes": 33,
+      "actual_ratio": 2.41,
+      "actual_note": "~33 min against midpoint 13.7 min = ratio 2.41. 23:01Z -> 23:34Z (3d53074): deploy attempts 1-8. Attempts 1,3,5,7 were stopped by the script's own local gate on real defects (provenance false positive, absence-answer length, FHIR retry, 'substring' false positive); 2 and 6 were killed by the host's memory watchdog; 4 exposed the cutover race; 8 passed. Includes remote run 2 and the qa-evaluator pass (overlapping). COMPUTED midpoint 13.7 min was adopted as a prediction to be scored; it scored 2.41."
     },
     {
       "id": "BL-093",
@@ -2394,10 +2406,14 @@
       "started_at": "2026-09-29",
       "created_at_commit": "bac7cea",
       "commit_shas": [
-        "945f224"
+        "945f224",
+        "8533d67"
       ],
       "session_ids": [],
-      "completed_at": "2026-09-29"
+      "completed_at": "2026-09-29",
+      "actual_minutes": 25,
+      "actual_ratio": 0.1,
+      "actual_note": "~25 min against midpoint 240.0 min = ratio 0.1. Drafts (graph, checkpointer, drill, tests) were written in the scratchpad during Task 1's deploy waits (~20 min not counted here; see the retro). Integration 23:35Z -> hermetic 25/25 and live store 7/7 by 23:42Z, then three drill-driven code fixes to ~00:00Z."
     },
     {
       "id": "BL-094",
@@ -2416,10 +2432,14 @@
       "started_at": "2026-09-29",
       "created_at_commit": "bac7cea",
       "commit_shas": [
-        "945f224"
+        "945f224",
+        "8533d67"
       ],
       "session_ids": [],
-      "completed_at": "2026-09-29"
+      "completed_at": "2026-09-29",
+      "actual_minutes": 25,
+      "actual_ratio": 0.21,
+      "actual_note": "~25 min against midpoint 120.0 min = ratio 0.21. 23:42Z -> 00:05Z: drill runs 1-7 (footer anchor latent defect, workspace derivation, memory kills, async durability, describe/drill path bug), mutation proofs, 22/22 in one run."
     },
     {
       "id": "BL-095",
@@ -2438,10 +2458,14 @@
       "started_at": "2026-09-29",
       "created_at_commit": "bac7cea",
       "commit_shas": [
-        "945f224"
+        "945f224",
+        "8533d67"
       ],
       "session_ids": [],
-      "completed_at": "2026-09-29"
+      "completed_at": "2026-09-29",
+      "actual_minutes": 11,
+      "actual_ratio": 0.18,
+      "actual_note": "~11 min against midpoint 60.0 min = ratio 0.18. 00:10Z commit -> 00:21Z close-out: marker-gated deploy, remote SI gate 15/15, production workflow waiting-across-restart, approve-to-COMPLETED, refusals."
     },
     {
       "id": "BL-096",
@@ -2459,9 +2483,14 @@
       "created_at": "2026-09-29",
       "started_at": "2026-09-29",
       "created_at_commit": "bac7cea",
-      "commit_shas": [],
+      "commit_shas": [
+        "8533d67"
+      ],
       "session_ids": [],
-      "completed_at": "2026-09-29"
+      "completed_at": "2026-09-29",
+      "actual_minutes": 8,
+      "actual_ratio": 0.37,
+      "actual_note": "~8 min against midpoint 21.4 min = ratio 0.37. 00:22Z -> 00:30Z: registry transform, re-measure (39 -> 45 links, all valid), guards green. COMPUTED 21.4 adopted; scored 0.37."
     },
     {
       "id": "BL-097",
@@ -2479,9 +2508,14 @@
       "created_at": "2026-09-29",
       "started_at": "2026-09-29",
       "created_at_commit": "bac7cea",
-      "commit_shas": [],
+      "commit_shas": [
+        "8533d67"
+      ],
       "session_ids": [],
-      "completed_at": "2026-09-29"
+      "completed_at": "2026-09-29",
+      "actual_minutes": 15,
+      "actual_ratio": 0.09,
+      "actual_note": "~15 min against midpoint 160.0 min = ratio 0.09. Module, page, tests, eval set and runner written ~00:24Z-00:33Z (largely while the registry chain and guards ran); integration + hermetic tests + mutations by 00:40Z."
     },
     {
       "id": "BL-098",
@@ -2494,13 +2528,19 @@
       "size_rationale": "Acceptance depends on a real model run over a labelled eval set plus a live deploy; investigation_only for the same reason as BL-091. suggest-estimate -> INSUFFICIENT_HISTORY n=0; raw range adopted.",
       "deviated_from_suggestion": false,
       "category": "delivery",
-      "status": "active",
+      "status": "done",
       "sprint": "Sprint 13 (owner approved 2026-09-29, three-task autonomous sprint)",
       "created_at": "2026-09-29",
       "started_at": "2026-09-29",
       "created_at_commit": "bac7cea",
-      "commit_shas": [],
-      "session_ids": []
+      "commit_shas": [
+        "8533d67"
+      ],
+      "session_ids": [],
+      "completed_at": "2026-09-29",
+      "actual_minutes": 29,
+      "actual_ratio": 0.41,
+      "actual_note": "~29 min against midpoint 70.0 min = ratio 0.41. 00:31Z eval run 1 (4/8: step B budget) -> 00:36Z run 2 (8/8) -> Playwright rounds (timeout, link text) -> TIA map -> CI 715/715 -> commit 00:47Z -> deploy -> production verification and ledger check (clock skew found) -> Playwright vs production 24/24 at ~01:00Z."
     }
   ],
   "_calibration_process": {

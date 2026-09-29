@@ -1573,3 +1573,154 @@ and one for BL-089, both below.
 - Remaining Owner-packet book facts (Marsh Liberty Mutual/Bavaria,
   Progressive/Velocity, incidents A and C, NRG EVgo removal, Lambda 2025) —
   unchanged by this sprint.
+
+
+## Sprint 13 — three-task autonomous sprint: Standing Interview P0, durable LangGraph workflow, JD Match (2026-09-29) — CLOSED, all nine items done
+
+### Scope, as the Owner approved it
+
+Three independent tasks, in this order, each committed, deployed and verified before the
+next: (1) the Standing Interview must answer ANY on-book question like the candidate in a
+real interview — a mechanism (career map, query rewrite, only-where-used policy), with the
+six exam questions as a regression pack that must not be hard-coded; (2) one bounded,
+production-grade durable agentic workflow on LangGraph with persisted checkpoints,
+human-in-the-loop interrupt/resume, crash recovery and idempotent side effects, the
+model gaining no authority; (3) JD Match, a public page mapping a pasted job description
+to verified evidence where the model proposes and code decides. Twelve decisions were
+taken with the Owner before the start (recorded in DECISIONS.md). Run on Fable 5.1.
+The Owner asked for the retro to be written without waiting for approval.
+
+### Sizes given, before any work
+
+Nine items, sized against the rubric, `suggest-estimate` run for each. Seven were
+`INSUFFICIENT_HISTORY` (n=0 for every `first_of_kind` / `investigation_only`
+combination) and used their raw range; two `apply_known_pattern` MEDIUMs were COMPUTED
+(n=7, median_ratio 0.39) and adopted, recorded as predictions to be scored.
+
+### Final actuals
+
+| Item | Size | Estimate (mid) | Actual | Ratio | Band |
+|---|---|---|---|---|---|
+| BL-090 | LARGE | 120 min | ~30 min | **0.25** | BELOW |
+| BL-091 | MEDIUM | 67.5 min | ~26 min | **0.39** | BELOW |
+| BL-092 | MEDIUM | 13.7 min | ~33 min | **2.41** | ABOVE |
+| BL-093 | XLARGE | 240 min | ~25 min | **0.1** | BELOW |
+| BL-094 | LARGE | 120 min | ~25 min | **0.21** | BELOW |
+| BL-095 | MEDIUM | 60 min | ~11 min | **0.18** | BELOW |
+| BL-096 | MEDIUM | 21.4 min | ~8 min | **0.37** | BELOW |
+| BL-097 | LARGE | 160 min | ~15 min | **0.09** | BELOW |
+| BL-098 | MEDIUM | 70 min | ~29 min | **0.41** | BELOW |
+| **SPRINT (summed items)** | 9 items | 872.6 min | ~202 min | **0.23** | BELOW |
+| **SPRINT (wall-clock)** | | | ~180 min (22:05Z → ~01:05Z) | **0.21** | BELOW |
+
+The two figures answer different questions: summed-item actuals count only the minutes
+attributed to an item's own work; wall-clock includes every deploy wait, gate run and
+watchdog kill. Roughly 20 minutes of Task 2 and 10 minutes of Task 3 drafting happened
+inside Task 1's and Task 2's deploy waits and are counted once, under the item that used
+them. Running total: **2 of 48 items inside the ±30% band** (this sprint added 0).
+
+### Diagnosis — ESTIMATION WRONG on all nine, in the opposite direction from Sprints 11–12; and real IMPLEMENTATION ISSUES on three
+
+**ESTIMATION WRONG (nine of nine, all BELOW).** Sprints 11 and 12 ran 3–5× ABOVE their
+COMPUTED midpoints; this sprint ran 0.1–0.4× BELOW its raw ranges. The raw ranges were
+sized as if each item were built sequentially from a blank page by an executor who waits
+for its own builds. The actual working pattern was different in two ways the rubric only
+half anticipates: (a) every long wait (corpus rebuild, gate run, deploy, drill) was used to
+draft the next item in the scratchpad, so `first_of_kind` items arrived at integration
+with their code, tests and drill already written; (b) the estimator had n=0 for every
+`first_of_kind` combination, so nothing could correct the raw ranges. The rubric's
+sequential-vs-parallel instruction is written for parallel subagents; it applies just as
+much to one executor overlapping drafting with waits, and it was not applied. The two
+COMPUTED items behaved differently from each other: BL-096 (a YAML transform) scored
+0.37 — the historical 0.39 was right; BL-092 (prove-live) scored 2.41 — the third sprint
+in a row where a "prove live" item ran far above a COMPUTED midpoint, now with the cause
+visible: the deploy loop is a convergence loop against a non-deterministic surface
+(seven attempts, each stopping on something real), which is `investigation_only` work
+wearing an `apply_known_pattern` label.
+
+**IMPLEMENTATION ISSUES (named separately, each real).**
+- BL-092: two of the eight deploy attempts were self-inflicted. A patch routed through a
+  Bash heredoc lost its `\b` escapes (three times in one night, once after the lesson was
+  already written down), and a test command piped into `tail` masked a red suite so a
+  deploy started on failing tests and had to be stopped by hand.
+- BL-094: the first mutation check ran against an unmutated copy because a Git-Bash
+  `/tmp` path was handed to Python as a Windows path; a green result that proved nothing,
+  caught by re-reading the traceback.
+- BL-098: the first production ledger check compared laptop timestamps with container
+  timestamps (laptop 6.3 min ahead) and looked like a missing write for twenty minutes.
+
+### What the sprint found that was not in its scope (all recorded, none silently fixed)
+
+- `demo_catalogue`'s `footer_text` anchor cannot match the real `index.html` (ACT-022).
+- LangGraph's default `durability="async"` loses a node's checkpoint on a kill at the next
+  node boundary; the durable workflow now asks for `"sync"` (DECISIONS.md, LESSONS.md).
+- Railway's cutover routed a remote gate to the previous container; the deploy script now
+  gates on a per-upload marker (LESSONS.md).
+- `leak_blocked` rows carry the refused model text — an Owner decision (ACT-023).
+- The untracked corpus is one `git add -A` from being committed (ACT-020).
+- The audit register returned in two shapes found by the independent QA pass on a fresh
+  draw (ACT-021, fixed, rode the Task 2 deploy).
+- The host's memory watchdog killed six long background runs; every long drill and gate
+  now has a per-scenario switch and the critical runs were done in the foreground.
+
+### Action items (three fixed sections; NOT sized; Owner approval required before any is acted on)
+
+**(1) Estimation-mistake improvements**
+- Record this sprint's nine `first_of_kind` / `investigation_only` actuals so
+  `suggest-estimate` stops returning `INSUFFICIENT_HISTORY` for them; the raw ranges were
+  4–10× too high and the estimator had no data to say so.
+- Extend the rubric's parallel instruction to a single executor: when an item can be
+  drafted during another item's waits, give the sequential-effort figure AND the expected
+  overlap, and score against the wall-clock figure for the sprint.
+- Label any item whose acceptance is "prove live" on a non-deterministic surface
+  `investigation_only`, regardless of how proven the deploy script is (BL-089 scored 3.68,
+  BL-092 scored 2.41; the script was never the cost either time). This repeats Sprint 12's
+  unapproved item with two more data points.
+
+**(2) Implementation-mistake improvements**
+- Make "no backslash through a heredoc" mechanical: patches to files are written to a
+  scratchpad script with the Write tool and executed; the Bash tool is not used to author
+  file content that contains a backslash. Three real incidents in one night.
+- Never chain a deploy after a piped test command; pipelines mask exit codes. A deploy
+  chain uses the script (which has `set -euo pipefail`) or an explicit exit-code check.
+- Before comparing a timestamp from another host, print the two clocks side by side
+  (`SELECT now()` vs `date -u`) and record the skew; laptop ahead by 6.3 min today.
+
+**(3) Neither, but needed — and one for the sprint as a whole**
+- SPRINT AS A WHOLE: three XLARGE tasks in one session worked, but only because every wait
+  was used for drafting and because the host's memory kills were survivable with
+  foreground re-runs. The Owner's own operating policy names session length as a cost
+  driver; this session's token cost was not measured by me and should be read from the
+  Claude Code hook's ledger rows before deciding whether to repeat this shape. The
+  recommendation is to keep multi-task sprints but budget a deliberate `/compact` between
+  tasks next time.
+- Owner decisions queued: ACT-020 (corpus guard), ACT-022 (footer anchor), ACT-023
+  (refused text in the ledger), the retryable-leak rule (DECISIONS.md), and the FHIR
+  clause removed from the Sprint 12 frozen fixture under the Sprint 13 Q3 rule.
+- The 29 pre-existing backlog items with statuses outside `_status_values`
+  (BL-042…BL-080) are doc drift the brief already flags; a one-line normalisation would
+  make `state_brief.py`'s status counts trustworthy again.
+
+### Cost and usage, honestly labelled
+
+- Standing Interview gate runs: ~14 full or partial runs (local and remote) at 15–17 real
+  model calls each — roughly 230 Sonnet-5 calls; measured per-run cost is not aggregated
+  by the gate, so the total is an estimate of $5–7, not a measured figure.
+- JD Match: eval run 1 $0.1732 and run 2 $0.1366 (measured); one production submission
+  $0.0302 (measured); three Playwright real runs ~$0.03 each (estimated from the same shape).
+- Durable workflow: the advisory investigate call is ~130 tokens per workflow start
+  (measured on the production run, $0.0009); ~12 starts in the drills.
+- qa-evaluator subagent: 91,516 tokens, 41 tool uses, 20.6 minutes (reported by the tool),
+  cost not exposed to this session.
+- This session's own tokens: not measured by me; the Claude Code SessionEnd hook records
+  them in the ledger under `claude_code`.
+
+### Carried forward
+
+- Not verified on production: a kill DURING the durable workflow's pipeline (local drill
+  only) — an ephemeral filesystem plus no push credential means a lost workspace fails
+  safely rather than resuming; the Owner may configure `DEMO_GIT_PUSH_TOKEN` to make the
+  applied branch durable off-box.
+- JD Match's shortlist is a cosine over 22 registry entries; a broad requirement can be
+  assessed against a neighbour. Cooldown and daily cap are per instance.
+- Playwright E2E's pre-existing non-blocking failure was not touched.
