@@ -2492,3 +2492,160 @@ sprint depends on, and the collisions surface one at a time, each looking like a
 product failure until diagnosed. The `SI_OPERATOR_TOKEN` exemption exists
 because of it, and it fails closed so the endpoint stays protected while the
 gate stops being blocked.
+
+---
+
+## Sprint 16 — nine pages, nine identities, and the guard that measured the wrong thing (2026-09-30) — CLOSED
+
+### A. Scope
+
+**Planned (7 sized items, 405 min summed midpoint).** Design guards; the
+172-character line length; the lopsided header; navigation and duplicate links;
+visual hierarchy on the dark surfaces; home and case-study; verify and deploy.
+
+**Completed:** all seven, deployed and verified against production.
+
+**Origin.** Sprint 15 closed with 67/67 UI guards green against production, a
+15/15 acceptance gate and a measured 28→0 on answer quality. The Owner opened
+the site and said: *"None of the pages looks good in browser. so bad. why is
+that?"* He was right and so was every guard — they measure alignment, sizes, a
+legibility floor and overflow, and not one asks whether a page is readable.
+
+**Scope changed mid-sprint, by the Owner, four times** — from "fix layout only"
+to per-page colour and font, then to distinct display faces, then to "the
+variation itself is a USP", then to grounding every choice in current research.
+Each was an expansion rather than a reversal, so the work accumulated instead of
+being thrown away.
+
+### B. Time
+
+| | |
+|---|---|
+| Summed item midpoints | 405 min |
+| Actual wall-clock | 231 min |
+| Ratio | **0.57** |
+
+The highest ratio recorded in this log. The previous five sprints ran 0.21–0.48;
+Sprint 15 was 0.36.
+
+---
+
+## Section 1 — Learnings from wrong ESTIMATION
+
+**1.1 — The one item sized against the computed number was the one that needed
+the deviation.** `suggest-estimate LARGE/MEDIUM/first_of_kind` returned n=3,
+median ratio 0.21, suggested midpoint **25.2 min** for the visual hierarchy
+pass. I deviated up to 120 and recorded why: three samples is a thin basis, and
+all three were CODE items whose acceptance is an exit code. **A ratio computed
+from work with a deterministic done-state does not transfer to work whose
+acceptance is a human looking at it.** Verdict: ESTIMATION CORRECT, because the
+deviation was deliberate and stated up front rather than discovered afterwards.
+
+**1.2 — 0.57 is the least-wrong sprint yet, and the reason is worth keeping.**
+Every previous sprint sized from the same code-derived ratios and came in at
+0.21–0.48 — estimates roughly 2–5× too high. This one deviated up on the two
+judgement-heavy items and down on none, and landed closest to 1.0. **The
+calibration data is systematically wrong for judgement work and systematically
+right for mechanical work.** The correction is a per-pattern multiplier, not a
+single global one.
+
+---
+
+## Section 2 — Learnings from IMPLEMENTATION issues
+
+**2.1 — The defect was not taste, and I nearly treated it as taste.** The Owner
+said the pages looked bad. The measurable cause was paragraphs rendering at
+**172 characters** against a readable band of 50–75. Had I answered "looks bad"
+with colour and spacing alone, the pages would have stayed hard to read and
+looked better while doing it. **When someone reports an aesthetic symptom,
+measure before restyling** — there was a readability defect underneath, and it
+was the same `--prose` token Sprint 15 had defined and applied to the wrong
+elements.
+
+**2.2 — My guard measured the wrong thing and passed on the defect.** The
+header/body balance check compared BLOCK widths. The `<h1>` block is already
+full width, so it reported a ratio of 1.00 on pages that visibly had a 587px
+paragraph above 1136px content. **A guard can be green, internally correct, and
+aimed at a property nobody cares about.** Rewritten to measure the TEXT measure
+— what the eye actually reacts to — and it went red immediately.
+
+**2.3 — And my other guard estimated instead of measuring.** The line-length
+check divided rendered width by `fontSize × 0.5`, assuming an average glyph
+advance. That is font-dependent, and it broke the moment real webfonts loaded:
+the same column measured 86 "characters" with Inter while rendering fewer than
+before. **The estimator moved and the page did not.** Replaced with
+`text.length / rendered lines`, which is exact and font-independent.
+
+**2.4 — I broke two pages by find-and-replacing a literal with a token they
+cannot see.** `case-study` and `home` do not load `style.css` — they are
+self-contained. Replacing `68ch` with `var(--prose)` there made the declaration
+*invalid*, and an invalid `max-width` does not fall back, it disappears. Those
+two pages went from a 68ch cap to **uncapped**, 107–110 real characters — worse
+than before the sprint started. **An unresolvable `var()` fails silently and
+totally.** Both now define the token locally with a comment saying why it must
+be kept in step.
+
+**2.5 — The recurring defect recurred twice more, in one sprint.** An exception
+written `.proof *` un-capped every descendant including the card paragraphs —
+home's 101-character lines. And the selector lists kept naming one container
+(`main`) when the site has several (`.wrap`, `.si-wrap`, a `<dl>` outside both).
+**Five occurrences across two sprints now: a rule that enumerates rather than
+describes.** The fix each time was to describe the property instead — ask every
+element, narrow the exception to `> *`, cap prose structurally.
+
+**2.6 — Fourth heredoc-escaping incident of the day, one of them while writing
+the retro item about the third.** A shell heredoc converted `\b` into a literal
+backspace (0x08), so the first-person regex searched for control characters and
+matched nothing, flagging every answer over 40 words including the frozen test
+fixture. This repository's LESSONS.md already says to write a file rather than
+pipe escapes through the shell. Knowing the rule and citing the rule turned out
+not to be the same as following it.
+
+**2.7 — A check that only runs at deploy time cannot fix anything.** The
+first-person requirement existed only in the acceptance gate, which runs at
+deploy and can therefore only BLOCK an answer, never improve one. It failed the
+deploy twice on the same question. Moved into the runtime voice gate as a soft
+violation, where it triggers a retry and the retry prompt names the failure —
+after which the gate passed 15/15 twice. **Put the check where the correction
+can happen.**
+
+**2.8 — Two Sprint 15 guards were changed, and that needs justifying more than
+tightening does.** Both asserted SAMENESS — all h1 sizes within 8px, all shells
+identical — as proxies for real requirements. Sprint 15's actual defects were a
+26.4px title that read as body text, and five arbitrary widths nobody had
+decided. Per-page identity makes sameness the wrong assertion: a serif at 44px,
+a sans at 40 and a mono at 33 are the same optical weight, and two widths chosen
+by content type is a decision rather than drift. Both now assert the requirement
+directly, and both still fail against the original defect.
+
+---
+
+## Section 3 — Neither, but still needed
+
+**3.1 — Research changed a decision, which is the test of whether it was
+actually used.** Tuch et al. find that HIGH visual complexity produces a *worse*
+first impression than low or medium. That runs against the instinct when asked
+to make pages "visually engaging", and it is why each surface got **one**
+structural signature rather than several — then complexity was measured
+afterwards and confirmed low on all nine. Prototypicality predicting
+trustworthiness (29–68% of variance) is why the nav moved to first on every
+page. Citing research that merely agrees with what you were already going to do
+is decoration.
+
+**3.2 — There is still no visual regression testing, and the gap is now
+narrower and sharper.** Sprint 15's retro proposed it; this sprint shows what it
+would and would not catch. Line length, balance, complexity and duplicate links
+are now all measured. **Flat visual hierarchy is not, and cannot be** — DD6 was
+addressed by spacing, type layers and elevation, and verified only by looking at
+nine screenshots. A pixel-baseline tier would help, but these pages render live
+data (costs, run counts, dates), so it needs masking or it will false-positive
+constantly. Worth proposing now with a clear specification rather than as a
+vague wish.
+
+**3.3 — For the sprint as a whole.** Two sprints running, the Owner found the
+defect by opening the site, and both times the suite was green. Sprint 15 added
+guards for what he found; Sprint 16 added guards for what he found next.
+**The pattern is that guards get written to catch the previous complaint.** The
+only general defence is the thing neither sprint automated: look at the rendered
+page before calling it done. That is now a named step in BL-187, and it is the
+step that found the remaining defects both times.
