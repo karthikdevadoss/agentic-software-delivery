@@ -88,6 +88,11 @@ HERMETIC_MODULES = [
     # dict or a literal path list, and the guard's whole job is to make a
     # provider call impossible without explicit authorization.
     "test_select_tests",
+    # Sprint 17: the release-health runner's three-outcome verdict. Hermetic --
+    # every case injects its own prerequisite answers rather than depending on
+    # what this machine happens to have installed, which is the exact trap that
+    # made four modules in this list look hermetic once before.
+    "test_release_health",
     # Promoted out of PENDING_OWNER_DECISION 2026-09-25 after a real content
     # re-verification (capabilities resolve, evidence paths exist, 8/9 URLs
     # live) and an honest last_verified bump. The 9th URL, the custom domain,

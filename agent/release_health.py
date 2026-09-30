@@ -45,14 +45,30 @@ run here and say so instead of passing quietly:
     Testcontainers Postgres tests and its Dockerfile build only ever run in CI.
   * The Java gates need a JDK and several minutes; --quick omits them by
     design and says so in the exclusion list.
-  * Five Playwright specs fail locally for environment reasons proven
-    pre-existing in Sprint 16 by stashing all changes and re-running against a
-    clean tree (no ledger data, no verified run, Customer App not running).
-    They pass in production.
+  * A handful of Playwright specs fail here for environment reasons, not
+    because the branch is broken. Measured 2026-09-30: 5 failures with the
+    Customer App down, 3 with it running -- the two customer-app specs cleared,
+    which is what moved them from "probably environmental" to a checkable entry
+    in ENVIRONMENT_DEPENDENT_SPECS below. The two /usage ones were proven
+    pre-existing by stashing all work, checking agent/web/usage.* out at
+    0209b4a, and watching them fail identically against the original renderer.
 
-A gate that could not execute is reported as SKIPPED, never folded into a pass.
-CLAUDE.md: SKIPPED is not PASSED, and a report that cannot tell them apart is
-the false-green defect this repository has already shipped once.
+THREE OUTCOMES, NOT TWO
+-----------------------
+GREEN, RED, and UNVERIFIED. A gate that could not execute is SKIPPED and never
+folded into a pass; a gate that ran and failed only because a declared
+prerequisite was CHECKED AND FOUND ABSENT is UNVERIFIED, which still exits
+non-zero and is never reported as green. Any failure outside the declared
+register makes the verdict RED regardless.
+
+Both directions of that rule matter. CLAUDE.md already says SKIPPED is not
+PASSED; the inverse had no representation here, and reporting an absent
+dependency as a flat RED trains a reader to discount every red.
+
+Nothing in the register can excuse a real failure: see
+_classify_playwright_failures, and the three proven cases in this sprint's retro
+(only-environmental -> UNVERIFIED, one real failure alongside -> RED,
+prerequisite present -> RED).
 """
 
 from __future__ import annotations
@@ -207,6 +223,55 @@ NOT_RELEASE_HEALTH = {
 }
 
 
+# Playwright specs whose failure on THIS machine is attributable to a named,
+# CHECKABLE environment prerequisite rather than to a defect in the branch.
+#
+# WHY THIS EXISTS, and why it does not weaken anything. CLAUDE.md is explicit that
+# a gate which could not execute is SKIPPED, never PASSED, and that a change whose
+# mandatory suite was skipped is UNVERIFIED rather than PASSED. The inverse is just
+# as wrong and had no representation here: a suite that ran and failed BECAUSE a
+# dependency was absent is also not a verdict on the branch, and reporting it as a
+# flat RED trains a reader to discount every red.
+#
+# So this runner has three outcomes, not two -- GREEN, RED, and UNVERIFIED -- and
+# UNVERIFIED still exits non-zero. Nothing here can turn a real failure green: an
+# entry is only honoured when its prerequisite is CHECKED AND FOUND ABSENT, and any
+# failure outside this register makes the verdict RED regardless.
+#
+# Each entry was verified by observation, not assumed. On 2026-09-30 the full suite
+# reported 5 failures with the Customer App down and 3 with it running -- the two
+# customer-app specs cleared, which is what promoted them from "probably
+# environmental" to a checkable entry here.
+ENVIRONMENT_DEPENDENT_SPECS = {
+    "e2e/customer-app-frontend.spec.js": {
+        "needs": "customer_app",
+        "why": ("drives the real Customer App's own frontend at http://127.0.0.1:8080. "
+                "Verified: fails when it is down, passes when `cd app && ./mvnw "
+                "spring-boot:run` is up."),
+    },
+    "e2e/customer-app-update-email.spec.js": {
+        "needs": "customer_app",
+        "why": ("the real login -> edit-email -> save -> reload flow against the "
+                "Customer App on :8080. Same verification."),
+    },
+    "e2e/usage.spec.js": {
+        "needs": "small_session_history",
+        "why": ("asserts the Session History panel and a specific known-cost session id "
+                "within toHaveScreenshot's fixed 5s expect-timeout. This machine holds "
+                "511 real session rows to production's 2, so the page takes longer than "
+                "5s to render here. PROVEN pre-existing: stashed all work, checked "
+                "agent/web/usage.* out at 0209b4a, both cases failed identically against "
+                "the original renderer; both pass against production in 2.4s."),
+    },
+    "e2e/profile.spec.js": {
+        "needs": "verified_run_in_ledger",
+        "why": ("its verified-run case needs a real COMPLETED+verified Workbench run in "
+                "the event ledger, which requires a live EVENT_LEDGER_DATABASE_URL. Its "
+                "privacy cases -- the ones that matter -- pass here."),
+    },
+}
+
+
 def _have(what: str) -> tuple:
     """Returns (available, reason). Checks the real prerequisite rather than
     assuming this machine has it -- the exact trap that made four Python modules
@@ -227,7 +292,82 @@ def _have(what: str) -> tuple:
         if not (REPO / "node_modules" / "@playwright").exists():
             return False, "node_modules/@playwright is absent -- run `npm ci` first"
         return True, ""
+    if what == "customer_app":
+        # A real HTTP request, not a port scan: something else could hold :8080.
+        try:
+            import urllib.error
+            import urllib.request
+            with urllib.request.urlopen("http://127.0.0.1:8080/", timeout=4) as resp:
+                if resp.status == 200:
+                    return True, ""
+                return False, f"http://127.0.0.1:8080/ answered {resp.status}, not 200"
+        except Exception as exc:  # noqa: BLE001 - any failure means "not reachable"
+            return False, (f"the Customer App is not reachable at http://127.0.0.1:8080/ "
+                           f"({type(exc).__name__}). Start it with: "
+                           f"cd app && ./mvnw spring-boot:run")
+    if what == "small_session_history":
+        # COUNTED FROM THE RIGHT FILE, on the second attempt. The first version of
+        # this check counted agent/dev_sessions.json and reported "present" while
+        # /usage was rendering 508 rows -- a check measuring the wrong thing, which
+        # is worse than no check because it reads as a real answer. Caught by
+        # smoke-testing the classifier and noticing the verdict disagreed with the
+        # observed behaviour.
+        #
+        # The rows come from sessions_data.get_sessions_data()'s `sessions` list,
+        # which is built mostly from agent/web_run_history.jsonl (444 lines here)
+        # plus dev sessions. Counting the JSONL is a real proxy for the real source
+        # and needs no running server.
+        try:
+            path = REPO / "agent" / "web_run_history.jsonl"
+            n = sum(1 for line in path.read_text(encoding="utf-8").splitlines()
+                    if line.strip())
+        except Exception:  # noqa: BLE001
+            # Cannot count it -> do NOT claim an excuse. An unknown prerequisite is
+            # treated as present, so the failure stays real and the verdict stays RED.
+            return True, ""
+        if n > 50:
+            return False, (f"agent/web_run_history.jsonl holds {n} recorded runs, and "
+                           f"/usage renders its whole history in one pass -- past roughly "
+                           f"50 it exceeds Playwright's fixed 5s expect-timeout on this "
+                           f"machine. Production's ledger holds 2 rows and the same "
+                           f"assertions pass there in 2.4s.")
+        return True, ""
+    if what == "verified_run_in_ledger":
+        if not os.environ.get("EVENT_LEDGER_DATABASE_URL"):
+            return False, ("EVENT_LEDGER_DATABASE_URL is unset, so no verified Workbench "
+                           "run can be read from the event ledger")
+        return True, ""
     return True, ""
+
+
+def _classify_playwright_failures(failure_lines) -> tuple:
+    """Split real failures from ones attributable to a verified-absent prerequisite.
+
+    Returns (attributable, unattributable, prerequisite_notes). A failure counts as
+    attributable ONLY when its spec is in the register AND that prerequisite is
+    checked and found absent -- so a present prerequisite means the failure is real
+    and the verdict stays RED.
+    """
+    attributable, unattributable, notes = [], [], []
+    checked = {}
+    for line in failure_lines:
+        spec = next((k for k in ENVIRONMENT_DEPENDENT_SPECS
+                     if k.replace("/", "\\") in line or k in line), None)
+        if spec is None:
+            unattributable.append(line)
+            continue
+        need = ENVIRONMENT_DEPENDENT_SPECS[spec]["needs"]
+        if need not in checked:
+            checked[need] = _have(need)
+        ok, reason = checked[need]
+        if ok:
+            unattributable.append(line)
+        else:
+            attributable.append(line)
+            note = f"{spec}: {ENVIRONMENT_DEPENDENT_SPECS[spec]['why']} -- {reason}"
+            if note not in notes:
+                notes.append(note)
+    return attributable, unattributable, notes
 
 
 def _run(argv, cwd: Path, timeout: int):
@@ -421,8 +561,39 @@ def main(argv=None) -> int:
           f"+ {len(NOT_RELEASE_HEALTH)} never-release-health (both listed above)")
     print(f"  paid model calls: 0")
 
-    verdict = "GREEN" if not blocking_failures else "RED"
+    # THREE OUTCOMES, NOT TWO. A blocking gate that failed only on specs whose
+    # prerequisite is CHECKED and found absent has not told us the branch is
+    # broken -- it has told us the branch could not be tested here. That is
+    # UNVERIFIED. It still exits non-zero, and it can never be reached while any
+    # failure sits outside the declared register.
+    env_attributable, env_real, env_notes = [], [], []
+    for r in blocking_failures:
+        if r["id"] != "playwright-functional":
+            env_real.append(f"{r['id']}: not an environment-dependent gate")
+            continue
+        lines = [ln for c in r["commands"] for ln in (c.get("failure_lines") or [])]
+        # Only the numbered "N) [chromium] > spec" lines name a failing spec.
+        named = [ln for ln in lines if re.match(r"^\d+\)\s", ln)]
+        a, u, notes = _classify_playwright_failures(named)
+        env_attributable += a
+        env_real += u
+        env_notes += notes
+        r["env_attributable_failures"] = a
+        r["env_real_failures"] = u
+
+    if not blocking_failures:
+        verdict = "GREEN"
+    elif env_attributable and not env_real:
+        verdict = "UNVERIFIED"
+    else:
+        verdict = "RED"
+
     print(f"\n  RELEASE HEALTH = {verdict}")
+    if verdict == "UNVERIFIED":
+        print("  Every blocking failure is attributable to an environment prerequisite")
+        print("  that was CHECKED and found absent on this machine. This is NOT GREEN --")
+        print("  the branch has not been verified here, and this run exits non-zero.")
+        print("  These gates must still pass where the real dependency exists.")
     if blocking_failures:
         print("  blocked by:")
         for r in blocking_failures:
@@ -430,10 +601,25 @@ def main(argv=None) -> int:
                 if c["exit_code"] not in (0, None) or c["error"]:
                     print(f"    - {r['id']}: {c['command']} "
                           f"-> exit {c['exit_code']}{(' / ' + c['error']) if c['error'] else ''}")
+    if env_real:
+        print("\n  REAL failures, NOT attributable to any declared prerequisite:")
+        for line in env_real:
+            print(f"    - {line}")
+    if env_attributable:
+        print(f"\n  {len(env_attributable)} failure(s) attributable to a verified-absent "
+              f"prerequisite:")
+        for line in env_attributable:
+            print(f"    - {line}")
+        print("\n  Why each, and how to make it testable here:")
+        for note in env_notes:
+            print(f"    * {note}")
 
     if args.json:
         Path(args.json).write_text(json.dumps({
             "verdict": verdict,
+            "env_attributable_failures": env_attributable,
+            "real_failures": env_real,
+            "environment_notes": env_notes,
             "mode": "quick" if args.quick else ("changed" if args.changed else "full"),
             "results": results,
             "excluded_this_invocation": [{"id": g, "reason": w} for g, w in excluded],
@@ -443,6 +629,8 @@ def main(argv=None) -> int:
         }, indent=2), encoding="utf-8")
         print(f"\n  wrote {args.json}")
 
+    # UNVERIFIED exits non-zero on purpose: it is not a pass, and a caller that
+    # only checks for zero must not be able to read it as one.
     return 0 if verdict == "GREEN" else 1
 
 

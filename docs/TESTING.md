@@ -231,20 +231,53 @@ Currently `continue-on-error: true` in CI, because it has no CI track record.
 runs on master, then remove `continue-on-error`. Red or flaky instead is a real
 finding to fix, not a reason to delete the job.
 
-Five specs fail on this laptop for environment reasons proven pre-existing in
-Sprint 16 by stashing all changes and re-running against a clean tree: no ledger
-data, no verified run, Customer App not running. They pass in production. Do not
-chase them.
+A handful of specs fail on this laptop for environment reasons, not because the
+branch is broken. **Measured, 2026-09-30:** 5 failures with the Customer App down,
+**3 with it running** — the two `customer-app-*.spec.js` failures cleared when
+`cd app && ./mvnw spring-boot:run` was actually started, which is what turned
+"probably environmental" into a checkable fact.
+
+The three that remain:
+
+| Spec | Needs | Evidence it is environmental |
+|---|---|---|
+| `e2e/usage.spec.js:25` | a small session history | Proven pre-existing: stashed all work, checked `agent/web/usage.*` out at `0209b4a`, failed identically against the original renderer. Passes against production in 2.4s. |
+| `e2e/usage.spec.js:31` | a small session history | Same proof. This machine's `web_run_history.jsonl` holds 444 runs; production's ledger holds 2, and `/usage` renders its whole history inside Playwright's fixed 5s expect-timeout. |
+| `e2e/profile.spec.js:59` | a verified run in the ledger | Needs a real COMPLETED+verified Workbench run, which needs a live `EVENT_LEDGER_DATABASE_URL`. Its privacy cases — the ones that matter — pass here. |
+
+Do not chase them. `agent/release_health.py` now checks each prerequisite and says
+so itself: it declares these in `ENVIRONMENT_DEPENDENT_SPECS` and reports
+**UNVERIFIED** (exit non-zero, never green) when every blocking failure is
+attributable to a verified-absent prerequisite. A failure outside that register
+makes the verdict RED regardless, and a prerequisite that is *present* makes its
+spec's failure real again.
 
 ---
 
-## SKIPPED is not PASSED
+## SKIPPED is not PASSED — and a SKIP reported as a FAIL is also wrong
 
 A gate that could not execute is reported SKIPPED with the real reason, never
 folded into a pass. `agent/release_health.py` checks the real prerequisite —
-`node` on PATH, a JDK, `node_modules/@playwright` present — rather than assuming
-this machine has it. That is the exact trap that once made four Python modules
-look hermetic because this laptop happened to hold a JDK and a ledger URL.
+`node` on PATH, a JDK, `node_modules/@playwright` present, the Customer App
+answering 200 on :8080, the size of the local run history, `EVENT_LEDGER_DATABASE_URL`
+— rather than assuming this machine has it. That is the exact trap that once made
+four Python modules look hermetic because this laptop happened to hold a JDK and a
+ledger URL.
+
+The inverse matters just as much and had no representation until Sprint 17: a
+suite that **ran and failed because a dependency was absent** is also not a verdict
+on the branch, and calling it a flat RED teaches a reader to discount every red.
+Hence the third outcome, UNVERIFIED — non-zero exit, explicitly not green, with
+each attributable failure named alongside the prerequisite that was missing and how
+to supply it.
+
+Two guardrails, both proven rather than asserted: a failure outside the declared
+register makes the verdict RED, and a prerequisite found *present* makes its spec's
+failure real again. Both were smoke-tested against fabricated failure lists before
+the logic was trusted — and that smoke test is what caught the first version of the
+history check counting the wrong file (`dev_sessions.json`, 3 entries) while the
+page was really rendering 508 rows. A check that measures the wrong thing is worse
+than no check, because it reads as an answer.
 
 ---
 

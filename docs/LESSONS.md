@@ -1698,3 +1698,87 @@ warns you. And when a time-dependent thing misbehaves, check for skew BEFORE
 re-reading logic that unit tests already cover: a test that patches the clock
 (`mock.patch.object(si_budget, "_today", ...)`) proves the branch works and
 says nothing at all about what time the other machine thinks it is.
+
+## Four gotchas from building the Sprint 17 test layer (2026-09-30)
+
+Grouped because they were all found the same way: a guard failed, the obvious
+explanation was wrong, and the real one was already in the output.
+
+### 1. `overflow-wrap` inherits, so never enumerate selectors for it
+
+The defect was a long unbreakable token — a repository path, a
+`SCREAMING_SNAKE_CASE` identifier, a commit hash — overflowing a container
+narrower than the token, which gives the whole document a horizontal scrollbar at
+390px. Real measurement: `/showcase` at `scrollWidth 435` against
+`clientWidth 390` in production.
+
+The first fix was an explicit selector list: `p, li, dd, dt, td, th`, headings,
+`.hint`, `.sub`, and four more classes. `/usage` still overflowed by 16px, because
+its history rows put the same identifiers inside plain `div.goal` and
+`div.session-row` — which no reasonable list would have contained.
+
+**The rule.** `overflow-wrap` is an inherited property. When the defect class is
+"text, anywhere", set it once on `body` and stop. An element-name list is a guess
+about where prose will live next, and this one was wrong within one page of being
+written.
+
+Use `anywhere`, not `break-word`: `break-word` refuses to break a long token when
+the line already has other content on it — which is exactly a sentence ending in a
+file path — and it does not affect min-content sizing, so a flex or grid child
+keeps forcing its parent wide. Pair it with `min-width: 0` on flex/grid children,
+which default to `min-width: auto` and refuse to shrink below their longest
+unbreakable token.
+
+### 2. Playwright: `fullPage: true` plus `clip` rasterises the whole page first
+
+Capturing a bounded region of a very long page by passing `fullPage: true` with a
+`clip` rectangle does **not** save any work: Chromium lays out and rasterises the
+entire page and *then* discards everything outside the clip. On a 69,830px page
+that blows the screenshot budget every time.
+
+**The rule.** To capture a bounded region, make the region the **viewport** —
+`page.setViewportSize({width, height: CAP})` with `fullPage: false`. Then
+Chromium rasterises `width × CAP` and nothing else.
+
+### 3. `toHaveScreenshot` has its own timeout, independent of the test timeout
+
+`--timeout=90000` on the command line does nothing for a screenshot assertion:
+`expect(page).toHaveScreenshot()` carries its own budget, 5000ms by default, and
+that number is printed in the failure message. Raising the test timeout and
+re-running produced a byte-identical error, which is the signal that the attempted
+fix never touched the failing path.
+
+**The rule, and it generalises past Playwright.** When a fix does not work, check
+whether the error message **changed** before trying the next hypothesis. An
+unchanged number in an unchanged message means the thing you changed was not the
+constraint — that is information, and it is cheaper than the next guess. Three
+plausible fixes cost more than one measurement, and the measurement was in the
+output of the first failing run.
+
+### 4. `innerText` is layout-dependent; an accessible name comes from `textContent`
+
+A guard checking for interactive controls with no accessible name read
+`el.innerText` and accused seven perfectly well-labelled links — "Quality Ledger
+entry AEQ-012", "Full write-up", "Fix commit 9f35f27" — of being unlabelled.
+
+`innerText` reflects **rendered** text and returns `""` for an element Chromium
+has declined to render, which includes everything inside a collapsed
+`<details>` — while still reporting a non-zero bounding rect for it, so a
+size-based visibility check does not filter it out.
+
+**The rule.** For an accessible-name check use `textContent` (plus `aria-label`,
+`title`, `alt`, `placeholder`, and a `<label>` association), and skip anything
+inside `details:not([open])` because a control behind a closed disclosure is
+legitimately not exposed yet. More generally: when a brief names a property by its
+standard term — *accessible name*, *contrast ratio*, *cumulative layout shift* —
+implement the definition, not the intuition the term evokes. The intuition
+produces a check that is right most of the time, and a check that is right most of
+the time generates false accusations against correct work.
+
+### And one that is not a gotcha so much as a surprise worth knowing
+
+`agent/static_gate.py` reads committed content via `git show HEAD:<path>`, not the
+working tree. So a genuine fix to a `--`-in-a-comment violation does **not** clear
+the gate until it is committed. That is deliberate — it checks what is actually
+committed rather than stray working-tree state — and it will waste five minutes
+the first time it happens to you.
