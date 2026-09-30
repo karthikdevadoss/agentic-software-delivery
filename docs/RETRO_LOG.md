@@ -2461,3 +2461,34 @@ an explicit "this is NOT an answer-quality failure" message), the recapture
 script (paced, raises rather than storing the refusal as an answer), the
 budget test (triggers it deliberately), and the browser page (renders the
 sentence — confirmed live).
+
+### G. Closed — the post-deploy replay, and one last self-inflicted obstacle
+
+`ACCEPTANCE PASSED -- 15 of 15 questions (9 exam + 6 unseen)` against the
+deployed host. Every claim in this retro is now backed by evidence from the
+live service rather than from a local run.
+
+It took four attempts, and none of the failures were about answer quality:
+
+1. **HTTP 429** — the gate fires 15 questions from one address and I had just
+   shipped a 5s cooldown. Fixed with pacing.
+2. **A correct answer failed** — *"ran on SQS ... rather than a message broker
+   like Kafka"* rejected by the third hand-written phrase list in that file
+   (item 2.18).
+3. **HTTP 429 again, after UTC midnight** — and this one was the interesting
+   one. See LESSONS.md: the container's clock read `23:56:17 GMT` while this
+   laptop read `00:02:31`. Six minutes of skew. I had computed "sleep until UTC
+   midnight" from the **local** clock; the cap resets on the **server's**. The
+   `Retry-After` header answered it in seconds after I had re-read correct,
+   unit-tested logic three times.
+4. **Killed for system memory** — environment, not code.
+
+**3.10 — Every obstacle in that list was created by this sprint.** The cooldown,
+the phrase list, the clock assumption and the tooling were all mine. That is
+not an argument against the cap — the endpoint genuinely had no floor and a bot
+could have drained the balance in ninety seconds — but it is the honest shape of
+the evening: a control added late in a sprint collides with the tooling that
+sprint depends on, and the collisions surface one at a time, each looking like a
+product failure until diagnosed. The `SI_OPERATOR_TOKEN` exemption exists
+because of it, and it fails closed so the endpoint stays protected while the
+gate stops being blocked.
