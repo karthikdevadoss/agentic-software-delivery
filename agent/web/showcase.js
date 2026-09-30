@@ -40,6 +40,91 @@ function renderCaveat(main, unresolvedIds, unresolvedReqs) {
   }
 }
 
+// Sprint 17 (BL-D). PROGRESSIVE DISCLOSURE, and not one piece of evidence
+// removed -- the brief was explicit about that, and it is right: the density is
+// this page's strongest asset and also the reason nobody finds the best parts.
+//
+// MEASURED: the BEFORE capture put the first control at y=964 desktop and y=1343
+// at 390px, and the page ran to 12229px tall on a phone with every claim at
+// identical visual priority. A recruiter scanning for thirty seconds sees the
+// first three inches and gives equal weight to everything in them, which means
+// the strongest four proofs compete with the weakest twenty.
+//
+// The fix is a ROLE-FIT SUMMARY as the first card: who this is for, a one-line
+// proposition, the strongest four to six proofs as headline figures, and one
+// obvious route deeper. Everything that was below stays below, in the same
+// order, unchanged.
+function renderRoleFit(main, showcase) {
+  const panel = el("section", "panel sc-rolefit");
+  panel.appendChild(el("h2", null, "Role fit"));
+
+  if (showcase.target_role) {
+    // Built from nodes rather than an interpolated innerHTML string: every other
+    // renderer in this file passes trusted manifest text through el()'s
+    // innerHTML, and this module has no escaper. A textContent child cannot
+    // inject markup regardless of what the manifest holds.
+    const role = el("p", "sc-rolefit-role");
+    role.appendChild(el("strong", null, "Written for: "));
+    const roleText = document.createElement("span");
+    roleText.textContent = showcase.target_role;
+    role.appendChild(roleText);
+    panel.appendChild(role);
+  }
+
+  const demo = showcase.primary_demo || {};
+  if (demo.name) {
+    const prop = el("p", "sc-rolefit-prop");
+    prop.textContent = demo.name;
+    panel.appendChild(prop);
+  }
+
+  // The strongest proofs, as COUNTED figures rather than as a list of claims.
+  // Every number here is a real length of a real array in the showcase manifest
+  // -- there is no hand-maintained second copy that could drift, which is the
+  // defect class AEQ-022 was.
+  const caps = showcase.capabilities || [];
+  const verified = caps.filter((c) => c.verification_status &&
+    /verified|tested/i.test(c.verification_status));
+  const figures = [
+    [String(caps.length), "capabilities, each with its own evidence link"],
+    [String(verified.length), "of those independently verified or tested"],
+    [String((showcase.job_requirements_addressed || []).length), "job requirements mapped to real work"],
+    [String((showcase.secondary_evidence || []).length), "additional evidence items"],
+    [String((showcase.production_urls || []).length), "live production URLs you can open now"],
+  ].filter(([n]) => n !== "0");
+
+  // CTA BEFORE the figures, deliberately. With the grid first, the primary
+  // action measured at y=812 -- past the brief's 700-800 band, and the 431px of
+  // counted evidence sitting above it is context, not a reason to act. The
+  // recruiter meets the proposition, then the way in, then the proof. Measured
+  // after the move: y=642.
+  const row = el("div", "sc-cta-row");
+  if (demo.url) {
+    const a = el("a", "button", "START THE LIVE DEMO");
+    a.href = demo.url;
+    a.target = "_blank";
+    a.rel = "noopener";
+    a.setAttribute("data-primary-action", "");
+    row.appendChild(a);
+  }
+  const deeper = el("a", "sc-rolefit-deeper", "Read the full evidence below ↓");
+  deeper.href = "#sc-requirement-map";
+  row.appendChild(deeper);
+  panel.appendChild(row);
+
+  const grid = el("div", "sc-rolefit-grid");
+  for (const [value, label] of figures) {
+    const cell = el("div", "sc-rolefit-stat");
+    const v = el("div", "sc-rolefit-value"); v.textContent = value;
+    const l = el("div", "sc-rolefit-label"); l.textContent = label;
+    cell.appendChild(v); cell.appendChild(l);
+    grid.appendChild(cell);
+  }
+  if (figures.length) panel.appendChild(grid);
+
+  main.appendChild(panel);
+}
+
 function renderPrimaryDemo(main, showcase) {
   const panel = el("section", "panel");
   panel.appendChild(el("h2", null, "Start Here"));
@@ -62,6 +147,7 @@ function renderRequirementMap(main, showcase) {
   if (caps.length === 0) return;
 
   const panel = el("section", "panel");
+  panel.id = "sc-requirement-map";   // the target of the role-fit card's "read the full evidence" link
   panel.appendChild(el("h2", null, "Their Requirement -> Our Live/Tested Evidence"));
   const grid = el("div", "sc-req-map");
 
@@ -387,6 +473,7 @@ async function main() {
 
   main_el.innerHTML = "";
   renderCaveat(main_el, showcase.unresolved_capability_ids, showcase.unresolved_requirement_texts);
+  renderRoleFit(main_el, showcase);
   renderPrimaryDemo(main_el, showcase);
   renderInterviewWalkthrough(main_el, walkthrough);
   renderDeterministicVsLlm(main_el, walkthrough && walkthrough.deterministic_vs_llm);

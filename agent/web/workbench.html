@@ -4,9 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Agentic Software Delivery — Workbench</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@700&family=IBM+Plex+Sans:wght@600&family=Space+Grotesk:wght@700&family=Outfit:wght@700&family=Manrope:wght@800&family=Fraunces:opsz,wght@9..144,600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@500;700&display=swap">
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/dashboard.css">
 <link rel="stylesheet" href="/workbench.css">
@@ -15,11 +12,55 @@
 
 <header>
   <h1>Agentic Software Delivery <span class="sub">— Workbench</span></h1>
-  <p class="tagline">Enter a real requirement. Small, low-risk changes are implemented, tested, and deployed automatically — no human approval needed for this preview tier. Larger or riskier requests require Owner Authorization, with safe smaller alternatives suggested instead.</p>
+  <!-- Sprint 17 (BL-C1). The old wording said "no human approval needed for
+       this preview tier", which read as though a language model had decided a
+       change was safe and shipped it. That is the opposite of what the code
+       does, and it contradicted Home's "cannot approve its own writes" for a
+       reader who had no way to tell the two claims apart.
+
+       Rewritten from the code, not from a policy anyone invented -- the full
+       audit with file and line references is docs/SPRINT17_APPROVAL_STORY.md.
+       The real invariant: deterministic Python holds the authority, no model is
+       called on this path at all, and the auto-approved band is three named text
+       fields. "Preview tier" was removed because nothing in the code defines a
+       tier system and a reader asking "what are the other tiers?" got no answer.
+
+       e2e/copy-contract.spec.js asserts that this sentence can never drift back
+       to implying the model grants itself permission. -->
+  <p class="tagline">Enter a real requirement. A <strong>deterministic policy — not the model</strong> decides whether it may run: a three-operation request contract plus a keyword denylist, in plain Python, before anything starts. Requests inside that narrow band are implemented, verified and deployed automatically, with no model call anywhere on this path. Everything else is refused with the reason, and safe alternatives are offered.</p>
   <nav class="top-nav" id="top-nav"></nav>
 </header>
 
 <main>
+
+  <!-- Sprint 17 (BL-D). ORDER CHANGED, nothing removed or renamed.
+
+       MEASURED: the BEFORE capture against real production put this page's
+       first interactive control at y=988 on a 1920x1080 desktop and y=1180 at
+       390px. A recruiter arriving at the page that demonstrates the whole
+       platform met two explanatory panels before the thing they can actually
+       do. The brief's target is roughly the first 700-800 desktop pixels.
+
+       So the requirement form is now the first content card. What moved BELOW
+       it is the target-app status (compressed to one line by
+       agent/web/workbench.js) and the verified-run path, which is a clear
+       secondary and reads better as one after the reader knows what the
+       primary is. Every element id is unchanged, so workbench.js and
+       e2e/workbench-catalogue.spec.js still find what they expect.
+
+       The heading keeps its "1." because the panels below are 2..7 and
+       renumbering a live lifecycle would be a change for its own sake. -->
+  <section class="panel" id="requirement-panel">
+    <h2>1. What would you like to change?</h2>
+    <p class="hint" id="requirement-lede">Type a small change to the demo app below, or click one of the verified examples — it runs for real: real source edit, real build, real deploy, real production check. No model call is made on this path.</p>
+    <textarea id="requirement-input" rows="3" placeholder="e.g. Add a small status badge near the page title"></textarea>
+    <button id="submit-btn" data-primary-action>SUBMIT REQUIREMENT</button>
+    <span id="status-badge" class="status-badge status-idle">IDLE</span>
+    <div id="examples-box">
+      <p class="hint">Or skip typing — click one below and watch it run for real, right now:</p>
+      <div id="examples-list"></div>
+    </div>
+  </section>
 
   <section class="panel" id="target-app-panel">
     <h2>Target Application</h2>
@@ -32,17 +73,6 @@
     <a class="verified-run-link" id="verified-run-link" href="#" hidden>SEE A VERIFIED RUN &rarr;</a>
     <p class="hint" id="verified-run-unavailable" hidden>No verified run available yet.</p>
     <p class="hint" id="verified-run-loading">Looking up the most recent verified run…</p>
-  </section>
-
-  <section class="panel" id="requirement-panel">
-    <h2>1. What would you like to change?</h2>
-    <textarea id="requirement-input" rows="3" placeholder="e.g. Add a small status badge near the page title"></textarea>
-    <button id="submit-btn">SUBMIT REQUIREMENT</button>
-    <span id="status-badge" class="status-badge status-idle">IDLE</span>
-    <div id="examples-box">
-      <p class="hint">Or skip typing — click one below and watch it run for real, right now:</p>
-      <div id="examples-list"></div>
-    </div>
   </section>
 
   <section class="panel" id="assessment-panel" hidden>

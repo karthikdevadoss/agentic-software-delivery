@@ -4,9 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ask the Codebase — Agentic Software Delivery</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@700&family=IBM+Plex+Sans:wght@600&family=Space+Grotesk:wght@700&family=Outfit:wght@700&family=Manrope:wght@800&family=Fraunces:opsz,wght@9..144,600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@500;700&display=swap">
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/ask-codebase.css">
 </head>
@@ -24,23 +21,28 @@
 
 <main id="ac-main">
 
-  <section class="panel">
-    <h2>What this demonstrates</h2>
-    <p>
-      Deterministic semantic retrieval over a small, curated, real slice of this
-      repository's own Java source and architecture docs — <strong>zero LLM calls</strong>.
-      Every result is a real excerpt with a real similarity score and a real link into
-      the public source. If nothing relevant is indexed, this says so honestly instead
-      of guessing.
-    </p>
-    <p class="hint">
-      Portfolio/demo scope, not enterprise production: a small curated corpus, not the
-      whole repository — see "How this works" below for exactly what's indexed and why.
-    </p>
-  </section>
+  <!-- Sprint 17 (BL-D). ORDER CHANGED, and one paragraph reframed. Nothing
+       deleted.
 
+       MEASURED: the BEFORE capture put the search box at y=812 desktop, behind a
+       "What this demonstrates" panel. The brief's instruction was to lead with
+       the search interaction, and to prefer what the thing IS over what it is
+       NOT -- the old opening told a reader "no answer is synthesized", "nothing
+       is invented", "not enterprise production", "not a chat bot" before they
+       had been told what it does. Four denials is a defensive posture, and a
+       recruiter reads defensiveness as doubt.
+
+       The search box is now first. The scope caveat survives -- it is honest and
+       it matters -- but it sits under the results area, which is where a reader
+       who has actually seen a result will care what the corpus covers. -->
   <section class="panel">
     <h2>Ask a question</h2>
+    <p class="hint" id="ac-lede">
+      Semantic search over this repository's own Java source and architecture
+      docs. Every result is a real excerpt with its real similarity score and a
+      link into the public source — and it runs with <strong>zero model
+      calls</strong>.
+    </p>
     <form id="ac-form">
       <textarea id="ac-query" maxlength="300" rows="2"
         placeholder="e.g. Where is workspace isolation enforced?"></textarea>
@@ -63,6 +65,21 @@
   <section class="panel" id="ac-result-panel" hidden>
     <h2>Result</h2>
     <div id="ac-result"></div>
+  </section>
+
+  <section class="panel">
+    <h2>What is indexed</h2>
+    <p>
+      A small, curated, real slice of this repository: its own Java source and its
+      architecture documents. Retrieval is deterministic — the same question
+      returns the same evidence — and when nothing relevant is indexed it says so
+      rather than guessing.
+    </p>
+    <p class="hint">
+      Portfolio scope, stated plainly: a curated corpus, not the whole repository,
+      and not an enterprise-scale index. "How this works" below names exactly
+      what is in it and why.
+    </p>
   </section>
 
   <section class="panel">

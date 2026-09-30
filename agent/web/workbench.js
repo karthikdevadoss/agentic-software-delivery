@@ -164,10 +164,13 @@ async function loadTargetApp() {
     clearTimeout(timeoutId);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     targetApp = await resp.json();
+    // Sprint 17 (BL-D): compressed from two key/value rows plus a paragraph to
+    // one line plus the link. Nothing is lost -- name, environment and purpose
+    // are all still stated -- but this panel is now context below the primary
+    // interaction rather than the first thing on the page, and three stacked
+    // blocks of chrome is more room than context deserves.
     targetAppBody.innerHTML =
-      `<div class="kv"><span class="k">Application</span><span class="v">${esc(targetApp.name)}</span></div>` +
-      `<div class="kv"><span class="k">Environment</span><span class="v">${esc(targetApp.environment)}</span></div>` +
-      `<p class="hint">${esc(targetApp.description)}</p>` +
+      `<p class="target-app-line"><strong>${esc(targetApp.name)}</strong> — ${esc(targetApp.environment)}. ${esc(targetApp.description)}</p>` +
       `<a class="secondary open-app-link" href="${esc(targetApp.url)}" target="_blank" rel="noopener">OPEN CURRENT CUSTOMER APP ↗</a>`;
   } catch (_) {
     clearTimeout(timeoutId);

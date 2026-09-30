@@ -217,3 +217,39 @@
   hyphens: manual;
 }
 @media (min-width: 900px) { #sc-title { max-width: 34ch; } }
+
+/* Sprint 17 (BL-D): the role-fit summary card. Visual hierarchy through SIZE,
+   not through another colour -- this page previously gave every claim identical
+   weight, so a recruiter scanning for thirty seconds weighted the strongest four
+   proofs the same as the weakest twenty. */
+.sc-rolefit-role { margin: 0 0 0.4rem; }
+.sc-rolefit-prop {
+  font-size: 1.12rem; line-height: 1.5; margin: 0 0 1.4rem;
+  max-width: 62ch;
+}
+.sc-rolefit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--s5);
+  margin: 0 0 1.5rem;
+}
+.sc-rolefit-stat { min-width: 0; }
+.sc-rolefit-value {
+  font-size: clamp(26px, 2.4vw, 34px);
+  font-weight: 700; letter-spacing: -0.02em;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+.sc-rolefit-label {
+  font-size: var(--t-small); color: var(--muted); line-height: 1.45;
+  margin-top: 0.3rem; max-width: 28ch;
+}
+.sc-rolefit-deeper {
+  align-self: center; font-size: 0.92rem; color: var(--muted);
+  text-underline-offset: 3px;
+}
+.sc-rolefit-deeper:hover { color: var(--accent); }
+/* The CTA row now sits above the figures, so it needs its own separation from
+   them rather than relying on being last in the card. */
+.sc-rolefit .sc-cta-row { margin-bottom: 1.8rem; }

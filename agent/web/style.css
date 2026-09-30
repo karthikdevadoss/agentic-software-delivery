@@ -456,230 +456,142 @@ main li { line-height: 1.6; }
 main p a, main li a { color: var(--accent); text-underline-offset: 3px; }
 
 /* ==========================================================================
-   Sprint 16 -- SURFACE IDENTITY.
+   Sprint 17 -- THE DESIGN LOCK. See docs/DESIGN.md for the full statement and
+   for the fact that this REVERSES a Sprint 16 decision the Owner described as
+   a USP. That reversal is his own Sprint 17 instruction, stated four times, and
+   it is flagged in docs/DESIGN.md and docs/OWNER_DECISIONS_PENDING.md rather
+   than made quietly.
 
-   The Owner asked for every page to look unique. The 2026 portfolio research
-   says the opposite for a single site: one accent, used sparingly. Both are
-   right about different things, so the split is deliberate --
+   WHAT THIS BLOCK REPLACED. Sprint 16's SURFACE IDENTITY and SURFACE
+   SIGNATURES blocks: seven per-page accent colours, eight per-page display
+   typefaces loaded from Google Fonts, eight per-page background tints, and six
+   different corner radii (0, 4, 6, 8, 14, 16px). Each was individually
+   defensible and the aggregate was eight pages that did not read as one
+   product.
 
-     SHARED   spacing scale, layout, reading measure, hierarchy rules
-     UNIQUE   accent, display face, surface tint, heading treatment
+   WHAT REPLACED IT. One accent, one brand sans, one dark ground, two radii.
+   The variation between pages is now carried entirely by what the page DOES --
+   its content, its controls, its density -- rather than by its costume.
 
-   Each page is recognisably itself and recognisably part of one product.
-
-   home is ABSENT from this block on purpose: the Owner said its colour and
-   font already look good, so its inline styles keep full control.
+   THE ACCENT IS NOT A NEW COLOUR. #5b93ff is the value :root above has always
+   carried; Sprint 16 layered overrides on top of it. This is a deletion.
    ========================================================================== */
 
+/* One brand family, already on the reader's machine. --font-body and
+   --font-display are kept as variables rather than deleted so that a future
+   deliberate change has exactly one place to happen -- they simply both
+   resolve to the same stack now. */
+:root {
+  --font-brand: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                "Helvetica Neue", Arial, sans-serif;
+  --font-brand-serif: ui-serif, Georgia, "Times New Roman", serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+               "Liberation Mono", monospace;
+  --font-body: var(--font-brand);
+  --font-display: var(--font-brand);
+  /* Two radii, and only two. A control and a card. */
+  --radius-control: 6px;
+  --radius-card: 10px;
+}
+
 body[data-surface] {
-  font-family: var(--font-body, Inter), -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-body);
+  background: var(--bg);
+  letter-spacing: -0.006em;
 }
 body[data-surface] h1,
 body[data-surface] main h2,
 body[data-surface] .panel h4 {
-  font-family: var(--font-display, var(--font-body, Inter)), -apple-system, "Segoe UI", sans-serif;
+  font-family: var(--font-display);
 }
 
-/* Accent is used on the four places it earns attention, and nowhere else. */
+/* Accent is used on the four places it earns attention, and nowhere else. A
+   colour that appears everywhere signals nothing. */
 body[data-surface] h1 .sub { color: var(--accent); opacity: 0.92; }
 body[data-surface] .panel > h2,
 body[data-surface] .panel > h3 { color: var(--accent); }
 body[data-surface] a:focus-visible,
 body[data-surface] button:focus-visible,
-body[data-surface] input:focus-visible {
+body[data-surface] input:focus-visible,
+body[data-surface] textarea:focus-visible,
+body[data-surface] select:focus-visible {
   outline: 2px solid var(--accent); outline-offset: 2px;
 }
 body[data-surface] header { border-bottom-color: var(--accent-line, var(--border)); }
 body[data-surface] .top-nav a[aria-current],
 body[data-surface] .top-nav a.active { color: var(--accent); }
 
-/* ---- workbench: the agent doing work. Indigo, Inter, tight. ------------- */
-body[data-surface="workbench"] {
-  --font-display: Sora;
-  --accent: #818cf8;
-  --accent-soft: #1e1b3a;
-  --accent-line: #2e2a52;
-  --font-body: Inter;
-  --bg: #0a0b10;
-  letter-spacing: -0.006em;
-}
+/* Inter reads as default at normal tracking and as premium at tight tracking;
+   the same is true of Segoe UI and SF. This is the single cheapest typographic
+   upgrade available and it costs no network request. */
+body[data-surface] h1 { letter-spacing: -0.028em; }
 
-/* ---- triage: incidents. Amber, because attention is the whole point. ---- */
-body[data-surface="triage"] {
-  --font-display: "IBM Plex Sans";
-  --accent: #f0b429;
-  --accent-soft: #2a2110;
-  --accent-line: #3d3018;
-  --font-body: Inter;
-  --bg: #0c0a07;
-  letter-spacing: -0.006em;
-}
+/* One card radius and one control radius across every surface. */
+body[data-surface] .panel { border-radius: var(--radius-card); }
+body[data-surface] button,
+body[data-surface] input,
+body[data-surface] textarea,
+body[data-surface] select,
+body[data-surface] .btn { border-radius: var(--radius-control); }
 
-/* ---- ask-codebase: retrieval. Cyan, Space Grotesk. --------------------- */
-body[data-surface="ask-codebase"] {
-  --accent: #22d3ee;
-  --accent-soft: #08303a;
-  --accent-line: #124957;
-  --font-body: Inter;
-  --font-display: "Space Grotesk";
-  --bg: #070d10;
+/* ---- Utility monospace. The ONE legitimate use of a second face: technical
+        values a reader compares character by character or down a column.
+        Never a page's identity. --------------------------------------------- */
+body[data-surface] code,
+body[data-surface] pre,
+body[data-surface] .mono,
+body[data-surface] .full-session-id,
+body[data-surface] .session-id-hint {
+  font-family: var(--font-mono);
 }
-
-/* ---- showcase: proof. Emerald -- the colour of a passing check. -------- */
-body[data-surface="showcase"] {
-  --accent: #34d399;
-  --accent-soft: #072e22;
-  --accent-line: #0f4835;
-  --font-body: Inter;
-  --font-display: Outfit;
-  --bg: #060d0a;
-}
-
-/* ---- usage: money and telemetry. Gold, and MONOSPACE NUMERALS, which is
-       the one place a mono face is functional rather than stylistic --
-       figures line up in a column and can be compared down the page. ----- */
-body[data-surface="usage"] {
-  --accent: #d4a574;
-  --accent-soft: #2b2113;
-  --accent-line: #3f301c;
-  --font-body: Inter;
-  --font-display: "JetBrains Mono";
-  --bg: #0b0906;
-}
+/* Usage is a ledger: its figures must line up down a column to be comparable,
+   which is a functional requirement and not a stylistic one. Tabular numerals
+   in the utility mono, applied to the FIGURES only -- the page's headings and
+   prose stay in the brand sans like every other page. Sprint 16 made mono this
+   page's display face, which is the part that has gone. */
 body[data-surface="usage"] .exec-value,
 body[data-surface="usage"] .summary-value,
+body[data-surface="usage"] .econ-value,
 body[data-surface="usage"] td {
-  font-family: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
 
-/* ---- dashboard: the control surface. Blue, the system default. --------- */
-body[data-surface="dashboard"] {
-  --font-display: Manrope;
-  --accent: #60a5fa;
-  --accent-soft: #10243f;
-  --accent-line: #1d3a5f;
-  --font-body: Inter;
-  --bg: #080b11;
-}
-
-/* ---- standing-interview: a conversation. Violet, warmer, softer. ------- */
-body[data-surface="standing-interview"] {
-  --font-display: Fraunces;
-  --accent: #c084fc;
-  --accent-soft: #2a1938;
-  --accent-line: #3d2652;
-  --font-body: Inter;
-  --bg: #0a070e;
-}
-
-/* ---- case-study: long-form narrative. A serif, because this page is read
-       rather than scanned, and a serif at 17px/1.7 is measurably easier to
-       read in long passages. ------------------------------------------- */
-body[data-surface="case-study"] {
-  --accent: #b08968;
-  --font-body: "Source Serif 4";
-  --font-display: "Source Serif 4";
-}
+/* ---- Case Study is the one place a serif earns its keep. This page is READ,
+        not scanned, and a serif at 18px/1.75 is measurably easier in long
+        passages. It is the second of the two permitted brand families, used on
+        one page, for prose. Its headings stay in the brand sans so the page
+        still belongs to the family. -------------------------------------- */
 body[data-surface="case-study"] main p,
-body[data-surface="case-study"] .wrap p {
+body[data-surface="case-study"] .wrap p,
+body[data-surface="case-study"] .wrap li,
+body[data-surface="case-study"] .wrap dd {
+  font-family: var(--font-brand-serif);
   font-size: 18px;
   line-height: 1.75;
 }
 
-/* Inter reads as default at normal tracking and as premium at tight
-   tracking. This is the single cheapest typographic upgrade available. */
-body[data-surface] h1 { letter-spacing: -0.028em; }
-
-/* Serif display faces carry differently from geometric sans: they need a
-   touch more size and much less negative tracking, or they look cramped. */
-body[data-surface="standing-interview"] h1,
-body[data-surface="case-study"] h1 {
-  letter-spacing: -0.012em;
-  font-size: clamp(32px, 3vw, 44px);
+/* ---- The light portfolio mode. Not a third accent system: it is the
+        PORTFOLIO mode's accent, and there are exactly two modes. Home carries
+        its own copy inline (it deliberately does not load this sheet); this
+        block exists so Case Study matches it from one place. ------------- */
+body[data-surface="case-study"] {
+  --bg: #fbfaf8;
+  --panel: #ffffff;
+  --panel-raised: #ffffff;
+  --panel-hover: #f6f5f2;
+  --border: #dcdfe3;
+  --accent-line: #dcdfe3;
+  --text: #14161a;
+  --muted: #545a62;
+  --accent: #1f4d3d;
+  --accent-soft: #eaf1ee;
 }
-/* Mono as a display face only works at a heavier weight and wider tracking. */
-body[data-surface="usage"] h1 {
-  letter-spacing: 0.005em;
-  font-size: clamp(26px, 2.2vw, 33px);
-}
+body[data-surface="case-study"] .panel { box-shadow: none; }
 
-/* ==========================================================================
-   Sprint 16 -- SURFACE SIGNATURES.
-
-   Colour and type alone still leave eight pages with the same silhouette. A
-   signature is one structural move per surface, drawn from what the page does,
-   so the variation reads as considered rather than decorative. One move each,
-   deliberately -- two would be costume.
-   ========================================================================== */
-
-/* workbench: a machine working. Squared corners and a scan-line hairline at
-   the top of each panel -- the visual language of an instrument, not a card. */
-body[data-surface="workbench"] .panel {
-  border-radius: 4px;
-  position: relative;
-  overflow: hidden;
-}
-body[data-surface="workbench"] .panel::before {
-  content: ""; position: absolute; inset: 0 0 auto 0; height: 2px;
-  background: linear-gradient(90deg, var(--accent), transparent 60%);
-  opacity: 0.7;
-}
-
-/* triage: incidents. A left accent bar is the universal shorthand for
-   "something needs looking at", and it is the one page where that is true. */
-body[data-surface="triage"] .panel {
-  border-left: 3px solid var(--accent);
-  border-radius: 0 var(--radius) var(--radius) 0;
-}
-
-/* ask-codebase: retrieval. A soft focus glow behind the panel, because the
-   page is about surfacing something out of a large dark corpus. */
-body[data-surface="ask-codebase"] .panel {
-  border-radius: 16px;
-  box-shadow: var(--lift-2), 0 0 60px -20px rgba(34, 211, 238, 0.25);
-}
-
-/* showcase: the argument. Generous radius, a lifted surface, and a rule under
-   each section label so the page reads as a structured document. */
-body[data-surface="showcase"] .panel {
-  border-radius: 14px;
-  box-shadow: var(--lift-2);
-}
-body[data-surface="showcase"] .panel > h2,
-body[data-surface="showcase"] .panel > h3 {
-  padding-bottom: var(--s3);
-  border-bottom: 1px solid var(--accent-line);
-}
-
-/* usage: a ledger. Ruled rows and tabular figures -- the page is a set of
-   numbers that must be comparable down a column. */
-body[data-surface="usage"] .panel { border-radius: 6px; }
-body[data-surface="usage"] table tr { border-bottom: 1px solid var(--border); }
-body[data-surface="usage"] .exec-stat {
-  border-left: 2px solid var(--accent-line);
-  padding-left: var(--s4);
-}
-
-/* dashboard: a control surface. Denser, flatter, more panels visible at once
-   -- this is the one page where compactness is the point. */
-body[data-surface="dashboard"] .panel {
-  padding: var(--s5);
-  margin-bottom: var(--s5);
-  border-radius: 8px;
-}
-body[data-surface="dashboard"] main h2 { margin-top: var(--s7); }
-
-/* standing-interview: a conversation. The widest breathing room on the site
-   and a centred column, because one question at a time is the whole idea. */
-body[data-surface="standing-interview"] .si-wrap { padding-top: var(--s7); }
-body[data-surface="standing-interview"] .si-exchange {
-  border-top: 1px solid var(--accent-line);
-  padding: var(--s6) 0;
-}
-
-/* case-study: long-form. An editorial opening -- the first paragraph carries
-   more size and colour, the way a standfirst does in print. */
+/* An editorial opening. The first paragraph carries more size, the way a
+   standfirst does in print -- kept from Sprint 16 because it is hierarchy,
+   not costume. */
 body[data-surface="case-study"] .wrap > p:first-of-type {
   font-size: 20px;
   line-height: 1.7;
@@ -791,4 +703,83 @@ body[data-surface="showcase"] {
 body[data-surface="workbench"] .panel:not(:has(table)):not(:has(.exec-grid)),
 body[data-surface="showcase"] .panel:not(:has(table)):not(:has(.exec-grid)) {
   max-width: 76ch;
+}
+
+/* ==========================================================================
+   Sprint 17 (BL-C6) -- HORIZONTAL OVERFLOW, FIXED AS A CLASS.
+
+   MEASURED, not assumed. The BEFORE capture against real production
+   (visual-audit-sprint17-before/manifest.json) found /showcase at 390px with
+   scrollWidth 435 against clientWidth 390. Locally, after the font lock, the
+   same page measured 400 against 390 -- smaller, same defect. The culprits,
+   found by walking every element and comparing scrollWidth to clientWidth
+   rather than by guessing:
+
+     ul.sc-talking-points  li   scrollWidth 335, clientWidth 260  (+75)
+     div.sc-det-evidence        scrollWidth 267, clientWidth 260  (+7)
+                                "Evidence: docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml"
+
+   Every one is the same mechanism: a token with no break opportunity in it --
+   a repository path, a SCREAMING_SNAKE_CASE identifier, a hash, a run id --
+   inside a container narrower than the token. `overflow-wrap: normal` (the
+   default) will not break it, so it runs past the edge and the whole document
+   gains a horizontal scrollbar.
+
+   WHY THIS IS NOT `.sc-det-evidence { overflow-wrap: anywhere }`. That fixes
+   one selector on one page. The mechanism is "this site writes file paths and
+   identifiers into prose", which is true of every page here and will be true
+   of the next one somebody adds. So the rule is set once, on the containers
+   that carry prose, and the next long path is already handled.
+
+   `anywhere` rather than `break-word`: break-word will not break a long token
+   if the line already has other content on it, which is exactly the case in a
+   sentence ending in a path. anywhere also lets the token participate in
+   min-content sizing, so a flex or grid child stops forcing its parent wide.
+   ========================================================================== */
+/* SET ON body AND INHERITED, deliberately, after an explicit selector list
+   was tried first and was not enough. That list named p, li, dd, td, headings
+   and a handful of classes -- and /usage still overflowed by 16px, because its
+   history rows put the same long identifiers inside plain `div.goal` and
+   `div.session-row`, which no reasonable list would have contained.
+
+   That is the whole lesson: an element-name list is a guess about where prose
+   will live next, and it was wrong within one page of being written. Since
+   overflow-wrap INHERITS, setting it once on body covers every text node on
+   the site including the ones nobody has written yet. There is no third
+   iteration of this fix.
+
+   `anywhere` and not `break-word`: break-word refuses to break a long token
+   when the line already has other content on it -- which is exactly a sentence
+   ending in a file path -- and it does not affect min-content sizing, so a
+   flex or grid child keeps forcing its parent wide. `anywhere` does both.
+
+   It breaks a word mid-character only when the alternative is overflowing the
+   container. A hyphenless break inside AI_ENGINEERING_QUALITY_LEDGER.yaml on a
+   phone is mildly ugly; a horizontal scrollbar on a recruiter's phone is worse. */
+body {
+  overflow-wrap: anywhere;
+}
+
+/* A flex or grid item defaults to min-width:auto, which means it refuses to
+   shrink below its longest unbreakable token and pushes its parent wide
+   instead. This is the other half of the same defect and is invisible until a
+   narrow viewport. */
+body .exec-grid > *, body .econ-grid > *, body .sc-grid > *,
+body .tile-grid > *, body .panel > * {
+  min-width: 0;
+}
+
+/* Media and embeds never exceed their container. */
+body img, body svg, body video, body iframe, body canvas {
+  max-width: 100%;
+}
+
+/* A table, a diagram or a code block is legitimately allowed to be wider than
+   a phone -- but it scrolls inside its OWN box. The page body never scrolls
+   sideways. `pre` keeps its whitespace, so wrapping it would corrupt a diff;
+   giving it its own scroller is the correct answer rather than breaking lines
+   that mean something. */
+body pre, body table, body .table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
 }

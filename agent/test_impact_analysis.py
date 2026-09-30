@@ -150,7 +150,15 @@ _DESIGN_STANDARDS = "e2e/design-standards.spec.js"
 # merely returning 200. Any page or the shared navigation can break either.
 _LINK_INTEGRITY = "e2e/link-integrity.spec.js"
 _GOLDEN_JOURNEY = "e2e/golden-journey.spec.js"
-_WHOLE_SURFACE = [_UI_STANDARDS, _DESIGN_STANDARDS, _LINK_INTEGRITY, _GOLDEN_JOURNEY]
+# Sprint 17 adds three more whole-surface sweeps, each asserting a property that
+# any public page can break: horizontal overflow and console errors at four
+# widths; third-party font/tracker requests on load; and the public claims whose
+# failure mode is a recruiter drawing a false conclusion.
+_RESPONSIVE = "e2e/responsive-invariants.spec.js"
+_THIRD_PARTY = "e2e/third-party-network.spec.js"
+_COPY_CONTRACT = "e2e/copy-contract.spec.js"
+_WHOLE_SURFACE = [_UI_STANDARDS, _DESIGN_STANDARDS, _LINK_INTEGRITY, _GOLDEN_JOURNEY,
+                  _RESPONSIVE, _THIRD_PARTY, _COPY_CONTRACT]
 
 FRONTEND_PATH_TO_SPECS = {
     # Sprint 14: the recruiter-facing home page and the durable-agent case
@@ -161,9 +169,10 @@ FRONTEND_PATH_TO_SPECS = {
     "agent/web/nav.js": ["e2e/home.spec.js", "e2e/nav-consistency.spec.js"] + _WHOLE_SURFACE,
     # The shared shell and type scale. A one-line change in either of these
     # moves every page at once -- which is exactly what happened in Sprint 15.
-    "agent/web/style.css": [_UI_STANDARDS, _DESIGN_STANDARDS, "e2e/nav-consistency.spec.js"],
-    "agent/web/dashboard.css": [_UI_STANDARDS, _DESIGN_STANDARDS],
-    "agent/web/showcase.css": [_UI_STANDARDS, _DESIGN_STANDARDS],
+    "agent/web/style.css": [_UI_STANDARDS, _DESIGN_STANDARDS, _RESPONSIVE,
+                            _THIRD_PARTY, "e2e/nav-consistency.spec.js"],
+    "agent/web/dashboard.css": [_UI_STANDARDS, _DESIGN_STANDARDS, _RESPONSIVE],
+    "agent/web/showcase.css": [_UI_STANDARDS, _DESIGN_STANDARDS, _RESPONSIVE],
     "agent/web/showcase.js": [_UI_STANDARDS, _DESIGN_STANDARDS, "e2e/interview-walkthrough.spec.js", _LINK_INTEGRITY],
     # Sprint 17: showcase.html had no entry at all, so the page that carries the
     # densest technical evidence on the public site could be edited without
@@ -176,22 +185,24 @@ FRONTEND_PATH_TO_SPECS = {
     "agent/web/standing-interview.html": _WHOLE_SURFACE,
     "agent/web/workbench.html": ["e2e/workbench-catalogue.spec.js"] + _WHOLE_SURFACE,
     "agent/web/workbench.js": ["e2e/workbench-catalogue.spec.js"],
-    "agent/web/workbench.css": ["e2e/workbench-catalogue.spec.js", _UI_STANDARDS, _DESIGN_STANDARDS],
+    "agent/web/workbench.css": ["e2e/workbench-catalogue.spec.js", _UI_STANDARDS,
+                                _DESIGN_STANDARDS, _RESPONSIVE],
     "agent/web/usage.html": ["e2e/usage.spec.js"] + _WHOLE_SURFACE,
     "agent/web/usage.js": ["e2e/usage.spec.js", _UI_STANDARDS, _DESIGN_STANDARDS],
-    "agent/web/usage.css": [_UI_STANDARDS, _DESIGN_STANDARDS],
+    "agent/web/usage.css": [_UI_STANDARDS, _DESIGN_STANDARDS, _RESPONSIVE],
     # Sprint 17: Triage and Ask the Codebase were both entirely absent from this
     # map. Triage is one of the three pages the Owner sends recruiters to.
     "agent/web/triage.html": _WHOLE_SURFACE,
     "agent/web/triage.js": [_GOLDEN_JOURNEY, _LINK_INTEGRITY],
-    "agent/web/triage.css": [_UI_STANDARDS, _DESIGN_STANDARDS],
+    "agent/web/triage.css": [_UI_STANDARDS, _DESIGN_STANDARDS, _RESPONSIVE],
     "agent/web/triage-b.html": [_GOLDEN_JOURNEY, _LINK_INTEGRITY],
     "agent/web/triage-b.js": [_GOLDEN_JOURNEY],
     "agent/web/triage-c.html": [_GOLDEN_JOURNEY, _LINK_INTEGRITY],
     "agent/web/triage-c.js": [_GOLDEN_JOURNEY],
     "agent/web/ask-codebase.html": ["e2e/ask-codebase.spec.js"] + _WHOLE_SURFACE,
     "agent/web/ask-codebase.js": ["e2e/ask-codebase.spec.js", _LINK_INTEGRITY],
-    "agent/web/ask-codebase.css": ["e2e/ask-codebase.spec.js", _UI_STANDARDS, _DESIGN_STANDARDS],
+    "agent/web/ask-codebase.css": ["e2e/ask-codebase.spec.js", _UI_STANDARDS,
+                                   _DESIGN_STANDARDS, _RESPONSIVE],
     # The zero-LLM query surface behind /ask-codebase. Same precedent as
     # agent/jd_match.py below: a backend validation change is exactly what the
     # rendered-result spec has to catch.

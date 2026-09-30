@@ -4,9 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Agentic Software Delivery — Usage</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@700&family=IBM+Plex+Sans:wght@600&family=Space+Grotesk:wght@700&family=Outfit:wght@700&family=Manrope:wght@800&family=Fraunces:opsz,wght@9..144,600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@500;700&display=swap">
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/dashboard.css">
 <link rel="stylesheet" href="/usage.css">
@@ -15,8 +12,22 @@
 
 <header>
   <h1>Agentic Software Delivery <span class="sub">— Usage</span></h1>
-  <p class="tagline">How human + AI resources were used to produce verified value. Real values only — unavailable data is labeled, never invented.</p>
-  <p class="fold-actions"><a href="/workbench">See where these runs come from →</a> <a href="/dashboard">Full evidence dashboard →</a> <a href="/">Back to overview →</a></p>
+  <!-- Sprint 17 (BL-C8 + BL-D). Two changes to the first screen.
+
+       The tagline now says WHOSE telemetry this is. Every figure on this page
+       is this personal platform's own metered spend -- the Workbench pipeline
+       runs and the Claude Code sessions that built it. None of it is any
+       employer's data, and a recruiter reading "$12.50 lifetime AI spend" next
+       to NRG Energy elsewhere on the site had nothing telling them which.
+
+       The Dashboard link left the first screen. Dashboard is deliberately out of
+       primary public navigation (agent/web/nav.js) -- offering it as a
+       first-screen action re-added the exact route the nav removes. It is still
+       linked from the bottom of the efficiency section for anyone who wants the
+       full per-window breakdown. -->
+  <p class="tagline">What this platform really cost to build and run. Real values only — unavailable data is labelled, never invented.</p>
+  <p class="hint">Every figure here is <strong>this platform's own metered spend</strong>: its Workbench pipeline runs, and the Claude Code development sessions that built it. It is not NRG telemetry and not any employer's data.</p>
+  <p class="fold-actions"><a href="/workbench">See where these runs come from →</a> <a href="/">Back to overview →</a></p>
   <nav class="top-nav" id="top-nav"></nav>
 </header>
 

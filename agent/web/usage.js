@@ -406,14 +406,27 @@ function renderConsumptionCategories(d) {
 }
 
 function renderDevSessionControls() {
-  return section("Development Session (start/stop)", `
-    <p class="hint">Explicit start/stop wall-clock tracking for future Claude Code / ChatGPT development sessions. This records WALL-CLOCK time only — never inferred active/idle time.</p>
-    <div class="dev-session-form">
-      <input type="text" id="dev-goal" placeholder="Goal / current duty for this session" />
-      <button id="dev-start-btn">START SESSION</button>
-    </div>
-    <div id="dev-active" class="hint"></div>
-  `);
+  // Sprint 17 (BL-C8): collapsed, labelled, and last. START SESSION is a real
+  // WRITE -- POST /api/dev-sessions/start calls sessions_data.start_dev_session()
+  // and persists a record -- so it is genuinely stateful, and it was sitting
+  // fourth on a page a recruiter reads. It makes no model call and costs
+  // nothing, which is exactly why the right answer is to de-emphasise it rather
+  // than remove it: the underlying tool is useful and there is no evidence for
+  // deleting it.
+  return `<section class="panel">
+    <details class="dev-session-disclosure">
+      <summary><strong>Operator tool</strong> — start/stop a development session</summary>
+      <p class="hint">Not part of the recruiter view. Explicit start/stop wall-clock
+        tracking for Claude Code / ChatGPT development sessions, recording
+        WALL-CLOCK time only — never inferred active/idle time. Starting one
+        writes a record; it makes no model call and costs nothing.</p>
+      <div class="dev-session-form">
+        <input type="text" id="dev-goal" placeholder="Goal / current duty for this session" />
+        <button id="dev-start-btn">START SESSION</button>
+      </div>
+      <div id="dev-active" class="hint"></div>
+    </details>
+  </section>`;
 }
 
 let activeDevSessionId = null;
@@ -897,18 +910,32 @@ async function load() {
     return;
   }
 
+  // Sprint 17 (BL-C8 + BL-D). ORDER CHANGED, nothing removed.
+  //
+  // MEASURED, not felt: the BEFORE capture against real production
+  // (visual-audit-sprint17-before/manifest.json) put this page's first
+  // interactive control at y=3190 on a 1920x1080 desktop and y=5849 at 390px.
+  // A recruiter reaches the four cost numbers this page exists for after three
+  // full screens of scrolling, and the first control they meet is START SESSION
+  // -- an operator tool that writes a record.
+  //
+  // So: the two cost summaries stay first, the event ledger follows because it
+  // is the provenance for both, and START SESSION moves to the bottom inside a
+  // collapsed disclosure. Its functionality is untouched and its endpoint is
+  // unchanged -- it is a real tool that belongs on this page, just not as the
+  // first thing a recruiter is offered.
   main.innerHTML = [
     renderEfficiencySummary(data),
     renderDevSessionCostSummary(data),
     renderEventLedger(data),
-    renderDevSessionControls(),
-    renderSessionHistoryPanel(),
     renderToday(data),
     renderCoverageExplainer(),
     renderValueLedger(data),
     renderImprovement(data),
+    renderSessionHistoryPanel(),
     renderAllSessions(data),
     renderConsumptionCategories(data),
+    renderDevSessionControls(),
   ].join("");
 
   wireDevSessionControls();

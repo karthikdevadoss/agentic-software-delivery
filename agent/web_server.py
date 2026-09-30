@@ -103,8 +103,16 @@ RAILWAY_SERVICE_NAME = "agentic-delivery-customer-app"
 TARGET_APPLICATION = {
     "name": "Customer App",
     "url": PUBLIC_CUSTOMER_APP_URL,
-    "environment": "Production Demo",
-    "description": "This is the live demo application your requirement will modify.",
+    # Sprint 17 (BL-C2): was "Production Demo", which is two words that
+    # contradict each other and left a recruiter unable to tell whether this was
+    # a sandbox or a real system somebody depends on. It is neither: a real
+    # deployment, really mutated, of an application whose only purpose is this
+    # demonstration. And it is emphatically not an employer's system -- saying so
+    # matters more than brevity here.
+    "environment": "Live demo app (not NRG)",
+    "description": "This is the live demo application your requirement will modify. "
+                   "It is deployed for real and changed for real -- and it is this "
+                   "platform's own demo application, not any employer's system.",
 }
 
 # Maps a real tool name to a real, honest stage label — never fabricated,

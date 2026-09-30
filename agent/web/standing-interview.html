@@ -2,9 +2,6 @@
 <title>Agentic Software Delivery — Standing Interview</title>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@700&family=IBM+Plex+Sans:wght@600&family=Space+Grotesk:wght@700&family=Outfit:wght@700&family=Manrope:wght@800&family=Fraunces:opsz,wght@9..144,600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@500;700&display=swap">
 <link rel="stylesheet" href="/style.css">
 <style>
   /* Deliberately plain and close to the rest of the platform: this is an
@@ -80,6 +77,70 @@
   }
   .si-actions button[disabled] { opacity: 0.6; cursor: default; }
   .si-saved { font-size: var(--t-micro); color: var(--green); }
+  /* ======================================================================
+     Sprint 17 (BL-C4 + BL-D). Two changes, both measured rather than felt.
+
+     THE NAME WAS NOT ON THE PAGE. A recruiter could open the one surface on
+     this site that answers interview questions in the first person and never
+     learn whose interview it was. Everything else was here -- the questions,
+     the grounding, the honesty about missing evidence -- and the candidate was
+     not. That is BL-C4 and it is the more important of the two.
+
+     THE FIRST SCREEN WAS ONE COLUMN AND MOSTLY EMPTY. The BEFORE capture at
+     1920x1080 could not even locate a primary control on this page, because it
+     had no <main> landmark to scope to -- which is itself the defect that
+     measurement found. Sprint 15's own note records the Owner seeing "a title,
+     one input, and then a large empty void below the fold". Sprint 15 filled
+     some of that void with suggested questions. At 1920 there is still a wide
+     empty right-hand half, and the honest thing to put in it is what the
+     reader needs before they trust an answer: where answers come from, and what
+     happens when the evidence is not there.
+
+     Single column below 1000px. The grid is the enhancement, not the base. */
+  .si-identity { margin: 0 0 0.35rem; }
+  .si-identity .si-name {
+    font-size: clamp(22px, 1.8vw, 27px);
+    font-weight: 700; letter-spacing: -0.02em; color: var(--text);
+    display: block;
+  }
+  .si-identity .si-role {
+    display: block; margin-top: 0.3rem;
+    font-size: var(--t-small); color: var(--muted); font-weight: 400;
+    letter-spacing: 0;
+  }
+  .si-zones { display: block; }
+  .si-aside { margin: 0 0 2rem; }
+  .si-aside h2 {
+    font-size: var(--t-section); text-transform: uppercase;
+    letter-spacing: 0.05em; color: var(--accent); margin: 0 0 0.8rem;
+  }
+  .si-aside dl { margin: 0; }
+  .si-aside dt {
+    font-weight: 600; font-size: 0.92rem; margin: 0 0 0.2rem; color: var(--text);
+  }
+  .si-aside dd {
+    margin: 0 0 1rem; font-size: 0.92rem; line-height: 1.6; color: var(--muted);
+    max-width: 46ch;
+  }
+  .si-aside dd:last-child { margin-bottom: 0; }
+
+  @media (min-width: 1000px) {
+    /* 1.15fr / 1fr rather than 2fr / 1fr: the input column needs to stay near
+       the reading measure, and a right column narrower than ~40ch makes the
+       definition list read as a stack of fragments. */
+    .si-zones {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+      gap: 3rem;
+      align-items: start;
+    }
+    .si-aside {
+      margin: 0;
+      border-left: 1px solid var(--border);
+      padding-left: 2.5rem;
+    }
+  }
+
   .si-offline {
     border: 1px solid var(--amber); background: rgba(230,180,80,0.08); padding: 0.9rem 1rem;
     border-radius: 4px; margin-bottom: 1.5rem; font-size: 0.92rem;
@@ -88,35 +149,60 @@
 
 <div class="si-navwrap"><nav class="top-nav" id="top-nav" aria-label="Main"></nav></div>
 
-<div class="si-wrap">
-  <h1>Standing Interview</h1>
-
-  <p class="si-intro">
-    Ask an interview question about the backend systems I've worked on, or about
-    the AI delivery platform in this repository. Answers come only from my own
-    recorded engineering knowledge — if it isn't in there, I'll say so rather
-    than guess.
-  </p>
+<main class="si-wrap">
+  <hgroup class="si-identity">
+    <h1>Standing Interview</h1>
+    <!-- BL-C4. The candidate's name, on the page that speaks in his voice. -->
+    <span class="si-name">Karthikeyan Devadoss</span>
+    <span class="si-role">Senior Backend / Software Engineer — Java, Spring &amp; Agentic AI</span>
+  </hgroup>
 
   <div class="si-offline" id="si-offline" hidden>
     This instance has no knowledge base loaded, so it can't answer yet.
   </div>
 
-  <form class="si-form" id="si-form" autocomplete="off">
-    <input type="text" id="si-question" maxlength="500"
-           placeholder="How did you use Spring Security at NRG?"
-           aria-label="Interview question">
-    <button type="submit" id="si-ask">Ask</button>
-  </form>
-  <p class="si-hint">One question at a time. Typed answers only — no audio.</p>
+  <div class="si-zones">
+    <!-- LEFT: the interaction. A recruiter who lands here should be able to ask
+         something without reading anything first. -->
+    <div class="si-ask-zone">
+      <form class="si-form" id="si-form" autocomplete="off">
+        <input type="text" id="si-question" maxlength="500"
+               placeholder="How did you use Spring Security at NRG?"
+               aria-label="Interview question">
+        <button type="submit" id="si-ask">Ask</button>
+      </form>
+      <p class="si-hint">One question at a time. Typed answers only — no audio.</p>
 
-  <div class="si-suggest" id="si-suggest">
-    <p class="si-suggest-label">Or start with one of these</p>
-    <ul class="si-chips" id="si-chips"></ul>
+      <div class="si-suggest" id="si-suggest">
+        <p class="si-suggest-label">Or start with one of these</p>
+        <ul class="si-chips" id="si-chips"></ul>
+      </div>
+    </div>
+
+    <!-- RIGHT: the three things a reader needs in order to trust an answer.
+         Deliberately what it IS rather than a list of what it is not. -->
+    <aside class="si-aside" aria-label="How this works">
+      <h2>How this works</h2>
+      <dl>
+        <dt>Typed answers, in my own voice</dt>
+        <dd>No audio, no avatar, no streaming theatre. A question, a pause, an
+          answer — the way a written interview round actually reads.</dd>
+
+        <dt>Grounded in recorded engineering knowledge</dt>
+        <dd>Answers are retrieved from my own written record of the systems I
+          built at NRG Energy, Blue Cross Blue Shield Association and Marsh, and
+          of this platform. Not from a model's general knowledge about Java.</dd>
+
+        <dt>It says so when the evidence is missing</dt>
+        <dd>If the record does not cover what you asked, it tells you that
+          instead of inventing a plausible story. A refusal here is the system
+          working, not failing.</dd>
+      </dl>
+    </aside>
   </div>
 
   <div id="si-thread"></div>
-</div>
+</main>
 
 <script src="/nav.js"></script>
 <script>
