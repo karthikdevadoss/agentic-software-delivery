@@ -1666,3 +1666,35 @@ before it.
 - **A structured-output call needs a token budget for the model's reasoning too, and an empty text with `stop_reason=max_tokens` is the tell.** Real incident (2026-09-29, Sprint 13, BL-098, first real eval run): JD Match's classification call was given `max_tokens=1600` -- generous for the JSON it had to return -- and came back with NO text, `output_tokens` exactly 1600. The gateway's own denial message named the cause ("thinking consumed the entire max_tokens budget"), the same failure `reasoning_gateway.py` had already documented from an earlier session, and four of eight eval cases were TEMPORARILY_UNAVAILABLE. Fixed by sizing the budget for reasoning plus output (4,000 / 8,000) and passing `effort="low"` through the gateway's existing parameter. **Rule:** for any call whose output is a schema, budget for the reasoning the model will do before the first JSON byte, read the gateway's denial reason before touching the prompt, and treat `text == ""` with `stop_reason == "max_tokens"` as a budget defect, never a model refusal.
 
 - **A Playwright `expect(..., {timeout})` cannot outlive the test's own timeout; a real-model spec sets `test.setTimeout()` explicitly.** Real incident (2026-09-29, Sprint 13): the JD Match sample-run spec waited up to 120s for the result panel, and failed at 30s with "Test timeout of 30000ms exceeded" -- the per-test default -- while the server was still loading the local embedder for its first request. **Rule:** any spec that triggers a real model call or a cold embedder load declares its own per-test timeout at the top of the test, and the error context's "Test timeout … exceeded" line is read before the locator line.
+
+## A time-based limit resets on the SERVER's clock, not yours (2026-09-30)
+
+**Symptom.** A per-day rate limit on the deployed Standing Interview kept
+returning `visitor_cap` after what my laptop said was UTC midnight — including
+for a brand-new visitor key, which should have started at zero. The day-roll
+logic was correct and unit-tested, the deployed commit demonstrably contained
+it, and it still would not reset.
+
+**Cause.** The container's clock read `23:56:17 GMT` while the laptop read
+`00:02:31`. Six minutes apart. The reset had simply not happened yet *on the
+server*, which is the only clock that matters, and I had computed "sleep until
+UTC midnight" from the local one.
+
+**How it was found, which is the transferable part.** Not by reading the code
+again — the code was fine and re-reading it three times proved nothing. The
+response carried a `Retry-After` header that the server computes from its own
+clock, so comparing it against local time exposed the skew immediately:
+
+```
+Date: Tue, 29 Sep 2026 23:56:17 GMT      <- the server
+my UTC: 2026-09-30 00:02:31              <- this laptop
+retry-after: 223                          <- ~3.7 min to ITS midnight
+```
+
+**The rule.** When waiting out a server-side time window, take the wait from
+the server — a `Retry-After` header, a `reset_at` field, its `Date` header —
+never from the local clock. A developer machine's clock drifts and nothing
+warns you. And when a time-dependent thing misbehaves, check for skew BEFORE
+re-reading logic that unit tests already cover: a test that patches the clock
+(`mock.patch.object(si_budget, "_today", ...)`) proves the branch works and
+says nothing at all about what time the other machine thinks it is.
