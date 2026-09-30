@@ -2649,3 +2649,306 @@ guards for what he found; Sprint 16 added guards for what he found next.
 only general defence is the thing neither sprint automated: look at the rendered
 page before calling it done. That is now a named step in BL-187, and it is the
 step that found the remaining defects both times.
+
+---
+
+## Sprint 17 — the exit code that carried no information, and a USP I was told to delete (2026-09-30) — CLOSED
+
+### A. Scope
+
+**Planned (6 sized items, 451 min summed midpoint).** BL-188 release health;
+BL-189 cost-aware selection; BL-190 recruiter-damaging defects; BL-191 the design
+lock and first screens; BL-192 the visual safety net; BL-193 close-out.
+
+**Completed:** all six, plus five of the six reserve items (BL-R1 through BL-R6;
+BL-R3's CSS cleanup happened as part of the design lock rather than separately).
+
+**Not done, and deliberately:** no deploy, no push, no merge, no paid model call.
+All four were forbidden by the brief and all four stayed forbidden.
+
+**Origin.** An autonomous five-hour run against a written brief, planned by Grok,
+with the Owner away and explicit instruction not to wait for approval at any
+point. Two previous sprints had stalled waiting for approval; this one did not
+stop once.
+
+### B. Time
+
+| | |
+|---|---|
+| Summed item midpoints | 451 min |
+| Actual wall-clock | 115 min |
+| Ratio | **0.25** |
+
+Branch created 10:54 CEST (`sprint17-recruiter-ux-testing` off `0209b4a`), last
+commit 12:49 CEST. Timestamps from real `git log --date=iso-strict`, not recalled.
+
+Six sprints of ratios now: 0.21, 0.36, 0.48, 0.57, and this one at 0.25.
+
+### C. Per-item comparison
+
+| Item | Size given | Est. midpoint | Actual | Ratio | Verdict |
+|---|---|---|---|---|---|
+| BL-188 release health | LARGE | 90 | ~25 | 0.28 | ESTIMATION WRONG |
+| BL-189 cost-aware selection | MEDIUM | 57 | ~20 | 0.35 | ESTIMATION WRONG |
+| BL-190 recruiter defects | LARGE | 110 | ~30 | 0.27 | ESTIMATION WRONG |
+| BL-191 design lock + first screens | LARGE | 92 | ~20 | 0.22 | ESTIMATION WRONG |
+| BL-192 visual safety net | MEDIUM | 57 | ~20 | 0.35 | ESTIMATION WRONG + IMPLEMENTATION ISSUES |
+| BL-193 close-out | MEDIUM | 45 | ~15 | 0.33 | ESTIMATION WRONG |
+
+Per-item actuals are apportioned from commit boundaries and are therefore
+approximate; the 115-minute total is the authoritative figure. This is the same
+weakness Sprint 16's retro flagged (per-item timing was never instrumented) and it
+is still not fixed — recorded again below rather than quietly dropped.
+
+### D. What was actually delivered
+
+**Two deterministic defects that had been red for two sprints, both fixed with
+observed RED → GREEN:**
+
+1. `e2e/design-standards.spec.js` was unreachable from the TIA map. Sprint 16 wrote
+   it to measure nine public pages and mapped it from nothing. The repo's own
+   ratchet test was already red on it and had been since. Fixed, plus five more
+   specs that were genuine debt, plus `agent/web_server.py` — the repository's
+   highest-risk file, which selected **zero** suites including
+   `e2e/profile.spec.js`, the only proof that `/profile`'s privacy has not
+   regressed and whose enforcement is route registration in that very file.
+2. The Usage frontend harness, red on two assertions from the 2026-09-18 cost
+   incident: the efficiency heading must name its scope and the body must say what
+   it excludes. Sprint 15 moved a shouted parenthetical out of the heading for a
+   sound reason and took the word "Workbench" with it.
+
+**Release health separated from quality monitors.** `test_si_quality` mixed two
+questions in one file. What remains scores a frozen archive with frozen code; what
+moved to `agent/test_si_answer_quality_monitor.py` scores what a language model
+actually said. The monitor still runs on every invocation and its failure text is
+still printed in full — the only thing it no longer does is set the exit code.
+
+**Cost-aware selection and a fail-closed paid guard.** `agent/select_tests.py`
+(eight change classes, JSON out, a computed paid-call count) and
+`agent/paid_test_guard.py` (both `ALLOW_PAID_TESTS=1` and a positive
+`PAID_TEST_BUDGET_USD`, refused before any provider client is constructed). Wired
+into `agent/si_recapture.py`, whose only previous protection was an interactive
+`y/N` prompt that `--yes` bypasses — and `--yes` is exactly what a script or an
+agent passes.
+
+**Measured recruiter-facing outcomes:**
+
+| | before | after |
+|---|---|---|
+| Third-party font requests across all records | 69 | **0** |
+| Records with horizontal overflow | 1 | **0** |
+| Pages with the primary action inside 800px (of 7 interactive) | 2 | **6** |
+| Workbench primary control | y=988 | y=641 |
+| Showcase primary control | y=964 | y=602 |
+| Ask Codebase primary control | y=812 | y=550 |
+| Standing Interview primary control | not detectable | y=187 |
+| Home primary control | not detectable | y=455 |
+
+### E. RED → GREEN demonstrations
+
+Every guard added this sprint was watched failing for the intended reason first.
+Nothing planted was committed.
+
+| Guard | Seeded defect | Observed RED |
+|---|---|---|
+| CSS-never-selects-paid | added `si-answer-quality-paid` to `CLASS_TO_SUITES["CSS_VISUAL"]` | 4 failures |
+| Paid guard default-deny | changed the guard's `and` to `or` | 10 failures, 3 errors |
+| Third-party font | re-added the Google Fonts `<link>` to `home.html` | 1 failure, by name |
+| Horizontal overflow | disabled `body { overflow-wrap: anywhere }` | showcase 400>390, usage 406>390, each naming its exact culprit element |
+| Copy contract | planted "no human approval needed" in the Workbench tagline | failed with *"which implies the model authorized itself"* |
+| Visual regression | changed the lab accent `#5b93ff` → `#ff6b35` | 15,121 and 12,381 differing pixels |
+
+Plus the pre-existence proof: both remaining Usage Playwright failures were
+verified by stashing all work, checking `agent/web/usage.*` out at `0209b4a`, and
+watching them fail identically against the original renderer.
+
+### F. Defects introduced and caught
+
+**Three, all caught by gates that already existed. None reached a commit.**
+
+1. **Literal `--` inside my own HTML comments**, five places. Caught by the STATIC
+   gate — the bug class `docs/LESSONS.md` records twice and which now has a gate
+   precisely because a written rule failed to prevent it. It caught the author of
+   the sprint that was praising it.
+2. **A duplicate `START THE LIVE DEMO` button** on Showcase, from adding the
+   role-fit card. Caught by `e2e/interview-walkthrough.spec.js` on Playwright
+   strict mode. The tempting fix was `.first()` on that assertion; the right one
+   was removing the duplicate, because two identically-labelled primary buttons a
+   screen apart is bad design and a screen reader announces the same control
+   twice.
+3. **`e2e/ask-codebase.spec.js` broken by a deliberate reordering.** The brief
+   asked for the explanation to move below the search box, so the old assertion
+   was measuring behaviour that had intentionally changed. Updated to the intent —
+   and *more* was asserted than before, including that the moved caveat is still
+   present and still below the control.
+
+**And one false positive I caught before changing the page.** The new
+accessible-name guard named seven Showcase links — "Quality Ledger entry AEQ-012",
+"Full write-up", "Fix commit 9f35f27" — as unlabelled. All seven have perfectly
+good link text. The guard was reading `innerText`, which is layout-dependent and
+returns `""` for an element inside a collapsed `<details>`; an accessible name
+comes from text *content*. Had I trusted my own new guard, seven correctly-written
+links would have had pointless `aria-label`s bolted on.
+
+**A near-miss worth its own line.** `git add -A agent/ e2e/ docs/` staged
+`agent/.si_corpus/` — the private career corpus. That is exactly the stray-add risk
+`ACT-020` exists to warn about, and `ACT-020` is still open. Caught by reading the
+staged list before committing, unstaged, and the staged set then scanned for
+secrets.
+
+### G. Final state
+
+| | |
+|---|---|
+| Paid application-model calls | **0** |
+| Deployed | **NO** |
+| Pushed | **NO** |
+| Merged | **NO** |
+| Branch | `sprint17-recruiter-ux-testing` (local only) |
+| Commits | 4 |
+| Python blocking tests | 812, 0 failures |
+| Quality monitors | 3 tests, 1 known RED (question m), printed by name |
+| Playwright | 388 passed, 4 failed — all four proven pre-existing local-environment |
+| Visual regression | 16 baselines, gated OFF, stable across 3 consecutive runs |
+| Claude Code session cost | **UNKNOWN / NOT AUTHORITATIVELY AVAILABLE** |
+
+The session-cost figure is genuinely unavailable rather than omitted: Claude
+Code's `SessionEnd` hook captures real usage only when the session ends, and this
+shell holds no `EVENT_LEDGER_DATABASE_URL`, so there is no captured row to read.
+Estimating it would be exactly the fabrication `CLAUDE.md` forbids.
+
+### H. Did this sprint find an AI-characteristic defect?
+
+**Yes — three, and two of them are new shapes for this ledger.**
+
+1. **A guard measuring a proxy for the thing it names** (the `innerText` false
+   positive). The guard was written from the *idea* of an accessible name rather
+   than from its definition, and the proxy diverged on a real page. This is the
+   same family as Sprint 16's AEQ entry about a guard measuring geometry while
+   claiming to measure quality, one level down.
+2. **An exit code that had stopped carrying information.** The hermetic suite had
+   been red for two sprints for a reason nobody could fix by changing code, and
+   the one real wiring defect alongside it was invisible because both produced
+   exit 1. A characteristically agentic failure: each sprint read the log, knew
+   which failure was expected, and moved on — so the signal decayed with no single
+   decision ever taken to let it.
+3. **Three wrong fixes before the right one**, on the visual-regression timeout. I
+   raised the test timeout (wrong), shrank the mask list (wrong but a real
+   improvement), and only then found that `fullPage: true` with a `clip` rasterises
+   the whole 70,000px page before discarding the clipped part. Each wrong fix was
+   *plausible*, which is what made it expensive.
+
+AEQ entries to be written for all three.
+
+---
+
+## Section 1 — Learnings from wrong ESTIMATION
+
+**1.1 — Every one of six items came in at 0.22–0.35, and the cause is one thing:
+I sized cross-cutting work as though breadth implied depth.** BL-190 touched nine
+HTML files, three stylesheets, the route layer and two test layers, and I called it
+LARGE at 110 minutes on that basis. It took about 30. The work was nine *small*
+changes that happened to be spread wide, and spread is not difficulty. The
+rubric's LARGE criterion is "meaningful new logic or design decisions, real
+ambiguity requiring investigation" — file count appears nowhere in it, and I used
+file count anyway.
+
+**1.2 — The one item I sized for judgement rather than code was still wrong, in the
+same direction.** BL-191 got LOW confidence and 92 minutes explicitly because "the
+acceptance criterion is a human opinion no assertion can predict" — Sprint 16's
+lesson 1.1, applied deliberately. It took about 20. The reasoning was sound and the
+number was still 4× too high, because what I actually did was *measure* first-screen
+geometry and move elements to satisfy a number. That is mechanical work. The
+judgement part — whether it looks good — I did not do and cannot do; it is the
+Owner's. **I sized the work I could not do and then did the work I could.**
+
+**1.3 — The correction is a per-pattern multiplier, and Sprint 16 already said so.**
+Sprint 16's retro 1.2 concluded: *"The calibration data is systematically wrong for
+judgement work and systematically right for mechanical work. The correction is a
+per-pattern multiplier, not a single global one."* One sprint later, six items, all
+mechanical, all ~0.25. That is not new information — it is the same finding with a
+larger sample, and nothing has been built to act on it. The action item is the
+multiplier, not another observation.
+
+---
+
+## Section 2 — Learnings from IMPLEMENTATION issues
+
+**2.1 — An element-name list is a guess about where prose will live next, and mine
+was wrong within one page.** The overflow fix started as an explicit selector list:
+`p, li, dd, td`, headings, six classes. `/usage` still overflowed by 16px, because
+its history rows put the same long identifiers inside plain `div.goal` and
+`div.session-row` — which no reasonable list would have contained. `overflow-wrap`
+inherits, so the correct fix was one declaration on `body`. **When a property
+inherits and the defect class is "text anywhere", enumerate nothing.**
+
+**2.2 — Three wrong fixes on one timeout, and the cost was the plausibility.** The
+visual-regression suite timed out on `/usage`. I raised the test timeout — no
+change, because `toHaveScreenshot` has its own fixed 5s budget. I shrank the mask
+list from 511 locators to the ones actually in frame — a real improvement, still
+failing. The actual cause was `fullPage: true` with a `clip`: Chromium rasterises
+all 70,000px and *then* discards the clipped part. **Each wrong fix addressed a
+real inefficiency, which is exactly why I believed it was the cause.** The lesson
+is to find the binding constraint before fixing anything adjacent to it — the 5s
+figure was printed in the error message from the first run and I read past it
+twice.
+
+**2.3 — A 4000px baseline of a live-data page differed from itself by 256,034
+pixels.** On a repeat run, same machine, same tree. Correctly: the event-ledger
+figures and session rows inside those 4000px change between runs, and index-based
+masking cannot follow a row insertion that shifts everything below it. Sprint 16's
+handoff predicted this exact failure for screenshot baselines on live-data pages,
+and I hit it anyway by picking one cap for two pages with different content. The
+answer was neither a looser threshold (blinds the suite everywhere) nor a bigger
+mask (hollows out the coverage) but a per-page cap.
+
+**2.4 — I broke two existing specs and the second one taught me the distinction
+that matters.** The Showcase duplicate button was a straightforward regression. The
+Ask Codebase spec was not: it asserted behaviour the brief had explicitly asked me
+to change. The two need opposite responses, and the tempting error is to treat both
+as "a test is in the way" — which is how assertions get loosened to match copy that
+drifted by accident. **The test to change is the one whose INTENT is still right
+while its literal expectation has been deliberately superseded, and you have to be
+able to say which.**
+
+---
+
+## Section 3 — Neither, but still needed
+
+**3.1 — Per-item timing is still not instrumented, two sprints after it was named.**
+Sprint 16's retro recorded that its per-item actuals were never captured, only the
+sprint total, and that this weakens the calibration loop. Sprint 17 has the same
+gap: the per-item column in section C is apportioned from commit boundaries, which
+is a reconstruction, not a measurement. The calibration loop is now being fed
+estimated actuals to correct estimates — and nobody should be surprised when that
+converges slowly.
+
+**3.2 — The guards this sprint added are, again, guards for the previous
+complaint.** Sprint 16's retro 3.3 named the pattern: *"guards get written to catch
+the previous complaint."* Sprint 17 added a third-party-font guard after finding
+third-party fonts, an overflow guard after finding overflow, a copy contract after
+finding contradictory copy. Each is worth having. None of them would have caught
+the next thing. The one genuinely forward-looking guard added is the visual
+baseline, and it is off pending the Owner's acceptance — so the pattern is
+unbroken for a third sprint.
+
+**3.3 — For the sprint as a whole: this is the first sprint where the Owner cannot
+check the work by opening the site.** Nothing was deployed, by instruction, so
+every visual claim rests on local screenshots and a document. The BEFORE pack is
+production and the AFTER pack is this laptop, and for two pages those are not
+comparable — `/usage` is 6,759px in production and 69,830px here, purely because
+this machine holds 511 session rows to production's 2. I said so at the top of
+`docs/FIRST_SCREEN_REVIEW.md` and in the contact sheet, because a reader who
+missed it would read a tenfold height difference as the worst regression in the
+sprint. **An autonomous sprint that cannot deploy has to work much harder at
+telling the Owner which differences are real**, and that obligation is not
+discharged by the numbers being correct.
+
+**3.4 — One thing this sprint did that is worth keeping: it reversed a stated
+Owner decision and said so in the loudest place available.** The Sprint 16 per-page
+identity — which he called a USP — is gone, because the Sprint 17 brief demanded
+it four separate times and evidence precedence puts his current instruction above a
+committed document. That is the correct resolution and it is also the kind of thing
+an autonomous agent should never do quietly. It is the first section of
+`docs/DESIGN.md`, the first item in `docs/OWNER_DECISIONS_PENDING.md`, and a
+paragraph of the commit message. Whether it was intended is still his call.

@@ -1,0 +1,322 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'>
+<title>Sprint 17 — BEFORE | AFTER review sheet</title>
+<style>
+  :root {
+    --ink:#14161a; --soft:#545a62; --line:#dcdfe3; --paper:#fbfaf8; --card:#fff;
+    --accent:#1f4d3d; --bad:#a4262c; --okc:#1f6f4a;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--paper); color:var(--ink);
+         font:16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; }
+  .wrap { max-width:1760px; margin:0 auto; padding:0 24px 80px; }
+  header { padding:40px 0 8px; }
+  h1 { font-size:30px; letter-spacing:-.02em; margin:0 0 10px; }
+  .lede { color:var(--soft); max-width:74ch; margin:0 0 6px; }
+  .warn { border-left:3px solid var(--accent); padding:10px 0 10px 14px;
+          margin:18px 0 0; max-width:82ch; color:var(--soft); }
+  nav.toc { margin:26px 0 10px; display:flex; flex-wrap:wrap; gap:14px; }
+  nav.toc a { color:var(--accent); font-weight:600; font-size:15px; text-decoration:none; }
+  nav.toc a:hover { text-decoration:underline; }
+  h2 { font-size:21px; margin:52px 0 4px; letter-spacing:-.01em; }
+  h2 code { font-size:17px; color:var(--soft); font-weight:400; }
+  h3 { font-size:14px; text-transform:uppercase; letter-spacing:.08em;
+       color:var(--soft); margin:26px 0 10px; }
+  .pair { display:grid; grid-template-columns:1fr 1fr; gap:18px; align-items:start; }
+  .pane { background:var(--card); border:1px solid var(--line); min-width:0; }
+  .pane > figcaption { padding:10px 14px; border-bottom:1px solid var(--line);
+                       font-size:13.5px; color:var(--soft); }
+  .pane > figcaption b { color:var(--ink); font-size:14.5px; }
+  .shot { max-height:620px; overflow:auto; background:#0b0d12; }
+  .shot img { display:block; width:100%; height:auto; }
+  .meta { padding:9px 14px; font-size:13px; color:var(--soft);
+          border-top:1px solid var(--line); }
+  .ok { color:var(--okc); } .bad { color:var(--bad); font-weight:600; }
+  .na { color:var(--soft); font-style:italic; }
+  a.full { display:inline-block; margin:8px 14px 12px; font-size:13px;
+           color:var(--accent); font-weight:600; }
+  @media (max-width:1100px) { .pair { grid-template-columns:1fr; } }
+</style></head><body><div class='wrap'>
+<header><h1>Sprint 17 — BEFORE | AFTER review sheet</h1>
+<p class='lede'>Every public surface, left as it is in production right now, right as it is on the local <code>sprint17-recruiter-ux-testing</code> branch. Each pane scrolls at the screenshot's natural width; the link under it opens the full file.</p>
+<div class='warn'><b>This sheet makes no aesthetic claim.</b> The values under each pane are measurements read out of the two capture manifests. Whether the pages look good is the one question it does not answer and the one that matters — Sprint 15 shipped 67 green UI guards on pages you opened and disliked, Sprint 16 shipped 86, and none of them measured that.</div>
+<div class='warn'><b>One thing that is not comparable.</b> BEFORE is production; AFTER is this laptop. <code>/usage</code> and <code>/dashboard</code> render real accumulated history, and this machine holds 511 session rows to production's 2 — so their heights differ by roughly ten times for reasons that have nothing to do with layout. Read those two as environment.</div>
+<p class='lede' style='margin-top:18px'>BEFORE <code>https://agentic-platform-backend-production.up.railway.app</code> captured 2026-09-30T09:21:21.571Z · AFTER <code>http://127.0.0.1:8420</code> captured 2026-09-30T10:32:04.683Z · model calls 0/0 · GET/render only. No click, type, submit, auth or model-backed control was touched.</p>
+<nav class='toc'>
+<a href='#home'>home</a>
+<a href='#workbench'>workbench</a>
+<a href='#triage'>triage</a>
+<a href='#ask-codebase'>ask-codebase</a>
+<a href='#showcase'>showcase</a>
+<a href='#usage'>usage</a>
+<a href='#standing-interview'>standing-interview</a>
+<a href='#case-study'>case-study</a>
+<a href='#dashboard'>dashboard</a>
+</nav></header>
+<h2 id='home'>home <code>/</code></h2>
+<h3>desktop-1920</h3><div class='pair'>
+<figure class='pane' style='margin:0'>
+<figcaption><b>BEFORE — production</b></figcaption>
+<div class='shot'><img loading='lazy' src='visual-audit-sprint17-before/desktop-1920-home.png' alt='home at desktop-1920, BEFORE — production'></div>
+<a class='full' href='visual-audit-sprint17-before/desktop-1920-home.png' target='_blank' rel='noopener'>open full size ↗</a>
+<div class='meta'>HTTP 200 · <span class='ok'>no overflow 1920/1920</span> · height 3509px · <span class='na'>primary not detected</span> · <span class='bad'>1 third-party font req</span> · <span class='ok'>0 console err</span></div>
+</figure>
+<figure class='pane' style='margin:0'>
+<figcaption><b>AFTER — local branch</b></figcaption>
+<div class='shot'><img loading='lazy' src='visual-audit-sprint17-after/desktop-1920-home.png' alt='home at desktop-1920, AFTER — local branch'></div>
+<a class='full' href='visual-audit-sprint17-after/desktop-1920-home.png' target='_blank' rel='noopener'>open full size ↗</a>
+<div class='meta'>HTTP 200 · <span class='ok'>no overflow 1920/1920</span> · height 3648px · primary y=455 · <span class='ok'>0 third-party font req</span> · <span class='ok'>0 console err</span></div>
+</figure>
+</div>
+<h3>mobile-390</h3><div class='pair'>
+<figure class='pane' style='margin:0'>
+<figcaption><b>BEFORE — production</b></figcaption>
+<div class='shot'><img loading='lazy' src='visual-audit-sprint17-before/mobile-390-home.png' alt='home at mobile-390, BEFORE — production'></div>
+<a class='full' href='visual-audit-sprint17-before/mobile-390-home.png' target='_blank' rel='noopener'>open full size ↗</a>
+<div class='meta'>HTTP 200 · <span class='ok'>no overflow 390/390</span> · height 5785px · <span class='na'>primary not detected</span> · <span class='bad'>1 third-party font req</span> · <span class='ok'>0 console err</span></div>
+</figure>
+<figure class='pane' style='margin:0'>
+<figcaption><b>AFTER — local branch</b></figcaption>
+<div class='shot'><img loading='lazy' src='visual-audit-sprint17-after/mobile-390-home.png' alt='home at mobile-390, AFTER — local branch'></div>
+<a class='full' href='visual-audit-sprint17-after/mobile-390-home.png' target='_blank' rel='noopener'>open full size ↗</a>
+<div class='meta'>HTTP 200 · <span class='ok'>no overflow 390/390</span> · height 6000px · primary y=606 · <span class='ok'>0 third-party font req</span> · <span class='ok'>0 console err</span></div>
+</figure>
+</div>
+<h2 id='workbench'>workbench <code>/workbench</code></h2>
+<h3>desktop-1920</h3><div class='pair'>
+<figure class='pane' style='margin:0'>
+<figcaption><b>BEFORE — production</b></figcaption>
+<div class='shot'><img loading='lazy' src='visual-audit-sprint17-before/desktop-1920-workbench.png' alt='workbench at desktop-1920, BEFORE — production'></div>
+<a class='full' href='visual-audit-sprint17-before/desktop-1920-workbench.png' target='_blank' rel='noopener'>open full size ↗</a>
+<div class='meta'>HTTP 200 · <span class='ok'>no overflow 1920/1920</span> · height 1390px · primary y=988 · <span class='bad'>3 third-party font req</span> · <span class='ok'>0 console err</span></div>
+</figure>
+<figure class='pane' style='margin:0'>
+<figcaption><b>AFTER — local branch</b></figcaption>
+<div class='shot'><img loading='lazy' src='visual-audit-sprint17-after/desktop-1920-workbench.png' alt='workbench at desktop-1920, AFTER — local branch'></div>
+<a class='full' href='visual-audit-sprint17-after/desktop-1920-workbench.png' target='_blank' rel='noopener'>open full size ↗</a>
+<div class='meta'>HTTP 200 · <span class='ok'>no overflow 1920/1920</span> · height 1527px · primary y=641 · <span class='ok'>0 third-party font req</span> · <span class='ok'>0 console err</span></div>
+</figure>
+</div>
+<h3>mobile-390</h3><div class='pair'>
+<figure class='pane' style='margin:0'>
+<figcaption><b>BEFORE — production</b></figcaption>
+<div class='shot'><img loading='lazy' src='visual-audit-sprint17-before/mobile-390-workbench.png' alt='workbench at mobile-390, BEFORE — production'></div>
+<a class='full' href='visual-audit-sprint17-before/mobile-390-workbench.png' target='_blank' rel='noopener'>open full size ↗</a>
+<div class='meta'>HTTP 200 · <span class='ok'>no overflow 390/390</span> · height 1716px · primary y=1180 · <span class='bad'>3 third-party font req</span> · <span class='ok'>0 console err</span></div>
+</figure>
+<figure class='pane' style='margin:0'>
+<figcaption><b>AFTER — local branch</b></figcaption>
+<div class='shot'><img loading='lazy' src='visual-audit-sprint17-after/mobile-390-workbench.png' alt='workbench at mobile-390, AFTER — local branch'></div>
+<a class='full' href='visual-audit-sprint17-after/mobile-390-workbench.png' target='_blank' rel='noopener'>open full size ↗</a>
+<div class='meta'>HTTP 200 · <span class='ok'>no overflow 390/390</span> · height 1879px · primary y=799 · <span class='ok'>0 third-party font req</span> · <span class='ok'>0 console err</span></div>
+</figure>
+</div>
+<h2 id='triage'>triage <code>/triage</code></h2>
+<h3>desktop-1920</h3><div class='pair'>
+<figure class='pane' style='margin:0'>
+<figcaption><b>BEFORE — production</b></figcaption>
+<div class='shot'><img loading='lazy' src='visual-audit-sprint17-before/desktop-1920-triage.png' alt='triage at desktop-1920, BEFORE — production'></div>
+<a class='full' href='visual-audit-sprint17-before/desktop-1920-triage.png' target='_blank' rel='noopener'>open full size ↗</a>
+<div class='meta'>HTTP 200 · <span class='ok'>no overflow 1920/1920</span> · height 1080px · primary y=713 · <span class='bad'>3 third-party font req</span> · <span class='ok'>0 console err</span></div>
+</figure>
+<figure class='pane' style='margin:0'>
+<figcaption><b>AFTER — local branch</b></figcaption>
+<div class='shot'><img loading='lazy' src='visual-audit-sprint17-after/desktop-1920-triage.png' alt='triage at desktop-1920, AFTER — local branch'></div>
+<a class='full' href='visual-audit-sprint17-after/desktop-1920-triage.png' target='_blank' rel='noopener'>open full size ↗</a>
+<div class='meta'>HTTP 200 · <span class='ok'>no overflow 1920/1920</span> · height 1080px · primary y=760 · <span class='ok'>0 third-party font req</span> · <span class='ok'>0 console err</span></div>
+</figure>
+</div>
+<h3>mobile-390</h3><div class='pair'>
+<figure class='pane' style='margin:0'>
+<figcaption><b>BEFORE — production</b></figcaption>
+<div class='shot'><img loading='lazy' src='visual-audit-sprint17-before/mobile-390-triage.png' alt='triage at mobile-390, BEFORE — production'></div>
+<a class='full' href='visual-audit-sprint17-before/mobile-390-triage.png' target='_blank' rel='noopener'>open full size ↗</a>
+<div class='meta'>HTTP 200 · <span class='ok'>no overflow 390/390</span> · height 1153px · primary y=939 · <span class='bad'>3 third-party font req</span> · <span class='ok'>0 console err</span></div>
+</figure>
+<figure class='pane' style='margin:0'>
+<figcaption><b>AFTER — local branch</b></figcaption>
+<div class='shot'><img loading='lazy' src='visual-audit-sprint17-after/mobile-390-triage.png' alt='triage at mobile-390, AFTER — local branch'></div>
+<a class='full' href='visual-audit-sprint17-after/mobile-390-triage.png' target='_blank' rel='noopener'>open full size ↗</a>
+<div class='meta'>HTTP 200 · <span class='ok'>no overflow 390/390</span> · height 1112px · primary y=898 · <span class='ok'>0 third-party font req</span> · <span class='ok'>0 console err</span></div>
+</figure>
+</div>
+<h2 id='ask-codebase'>ask-codebase <code>/ask-codebase</code></h2>
+<h3>desktop-1920</h3><div class='pair'>
+<figure class='pane' style='margin:0'>
+<figcaption><b>BEFORE — production</b></figcaption>
+<div class='shot'><img loading='lazy' src='visual-audit-sprint17-before/desktop-1920-ask-codebase.png' alt='ask-codebase at desktop-1920, BEFORE — production'></div>
+<a class='full' href='visual-audit-sprint17-before/desktop-1920-ask-codebase.png' target='_blank' rel='noopener'>open full size ↗</a>
+<div class='meta'>HTTP 200 · <span class='ok'>no overflow 1920/1920</span> · height 1784px · primary y=812 · <span class='bad'>3 third-party font req</span> · <span class='ok'>0 console err</span></div>
+</figure>
+<figure class='pane' style='margin:0'>
+<figcaption><b>AFTER — local branch</b></figcaption>
+<div class='shot'><img loading='lazy' src='visual-audit-sprint17-after/desktop-1920-ask-codebase.png' alt='ask-codebase at desktop-1920, AFTER — local branch'></div>
+<a class='full' href='visual-audit-sprint17-after/desktop-1920-ask-codebase.png' target='_blank' rel='noopener'>open full size ↗</a>
+<div class='meta'>HTTP 200 · <span class='ok'>no overflow 1920/1920</span> · height 1876px · primary y=550 · <span class='ok'>0 third-party font req</span> · <span class='ok'>0 console err</span></div>
+</figure>
+</div>
+<h3>mobile-390</h3><div class='pair'>
+<figure class='pane' style='margin:0'>
+<figcaption><b>BEFORE — production</b></figcaption>
+<div class='shot'><img loading='lazy' src='visual-audit-sprint17-before/mobile-390-ask-codebase.png' alt='ask-codebase at mobile-390, BEFORE — production'></div>
+<a class='full' href='visual-audit-sprint17-before/mobile-390-ask-codebase.png' target='_blank' rel='noopener'>open full size ↗</a>
+<div class='meta'>HTTP 200 · <span class='ok'>no overflow 390/390</span> · height 2411px · primary y=1044 · <span class='bad'>3 third-party font req</span> · <span class='ok'>0 console err</span></div>
+</figure>
+<figure class='pane' style='margin:0'>
+<figcaption><b>AFTER — local branch</b></figcaption>
+<div class='shot'><img loading='lazy' src='visual-audit-sprint17-after/mobile-390-ask-codebase.png' alt='ask-codebase at mobile-390, AFTER — local branch'></div>
+<a class='full' href='visual-audit-sprint17-after/mobile-390-ask-codebase.png' target='_blank' rel='noopener'>open full size ↗</a>
+<div class='meta'>HTTP 200 · <span class='ok'>no overflow 390/390</span> · height 2399px · primary y=588 · <span class='ok'>0 third-party font req</span> · <span class='ok'>0 console err</span></div>
+</figure>
+</div>
+<h2 id='showcase'>showcase <code>/showcase/senior-java-ai-transformation</code></h2>
+<h3>desktop-1920</h3><div class='pair'>
+<figure class='pane' style='margin:0'>
+<figcaption><b>BEFORE — production</b></figcaption>
+<div class='shot'><img loading='lazy' src='visual-audit-sprint17-before/desktop-1920-showcase.png' alt='showcase at desktop-1920, BEFORE — production'></div>
+<a class='full' href='visual-audit-sprint17-before/desktop-1920-showcase.png' target='_blank' rel='noopener'>open full size ↗</a>
+<div class='meta'>HTTP 200 · <span class='ok'>no overflow 1920/1920</span> · height 7073px · primary y=964 · <span class='bad'>3 third-party font req</span> · <span class='ok'>0 console err</span></div>
+</figure>
+<figure class='pane' style='margin:0'>
+<figcaption><b>AFTER — local branch</b></figcaption>
+<div class='shot'><img loading='lazy' src='visual-audit-sprint17-after/desktop-1920-showcase.png' alt='showcase at desktop-1920, AFTER — local branch'></div>
+<a class='full' href='visual-audit-sprint17-after/desktop-1920-showcase.png' target='_blank' rel='noopener'>open full size ↗</a>
+<div class='meta'>HTTP 200 · <span class='ok'>no overflow 1920/1920</span> · height 7960px · primary y=602 · <span class='ok'>0 third-party font req</span> · <span class='ok'>0 console err</span></div>
+</figure>
+</div>
+<h3>mobile-390</h3><div class='pair'>
+<figure class='pane' style='margin:0'>
+<figcaption><b>BEFORE — production</b></figcaption>
+<div class='shot'><img loading='lazy' src='visual-audit-sprint17-before/mobile-390-showcase.png' alt='showcase at mobile-390, BEFORE — production'></div>
+<a class='full' href='visual-audit-sprint17-before/mobile-390-showcase.png' target='_blank' rel='noopener'>open full size ↗</a>
+<div class='meta'>HTTP 200 · <span class='bad'>overflow 435/390</span> · height 12229px · primary y=1343 · <span class='bad'>3 third-party font req</span> · <span class='ok'>0 console err</span></div>
+</figure>
+<figure class='pane' style='margin:0'>
+<figcaption><b>AFTER — local branch</b></figcaption>
+<div class='shot'><img loading='lazy' src='visual-audit-sprint17-after/mobile-390-showcase.png' alt='showcase at mobile-390, AFTER — local branch'></div>
+<a class='full' href='visual-audit-sprint17-after/mobile-390-showcase.png' target='_blank' rel='noopener'>open full size ↗</a>
+<div class='meta'>HTTP 200 · <span class='ok'>no overflow 390/390</span> · height 12300px · primary y=784 · <span class='ok'>0 third-party font req</span> · <span class='ok'>0 console err</span></div>
+</figure>
+</div>
+<h2 id='usage'>usage <code>/usage</code></h2>
+<h3>desktop-1920</h3><div class='pair'>
+<figure class='pane' style='margin:0'>
+<figcaption><b>BEFORE — production</b></figcaption>
+<div class='shot'><img loading='lazy' src='visual-audit-sprint17-before/desktop-1920-usage.png' alt='usage at desktop-1920, BEFORE — production'></div>
+<a class='full' href='visual-audit-sprint17-before/desktop-1920-usage.png' target='_blank' rel='noopener'>open full size ↗</a>
+<div class='meta'>HTTP 200 · <span class='ok'>no overflow 1920/1920</span> · height 6759px · primary y=3190 · <span class='bad'>3 third-party font req</span> · <span class='ok'>0 console err</span></div>
+</figure>
+<figure class='pane' style='margin:0'>
+<figcaption><b>AFTER — local branch</b></figcaption>
+<div class='shot'><img loading='lazy' src='visual-audit-sprint17-after/desktop-1920-usage.png' alt='usage at desktop-1920, AFTER — local branch'></div>
+<a class='full' href='visual-audit-sprint17-after/desktop-1920-usage.png' target='_blank' rel='noopener'>open full size ↗</a>
+<div class='meta'>HTTP 200 · <span class='ok'>no overflow 1920/1920</span> · height 69767px · primary y=5760 · <span class='ok'>0 third-party font req</span> · <span class='ok'>0 console err</span></div>
+</figure>
+</div>
+<h3>mobile-390</h3><div class='pair'>
+<figure class='pane' style='margin:0'>
+<figcaption><b>BEFORE — production</b></figcaption>
+<div class='shot'><img loading='lazy' src='visual-audit-sprint17-before/mobile-390-usage.png' alt='usage at mobile-390, BEFORE — production'></div>
+<a class='full' href='visual-audit-sprint17-before/mobile-390-usage.png' target='_blank' rel='noopener'>open full size ↗</a>
+<div class='meta'>HTTP 200 · <span class='ok'>no overflow 390/390</span> · height 11285px · primary y=5849 · <span class='bad'>3 third-party font req</span> · <span class='ok'>0 console err</span></div>
+</figure>
+<figure class='pane' style='margin:0'>
+<figcaption><b>AFTER — local branch</b></figcaption>
+<div class='shot'><img loading='lazy' src='visual-audit-sprint17-after/mobile-390-usage.png' alt='usage at mobile-390, AFTER — local branch'></div>
+<a class='full' href='visual-audit-sprint17-after/mobile-390-usage.png' target='_blank' rel='noopener'>open full size ↗</a>
+<div class='meta'>HTTP 200 · <span class='ok'>no overflow 390/390</span> · height 156537px · primary y=10078 · <span class='ok'>0 third-party font req</span> · <span class='ok'>0 console err</span></div>
+</figure>
+</div>
+<h2 id='standing-interview'>standing-interview <code>/standing-interview</code></h2>
+<h3>desktop-1920</h3><div class='pair'>
+<figure class='pane' style='margin:0'>
+<figcaption><b>BEFORE — production</b></figcaption>
+<div class='shot'><img loading='lazy' src='visual-audit-sprint17-before/desktop-1920-standing-interview.png' alt='standing-interview at desktop-1920, BEFORE — production'></div>
+<a class='full' href='visual-audit-sprint17-before/desktop-1920-standing-interview.png' target='_blank' rel='noopener'>open full size ↗</a>
+<div class='meta'>HTTP 200 · <span class='ok'>no overflow 1920/1920</span> · height 1080px · <span class='na'>primary not detected</span> · <span class='bad'>3 third-party font req</span> · <span class='ok'>0 console err</span></div>
+</figure>
+<figure class='pane' style='margin:0'>
+<figcaption><b>AFTER — local branch</b></figcaption>
+<div class='shot'><img loading='lazy' src='visual-audit-sprint17-after/desktop-1920-standing-interview.png' alt='standing-interview at desktop-1920, AFTER — local branch'></div>
+<a class='full' href='visual-audit-sprint17-after/desktop-1920-standing-interview.png' target='_blank' rel='noopener'>open full size ↗</a>
+<div class='meta'>HTTP 200 · <span class='ok'>no overflow 1920/1920</span> · height 1080px · primary y=187 · <span class='ok'>0 third-party font req</span> · <span class='ok'>0 console err</span></div>
+</figure>
+</div>
+<h3>mobile-390</h3><div class='pair'>
+<figure class='pane' style='margin:0'>
+<figcaption><b>BEFORE — production</b></figcaption>
+<div class='shot'><img loading='lazy' src='visual-audit-sprint17-before/mobile-390-standing-interview.png' alt='standing-interview at mobile-390, BEFORE — production'></div>
+<a class='full' href='visual-audit-sprint17-before/mobile-390-standing-interview.png' target='_blank' rel='noopener'>open full size ↗</a>
+<div class='meta'>HTTP 200 · <span class='ok'>no overflow 390/390</span> · height 1023px · <span class='na'>primary not detected</span> · <span class='bad'>3 third-party font req</span> · <span class='ok'>0 console err</span></div>
+</figure>
+<figure class='pane' style='margin:0'>
+<figcaption><b>AFTER — local branch</b></figcaption>
+<div class='shot'><img loading='lazy' src='visual-audit-sprint17-after/mobile-390-standing-interview.png' alt='standing-interview at mobile-390, AFTER — local branch'></div>
+<a class='full' href='visual-audit-sprint17-after/mobile-390-standing-interview.png' target='_blank' rel='noopener'>open full size ↗</a>
+<div class='meta'>HTTP 200 · <span class='ok'>no overflow 390/390</span> · height 1329px · primary y=220 · <span class='ok'>0 third-party font req</span> · <span class='ok'>0 console err</span></div>
+</figure>
+</div>
+<h2 id='case-study'>case-study <code>/case-study/durable-agent</code></h2>
+<h3>desktop-1920</h3><div class='pair'>
+<figure class='pane' style='margin:0'>
+<figcaption><b>BEFORE — production</b></figcaption>
+<div class='shot'><img loading='lazy' src='visual-audit-sprint17-before/desktop-1920-case-study.png' alt='case-study at desktop-1920, BEFORE — production'></div>
+<a class='full' href='visual-audit-sprint17-before/desktop-1920-case-study.png' target='_blank' rel='noopener'>open full size ↗</a>
+<div class='meta'>HTTP 200 · <span class='ok'>no overflow 1920/1920</span> · height 3521px · <span class='na'>primary not detected</span> · <span class='bad'>1 third-party font req</span> · <span class='ok'>0 console err</span></div>
+</figure>
+<figure class='pane' style='margin:0'>
+<figcaption><b>AFTER — local branch</b></figcaption>
+<div class='shot'><img loading='lazy' src='visual-audit-sprint17-after/desktop-1920-case-study.png' alt='case-study at desktop-1920, AFTER — local branch'></div>
+<a class='full' href='visual-audit-sprint17-after/desktop-1920-case-study.png' target='_blank' rel='noopener'>open full size ↗</a>
+<div class='meta'>HTTP 200 · <span class='ok'>no overflow 1920/1920</span> · height 3521px · <span class='na'>primary not detected</span> · <span class='ok'>0 third-party font req</span> · <span class='ok'>0 console err</span></div>
+</figure>
+</div>
+<h3>mobile-390</h3><div class='pair'>
+<figure class='pane' style='margin:0'>
+<figcaption><b>BEFORE — production</b></figcaption>
+<div class='shot'><img loading='lazy' src='visual-audit-sprint17-before/mobile-390-case-study.png' alt='case-study at mobile-390, BEFORE — production'></div>
+<a class='full' href='visual-audit-sprint17-before/mobile-390-case-study.png' target='_blank' rel='noopener'>open full size ↗</a>
+<div class='meta'>HTTP 200 · <span class='ok'>no overflow 390/390</span> · height 4748px · <span class='na'>primary not detected</span> · <span class='bad'>1 third-party font req</span> · <span class='ok'>0 console err</span></div>
+</figure>
+<figure class='pane' style='margin:0'>
+<figcaption><b>AFTER — local branch</b></figcaption>
+<div class='shot'><img loading='lazy' src='visual-audit-sprint17-after/mobile-390-case-study.png' alt='case-study at mobile-390, AFTER — local branch'></div>
+<a class='full' href='visual-audit-sprint17-after/mobile-390-case-study.png' target='_blank' rel='noopener'>open full size ↗</a>
+<div class='meta'>HTTP 200 · <span class='ok'>no overflow 390/390</span> · height 4748px · <span class='na'>primary not detected</span> · <span class='ok'>0 third-party font req</span> · <span class='ok'>0 console err</span></div>
+</figure>
+</div>
+<h2 id='dashboard'>dashboard <code>/dashboard</code></h2>
+<h3>desktop-1920</h3><div class='pair'>
+<figure class='pane' style='margin:0'>
+<figcaption><b>BEFORE — production</b></figcaption>
+<div class='shot'><img loading='lazy' src='visual-audit-sprint17-before/desktop-1920-dashboard.png' alt='dashboard at desktop-1920, BEFORE — production'></div>
+<a class='full' href='visual-audit-sprint17-before/desktop-1920-dashboard.png' target='_blank' rel='noopener'>open full size ↗</a>
+<div class='meta'>HTTP 200 · <span class='ok'>no overflow 1920/1920</span> · height 15810px · <span class='na'>primary not detected</span> · <span class='bad'>3 third-party font req</span> · <span class='ok'>0 console err</span></div>
+</figure>
+<figure class='pane' style='margin:0'>
+<figcaption><b>AFTER — local branch</b></figcaption>
+<div class='shot'><img loading='lazy' src='visual-audit-sprint17-after/desktop-1920-dashboard.png' alt='dashboard at desktop-1920, AFTER — local branch'></div>
+<a class='full' href='visual-audit-sprint17-after/desktop-1920-dashboard.png' target='_blank' rel='noopener'>open full size ↗</a>
+<div class='meta'>HTTP 200 · <span class='ok'>no overflow 1920/1920</span> · height 16853px · primary y=887 · <span class='ok'>0 third-party font req</span> · <span class='ok'>0 console err</span></div>
+</figure>
+</div>
+<h3>mobile-390</h3><div class='pair'>
+<figure class='pane' style='margin:0'>
+<figcaption><b>BEFORE — production</b></figcaption>
+<div class='shot'><img loading='lazy' src='visual-audit-sprint17-before/mobile-390-dashboard.png' alt='dashboard at mobile-390, BEFORE — production'></div>
+<a class='full' href='visual-audit-sprint17-before/mobile-390-dashboard.png' target='_blank' rel='noopener'>open full size ↗</a>
+<div class='meta'>HTTP 200 · <span class='ok'>no overflow 390/390</span> · height 45061px · <span class='na'>primary not detected</span> · <span class='bad'>3 third-party font req</span> · <span class='ok'>0 console err</span></div>
+</figure>
+<figure class='pane' style='margin:0'>
+<figcaption><b>AFTER — local branch</b></figcaption>
+<div class='shot'><img loading='lazy' src='visual-audit-sprint17-after/mobile-390-dashboard.png' alt='dashboard at mobile-390, AFTER — local branch'></div>
+<a class='full' href='visual-audit-sprint17-after/mobile-390-dashboard.png' target='_blank' rel='noopener'>open full size ↗</a>
+<div class='meta'>HTTP 200 · <span class='ok'>no overflow 390/390</span> · height 47614px · primary y=1530 · <span class='ok'>0 third-party font req</span> · <span class='ok'>0 console err</span></div>
+</figure>
+</div>
+<h2>Where the rest of the evidence is</h2><ul>
+<li><code>docs/FIRST_SCREEN_REVIEW.md</code> — the same measurements as tables, including the 1920×940 geometry pass that takes no screenshot</li>
+<li><code>docs/SPRINT17_APPROVAL_STORY.md</code> — the approval audit, with file and line references</li>
+<li><code>docs/DESIGN.md</code> — the design lock, and the Sprint 16 reversal it contains</li>
+<li><code>docs/OWNER_DECISIONS_PENDING.md</code> — six things waiting on you</li>
+</ul>
+</div></body></html>

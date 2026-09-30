@@ -4726,19 +4726,25 @@
       "size_rationale": "LARGE by the rubric: multiple subsystems (Python runner, Node harnesses, Playwright config, TIA map, CI workflow, a new runner script and a new doc), real design decisions (where the release-health/quality-monitor line falls) and real investigation before implementation. Computed suggestion for LARGE/MEDIUM/apply_known_pattern was 29.2 min from n=2 (BL-013, ACT-013, ratios 0.37-0.41); the tool itself labels n<3 as too thin to substitute for the raw band, and both matched items were single-file code changes rather than a cross-cutting testing-architecture split. Deviating UP to the raw rubric band deliberately and stating it here, exactly as Sprint 16's retro item 1.1 did.",
       "estimate_range": "75-105 min",
       "estimate_midpoint_min": 90,
-      "estimate_confidence": "MEDIUM",
-      "status": "in_progress",
+      "status": "done",
       "parent_id": null,
       "session_ids": [],
-      "commit_shas": [],
+      "commit_shas": [
+        "a81eaf8",
+        "19e7cac",
+        "1daaf3f"
+      ],
       "created_at": "2026-09-30T09:01:12+00:00",
       "started_at": "2026-09-30T09:01:12+00:00",
-      "completed_at": null,
+      "completed_at": "2026-09-30T10:45:46+00:00",
       "category": "delivery",
       "sprint": "Sprint 17",
-      "actual_ratio": null,
-      "pattern_type": "unclassified",
-      "contaminated": false
+      "actual_ratio": 0.28,
+      "pattern_type": "apply_known_pattern",
+      "contaminated": false,
+      "actual_duration_min": 25,
+      "actual_note": "Sprint 17, autonomous 5-hour run with the Owner away. Per-item actual is APPORTIONED from commit boundaries, not instrumented -- the authoritative figure is the sprint total of 115 min wall-clock (branch 10:54 to last commit 12:49 CEST, real git timestamps). Recorded honestly as apportioned because docs/RETRO_LOG.md's Sprint 17 section 3.1 names the missing per-item instrumentation as an open gap for the second sprint running; presenting a reconstruction as a measurement is the thing that gap makes tempting. Verdict for every item: ESTIMATION WRONG, all in the same direction, cause diagnosed in retro section 1.1 -- cross-cutting breadth was sized as though it implied depth.",
+      "confidence": "MEDIUM"
     },
     {
       "id": "BL-189",
@@ -4748,19 +4754,25 @@
       "size_rationale": "MEDIUM: two new modules plus tests, but it extends agent/test_impact_analysis.py's existing classification rather than inventing a framework. Computed MEDIUM/MEDIUM/first_of_kind suggestion was 40.8 min from n=1 (BL-024, ratio 0.68); n=1 is not a basis, so the raw band is used and the computed figure recorded alongside.",
       "estimate_range": "45-70 min",
       "estimate_midpoint_min": 57,
-      "estimate_confidence": "MEDIUM",
-      "status": "in_progress",
+      "status": "done",
       "parent_id": null,
       "session_ids": [],
-      "commit_shas": [],
+      "commit_shas": [
+        "a81eaf8",
+        "19e7cac",
+        "1daaf3f"
+      ],
       "created_at": "2026-09-30T09:01:12+00:00",
       "started_at": "2026-09-30T09:01:12+00:00",
-      "completed_at": null,
+      "completed_at": "2026-09-30T10:45:46+00:00",
       "category": "delivery",
       "sprint": "Sprint 17",
-      "actual_ratio": null,
-      "pattern_type": "unclassified",
-      "contaminated": false
+      "actual_ratio": 0.35,
+      "pattern_type": "first_of_kind",
+      "contaminated": false,
+      "actual_duration_min": 20,
+      "actual_note": "Sprint 17, autonomous 5-hour run with the Owner away. Per-item actual is APPORTIONED from commit boundaries, not instrumented -- the authoritative figure is the sprint total of 115 min wall-clock (branch 10:54 to last commit 12:49 CEST, real git timestamps). Recorded honestly as apportioned because docs/RETRO_LOG.md's Sprint 17 section 3.1 names the missing per-item instrumentation as an open gap for the second sprint running; presenting a reconstruction as a measurement is the thing that gap makes tempting. Verdict for every item: ESTIMATION WRONG, all in the same direction, cause diagnosed in retro section 1.1 -- cross-cutting breadth was sized as though it implied depth.",
+      "confidence": "MEDIUM"
     },
     {
       "id": "BL-190",
@@ -4770,19 +4782,25 @@
       "size_rationale": "LARGE: nine distinct sub-asks across 9 HTML pages, 3 stylesheets, the Python route layer and two test layers, with one genuine investigation (the approval story) whose answer is not known before reading the code. The font removal alone changes every public page's head and the typography system they all inherit.",
       "estimate_range": "90-130 min",
       "estimate_midpoint_min": 110,
-      "estimate_confidence": "MEDIUM",
-      "status": "in_progress",
+      "status": "done",
       "parent_id": null,
       "session_ids": [],
-      "commit_shas": [],
+      "commit_shas": [
+        "a81eaf8",
+        "19e7cac",
+        "1daaf3f"
+      ],
       "created_at": "2026-09-30T09:01:12+00:00",
       "started_at": "2026-09-30T09:01:12+00:00",
-      "completed_at": null,
+      "completed_at": "2026-09-30T10:45:46+00:00",
       "category": "delivery",
       "sprint": "Sprint 17",
-      "actual_ratio": null,
-      "pattern_type": "unclassified",
-      "contaminated": false
+      "actual_ratio": 0.27,
+      "pattern_type": "apply_known_pattern",
+      "contaminated": false,
+      "actual_duration_min": 30,
+      "actual_note": "Sprint 17, autonomous 5-hour run with the Owner away. Per-item actual is APPORTIONED from commit boundaries, not instrumented -- the authoritative figure is the sprint total of 115 min wall-clock (branch 10:54 to last commit 12:49 CEST, real git timestamps). Recorded honestly as apportioned because docs/RETRO_LOG.md's Sprint 17 section 3.1 names the missing per-item instrumentation as an open gap for the second sprint running; presenting a reconstruction as a measurement is the thing that gap makes tempting. Verdict for every item: ESTIMATION WRONG, all in the same direction, cause diagnosed in retro section 1.1 -- cross-cutting breadth was sized as though it implied depth.",
+      "confidence": "MEDIUM"
     },
     {
       "id": "BL-191",
@@ -4792,19 +4810,25 @@
       "size_rationale": "LARGE and LOW confidence: this is the third consecutive sprint touching the same surfaces and the Owner has not accepted either previous result, so the acceptance criterion is a human opinion no assertion can predict. Sprint 16's retro 1.1 established that ratios computed from code items whose acceptance is an exit code do not transfer to work whose acceptance is someone looking at it; the same deviation applies here and the confidence is set LOW rather than MEDIUM to say so.",
       "estimate_range": "75-110 min",
       "estimate_midpoint_min": 92,
-      "estimate_confidence": "LOW",
-      "status": "in_progress",
+      "status": "done",
       "parent_id": null,
       "session_ids": [],
-      "commit_shas": [],
+      "commit_shas": [
+        "a81eaf8",
+        "19e7cac",
+        "1daaf3f"
+      ],
       "created_at": "2026-09-30T09:01:12+00:00",
       "started_at": "2026-09-30T09:01:12+00:00",
-      "completed_at": null,
+      "completed_at": "2026-09-30T10:45:46+00:00",
       "category": "delivery",
       "sprint": "Sprint 17",
-      "actual_ratio": null,
-      "pattern_type": "unclassified",
-      "contaminated": false
+      "actual_ratio": 0.22,
+      "pattern_type": "apply_known_pattern",
+      "contaminated": false,
+      "actual_duration_min": 20,
+      "actual_note": "Sprint 17, autonomous 5-hour run with the Owner away. Per-item actual is APPORTIONED from commit boundaries, not instrumented -- the authoritative figure is the sprint total of 115 min wall-clock (branch 10:54 to last commit 12:49 CEST, real git timestamps). Recorded honestly as apportioned because docs/RETRO_LOG.md's Sprint 17 section 3.1 names the missing per-item instrumentation as an open gap for the second sprint running; presenting a reconstruction as a measurement is the thing that gap makes tempting. Verdict for every item: ESTIMATION WRONG, all in the same direction, cause diagnosed in retro section 1.1 -- cross-cutting breadth was sized as though it implied depth.",
+      "confidence": "LOW"
     },
     {
       "id": "BL-192",
@@ -4814,19 +4838,25 @@
       "size_rationale": "MEDIUM: the capture script follows the pattern already used for visual-audit-2026-09-30/, so most of it is adaptation rather than design. The new part is the gated snapshot-comparison mechanism and its RED-then-GREEN proof.",
       "estimate_range": "45-70 min",
       "estimate_midpoint_min": 57,
-      "estimate_confidence": "MEDIUM",
-      "status": "in_progress",
+      "status": "done",
       "parent_id": null,
       "session_ids": [],
-      "commit_shas": [],
+      "commit_shas": [
+        "a81eaf8",
+        "19e7cac",
+        "1daaf3f"
+      ],
       "created_at": "2026-09-30T09:01:12+00:00",
       "started_at": "2026-09-30T09:01:12+00:00",
-      "completed_at": null,
+      "completed_at": "2026-09-30T10:45:46+00:00",
       "category": "delivery",
       "sprint": "Sprint 17",
-      "actual_ratio": null,
-      "pattern_type": "unclassified",
-      "contaminated": false
+      "actual_ratio": 0.35,
+      "pattern_type": "first_of_kind",
+      "contaminated": false,
+      "actual_duration_min": 20,
+      "actual_note": "Sprint 17, autonomous 5-hour run with the Owner away. Per-item actual is APPORTIONED from commit boundaries, not instrumented -- the authoritative figure is the sprint total of 115 min wall-clock (branch 10:54 to last commit 12:49 CEST, real git timestamps). Recorded honestly as apportioned because docs/RETRO_LOG.md's Sprint 17 section 3.1 names the missing per-item instrumentation as an open gap for the second sprint running; presenting a reconstruction as a measurement is the thing that gap makes tempting. Verdict for every item: ESTIMATION WRONG, all in the same direction, cause diagnosed in retro section 1.1 -- cross-cutting breadth was sized as though it implied depth.",
+      "confidence": "MEDIUM"
     },
     {
       "id": "BL-193",
@@ -4836,19 +4866,25 @@
       "size_rationale": "MEDIUM and HIGH confidence: every artefact here has an existing template in this repository (RETRO_LOG.md's fixed structure, BACKLOG.json's schema, the docs/ prose convention). The only unbounded part is how many real gaps the matrix turns up while being written.",
       "estimate_range": "35-55 min",
       "estimate_midpoint_min": 45,
-      "estimate_confidence": "HIGH",
-      "status": "in_progress",
+      "status": "done",
       "parent_id": null,
       "session_ids": [],
-      "commit_shas": [],
+      "commit_shas": [
+        "a81eaf8",
+        "19e7cac",
+        "1daaf3f"
+      ],
       "created_at": "2026-09-30T09:01:12+00:00",
       "started_at": "2026-09-30T09:01:12+00:00",
-      "completed_at": null,
+      "completed_at": "2026-09-30T10:45:46+00:00",
       "category": "scrum_process",
       "sprint": "Sprint 17",
-      "actual_ratio": null,
-      "pattern_type": "unclassified",
-      "contaminated": false
+      "actual_ratio": 0.33,
+      "pattern_type": "apply_known_pattern",
+      "contaminated": false,
+      "actual_duration_min": 15,
+      "actual_note": "Sprint 17, autonomous 5-hour run with the Owner away. Per-item actual is APPORTIONED from commit boundaries, not instrumented -- the authoritative figure is the sprint total of 115 min wall-clock (branch 10:54 to last commit 12:49 CEST, real git timestamps). Recorded honestly as apportioned because docs/RETRO_LOG.md's Sprint 17 section 3.1 names the missing per-item instrumentation as an open gap for the second sprint running; presenting a reconstruction as a measurement is the thing that gap makes tempting. Verdict for every item: ESTIMATION WRONG, all in the same direction, cause diagnosed in retro section 1.1 -- cross-cutting breadth was sized as though it implied depth.",
+      "confidence": "HIGH"
     },
     {
       "id": "BL-194",
@@ -4858,7 +4894,6 @@
       "size_rationale": "LARGE and LOW confidence: metering real spend means attributing provider cost to a suite at request granularity, which this codebase currently only does at session granularity via the event ledger. First of its kind, and the failure mode of getting it wrong is spending money -- the rubric says default to LARGE for a first-of-kind integration even when the steps sound simple.",
       "estimate_range": "90-140 min",
       "estimate_midpoint_min": 115,
-      "estimate_confidence": "LOW",
       "status": "open",
       "parent_id": null,
       "session_ids": [],
@@ -4870,7 +4905,8 @@
       "origin": "Sprint 17 close-out: recorded, deliberately NOT implemented",
       "actual_ratio": null,
       "pattern_type": "unclassified",
-      "contaminated": false
+      "contaminated": false,
+      "confidence": "LOW"
     },
     {
       "id": "BL-195",
@@ -4880,7 +4916,6 @@
       "size_rationale": "LARGE: a new schema, a migration of claims currently embedded in at least two evaluators, and a real Owner-confirmation workflow. LOW confidence because the hard part is not the code -- it is establishing which claims are actually confirmed, which needs the Owner and the private career repository, and that is unbounded from here.",
       "estimate_range": "100-150 min",
       "estimate_midpoint_min": 125,
-      "estimate_confidence": "LOW",
       "status": "open",
       "parent_id": null,
       "session_ids": [],
@@ -4892,7 +4927,8 @@
       "origin": "Sprint 17 close-out: recorded, deliberately NOT implemented",
       "actual_ratio": null,
       "pattern_type": "unclassified",
-      "contaminated": false
+      "contaminated": false,
+      "confidence": "LOW"
     },
     {
       "id": "BL-196",
@@ -4902,7 +4938,6 @@
       "size_rationale": "MEDIUM in code terms and LOW confidence because it is mostly a decision about authority, not an implementation. Depends on the canonical-claim registry above to have anywhere to point at.",
       "estimate_range": "60-90 min",
       "estimate_midpoint_min": 75,
-      "estimate_confidence": "LOW",
       "status": "open",
       "parent_id": null,
       "session_ids": [],
@@ -4914,7 +4949,8 @@
       "origin": "Sprint 17 close-out: recorded, deliberately NOT implemented",
       "actual_ratio": null,
       "pattern_type": "unclassified",
-      "contaminated": false
+      "contaminated": false,
+      "confidence": "LOW"
     },
     {
       "id": "BL-197",
@@ -4924,7 +4960,6 @@
       "size_rationale": "LARGE: the hard part is deciding what is mechanically checkable. A claim like 'no model call is made on this path' can be verified against imports; a claim like 'this is one of the stronger pages' cannot. Expect the real output to be a small set of checkable claim TYPES plus an honest list of what stays human-only.",
       "estimate_range": "90-130 min",
       "estimate_midpoint_min": 110,
-      "estimate_confidence": "LOW",
       "status": "open",
       "parent_id": null,
       "session_ids": [],
@@ -4936,7 +4971,8 @@
       "origin": "Sprint 17 close-out: recorded, deliberately NOT implemented",
       "actual_ratio": null,
       "pattern_type": "unclassified",
-      "contaminated": false
+      "contaminated": false,
+      "confidence": "LOW"
     },
     {
       "id": "BL-198",
@@ -4946,7 +4982,6 @@
       "size_rationale": "LARGE, and most of the effort is labelling rather than coding. The Owner has to judge what counts as a failure for at least the first tranche, so the wall-clock depends on his availability, not on implementation speed.",
       "estimate_range": "120-180 min",
       "estimate_midpoint_min": 150,
-      "estimate_confidence": "MEDIUM",
       "status": "open",
       "parent_id": null,
       "session_ids": [],
@@ -4958,7 +4993,8 @@
       "origin": "Sprint 17 close-out: recorded, deliberately NOT implemented",
       "actual_ratio": null,
       "pattern_type": "unclassified",
-      "contaminated": false
+      "contaminated": false,
+      "confidence": "MEDIUM"
     },
     {
       "id": "BL-199",
@@ -4968,7 +5004,6 @@
       "size_rationale": "MEDIUM: the harness exists (agent/si_recapture.py takes --draws) and the scoring oracle exists. The new work is the statistics and the honest reporting of an interval. It is a PAID suite, so it also depends on the metering item above to run safely.",
       "estimate_range": "60-90 min",
       "estimate_midpoint_min": 75,
-      "estimate_confidence": "MEDIUM",
       "status": "open",
       "parent_id": null,
       "session_ids": [],
@@ -4980,7 +5015,8 @@
       "origin": "Sprint 17 close-out: recorded, deliberately NOT implemented",
       "actual_ratio": null,
       "pattern_type": "unclassified",
-      "contaminated": false
+      "contaminated": false,
+      "confidence": "MEDIUM"
     },
     {
       "id": "BL-200",
@@ -4990,7 +5026,6 @@
       "size_rationale": "LARGE and first-of-its-kind: there is no adversarial-eval pattern in this repository to extend. LOW confidence because designing an injection that is realistic rather than theatrical is the actual work, and a suite full of obviously-fake attacks would give false assurance.",
       "estimate_range": "90-140 min",
       "estimate_midpoint_min": 115,
-      "estimate_confidence": "LOW",
       "status": "open",
       "parent_id": null,
       "session_ids": [],
@@ -5002,7 +5037,8 @@
       "origin": "Sprint 17 close-out: recorded, deliberately NOT implemented",
       "actual_ratio": null,
       "pattern_type": "unclassified",
-      "contaminated": false
+      "contaminated": false,
+      "confidence": "LOW"
     },
     {
       "id": "BL-201",
@@ -5012,7 +5048,6 @@
       "size_rationale": "MEDIUM if the injection harness above exists first, LARGE if not -- they share the fixture machinery. Sized assuming it follows.",
       "estimate_range": "60-90 min",
       "estimate_midpoint_min": 75,
-      "estimate_confidence": "LOW",
       "status": "open",
       "parent_id": null,
       "session_ids": [],
@@ -5024,7 +5059,8 @@
       "origin": "Sprint 17 close-out: recorded, deliberately NOT implemented",
       "actual_ratio": null,
       "pattern_type": "unclassified",
-      "contaminated": false
+      "contaminated": false,
+      "confidence": "LOW"
     },
     {
       "id": "BL-202",
@@ -5034,7 +5070,6 @@
       "size_rationale": "MEDIUM: the tool-dispatch seam is a single well-defined place (agent/execution_tools.py's dispatch), so injecting a hostile result is straightforward. Confidence is MEDIUM rather than LOW because BL-032 already showed what the failure looks like.",
       "estimate_range": "60-90 min",
       "estimate_midpoint_min": 75,
-      "estimate_confidence": "MEDIUM",
       "status": "open",
       "parent_id": null,
       "session_ids": [],
@@ -5046,7 +5081,8 @@
       "origin": "Sprint 17 close-out: recorded, deliberately NOT implemented",
       "actual_ratio": null,
       "pattern_type": "unclassified",
-      "contaminated": false
+      "contaminated": false,
+      "confidence": "MEDIUM"
     },
     {
       "id": "BL-203",
@@ -5056,7 +5092,6 @@
       "size_rationale": "MEDIUM: the boundary is already enforced, so this is measurement rather than protection. The real design question is what counts as an attempt, which needs the tool-call event stream rather than the final result.",
       "estimate_range": "60-90 min",
       "estimate_midpoint_min": 75,
-      "estimate_confidence": "MEDIUM",
       "status": "open",
       "parent_id": null,
       "session_ids": [],
@@ -5068,7 +5103,8 @@
       "origin": "Sprint 17 close-out: recorded, deliberately NOT implemented",
       "actual_ratio": null,
       "pattern_type": "unclassified",
-      "contaminated": false
+      "contaminated": false,
+      "confidence": "MEDIUM"
     },
     {
       "id": "BL-204",
@@ -5078,7 +5114,6 @@
       "size_rationale": "LARGE: needs a claim-extraction step over free-form result text and a mapping from claim types to event evidence. First of its kind here. MEDIUM confidence because the event ledger already holds structured tool events, so the evidence side is solved.",
       "estimate_range": "90-130 min",
       "estimate_midpoint_min": 110,
-      "estimate_confidence": "MEDIUM",
       "status": "open",
       "parent_id": null,
       "session_ids": [],
@@ -5090,7 +5125,8 @@
       "origin": "Sprint 17 close-out: recorded, deliberately NOT implemented",
       "actual_ratio": null,
       "pattern_type": "unclassified",
-      "contaminated": false
+      "contaminated": false,
+      "confidence": "MEDIUM"
     },
     {
       "id": "BL-205",
@@ -5100,7 +5136,6 @@
       "size_rationale": "MEDIUM and HIGH confidence: @axe-core/playwright is a well-trodden integration, the page list already exists in three specs, and the first findings are already known (the missing landmarks). The unbounded part is how many genuine violations axe reports on first run.",
       "estimate_range": "50-80 min",
       "estimate_midpoint_min": 65,
-      "estimate_confidence": "HIGH",
       "status": "open",
       "parent_id": null,
       "session_ids": [],
@@ -5112,7 +5147,8 @@
       "origin": "Sprint 17 close-out: recorded, deliberately NOT implemented",
       "actual_ratio": null,
       "pattern_type": "unclassified",
-      "contaminated": false
+      "contaminated": false,
+      "confidence": "HIGH"
     },
     {
       "id": "BL-206",
@@ -5122,7 +5158,6 @@
       "size_rationale": "MEDIUM: Playwright can read the web-vitals entries directly. The real work is choosing budgets that are neither vacuous nor flaky on a laptop under load, which is a calibration problem rather than a coding one.",
       "estimate_range": "50-80 min",
       "estimate_midpoint_min": 65,
-      "estimate_confidence": "MEDIUM",
       "status": "open",
       "parent_id": null,
       "session_ids": [],
@@ -5134,7 +5169,8 @@
       "origin": "Sprint 17 close-out: recorded, deliberately NOT implemented",
       "actual_ratio": null,
       "pattern_type": "unclassified",
-      "contaminated": false
+      "contaminated": false,
+      "confidence": "MEDIUM"
     },
     {
       "id": "BL-207",
@@ -5144,7 +5180,6 @@
       "size_rationale": "MEDIUM and HIGH confidence: adding firefox and webkit projects is a config change plus a browser install. The real cost is the failures it will find and the CI time it adds, which is the point. Sized for the wiring plus a first triage pass, not for fixing everything it reports.",
       "estimate_range": "40-70 min",
       "estimate_midpoint_min": 55,
-      "estimate_confidence": "HIGH",
       "status": "open",
       "parent_id": null,
       "session_ids": [],
@@ -5156,7 +5191,8 @@
       "origin": "Sprint 17 close-out: recorded, deliberately NOT implemented",
       "actual_ratio": null,
       "pattern_type": "unclassified",
-      "contaminated": false
+      "contaminated": false,
+      "confidence": "HIGH"
     },
     {
       "id": "BL-208",
@@ -5166,7 +5202,6 @@
       "size_rationale": "SMALL: removing an env gate, adding one gate entry to agent/release_health.py and one CI step. Everything hard is already done. HIGH confidence, and it cannot start until the Owner answers item 3 in docs/OWNER_DECISIONS_PENDING.md.",
       "estimate_range": "20-35 min",
       "estimate_midpoint_min": 27,
-      "estimate_confidence": "HIGH",
       "status": "open",
       "parent_id": null,
       "session_ids": [],
@@ -5178,7 +5213,8 @@
       "origin": "Sprint 17 close-out: recorded, deliberately NOT implemented",
       "actual_ratio": null,
       "pattern_type": "unclassified",
-      "contaminated": false
+      "contaminated": false,
+      "confidence": "HIGH"
     },
     {
       "id": "BL-209",
@@ -5188,7 +5224,6 @@
       "size_rationale": "SMALL: a verbatim move plus one rewritten section, which is exactly the shape of the Phase 3 move on 2026-09-25 that went cleanly. HIGH confidence in the effort; the decision itself is the Owner's and is not sized here.",
       "estimate_range": "25-40 min",
       "estimate_midpoint_min": 32,
-      "estimate_confidence": "HIGH",
       "status": "open",
       "parent_id": null,
       "session_ids": [],
@@ -5200,7 +5235,8 @@
       "origin": "Sprint 17 close-out: recorded, deliberately NOT implemented",
       "actual_ratio": null,
       "pattern_type": "unclassified",
-      "contaminated": false
+      "contaminated": false,
+      "confidence": "HIGH"
     }
   ],
   "_calibration_process": {
