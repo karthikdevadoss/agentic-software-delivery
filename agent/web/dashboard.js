@@ -283,9 +283,30 @@ function renderEngineeringProblems(d) {
   const e = d.engineering_problems_solved;
   let html = '<ul class="problem-list">';
   for (const row of e.rows) {
-    const links = (row.evidence_links || []).map(u =>
-      /^https?:\/\//.test(u) ? `<a href="${esc(u)}" target="_blank" rel="noopener">VIEW EVIDENCE</a>` : `<span class="hint">${esc(u)}</span>`
-    ).join(" ");
+    // Sprint 16 (DD4): every link used to read "VIEW EVIDENCE", so a row with
+    // two of them rendered "VIEW EVIDENCE  VIEW EVIDENCE" side by side, which
+    // reads as a bug and tells the visitor nothing about where either goes.
+    // The label now says what is on the other end.
+    const evidenceLabel = (u) => {
+      const low = String(u).toLowerCase();
+      if (/\/commit\/|\/commits\//.test(low)) return "Commit";
+      if (/\/pull\/|\/pulls\//.test(low)) return "Pull request";
+      if (/\/actions\/|\/runs\//.test(low)) return "CI run";
+      if (/test|spec/.test(low)) return "Tests";
+      if (/\.md($|[?#])/.test(low)) return "Write-up";
+      if (/\/blob\/|\/tree\//.test(low)) return "Source";
+      return "Evidence";
+    };
+    const rawLinks = (row.evidence_links || []);
+    const labels = rawLinks.map(evidenceLabel);
+    const links = rawLinks.map((u, i) => {
+      if (!/^https?:\/\//.test(u)) return `<span class="hint">${esc(u)}</span>`;
+      // Two links of the same kind still need telling apart.
+      const same = labels.filter((l) => l === labels[i]).length;
+      const nth = labels.slice(0, i + 1).filter((l) => l === labels[i]).length;
+      const label = same > 1 ? `${labels[i]} ${nth}` : labels[i];
+      return `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(label)} &rarr;</a>`;
+    }).join(" ");
     html += `<li>
       <div class="problem-text">${esc(row.problem)}</div>
       <div class="problem-arrow">&rarr; ${esc(row.technique)} ${badge(row.production_state)}</div>

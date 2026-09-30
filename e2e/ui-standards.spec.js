@@ -200,12 +200,28 @@ test.describe("UI standard: type is consistent and legible", () => {
       sizes[name] = await page.locator("h1").first()
         .evaluate((el) => Math.round(parseFloat(getComputedStyle(el).fontSize)));
     }
-    const values = Object.values(sizes);
-    const spread = Math.max(...values) - Math.min(...values);
-    expect(spread, `h1 size varies by ${spread}px across pages: ${JSON.stringify(sizes)}`)
-      .toBeLessThanOrEqual(8);
-    for (const [name, s] of Object.entries(sizes)) {
-      expect(s, `${name}'s h1 is only ${s}px`).toBeGreaterThanOrEqual(30);
+    // Sprint 16 CHANGED THIS ASSERTION, and the reason is recorded because
+    // relaxing a guard is exactly the move that needs justifying.
+    //
+    // Sprint 15's defect was an h1 of 26.4px sitting next to home's 44px --
+    // a page title that read as body text. The guard expressed that as "all
+    // h1 sizes within 8px", which was a PROXY for the real requirement.
+    //
+    // Sprint 16 gives every page its own display face by explicit Owner
+    // decision, and a serif at 44px, a geometric sans at 40px and a monospace
+    // at 33px are the SAME optical weight -- mono and serif need different
+    // point sizes to read as equals. Holding them to one pixel value would
+    // force the wrong size on two pages to satisfy a number.
+    //
+    // So the requirement is asserted directly instead: every page's title
+    // must READ AS A TITLE. The 30px floor that actually caught the original
+    // defect is unchanged, and an upper bound is added so "unique" cannot
+    // become a 90px h1 nobody reviewed.
+    for (const [name, size] of Object.entries(sizes)) {
+      expect(size, `${name}'s h1 is only ${size}px -- it will read as body text`)
+        .toBeGreaterThanOrEqual(30);
+      expect(size, `${name}'s h1 is ${size}px, which is shouting rather than titling`)
+        .toBeLessThanOrEqual(56);
     }
   });
 

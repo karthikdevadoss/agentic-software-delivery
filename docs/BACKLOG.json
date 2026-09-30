@@ -4535,6 +4535,160 @@
       "estimate_is_retrospective": true,
       "completion_note": "agent/standing_interview.py returns outcome 'model_unavailable' with a message that never leaks provider billing detail; both retry sites degrade through _retry_call() instead of crashing. agent/si_budget.py enforces a $1/day budget (set in dollars, converted from the real measured $0.023/answer) plus a per-visitor 5s cooldown and 25/day ceiling, checked BEFORE the billed call, counting only requests that reach the model. 15 tests; the wiring is proven separately from the module by seeding the check out and watching the endpoint test go red. Deployed and verified live: the 500 is now HTTP 200 with an honest message.",
       "commit_shas": []
+    },
+    {
+      "id": "BL-181",
+      "title": "Design guards first: line length, header/body balance, and a real screenshot review step",
+      "description": "The 67 Sprint 15 guards all pass on pages the Owner calls bad, because they measure correctness (alignment, sizes, floors, overflow) and nothing measures readability or balance. Add guards for the properties in docs/DESIGN_DEFECTS_2026-09-30.md that ARE measurable: longest rendered line <= 75 characters, header/body width ratio <= 1.2, no duplicate adjacent links. Plus a review step that captures all 9 pages at 1920x940 and requires them to be LOOKED AT, because DD6 (flat hierarchy) is real and no assertion will catch it. DONE WHEN: every new guard is observed RED against the current production defects before any fix is written.",
+      "topics": "testing, design, UI",
+      "size": "MEDIUM",
+      "estimate_range": "40-70 min",
+      "confidence": "MEDIUM",
+      "pattern_type": "apply_known_pattern",
+      "size_rationale": "suggest-estimate MEDIUM/MEDIUM/apply_known_pattern -> COMPUTED n=9, median ratio 0.39, suggested midpoint 21.4 min. DEVIATED UP to 55: the pattern (write a Playwright guard, prove it red) is well known, but three new guard classes plus a screenshot-review step is more than the single-change items that ratio was computed from. Sized and done FIRST, deliberately -- the Owner's complaint is precisely that the existing guards were green.",
+      "deviated_from_suggestion": true,
+      "category": "delivery",
+      "status": "active",
+      "sprint": "Sprint 16 (2026-09-30, Owner: 'none of the pages looks good in browser')",
+      "source_defect_register": "docs/DESIGN_DEFECTS_2026-09-30.md",
+      "created_at": "2026-09-30",
+      "created_at_commit": "d87fbeb",
+      "session_ids": [
+        "585446aa-0fdc-4e80-b49a-e9a8fcd46e06"
+      ],
+      "commit_shas": []
+    },
+    {
+      "id": "BL-182",
+      "title": "DD1: prose runs to 172 characters -- cap every body text block at the reading measure",
+      "description": "Readable band is 50-75 characters (66 optimal). Dashboard, usage, workbench, triage and ask-codebase render paragraphs at 172; 53 paragraphs sitewide exceed 90. --prose: 68ch already exists and was applied to .tagline/.lede and a few named children, never to panel body text, which is where most of the site's prose lives. The two clean pages (case-study 83, standing-interview 73) are the two where it was applied. DONE WHEN: no page renders a paragraph over 75 characters.",
+      "topics": "design, readability, UI",
+      "size": "SMALL",
+      "estimate_range": "20-40 min",
+      "confidence": "MEDIUM",
+      "pattern_type": "apply_known_pattern",
+      "size_rationale": "suggest-estimate SMALL/MEDIUM/apply_known_pattern -> COMPUTED n=8, median ratio 1.29, suggested midpoint 38.7 min. ADOPTED at 30 (the range midpoint). Note the 1.29: this is the one class where SMALL items historically run LONG, and a CSS cap that has to apply across nine pages without breaking tables, code blocks or stat cards is exactly the shape that overruns.",
+      "deviated_from_suggestion": false,
+      "category": "delivery",
+      "status": "active",
+      "sprint": "Sprint 16 (2026-09-30, Owner: 'none of the pages looks good in browser')",
+      "source_defect_register": "docs/DESIGN_DEFECTS_2026-09-30.md",
+      "created_at": "2026-09-30",
+      "created_at_commit": "d87fbeb",
+      "session_ids": [
+        "585446aa-0fdc-4e80-b49a-e9a8fcd46e06"
+      ],
+      "commit_shas": []
+    },
+    {
+      "id": "BL-183",
+      "title": "DD2: six pages are lopsided -- header 587px against 1136px content",
+      "description": "Ratio 1.94 on workbench, triage, ask-codebase, showcase, usage and dashboard. The top of the page is half the width of the bottom, with a large empty area right of the header. Cause: the prose cap applies to the header block while the panels below use the full shell. DONE WHEN: header/body ratio <= 1.2 on every page, with paragraph text still inside the reading measure -- i.e. the header BLOCK spans the shell while the SENTENCES inside it do not.",
+      "topics": "design, layout, UI",
+      "size": "SMALL",
+      "estimate_range": "20-40 min",
+      "confidence": "MEDIUM",
+      "pattern_type": "apply_known_pattern",
+      "size_rationale": "Same computed class as BL-182 (n=8, ratio 1.29, suggested 38.7). ADOPTED at 30. Structurally simple -- move a max-width from the block to its text children -- but it touches the shared header used by seven pages, so a mistake is visible everywhere at once.",
+      "deviated_from_suggestion": false,
+      "category": "delivery",
+      "status": "active",
+      "sprint": "Sprint 16 (2026-09-30, Owner: 'none of the pages looks good in browser')",
+      "source_defect_register": "docs/DESIGN_DEFECTS_2026-09-30.md",
+      "created_at": "2026-09-30",
+      "created_at_commit": "d87fbeb",
+      "session_ids": [
+        "585446aa-0fdc-4e80-b49a-e9a8fcd46e06"
+      ],
+      "commit_shas": []
+    },
+    {
+      "id": "BL-184",
+      "title": "DD3 + DD4: navigation reads as body text, and the dashboard repeats four links",
+      "description": "The nav sits under the tagline at similar size and weight with no separating treatment, so three rows of similar text stack before any content begins. Separately, the dashboard renders the same link text immediately next to itself four times (VIEW EVIDENCE VIEW EVIDENCE), which reads as a bug whatever the data reason. DONE WHEN: the nav is visually distinguishable as navigation, and no page renders duplicate adjacent links.",
+      "topics": "design, navigation, UI",
+      "size": "SMALL",
+      "estimate_range": "25-45 min",
+      "confidence": "MEDIUM",
+      "pattern_type": "apply_known_pattern",
+      "size_rationale": "Same class (n=8, ratio 1.29, suggested 38.7 for a 20-40 range). ADOPTED at 35. Two unrelated small fixes bundled because both are in the shared header/nav area and splitting them would mean touching the same files twice.",
+      "deviated_from_suggestion": false,
+      "category": "delivery",
+      "status": "active",
+      "sprint": "Sprint 16 (2026-09-30, Owner: 'none of the pages looks good in browser')",
+      "source_defect_register": "docs/DESIGN_DEFECTS_2026-09-30.md",
+      "created_at": "2026-09-30",
+      "created_at_commit": "d87fbeb",
+      "session_ids": [
+        "585446aa-0fdc-4e80-b49a-e9a8fcd46e06"
+      ],
+      "commit_shas": []
+    },
+    {
+      "id": "BL-185",
+      "title": "DD6: give the dark pages a real visual hierarchy",
+      "description": "Thin 1px borders, near-uniform text weight, minimal spacing rhythm, little contrast between a section label, a heading and body copy. Nothing is broken; there is not enough difference between levels for the eye to find structure. Spacing scale, type scale, panel treatment, and the label/heading/body relationship across the seven dark pages. DONE WHEN: the Owner looks at the screenshots and says it is better -- there is no exit code for this one, and pretending otherwise is how Sprint 15 shipped.",
+      "topics": "design, UI",
+      "size": "LARGE",
+      "estimate_range": "90-150 min",
+      "confidence": "MEDIUM",
+      "pattern_type": "first_of_kind",
+      "size_rationale": "suggest-estimate LARGE/MEDIUM/first_of_kind -> COMPUTED n=3, median ratio 0.21, suggested midpoint 25.2 min. DEVIATED UP HARD, to 120. Three samples is a thin basis, and all three were CODE items with a deterministic done-state. This one's acceptance is a human looking at it, which means iteration rounds that no code-derived ratio predicts. Recording the deviation loudly because it is the largest in this backlog and the retro should test whether it was right.",
+      "deviated_from_suggestion": true,
+      "category": "delivery",
+      "status": "active",
+      "sprint": "Sprint 16 (2026-09-30, Owner: 'none of the pages looks good in browser')",
+      "source_defect_register": "docs/DESIGN_DEFECTS_2026-09-30.md",
+      "created_at": "2026-09-30",
+      "created_at_commit": "d87fbeb",
+      "session_ids": [
+        "585446aa-0fdc-4e80-b49a-e9a8fcd46e06"
+      ],
+      "commit_shas": []
+    },
+    {
+      "id": "BL-186",
+      "title": "DD5: home and case-study -- the pages a recruiter sees first",
+      "description": "Home is the only page where header and body already balance (ratio 1.00), yet its longest line is 113 characters and the top third is heavily left-weighted with a large empty right side above the proof cards. It stays LIGHT per the Owner's instruction. Case-study is already clean on the measurements (83 chars, no violations) and needs hierarchy work only. DONE WHEN: the first screen of home reads as a deliberate composition rather than a left-aligned column with space beside it.",
+      "topics": "design, UI, recruiter-facing",
+      "size": "MEDIUM",
+      "estimate_range": "60-100 min",
+      "confidence": "MEDIUM",
+      "pattern_type": "first_of_kind",
+      "size_rationale": "suggest-estimate MEDIUM/MEDIUM/first_of_kind -> INSUFFICIENT_HISTORY (n=0), so there is no computed anchor and this is a judgement call, stated as one. 80 min: less surface than BL-185 (two pages, not seven) but the highest stakes on the site -- home is the first thing a recruiter sees, and the Owner's standing rule is that nothing may read as AI-generated.",
+      "deviated_from_suggestion": false,
+      "category": "delivery",
+      "status": "active",
+      "sprint": "Sprint 16 (2026-09-30, Owner: 'none of the pages looks good in browser')",
+      "source_defect_register": "docs/DESIGN_DEFECTS_2026-09-30.md",
+      "created_at": "2026-09-30",
+      "created_at_commit": "d87fbeb",
+      "session_ids": [
+        "585446aa-0fdc-4e80-b49a-e9a8fcd46e06"
+      ],
+      "commit_shas": []
+    },
+    {
+      "id": "BL-187",
+      "title": "Verify and deploy, with the screenshots actually looked at",
+      "description": "Full guard suite including the new design guards, against LIVE production not just locally; all 9 pages captured at 1920x940 and inspected by eye; hermetic Python and Playwright; deploy through the gated script. DONE WHEN: the measured table in docs/DESIGN_DEFECTS_2026-09-30.md is re-run against production and every row is inside the target.",
+      "topics": "verification, deployment",
+      "size": "MEDIUM",
+      "estimate_range": "40-70 min",
+      "confidence": "MEDIUM",
+      "pattern_type": "apply_known_pattern",
+      "size_rationale": "suggest-estimate MEDIUM/MEDIUM/apply_known_pattern -> COMPUTED n=9, ratio 0.39, suggested 21.4. DEVIATED UP to 55: Sprint 15's equivalent item (BL-179) was estimated 85 and took 50, and that was before the deploy gate had to work around the spend cap. The visual inspection step is also new and has no prior timing.",
+      "deviated_from_suggestion": true,
+      "category": "delivery",
+      "status": "active",
+      "sprint": "Sprint 16 (2026-09-30, Owner: 'none of the pages looks good in browser')",
+      "source_defect_register": "docs/DESIGN_DEFECTS_2026-09-30.md",
+      "created_at": "2026-09-30",
+      "created_at_commit": "d87fbeb",
+      "session_ids": [
+        "585446aa-0fdc-4e80-b49a-e9a8fcd46e06"
+      ],
+      "commit_shas": []
     }
   ],
   "_calibration_process": {

@@ -14,7 +14,38 @@
   --green: #3ecf8e;
   --red: #ef5a5a;
   --amber: #e6b450;
-  --radius: 10px;
+  --radius: 12px;
+
+  /* Sprint 16 -- SPACING SCALE. One ratio, so gaps are decisions rather than
+     guesses, and so PROXIMITY can do its job: related things share the small
+     steps, separate things get the large ones. The pages previously used
+     near-uniform margins, which is why nothing looked grouped. */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --s7: 48px;
+  --s8: 64px;
+  --s9: 96px;
+
+  /* TYPE LAYERS. Four distinct steps, each clearly different from its
+     neighbour -- a section label must not be mistakable for a heading, and a
+     heading must not be mistakable for body. Sizes clamp so they scale
+     smoothly rather than jumping at a breakpoint. */
+  --t-display: clamp(30px, 2.8vw, 40px);
+  --t-title:   clamp(21px, 1.7vw, 25px);
+  --t-section: clamp(15px, 1.05vw, 16px);
+  --t-body:    17px;
+  --t-small:   14px;
+  --t-micro:   12.5px;
+
+  /* ELEVATION. A 1px border on near-black is almost invisible; a lifted
+     surface plus a real shadow makes a panel an object. */
+  --lift-1: 0 1px 2px rgba(0,0,0,0.30);
+  --lift-2: 0 4px 16px rgba(0,0,0,0.38), 0 1px 2px rgba(0,0,0,0.40);
+  --panel-raised: #171b24;
 }
 
 * { box-sizing: border-box; }
@@ -41,11 +72,16 @@ body {
 :root {
   --shell: 1200px;
   --shell-pad: 2rem;
-  --prose: 68ch;          /* 50-75 characters is the readable band */
+  /* 58ch, tuned EMPIRICALLY once the guard could measure real characters per
+     line rather than estimate them from width. The ch unit is the width of
+     "0" in the current font, so the same ch value yields different real line
+     lengths per face -- 68ch of Inter measured 76-88 actual characters. 58ch
+     lands in the 50-75 band for the faces this site actually uses. */
+  --prose: 58ch;
 }
 
 header {
-  padding: 2.25rem var(--shell-pad) 1.5rem;
+  padding: var(--s8) var(--shell-pad) var(--s5);
   border-bottom: 1px solid var(--border);
   max-width: var(--shell);
   margin: 0 auto;
@@ -53,11 +89,26 @@ header {
 
 /* Sprint 15: was 1.65rem (26.4px) against home's 44px -- a page title that
    read as body text. clamp keeps it sane on a phone. */
-h1 { margin: 0 0 0.5rem; font-size: clamp(28px, 2.4vw, 34px); font-weight: 700; letter-spacing: -0.015em; line-height: 1.15; }
+h1 { margin: 0 0 var(--s3); font-size: var(--t-display); font-weight: 700; letter-spacing: -0.022em; line-height: 1.1; }
 h1 .sub { color: var(--muted); font-weight: 400; }
-.tagline { margin: 0; color: var(--muted); font-size: 1rem; max-width: var(--prose); }
+.tagline {
+  margin: 0; color: var(--muted); font-size: var(--t-body);
+  max-width: var(--prose); line-height: 1.6;
+}
 
-.top-nav { margin-top: 0.9rem; display: flex; flex-wrap: wrap; row-gap: 0.5rem; gap: 1.25rem; align-items: center; }
+/* Sprint 16 (DD3): the nav sat directly under the tagline at a similar size
+   and weight, so three rows of look-alike text stacked before any content
+   began. It now has its own band -- separated above, tighter type, and a
+   visible active state -- so the eye reads it as a control strip. */
+.top-nav {
+  margin-top: var(--s6);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--border);
+  display: flex; flex-wrap: wrap; row-gap: var(--s2);
+  gap: var(--s5); align-items: center;
+  font-size: var(--t-small);
+  letter-spacing: 0.01em;
+}
 .top-nav a { color: var(--muted); text-decoration: none; font-size: 0.88rem; font-weight: 600; padding-bottom: 0.15rem; border-bottom: 2px solid transparent; transition: color .15s, border-color .15s; }
 .top-nav a:hover { color: var(--text); }
 .top-nav a strong { color: var(--accent); border-bottom: 2px solid var(--accent); padding-bottom: 0.15rem; font-weight: 700; }
@@ -303,4 +354,406 @@ code.raw-enum {
   color: var(--muted);
   opacity: 0.85;
   overflow-wrap: anywhere;
+}
+
+/* ==========================================================================
+   Sprint 16 -- DD1, the defect the Owner actually felt.
+
+   Measured on production 2026-09-30: paragraphs rendering at 172 characters
+   on dashboard, usage, workbench, triage and ask-codebase, with 53 paragraphs
+   sitewide over 90. The readable band is 50-75 (66 optimal). Sprint 15
+   defined --prose: 68ch and applied it to .tagline, .lede and a few named
+   children -- never to the body text inside panels, which is where nearly all
+   of this site's prose lives. The two pages with zero violations (case-study,
+   standing-interview) are precisely the two where it was applied.
+
+   So it is applied structurally here rather than class by class, because
+   enumerating the classes is what failed last time.
+   ========================================================================== */
+main p,
+main li,
+main dd,
+main blockquote,
+.wrap p,
+.wrap li,
+.wrap dd,
+.si-wrap p,
+.panel > p,
+.panel li {
+  max-width: var(--prose);
+}
+
+/* Things that are NOT prose must keep the full width, or tables and stat
+   grids collapse into a narrow column. This is the exception list, and it is
+   deliberately about STRUCTURE (a table is a table) rather than about a
+   particular page's class names. */
+main table, main table > *,
+.exec-grid, .exec-grid > *,
+.tiles, .tiles > *,
+.proof, .proof > *,
+.erow, .erow > *,
+.cap-table, .cap-table > *,
+.si-chips, .si-chips > * {
+  max-width: none;
+}
+
+/* ==========================================================================
+   Sprint 16 -- DD6, visual hierarchy.
+   ========================================================================== */
+
+/* Panels read as objects, not outlined regions. A 1px border on a near-black
+   ground gives almost no separation; a lifted surface and a real shadow do. */
+.panel {
+  background: var(--panel-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--lift-1);
+  padding: var(--s6);
+  margin-bottom: var(--s6);
+}
+
+/* Section labels sit ABOVE their heading in the hierarchy but BELOW it in
+   visual weight -- small, spaced, quiet. They were competing with headings. */
+.panel > h2,
+.panel > h3 {
+  font-size: var(--t-section);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+  margin: 0 0 var(--s5);
+}
+
+/* Real headings inside a panel: the layer the eye should land on second. */
+.panel h4 {
+  font-size: var(--t-title);
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  margin: 0 0 var(--s3);
+  max-width: var(--prose);
+}
+
+main h2 {
+  font-size: var(--t-title);
+  letter-spacing: -0.012em;
+  line-height: 1.25;
+  margin: var(--s8) 0 var(--s4);
+  max-width: var(--prose);
+}
+
+main > section,
+main > .panel {
+  margin-bottom: var(--s7);
+}
+
+/* Body copy earns its own line-height. 1.55 is fine for a tagline and tight
+   for a paragraph someone has to read several of. */
+main p { line-height: 1.65; margin: 0 0 var(--s4); }
+main li { line-height: 1.6; }
+
+/* Links inside prose should be findable without shouting. */
+main p a, main li a { color: var(--accent); text-underline-offset: 3px; }
+
+/* ==========================================================================
+   Sprint 16 -- SURFACE IDENTITY.
+
+   The Owner asked for every page to look unique. The 2026 portfolio research
+   says the opposite for a single site: one accent, used sparingly. Both are
+   right about different things, so the split is deliberate --
+
+     SHARED   spacing scale, layout, reading measure, hierarchy rules
+     UNIQUE   accent, display face, surface tint, heading treatment
+
+   Each page is recognisably itself and recognisably part of one product.
+
+   home is ABSENT from this block on purpose: the Owner said its colour and
+   font already look good, so its inline styles keep full control.
+   ========================================================================== */
+
+body[data-surface] {
+  font-family: var(--font-body, Inter), -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+body[data-surface] h1,
+body[data-surface] main h2,
+body[data-surface] .panel h4 {
+  font-family: var(--font-display, var(--font-body, Inter)), -apple-system, "Segoe UI", sans-serif;
+}
+
+/* Accent is used on the four places it earns attention, and nowhere else. */
+body[data-surface] h1 .sub { color: var(--accent); opacity: 0.92; }
+body[data-surface] .panel > h2,
+body[data-surface] .panel > h3 { color: var(--accent); }
+body[data-surface] a:focus-visible,
+body[data-surface] button:focus-visible,
+body[data-surface] input:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+body[data-surface] header { border-bottom-color: var(--accent-line, var(--border)); }
+body[data-surface] .top-nav a[aria-current],
+body[data-surface] .top-nav a.active { color: var(--accent); }
+
+/* ---- workbench: the agent doing work. Indigo, Inter, tight. ------------- */
+body[data-surface="workbench"] {
+  --font-display: Sora;
+  --accent: #818cf8;
+  --accent-soft: #1e1b3a;
+  --accent-line: #2e2a52;
+  --font-body: Inter;
+  --bg: #0a0b10;
+  letter-spacing: -0.006em;
+}
+
+/* ---- triage: incidents. Amber, because attention is the whole point. ---- */
+body[data-surface="triage"] {
+  --font-display: "IBM Plex Sans";
+  --accent: #f0b429;
+  --accent-soft: #2a2110;
+  --accent-line: #3d3018;
+  --font-body: Inter;
+  --bg: #0c0a07;
+  letter-spacing: -0.006em;
+}
+
+/* ---- ask-codebase: retrieval. Cyan, Space Grotesk. --------------------- */
+body[data-surface="ask-codebase"] {
+  --accent: #22d3ee;
+  --accent-soft: #08303a;
+  --accent-line: #124957;
+  --font-body: Inter;
+  --font-display: "Space Grotesk";
+  --bg: #070d10;
+}
+
+/* ---- showcase: proof. Emerald -- the colour of a passing check. -------- */
+body[data-surface="showcase"] {
+  --accent: #34d399;
+  --accent-soft: #072e22;
+  --accent-line: #0f4835;
+  --font-body: Inter;
+  --font-display: Outfit;
+  --bg: #060d0a;
+}
+
+/* ---- usage: money and telemetry. Gold, and MONOSPACE NUMERALS, which is
+       the one place a mono face is functional rather than stylistic --
+       figures line up in a column and can be compared down the page. ----- */
+body[data-surface="usage"] {
+  --accent: #d4a574;
+  --accent-soft: #2b2113;
+  --accent-line: #3f301c;
+  --font-body: Inter;
+  --font-display: "JetBrains Mono";
+  --bg: #0b0906;
+}
+body[data-surface="usage"] .exec-value,
+body[data-surface="usage"] .summary-value,
+body[data-surface="usage"] td {
+  font-family: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- dashboard: the control surface. Blue, the system default. --------- */
+body[data-surface="dashboard"] {
+  --font-display: Manrope;
+  --accent: #60a5fa;
+  --accent-soft: #10243f;
+  --accent-line: #1d3a5f;
+  --font-body: Inter;
+  --bg: #080b11;
+}
+
+/* ---- standing-interview: a conversation. Violet, warmer, softer. ------- */
+body[data-surface="standing-interview"] {
+  --font-display: Fraunces;
+  --accent: #c084fc;
+  --accent-soft: #2a1938;
+  --accent-line: #3d2652;
+  --font-body: Inter;
+  --bg: #0a070e;
+}
+
+/* ---- case-study: long-form narrative. A serif, because this page is read
+       rather than scanned, and a serif at 17px/1.7 is measurably easier to
+       read in long passages. ------------------------------------------- */
+body[data-surface="case-study"] {
+  --accent: #b08968;
+  --font-body: "Source Serif 4";
+  --font-display: "Source Serif 4";
+}
+body[data-surface="case-study"] main p,
+body[data-surface="case-study"] .wrap p {
+  font-size: 18px;
+  line-height: 1.75;
+}
+
+/* Inter reads as default at normal tracking and as premium at tight
+   tracking. This is the single cheapest typographic upgrade available. */
+body[data-surface] h1 { letter-spacing: -0.028em; }
+
+/* Serif display faces carry differently from geometric sans: they need a
+   touch more size and much less negative tracking, or they look cramped. */
+body[data-surface="standing-interview"] h1,
+body[data-surface="case-study"] h1 {
+  letter-spacing: -0.012em;
+  font-size: clamp(32px, 3vw, 44px);
+}
+/* Mono as a display face only works at a heavier weight and wider tracking. */
+body[data-surface="usage"] h1 {
+  letter-spacing: 0.005em;
+  font-size: clamp(26px, 2.2vw, 33px);
+}
+
+/* ==========================================================================
+   Sprint 16 -- SURFACE SIGNATURES.
+
+   Colour and type alone still leave eight pages with the same silhouette. A
+   signature is one structural move per surface, drawn from what the page does,
+   so the variation reads as considered rather than decorative. One move each,
+   deliberately -- two would be costume.
+   ========================================================================== */
+
+/* workbench: a machine working. Squared corners and a scan-line hairline at
+   the top of each panel -- the visual language of an instrument, not a card. */
+body[data-surface="workbench"] .panel {
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+}
+body[data-surface="workbench"] .panel::before {
+  content: ""; position: absolute; inset: 0 0 auto 0; height: 2px;
+  background: linear-gradient(90deg, var(--accent), transparent 60%);
+  opacity: 0.7;
+}
+
+/* triage: incidents. A left accent bar is the universal shorthand for
+   "something needs looking at", and it is the one page where that is true. */
+body[data-surface="triage"] .panel {
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+/* ask-codebase: retrieval. A soft focus glow behind the panel, because the
+   page is about surfacing something out of a large dark corpus. */
+body[data-surface="ask-codebase"] .panel {
+  border-radius: 16px;
+  box-shadow: var(--lift-2), 0 0 60px -20px rgba(34, 211, 238, 0.25);
+}
+
+/* showcase: the argument. Generous radius, a lifted surface, and a rule under
+   each section label so the page reads as a structured document. */
+body[data-surface="showcase"] .panel {
+  border-radius: 14px;
+  box-shadow: var(--lift-2);
+}
+body[data-surface="showcase"] .panel > h2,
+body[data-surface="showcase"] .panel > h3 {
+  padding-bottom: var(--s3);
+  border-bottom: 1px solid var(--accent-line);
+}
+
+/* usage: a ledger. Ruled rows and tabular figures -- the page is a set of
+   numbers that must be comparable down a column. */
+body[data-surface="usage"] .panel { border-radius: 6px; }
+body[data-surface="usage"] table tr { border-bottom: 1px solid var(--border); }
+body[data-surface="usage"] .exec-stat {
+  border-left: 2px solid var(--accent-line);
+  padding-left: var(--s4);
+}
+
+/* dashboard: a control surface. Denser, flatter, more panels visible at once
+   -- this is the one page where compactness is the point. */
+body[data-surface="dashboard"] .panel {
+  padding: var(--s5);
+  margin-bottom: var(--s5);
+  border-radius: 8px;
+}
+body[data-surface="dashboard"] main h2 { margin-top: var(--s7); }
+
+/* standing-interview: a conversation. The widest breathing room on the site
+   and a centred column, because one question at a time is the whole idea. */
+body[data-surface="standing-interview"] .si-wrap { padding-top: var(--s7); }
+body[data-surface="standing-interview"] .si-exchange {
+  border-top: 1px solid var(--accent-line);
+  padding: var(--s6) 0;
+}
+
+/* case-study: long-form. An editorial opening -- the first paragraph carries
+   more size and colour, the way a standfirst does in print. */
+body[data-surface="case-study"] .wrap > p:first-of-type {
+  font-size: 20px;
+  line-height: 1.7;
+  color: var(--text);
+}
+
+/* ==========================================================================
+   Sprint 16 -- PROTOTYPICALITY.
+
+   Research basis: Tuch et al. (IJHCS 2012) and the 2023 follow-up find that
+   prototypical page structure predicts perceived trustworthiness, accounting
+   for 29-68% of the variance depending on category. For a portfolio whose
+   entire job is to be believed by a recruiter, that is the highest-value
+   property on this page -- higher than any accent choice.
+
+   Measured here before the fix: the navigation sat at y=0 on home, case-study
+   and standing-interview, and at y=206-305 on the other six, because those
+   pages render it INSIDE the header below the title. A visitor moving between
+   pages had the primary control move by a third of a screen.
+
+   The nav is now first on every page. Done with flex order rather than by
+   moving nine elements, so the document order (title first) stays correct for
+   a screen reader while the visual order matches convention.
+   ========================================================================== */
+header {
+  display: flex;
+  flex-direction: column;
+  padding-top: var(--s5);
+}
+header .top-nav {
+  order: -1;
+  margin-top: 0;
+  margin-bottom: var(--s7);
+  padding-top: 0;
+  padding-bottom: var(--s4);
+  border-top: none;
+  border-bottom: 1px solid var(--accent-line, var(--border));
+}
+
+/* Long prose inside a table cell is still prose. The exception list above
+   un-caps tables so columns can size themselves, which is right for figures
+   and wrong for a sentence -- these are the cells that carry sentences. */
+main td, main th, main .hint, main .cap-table td {
+  max-width: 54ch;
+}
+
+/* Case-study paragraphs sit directly in .wrap, which the page's own rules do
+   not cap and which the exception list above un-caps. Set explicitly, with
+   enough specificity to win, rather than adding another selector to a list
+   that has already been wrong twice this sprint. */
+body[data-surface="case-study"] .wrap p,
+body[data-surface="case-study"] .wrap li,
+body[data-surface="case-study"] .wrap dd {
+  max-width: var(--prose);
+}
+
+/* ask-codebase renders its evidence notes as .hint inside panels, which the
+   54ch cap reaches only when they are in a table. */
+body[data-surface="ask-codebase"] .panel .hint,
+body[data-surface="ask-codebase"] .panel p {
+  max-width: 54ch;
+}
+
+/* ask-codebase: its evidence notes live in .panel li and .ev rows, which the
+   panel paragraph cap does not reach. */
+body[data-surface="ask-codebase"] .panel li,
+body[data-surface="ask-codebase"] li {
+  max-width: 54ch;
+}
+
+/* ask-codebase describes its mechanism in a <dl>, which sits outside <main>
+   and so was missed by every container-scoped rule above. Definition lists
+   carry prose like any other element. */
+body[data-surface="ask-codebase"] dd,
+body[data-surface="ask-codebase"] dt {
+  max-width: 54ch;
 }
