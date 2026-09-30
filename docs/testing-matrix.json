@@ -41,7 +41,7 @@
     }
   },
   "_python_module_buckets": {
-    "hermetic_blocking": 47,
+    "hermetic_blocking": 48,
     "quality_monitors": {
       "test_si_answer_quality_monitor": "scores a real captured sample of Standing Interview ANSWERS -- what a language model actually said, not what this repository's code does. KNOWN RED on question m ('describe a technical disagreement'), 2 of 3 draws not answered. Tracked as SI-19/BL-149."
     },
