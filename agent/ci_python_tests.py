@@ -83,6 +83,11 @@ HERMETIC_MODULES = [
     "test_reasoning_gateway",
     "test_reasoning_gateway_enforcement",
     "test_risk_policy",
+    # Sprint 17: the cost-aware selector and the fail-closed paid-test guard.
+    # Hermetic by construction -- every case is pure Python over an injected env
+    # dict or a literal path list, and the guard's whole job is to make a
+    # provider call impossible without explicit authorization.
+    "test_select_tests",
     # Promoted out of PENDING_OWNER_DECISION 2026-09-25 after a real content
     # re-verification (capabilities resolve, evidence paths exist, 8/9 URLs
     # live) and an honest last_verified bump. The 9th URL, the custom domain,
@@ -100,10 +105,12 @@ HERMETIC_MODULES = [
     # grounded question on the live site returned HTTP 500.
     "test_si_budget",
     # Sprint 15: answer quality. Hermetic -- it scores an archived JSON capture
-    # of real production answers and calls nothing. The post-fix half of it
-    # stays RED until agent/testdata/si_production_answers_after.json exists,
-    # which is deliberate: the specification change is UNVERIFIED until it has
-    # been measured on production, and a skip would read as green.
+    # of real production answers and calls nothing.
+    # Sprint 17: the half of this module that scored a capture of real MODEL
+    # OUTPUT moved to test_si_answer_quality_monitor (see QUALITY_MONITOR_MODULES
+    # below). What stays here scores a FROZEN archive with FROZEN code -- same
+    # input, same output, every run -- so a failure means the measuring
+    # instrument broke, which is a real release blocker.
     "test_si_quality",
     "test_standing_interview",
     "test_state_brief",
@@ -151,6 +158,44 @@ LIVE_INFRA_MODULES = {
     "test_web_server": "spawns a real web_server subprocess and hits live Railway",
 }
 
+# ---------------------------------------------------------------------------
+# QUALITY MONITORS -- RUN ON EVERY INVOCATION, REPORTED IN FULL, NOT BLOCKING.
+#
+# Added 2026-09-30 (Sprint 17). This is NOT a third exclusion list and it is not
+# a place to park an inconvenient failure: every module here EXECUTES on every
+# run and every failure's real assertion text is printed. The only thing it does
+# not do is set the exit code.
+#
+# THE REAL PROBLEM IT SOLVES. On 2026-09-30 this runner reported 784 tests, 2
+# failures. One was a genuine deterministic wiring defect (a Playwright spec
+# unreachable from the TIA map) and was fixed. The other was
+# test_si_quality.DoesNotOverRefuse's post-fix half, which had been red for two
+# sprints because a language model declines one interview question on 2 of 3
+# captured draws. Both produced the same exit code, so the exit code carried no
+# information: it said red whether or not anything had regressed, and the only
+# way to tell them apart was to read the log and already know which failure was
+# expected. That is how a team learns to ignore red builds.
+#
+# THE LINE, stated so it cannot be stretched later. A module belongs here ONLY
+# if its assertion is about the CONTENT OF MODEL OUTPUT. If the same code run
+# twice on the same input can legitimately give different verdicts, it is a
+# monitor. If it cannot, it is release health, and no amount of inconvenience
+# moves it. "It fails a lot" is not a qualifying reason; "what it measures is
+# not a property of this repository's code" is.
+#
+# COST: zero paid model calls. Both modules here score a JSON capture already on
+# disk. Suites that would really call a provider are gated separately and
+# fail closed -- see agent/paid_test_guard.py.
+# ---------------------------------------------------------------------------
+QUALITY_MONITOR_MODULES = {
+    "test_si_answer_quality_monitor": (
+        "scores a real captured sample of Standing Interview ANSWERS -- what a "
+        "language model actually said, not what this repository's code does. "
+        "KNOWN RED on question m ('describe a technical disagreement'), 2 of 3 "
+        "draws not answered. Tracked as SI-19/BL-149."
+    ),
+}
+
 # BUILD-DERIVED PREREQUISITE, not a live-infra dependency: a few modules in the
 # hermetic list read the on-disk RAG indexes, which are gitignored build output.
 # CI already builds both (`python rag_index.py`, `python backend_rag_index.py`)
@@ -195,10 +240,41 @@ def check_every_module_is_accounted_for() -> list:
     accounted = (
         set(HERMETIC_MODULES)
         | set(LIVE_INFRA_MODULES)
+        | set(QUALITY_MONITOR_MODULES)
         | set(PENDING_OWNER_DECISION)
         | set(SOURCE_MODULES_NOT_TESTS)
     )
     return sorted(on_disk - accounted)
+
+
+def run_quality_monitors():
+    """Execute the quality monitors and return their unittest result.
+
+    Deliberately runs them as a SECOND, separately-reported suite rather than
+    folding them into the blocking one. Two properties matter and they are in
+    tension: a known stochastic miss must stay visible, and a known stochastic
+    miss must not make this runner's exit code meaningless. One suite cannot do
+    both -- a single exit code cannot say "the code is fine and the model
+    answered one question badly".
+
+    Never swallows a failure silently: every failing case is named in the
+    summary, and its full assertion text is printed by the runner below exactly
+    as the blocking suite's would be. Returns None only if the monitor bucket is
+    empty, which is a legitimate state.
+    """
+    if not QUALITY_MONITOR_MODULES:
+        return None
+    print("\n" + "=" * 72)
+    print(f"QUALITY MONITORS -- {len(QUALITY_MONITOR_MODULES)} module(s). These RUN and are")
+    print("REPORTED IN FULL. They do NOT set the exit code, because what they")
+    print("assert is the content of model output, not a property of this code:")
+    for m, why in sorted(QUALITY_MONITOR_MODULES.items()):
+        print(f"  - {m}: {why}")
+    print("=" * 72)
+    monitor_suite = unittest.defaultTestLoader.loadTestsFromNames(
+        sorted(QUALITY_MONITOR_MODULES)
+    )
+    return unittest.TextTestRunner(verbosity=2).run(monitor_suite)
 
 
 def main() -> int:
@@ -208,20 +284,26 @@ def main() -> int:
         for m in unaccounted:
             print(f"  - {m}")
         print("Add each to HERMETIC_MODULES (preferred), LIVE_INFRA_MODULES with a real")
-        print("reason, or PENDING_OWNER_DECISION. An unlisted module is never run.")
+        print("reason, QUALITY_MONITOR_MODULES if it asserts on model output, or")
+        print("PENDING_OWNER_DECISION. An unlisted module is never run.")
         return 1
 
     if "--list" in sys.argv:
         print(f"HERMETIC (blocking CI) -- {len(HERMETIC_MODULES)} modules:")
         for m in HERMETIC_MODULES:
             print(f"  {m}")
+        print(f"\nQUALITY MONITORS (run every time, reported in full, NOT blocking) -- {len(QUALITY_MONITOR_MODULES)}:")
+        for m, why in sorted(QUALITY_MONITOR_MODULES.items()):
+            print(f"  {m:34s} {why}")
         print(f"\nLIVE-INFRA (not blocking CI, must still be run elsewhere) -- {len(LIVE_INFRA_MODULES)}:")
         for m, why in sorted(LIVE_INFRA_MODULES.items()):
             print(f"  {m:28s} {why}")
         return 0
 
     print("=" * 72)
-    print(f"Running {len(HERMETIC_MODULES)} hermetic Python test modules (blocking).")
+    print(f"RELEASE HEALTH: {len(HERMETIC_MODULES)} hermetic Python test modules (BLOCKING).")
+    print(f"Then {len(QUALITY_MONITOR_MODULES)} quality monitor module(s) -- run and reported,")
+    print("not blocking. Zero paid model calls in either bucket.")
     print(f"NOT run here -- {len(LIVE_INFRA_MODULES)} live-infrastructure modules, real reasons:")
     for m, why in sorted(LIVE_INFRA_MODULES.items()):
         print(f"  - {m}: {why}")
@@ -232,11 +314,21 @@ def main() -> int:
     suite = unittest.defaultTestLoader.loadTestsFromNames(HERMETIC_MODULES)
     result = unittest.TextTestRunner(verbosity=2).run(suite)
 
+    monitor = run_quality_monitors()
+
     print("\n" + "=" * 72)
+    print("RELEASE HEALTH (blocking -- these set the exit code)")
     print(f"tests run : {result.testsRun}")
     print(f"failures  : {len(result.failures)}")
     print(f"errors    : {len(result.errors)}")
     print(f"skipped   : {len(result.skipped)}")
+    if monitor is not None:
+        print("\nQUALITY MONITORS (visible, NOT blocking -- see the detail above)")
+        print(f"tests run : {monitor.testsRun}")
+        print(f"failures  : {len(monitor.failures)}")
+        print(f"errors    : {len(monitor.errors)}")
+        for case, _ in list(monitor.failures) + list(monitor.errors):
+            print(f"  RED: {case.id()}")
 
     # --- the false-green guard, the whole reason this file exists ---
     if result.testsRun == 0:

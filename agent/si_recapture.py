@@ -31,6 +31,8 @@ import time
 import urllib.error
 import urllib.request
 
+import paid_test_guard
+
 PROD = "https://agentic-platform-backend-production.up.railway.app"
 OUT = pathlib.Path(__file__).parent / "testdata" / "si_production_answers_after.json"
 BASELINE = pathlib.Path(__file__).parent / "testdata" / "si_production_answers.json"
@@ -97,10 +99,29 @@ def main() -> int:
                     help="skip the cost confirmation")
     args = ap.parse_args()
 
+    # SPRINT 17: the mechanical half of "spend zero unless someone said
+    # otherwise". Before this, the only thing between a stray invocation and
+    # ~$0.41-$1.59 of real spend was an interactive y/N prompt that --yes
+    # bypasses -- and --yes is exactly what any script, CI step or agent would
+    # pass. The guard runs FIRST, before the question list is even built and
+    # long before a request is constructed, so a refusal is provably pre-call.
+    #
+    # It requires BOTH ALLOW_PAID_TESTS=1 AND a positive PAID_TEST_BUDGET_USD.
+    # The interactive confirmation below is kept, not replaced: a human at a
+    # terminal should still see the real figure and agree to it. This guard is
+    # for the case where no human is there.
+    try:
+        authorized_budget = paid_test_guard.require_paid_tests_allowed(
+            "si-answer-quality-paid (agent/si_recapture.py)")
+    except paid_test_guard.PaidTestsNotAuthorized as exc:
+        print(exc, file=sys.stderr)
+        return 3
+
     questions = _questions(args.all)
     total = len(questions) * args.draws
     cost = total * APPROX_USD_PER_REQUEST
 
+    print(f"paid tests  : AUTHORIZED, declared budget ${authorized_budget:.2f}")
     print(f"target      : {PROD}")
     print(f"questions   : {len(questions)}  ({', '.join(q for q, _ in questions)})")
     print(f"draws each  : {args.draws}")

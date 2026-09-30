@@ -125,17 +125,26 @@ class FrontendSpecMapDriftTestCase(unittest.TestCase):
 
     Shrinking KNOWN_UNMAPPED is real work (each entry needs a source path that
     should trigger it). GROWING it to make this test pass is the failure mode
-    this test exists to prevent -- add the mapping instead."""
+    this test exists to prevent -- add the mapping instead.
 
-    KNOWN_UNMAPPED = {
-        "e2e/ask-codebase.spec.js",
-        "e2e/golden-journey.spec.js",
-        "e2e/interview-walkthrough.spec.js",
-        "e2e/link-integrity.spec.js",
-        "e2e/pdf.spec.js",
-        "e2e/profile.spec.js",
-        "e2e/workbench-real-acceptance.spec.js",
-    }
+    SPRINT 17. The ratchet did its job and was RED: design-standards.spec.js
+    arrived in Sprint 16 and nothing mapped it, so nine public pages could be
+    edited without selecting the suite written to measure them. Fixing that
+    exposed the real problem with a bare name list -- it could not tell the
+    difference between "not wired up yet" and "must never be selected
+    automatically". e2e/workbench-real-acceptance.spec.js deploys a real change
+    to the production Customer App; that is not debt to pay down, it is a spec
+    that must stay out of automatic selection forever.
+
+    So KNOWN_UNMAPPED is gone and the list now lives next to the map it
+    qualifies, as tia.INTENTIONALLY_UNMAPPED_SPECS, keyed by spec with a real
+    written reason. Five of the seven former entries were genuine debt and are
+    now mapped: ask-codebase, golden-journey, interview-walkthrough,
+    link-integrity and profile."""
+
+    @property
+    def KNOWN_UNMAPPED(self):
+        return set(tia.INTENTIONALLY_UNMAPPED_SPECS)
 
     def _specs_on_disk(self):
         e2e_dir = tools.REPO_ROOT / "e2e"
@@ -152,13 +161,35 @@ class FrontendSpecMapDriftTestCase(unittest.TestCase):
             f"New Playwright spec(s) exist that no source path maps to: {new}. "
             "A change to the code they cover will not trigger them. Add an entry to "
             "tia.FRONTEND_PATH_TO_SPECS mapping the relevant source path(s) to the spec "
-            "-- do NOT add it to KNOWN_UNMAPPED to make this pass.",
+            "-- do NOT add it to tia.INTENTIONALLY_UNMAPPED_SPECS to make this pass.",
+        )
+
+    def test_every_intentionally_unmapped_spec_carries_a_real_reason(self):
+        """A one-word reason, or an empty one, turns the exclusion list straight
+        back into the bare name list Sprint 17 replaced. The reason has to say
+        enough that a reader who did not write it can judge whether it still
+        holds."""
+        for spec, reason in sorted(tia.INTENTIONALLY_UNMAPPED_SPECS.items()):
+            with self.subTest(spec=spec):
+                self.assertGreaterEqual(
+                    len(reason.split()), 12,
+                    f"{spec}'s exclusion reason is too short to be checkable: {reason!r}",
+                )
+
+    def test_every_intentionally_unmapped_spec_still_exists(self):
+        """An excluded spec that was deleted leaves a stale reason claiming to
+        justify something that is no longer there."""
+        on_disk = self._specs_on_disk()
+        gone = sorted(set(tia.INTENTIONALLY_UNMAPPED_SPECS) - on_disk)
+        self.assertEqual(
+            gone, [],
+            f"tia.INTENTIONALLY_UNMAPPED_SPECS names spec(s) that no longer exist: {gone}",
         )
 
     def test_known_unmapped_list_does_not_contain_specs_that_are_now_mapped(self):
         """Keeps the ratchet honest in the other direction: once a spec is
-        genuinely wired up, it must be removed from KNOWN_UNMAPPED so the
-        remaining debt is always the real remaining debt."""
+        genuinely wired up, it must be removed from the intentional-exclusion
+        list so the remaining debt is always the real remaining debt."""
         stale = sorted(self.KNOWN_UNMAPPED & self._specs_reachable())
         self.assertEqual(
             stale, [],

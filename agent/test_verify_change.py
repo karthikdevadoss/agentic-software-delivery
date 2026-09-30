@@ -117,6 +117,20 @@ class ExecutedNothingTestCase(unittest.TestCase):
     risk file in the repo (agent/web_server.py): commands == [], verdict
     PASSED, exit 0.
 
+    FIXTURE RE-POINTED 2026-09-30 (Sprint 17), exactly as the preconditions
+    below instruct rather than by loosening them. agent/web_server.py is no
+    longer an uncovered path: it now maps to e2e/profile.spec.js -- the only
+    proof that /profile's privacy has not regressed, and its enforcement is
+    route registration in that very file -- plus the two whole-surface browser
+    sweeps. That mapping closed a real hole (the repo's own highest-risk file
+    selected zero suites), and closing it broke this test's fixture assumption,
+    which is the precondition assertion working as designed rather than a
+    nuisance. The fixture is now agent/demo_execution.py: real HIGH risk, real
+    CROSS_MODULE blast radius, and it genuinely selects nothing, so the
+    executed-nothing path is still exercised for real. It is the git/push/deploy
+    driver behind the public Workbench pipeline, so if it ever gains coverage
+    that is good news and this test gets re-pointed again.
+
     Unlike VerdictLogicTestCase above, this calls the REAL execute() rather
     than re-implementing its arithmetic -- a test that recomputes the logic
     it is checking cannot catch the logic being wrong, which is exactly why
@@ -125,7 +139,7 @@ class ExecutedNothingTestCase(unittest.TestCase):
     def test_high_risk_change_running_zero_commands_is_unverified_not_passed(self):
         import test_impact_analysis as tia
 
-        selection = tia.analyze(["agent/web_server.py"])
+        selection = tia.analyze(["agent/demo_execution.py"])
         # Preconditions that make this the real known-bad case, asserted so
         # the test fails loudly (rather than passing vacuously) if TIA ever
         # starts selecting suites for this path -- at which point this test
@@ -143,7 +157,7 @@ class ExecutedNothingTestCase(unittest.TestCase):
         )
 
         # Real call. Safe and fast precisely because zero commands run.
-        evidence = vc.execute(["agent/web_server.py"], selection, dry_run=False)
+        evidence = vc.execute(["agent/demo_execution.py"], selection, dry_run=False)
 
         self.assertEqual(evidence["commands"], [], "fixture assumption broken: something executed")
         self.assertTrue(evidence["executed_nothing"])
@@ -157,8 +171,8 @@ class ExecutedNothingTestCase(unittest.TestCase):
         """The new rule must not swallow the pre-existing DRY_RUN state."""
         import test_impact_analysis as tia
 
-        selection = tia.analyze(["agent/web_server.py"])
-        evidence = vc.execute(["agent/web_server.py"], selection, dry_run=True)
+        selection = tia.analyze(["agent/demo_execution.py"])
+        evidence = vc.execute(["agent/demo_execution.py"], selection, dry_run=True)
         self.assertEqual(evidence["verdict"], "DRY_RUN")
         self.assertEqual(evidence["overall_exit_code"], 0)
 
