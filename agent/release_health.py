@@ -59,6 +59,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import os
 import shutil
 import subprocess
@@ -138,7 +139,14 @@ GATES = [
         "tags": ["full"],
         "requirement": "blocking",
         "why": "the real application under the Workbench demo",
-        "multi": [["./mvnw.cmd" if os.name == "nt" else "./mvnw", "test", "-B"]],
+        # ABSOLUTE, not "./mvnw.cmd". A relative command is resolved against
+        # this PROCESS's cwd, not against subprocess's `cwd=` argument -- so the
+        # first real run of this runner reported
+        # "command not found: [WinError 2]" for a wrapper that exists. That is a
+        # SKIP masquerading as a FAIL, which is the wrong direction but the same
+        # family of defect as a skip masquerading as a pass.
+        "multi": [[str(REPO / "app" / ("mvnw.cmd" if os.name == "nt" else "mvnw")),
+                   "test", "-B"]],
         "needs": "java",
     },
     {
@@ -236,6 +244,45 @@ def _run(argv, cwd: Path, timeout: int):
     return proc, "", round(time.monotonic() - start, 1)
 
 
+def _extract_failure_lines(output: str) -> list:
+    """Pull the lines that NAME a failure out of an arbitrarily long log.
+
+    Deliberately pattern-based across the four runners this module drives
+    (unittest, Playwright's list reporter, Maven surefire, the Node harnesses)
+    rather than parsing any one of their formats properly -- the goal is "the
+    reader learns WHICH thing failed without re-running it", not a structured
+    report. Capped so a pathological log cannot flood the terminal, and the cap
+    is stated when it bites rather than silently applied.
+    """
+    markers = (
+        "FAIL:", "ERROR:", "Error:", "FAILED", "failed", "AssertionError",
+        "✘", "Tests run:", "did not run", "Timeout", "timed out",
+    )
+    # Playwright's list reporter numbers each failure as "  1) [chromium] > spec"
+    # with none of the words above on that line -- which is exactly the line that
+    # names the broken spec. Smoke-testing the extractor on a real sample caught
+    # that it was dropping it; the markers alone recovered only "2 failed".
+    numbered_failure = re.compile(r"^\s*\d+\)\s")
+    lines = []
+    for raw in output.splitlines():
+        line = raw.rstrip()
+        if not line.strip():
+            continue
+        if numbered_failure.match(line) or any(m in line for m in markers):
+            # Playwright's progress lines contain "passed"/"failed" counts on
+            # every tick; keep only the ones that name a spec or a test.
+            lines.append(line.strip()[:240])
+    seen, unique = set(), []
+    for line in lines:
+        if line not in seen:
+            seen.add(line)
+            unique.append(line)
+    if len(unique) > 40:
+        return unique[:40] + [f"... {len(unique) - 40} further failure line(s) not shown "
+                              f"here; the full set is in this run's --json output"]
+    return unique
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--quick", action="store_true",
@@ -320,10 +367,34 @@ def main(argv=None) -> int:
                                "exit_code": None, "error": err})
                 print(f"    ERROR: {err}")
                 continue
-            tail = (proc.stdout or "")[-1500:] + (proc.stderr or "")[-1500:]
-            print(tail.rstrip() or "    (no output)")
-            detail.append({"command": " ".join(str(c) for c in cmd),
-                           "exit_code": proc.returncode, "error": ""})
+            out = (proc.stdout or "") + (proc.stderr or "")
+            # ON SUCCESS, a tail is enough. ON FAILURE, IT IS NOT -- and this was
+            # a real defect in this runner's first full run (BL-R5): the
+            # Playwright gate failed, and the 1500-character tail had already
+            # scrolled past every failure name, leaving only "36 skipped / 7 did
+            # not run / 358 passed" and no way to tell which specs broke without
+            # re-running a seven-minute suite. A report that loses the one thing
+            # you needed is worse than no report, because it looks complete.
+            if proc.returncode == 0:
+                print(out[-1200:].rstrip() or "    (no output)")
+            else:
+                print(out[-1200:].rstrip() or "    (no output)")
+                failure_lines = _extract_failure_lines(out)
+                if failure_lines:
+                    print("")
+                    print(f"    ---- {len(failure_lines)} failure line(s) recovered "
+                          f"from the full output ----")
+                    for line in failure_lines:
+                        print(f"    {line}")
+            detail.append({
+                "command": " ".join(str(c) for c in cmd),
+                "exit_code": proc.returncode,
+                "error": "",
+                # The full output goes in the JSON regardless of length, so a
+                # failure is always reconstructable without a second run.
+                "failure_lines": _extract_failure_lines(out) if proc.returncode else [],
+                "output_chars": len(out),
+            })
             if proc.returncode != 0:
                 gate_failed = True
         results.append({

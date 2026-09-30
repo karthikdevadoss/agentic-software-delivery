@@ -157,8 +157,14 @@ _GOLDEN_JOURNEY = "e2e/golden-journey.spec.js"
 _RESPONSIVE = "e2e/responsive-invariants.spec.js"
 _THIRD_PARTY = "e2e/third-party-network.spec.js"
 _COPY_CONTRACT = "e2e/copy-contract.spec.js"
+# Gated OFF by default (VISUAL_REGRESSION=1), and still MAPPED rather than
+# excluded: selecting a suite that self-skips costs nothing, and when the Owner
+# does turn it on, the paths that can move a screenshot are already wired to it.
+# Excluding it now would mean remembering to wire it later, which is the exact
+# thing this map exists to stop depending on.
+_VISUAL_REGRESSION = "e2e/visual-regression.spec.js"
 _WHOLE_SURFACE = [_UI_STANDARDS, _DESIGN_STANDARDS, _LINK_INTEGRITY, _GOLDEN_JOURNEY,
-                  _RESPONSIVE, _THIRD_PARTY, _COPY_CONTRACT]
+                  _RESPONSIVE, _THIRD_PARTY, _COPY_CONTRACT, _VISUAL_REGRESSION]
 
 FRONTEND_PATH_TO_SPECS = {
     # Sprint 14: the recruiter-facing home page and the durable-agent case
@@ -169,10 +175,10 @@ FRONTEND_PATH_TO_SPECS = {
     "agent/web/nav.js": ["e2e/home.spec.js", "e2e/nav-consistency.spec.js"] + _WHOLE_SURFACE,
     # The shared shell and type scale. A one-line change in either of these
     # moves every page at once -- which is exactly what happened in Sprint 15.
-    "agent/web/style.css": [_UI_STANDARDS, _DESIGN_STANDARDS, _RESPONSIVE,
-                            _THIRD_PARTY, "e2e/nav-consistency.spec.js"],
-    "agent/web/dashboard.css": [_UI_STANDARDS, _DESIGN_STANDARDS, _RESPONSIVE],
-    "agent/web/showcase.css": [_UI_STANDARDS, _DESIGN_STANDARDS, _RESPONSIVE],
+    "agent/web/style.css": [_UI_STANDARDS, _DESIGN_STANDARDS, _RESPONSIVE, _THIRD_PARTY,
+                            _VISUAL_REGRESSION, "e2e/nav-consistency.spec.js"],
+    "agent/web/dashboard.css": [_UI_STANDARDS, _DESIGN_STANDARDS, _RESPONSIVE, _VISUAL_REGRESSION],
+    "agent/web/showcase.css": [_UI_STANDARDS, _DESIGN_STANDARDS, _RESPONSIVE, _VISUAL_REGRESSION],
     "agent/web/showcase.js": [_UI_STANDARDS, _DESIGN_STANDARDS, "e2e/interview-walkthrough.spec.js", _LINK_INTEGRITY],
     # Sprint 17: showcase.html had no entry at all, so the page that carries the
     # densest technical evidence on the public site could be edited without
@@ -189,12 +195,12 @@ FRONTEND_PATH_TO_SPECS = {
                                 _DESIGN_STANDARDS, _RESPONSIVE],
     "agent/web/usage.html": ["e2e/usage.spec.js"] + _WHOLE_SURFACE,
     "agent/web/usage.js": ["e2e/usage.spec.js", _UI_STANDARDS, _DESIGN_STANDARDS],
-    "agent/web/usage.css": [_UI_STANDARDS, _DESIGN_STANDARDS, _RESPONSIVE],
+    "agent/web/usage.css": [_UI_STANDARDS, _DESIGN_STANDARDS, _RESPONSIVE, _VISUAL_REGRESSION],
     # Sprint 17: Triage and Ask the Codebase were both entirely absent from this
     # map. Triage is one of the three pages the Owner sends recruiters to.
     "agent/web/triage.html": _WHOLE_SURFACE,
     "agent/web/triage.js": [_GOLDEN_JOURNEY, _LINK_INTEGRITY],
-    "agent/web/triage.css": [_UI_STANDARDS, _DESIGN_STANDARDS, _RESPONSIVE],
+    "agent/web/triage.css": [_UI_STANDARDS, _DESIGN_STANDARDS, _RESPONSIVE, _VISUAL_REGRESSION],
     "agent/web/triage-b.html": [_GOLDEN_JOURNEY, _LINK_INTEGRITY],
     "agent/web/triage-b.js": [_GOLDEN_JOURNEY],
     "agent/web/triage-c.html": [_GOLDEN_JOURNEY, _LINK_INTEGRITY],

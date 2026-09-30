@@ -1,0 +1,383 @@
+{
+  "_purpose": "One machine-readable record of every major test suite in this repository: what it is for, what triggers it, whether it blocks a release, and what it costs. The prose companion is docs/TESTING.md.",
+  "_generated_by": "agent-side script; regenerate rather than hand-editing",
+  "_authoritative_source": "tags, cost_class, release_blocking and command are read from agent/select_tests.py's SUITES at generation time, so this file cannot drift from the selector that actually runs.",
+  "_determinism_note": "'stochastic' does not mean the CODE is non-deterministic. Both stochastic entries here run deterministic code over a captured sample of MODEL OUTPUT -- what varies is the subject, not the measurement. That distinction is what decides release_blocking.",
+  "_release_health_definition": "release_blocking: true means a failure means this branch cannot truthfully be called green. Two properties are required: the same input gives the same verdict every run, AND the thing measured is a property of this repository's code.",
+  "_paid_guard": "Any suite with cost_class 'paid' requires BOTH ALLOW_PAID_TESTS=1 AND a positive PAID_TEST_BUDGET_USD, enforced by agent/paid_test_guard.py before any provider client is constructed. Sprint 17 never set it; its recorded paid call count is 0.",
+  "_local_entry_point": "python agent/release_health.py",
+  "_change_classes": {
+    "SECURITY_WRITE_AUTHORITY": {
+      "reason": "touches a write, authority or security boundary -- the blast radius is what the system is ALLOWED to do, not what it does",
+      "needs_paid_evaluation": false
+    },
+    "PROMPT_MODEL_AGENT": {
+      "reason": "changes prompt text, model selection, retrieval, or an agent/tool schema -- the only class whose correctness a deterministic assertion cannot fully settle",
+      "needs_paid_evaluation": true
+    },
+    "CI_TESTING_INFRA": {
+      "reason": "changes the machinery that decides whether anything else is verified, so it cannot be verified by that same machinery alone",
+      "needs_paid_evaluation": false
+    },
+    "JAVA_BACKEND": {
+      "reason": "Java/Spring source or build definition",
+      "needs_paid_evaluation": false
+    },
+    "PYTHON_APP_LOGIC": {
+      "reason": "deterministic Python application logic",
+      "needs_paid_evaluation": false
+    },
+    "FRONTEND_JS": {
+      "reason": "ordinary frontend JavaScript -- behaviour a browser test can settle",
+      "needs_paid_evaluation": false
+    },
+    "STATIC_HTML_COPY": {
+      "reason": "static HTML / recruiter-facing copy",
+      "needs_paid_evaluation": false
+    },
+    "CSS_VISUAL": {
+      "reason": "stylesheet, font or image -- appearance only, no behaviour and no model involvement of any kind",
+      "needs_paid_evaluation": false
+    }
+  },
+  "_python_module_buckets": {
+    "hermetic_blocking": 47,
+    "quality_monitors": {
+      "test_si_answer_quality_monitor": "scores a real captured sample of Standing Interview ANSWERS -- what a language model actually said, not what this repository's code does. KNOWN RED on question m ('describe a technical disagreement'), 2 of 3 draws not answered. Tracked as SI-19/BL-149."
+    },
+    "live_infrastructure_excluded": {
+      "test_backend_execution": "spawns a real web_server subprocess",
+      "test_workflow_checkpointer": "BL-094: real Postgres checkpoint tables via EVENT_LEDGER_DATABASE_URL",
+      "test_knowledge_candidates": "imports the event ledger; needs a live EVENT_LEDGER_DATABASE_URL",
+      "test_claude_code_hook": "RealLedgerDistinctnessTestCase queries the live Postgres ledger",
+      "test_environment_preflight": "asserts a live JDK on the host; CI's Python job has no Java installed",
+      "test_verify_claude_hooks_config": "asserts ~/.claude/settings.json exists on this developer machine",
+      "test_event_ledger": "requires a live DATABASE_URL (real Postgres event ledger)",
+      "test_learn_pdf": "hits the live Railway deployment",
+      "test_session_history": "hits the live Railway deployment",
+      "test_triage_execution": "hits live Railway over urllib + spawns a subprocess",
+      "test_web_server": "spawns a real web_server subprocess and hits live Railway"
+    },
+    "pending_owner_decision": {},
+    "min_expected_tests": 520
+  },
+  "_playwright_specs_intentionally_unmapped": {
+    "e2e/pdf.spec.js": "Covers /learn's Download Complete Book control, and /learn is not a public route -- it is registered only when PRIVATE_SURFACES_ENABLED is set (agent/web_server.py). The spec self-skips otherwise, so selecting it from a public-page change would only ever produce skips.",
+    "e2e/workbench-real-acceptance.spec.js": "Submits a REAL requirement through the real Workbench pipeline, which commits, pushes and deploys a real change to the production Customer App. It is a deliberate, operator-initiated acceptance run -- never something a file edit should be able to trigger. Tagged `live` in docs/testing-matrix.json."
+  },
+  "suites": [
+    {
+      "name": "python-hermetic",
+      "purpose": "Deterministic correctness of every Python module in agent/ that can run without live infrastructure.",
+      "layer": "unit + module integration",
+      "command": "python agent/ci_python_tests.py",
+      "trigger_change_classes": [
+        "ALL"
+      ],
+      "tags": [
+        "quick",
+        "full"
+      ],
+      "determinism": "deterministic",
+      "release_blocking": true,
+      "requires_network": false,
+      "requires_model": false,
+      "expected_paid_model_calls": 0,
+      "cost_class": "free",
+      "known_limitations": [
+        "Ten modules are excluded because they need live infrastructure this suite does not hold (real Postgres, the deployed Railway apps, a spawned web_server subprocess, a JDK, this developer machine's ~/.claude/settings.json). All ten are printed with their individual reason on every run.",
+        "Three hermetic modules need the RAG indexes on disk, which are gitignored build output. They fail on a fresh checkout until `python rag_index.py` and `python backend_rag_index.py` have been run once.",
+        "No coverage measurement and no mutation score."
+      ]
+    },
+    {
+      "name": "python-quality-monitors",
+      "purpose": "Standing Interview answer quality, scored against a real captured sample of production answers.",
+      "layer": "AI quality monitor",
+      "command": "python agent/ci_python_tests.py  (second, non-blocking pass)",
+      "trigger_change_classes": [
+        "PROMPT_MODEL_AGENT"
+      ],
+      "tags": [
+        "full"
+      ],
+      "determinism": "stochastic",
+      "release_blocking": false,
+      "requires_network": false,
+      "requires_model": false,
+      "expected_paid_model_calls": 0,
+      "cost_class": "free",
+      "known_limitations": [
+        "KNOWN RED on question m ('describe a technical disagreement'), 2 of 3 captured draws not answered. Tracked as SI-19/BL-149.",
+        "Three draws per question cannot separate a fixed defect from an unlucky sample. Repeated stochastic trials are backlog.",
+        "Of the two failing draws, m/2 is outcome=no_model (the model was never called) and only m/3 is a real decline. They are different causes sharing one assertion.",
+        "Scores an archive, so it says nothing about what production would answer today."
+      ]
+    },
+    {
+      "name": "node-frontend-harnesses",
+      "purpose": "Deterministic assertions over the rendered HTML the Usage, Workbench and Learn renderers produce, without a browser.",
+      "layer": "frontend unit",
+      "command": "node agent/test_trainer_frontend.js && node agent/test_usage_frontend.js && node agent/test_learn_frontend.js",
+      "trigger_change_classes": [
+        "FRONTEND_JS",
+        "STATIC_HTML_COPY",
+        "CI_TESTING_INFRA"
+      ],
+      "tags": [
+        "quick",
+        "full"
+      ],
+      "determinism": "deterministic",
+      "release_blocking": true,
+      "requires_network": false,
+      "requires_model": false,
+      "expected_paid_model_calls": 0,
+      "cost_class": "free",
+      "known_limitations": [
+        "Asserts strings in generated HTML, not layout or appearance. It cannot see that an element renders off screen.",
+        "Covers three renderers. Triage, Showcase, Ask Codebase and Standing Interview have no equivalent harness."
+      ]
+    },
+    {
+      "name": "static-gate",
+      "purpose": "Non-source artefact properties a judgement call keeps getting wrong: file mode bits, shebangs, and a literal '--' inside an XML/HTML comment.",
+      "layer": "static",
+      "command": "python agent/static_gate.py",
+      "trigger_change_classes": [
+        "ALL"
+      ],
+      "tags": [
+        "quick",
+        "full"
+      ],
+      "determinism": "deterministic",
+      "release_blocking": true,
+      "requires_network": false,
+      "requires_model": false,
+      "expected_paid_model_calls": 0,
+      "cost_class": "free",
+      "known_limitations": [
+        "Reads committed content via `git show HEAD:<path>`, so a fix in the working tree does not clear it until committed. That is deliberate (it checks what is actually committed) and surprising the first time.",
+        "Its unqualified-framework-@Bean check is ADVISORY only and currently reports 12 findings; it does not gate."
+      ]
+    },
+    {
+      "name": "config-drift-gate",
+      "purpose": "A property key present in one Spring profile file and missing from another -- the Owner's real NRG stage-versus-prod incident class.",
+      "layer": "static",
+      "command": "python agent/check_config_drift.py",
+      "trigger_change_classes": [
+        "JAVA_BACKEND",
+        "CI_TESTING_INFRA",
+        "SECURITY_WRITE_AUTHORITY"
+      ],
+      "tags": [
+        "quick",
+        "full"
+      ],
+      "determinism": "deterministic",
+      "release_blocking": true,
+      "requires_network": false,
+      "requires_model": false,
+      "expected_paid_model_calls": 0,
+      "cost_class": "free",
+      "known_limitations": [
+        "Compares key presence, not values, so a key present in both files with a wrong value passes."
+      ]
+    },
+    {
+      "name": "java-customer-app",
+      "purpose": "The real Spring Boot application the Workbench pipeline mutates: unit tests plus real Postgres integration tests via Testcontainers.",
+      "layer": "unit + integration",
+      "command": "cd app && ./mvnw test -B",
+      "trigger_change_classes": [
+        "JAVA_BACKEND",
+        "SECURITY_WRITE_AUTHORITY",
+        "CI_TESTING_INFRA"
+      ],
+      "tags": [
+        "full"
+      ],
+      "determinism": "deterministic",
+      "release_blocking": true,
+      "requires_network": false,
+      "requires_model": false,
+      "expected_paid_model_calls": 0,
+      "cost_class": "free",
+      "known_limitations": [
+        "The Testcontainers Postgres tests SKIP on this developer machine, which has no Docker (docs/DECISIONS.md). They only really run in CI.",
+        "The Dockerfile build is likewise CI-only, and is the only place app/Dockerfile is proven to build at all."
+      ]
+    },
+    {
+      "name": "java-microservices",
+      "purpose": "Each of the six services as an independent Maven project, so one service's failure does not obscure the other five.",
+      "layer": "unit + integration",
+      "command": "cd services/<service> && ./mvnw test -B   (6 services)",
+      "trigger_change_classes": [
+        "JAVA_BACKEND",
+        "CI_TESTING_INFRA"
+      ],
+      "tags": [
+        "full"
+      ],
+      "determinism": "deterministic",
+      "release_blocking": true,
+      "requires_network": false,
+      "requires_model": false,
+      "expected_paid_model_calls": 0,
+      "cost_class": "free",
+      "known_limitations": [
+        "billing-service's Redis-backed tests are disabledWithoutDocker and skip locally.",
+        "Tests each service in isolation. Nothing here exercises them together -- that is the real-topology tier."
+      ]
+    },
+    {
+      "name": "real-topology",
+      "purpose": "Four real JVM service processes started and coordinated together: real Eureka registration, real gateway routing, a real cross-service enrolment.",
+      "layer": "multi-process system",
+      "command": "python services/real-topology-tests/run_real_topology_test.py --port-offset 10000",
+      "trigger_change_classes": [
+        "JAVA_BACKEND",
+        "SECURITY_WRITE_AUTHORITY",
+        "CI_TESTING_INFRA"
+      ],
+      "tags": [
+        "full"
+      ],
+      "determinism": "deterministic",
+      "release_blocking": true,
+      "requires_network": false,
+      "requires_model": false,
+      "expected_paid_model_calls": 0,
+      "cost_class": "free",
+      "known_limitations": [
+        "Heavy: four concurrent JVMs and several minutes. Not part of a local pre-commit check.",
+        "Gating since BL-056, after three consecutive clean local runs. Its history includes a real drift between two features built the same night (ACT-015), which is the reason it exists."
+      ]
+    },
+    {
+      "name": "playwright-functional",
+      "purpose": "Real-browser coverage of the recruiter paths: the public pages render their own real content, links resolve, overflow and console errors at four widths, third-party network behaviour, and the public copy claims.",
+      "layer": "end-to-end browser",
+      "command": "npx playwright test --reporter=list  (selected specs)",
+      "trigger_change_classes": [
+        "CSS_VISUAL",
+        "STATIC_HTML_COPY",
+        "FRONTEND_JS",
+        "PYTHON_APP_LOGIC",
+        "CI_TESTING_INFRA",
+        "SECURITY_WRITE_AUTHORITY"
+      ],
+      "tags": [
+        "full"
+      ],
+      "determinism": "deterministic",
+      "release_blocking": true,
+      "requires_network": false,
+      "requires_model": false,
+      "expected_paid_model_calls": 0,
+      "cost_class": "free",
+      "known_limitations": [
+        "NON-BLOCKING in CI until five consecutive green runs on master. Promotion criterion is written into .github/workflows/ci.yml.",
+        "Five specs fail on this laptop for environment reasons proven pre-existing in Sprint 16 (no ledger data, no verified run, Customer App not running). They pass in production.",
+        "Chromium only. No Firefox, no WebKit, no real device.",
+        "It measures geometry and content. It does not measure whether a page looks good."
+      ]
+    },
+    {
+      "name": "playwright-visual-pack",
+      "purpose": "Screenshot comparison against an accepted baseline, to catch unintended visual change from a stylesheet edit that moved a page nobody was looking at.",
+      "layer": "end-to-end browser (visual)",
+      "command": "VISUAL_REGRESSION=1 npx playwright test e2e/visual-regression.spec.js",
+      "trigger_change_classes": [
+        "CSS_VISUAL",
+        "STATIC_HTML_COPY"
+      ],
+      "tags": [
+        "visual"
+      ],
+      "determinism": "deterministic",
+      "release_blocking": false,
+      "requires_network": false,
+      "requires_model": false,
+      "expected_paid_model_calls": 0,
+      "cost_class": "free",
+      "known_limitations": [
+        "GATED OFF behind VISUAL_REGRESSION=1 and NOT release-blocking: the Owner has not accepted the baseline. Promotion criterion is his acceptance.",
+        "Catches CHANGE, never first-time ugliness. A baseline of an ugly page is an ugly baseline, faithfully defended.",
+        "/usage and /dashboard are captured to a bounded height because their length tracks how much real history the environment holds (6,759px against production, 69,830px against this laptop).",
+        "Masked regions are no longer protected. Masks are element-scoped and listed per page for exactly that reason."
+      ]
+    },
+    {
+      "name": "rag-mcp-evals",
+      "purpose": "Retrieval and routing quality against recorded thresholds, using deterministic oracles and no model call.",
+      "layer": "AI evaluation (deterministic)",
+      "command": "python agent/eval_runner.py all",
+      "trigger_change_classes": [
+        "PROMPT_MODEL_AGENT",
+        "PYTHON_APP_LOGIC",
+        "CI_TESTING_INFRA"
+      ],
+      "tags": [
+        "full"
+      ],
+      "determinism": "deterministic",
+      "release_blocking": true,
+      "requires_network": false,
+      "requires_model": false,
+      "expected_paid_model_calls": 0,
+      "cost_class": "free",
+      "known_limitations": [
+        "Deterministic oracles only. No LLM-as-judge anywhere, by decision.",
+        "The eval set is small and hand-built. A dataset of 20-50+ real failures is backlog."
+      ]
+    },
+    {
+      "name": "si-answer-quality-paid",
+      "purpose": "Re-run the audit's questions against live production to produce a fresh capture -- the only evidence that can settle whether a specification change actually changed model behaviour.",
+      "layer": "AI evaluation (live, paid)",
+      "command": "ALLOW_PAID_TESTS=1 PAID_TEST_BUDGET_USD=<n> python agent/si_recapture.py  then the monitor",
+      "trigger_change_classes": [
+        "PROMPT_MODEL_AGENT"
+      ],
+      "tags": [
+        "paid",
+        "live"
+      ],
+      "determinism": "stochastic",
+      "release_blocking": false,
+      "requires_network": true,
+      "requires_model": true,
+      "expected_paid_model_calls": "unknown until authorized",
+      "cost_class": "paid",
+      "known_limitations": [
+        "REFUSED by default. Requires BOTH ALLOW_PAID_TESTS=1 and a positive PAID_TEST_BUDGET_USD, and refuses before any provider client is constructed.",
+        "Approximately $0.023 per request from the audit's real measured total, so the default 18-request run is roughly $0.41. That figure is CALCULATED from real captured data, not an actual figure for any future run.",
+        "The deployed per-visitor spend cap can 429 this script mid-capture, producing an incomplete capture. It raises rather than storing a refusal as an answer."
+      ]
+    },
+    {
+      "name": "workbench-real-acceptance",
+      "purpose": "The actual public Workbench journey end to end for real: submit a supported requirement, watch it reach COMPLETED, confirm the change in real production, reset, confirm the baseline is restored.",
+      "layer": "end-to-end production acceptance",
+      "command": "npx playwright test e2e/workbench-real-acceptance.spec.js",
+      "trigger_change_classes": [],
+      "tags": [
+        "live"
+      ],
+      "determinism": "deterministic",
+      "release_blocking": false,
+      "requires_network": true,
+      "requires_model": false,
+      "expected_paid_model_calls": 0,
+      "cost_class": "free",
+      "known_limitations": [
+        "Commits, pushes and DEPLOYS a real change to the production Customer App. Operator-initiated only -- deliberately unmapped in the TIA so no file edit can trigger it.",
+        "Costs no model tokens (the public path is deterministic) but does consume a real deployment."
+      ]
+    }
+  ]
+}

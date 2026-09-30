@@ -7,11 +7,58 @@
 const { test, expect } = require("@playwright/test");
 
 test.describe("Ask the Codebase", () => {
-  test("page explains what it demonstrates within the first screen", async ({ page }) => {
+  // UPDATED Sprint 17 (BL-D), and the distinction matters. The brief's
+  // instruction for this page was to lead with the search interaction and move
+  // the long "what this demonstrates" content below the primary control -- so
+  // the behaviour this test was written to protect has deliberately changed, and
+  // the test follows the INTENT rather than the old literal heading.
+  //
+  // What the test still protects, and what it must: a visitor reaching this page
+  // cold learns within the first screen what it is and that it costs nothing.
+  // That claim is now carried by #ac-lede next to the search box instead of by a
+  // separate explanatory panel above it. The longer scope explanation is still on
+  // the page and is asserted separately below, so nothing was traded away for a
+  // shorter first screen.
+  //
+  // This is NOT an assertion loosened to match copy that drifted by accident.
+  // The old text is gone because it was deliberately moved.
+  test("the search interaction leads, and the first screen still says what this is", async ({ page }) => {
     await page.goto("/ask-codebase");
     await expect(page.locator("h1")).toContainText("Ask the Codebase");
-    await expect(page.getByText("What this demonstrates")).toBeVisible();
-    await expect(page.getByText(/zero LLM calls/i)).toBeVisible();
+
+    // The interaction is the first thing in <main>, not an explanation of it.
+    const firstPanelHeading = page.locator("main .panel h2").first();
+    await expect(firstPanelHeading).toHaveText(/Ask a question/i);
+
+    // The concise explanation sits with the control, and still makes the
+    // zero-cost claim that is the whole point of this surface.
+    const lede = page.locator("#ac-lede");
+    await expect(lede).toBeVisible();
+    await expect(lede).toContainText(/zero model calls/i);
+
+    // And the search box itself is genuinely in the first screen -- the defect
+    // this reordering fixed was a measured y=812 on a 1920x1080 desktop.
+    const box = page.locator("#ac-query");
+    await expect(box).toBeVisible();
+    const y = await box.evaluate((el) => el.getBoundingClientRect().top + window.scrollY);
+    expect(y).toBeLessThan(800);
+  });
+
+  test("the fuller scope explanation is still on the page, below the control", async ({ page }) => {
+    // The honest caveat was MOVED, not deleted: a curated corpus, not the whole
+    // repository, and not enterprise scale. Losing it would be a real
+    // overclaim, so its continued presence is asserted rather than assumed --
+    // and its position below the search box is asserted too, because "below" is
+    // the part of the change that could silently regress.
+    await page.goto("/ask-codebase");
+    const scope = page.getByRole("heading", { name: "What is indexed" });
+    await expect(scope).toBeVisible();
+    await expect(page.getByText(/curated corpus, not the whole repository/i)).toBeVisible();
+
+    const controlY = await page.locator("#ac-query")
+      .evaluate((el) => el.getBoundingClientRect().top + window.scrollY);
+    const scopeY = await scope.evaluate((el) => el.getBoundingClientRect().top + window.scrollY);
+    expect(scopeY).toBeGreaterThan(controlY);
   });
 
   test("example question buttons are present so a visitor never has to invent one", async ({ page }) => {

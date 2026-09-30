@@ -126,19 +126,23 @@ function renderRoleFit(main, showcase) {
 }
 
 function renderPrimaryDemo(main, showcase) {
+  // Sprint 17: the DUPLICATE "START THE LIVE DEMO" button is gone from here.
+  //
+  // Adding the role-fit card above put a second button with identical text on
+  // the same page, which broke e2e/interview-walkthrough.spec.js's
+  // getByText("START THE LIVE DEMO") on Playwright strict mode -- a real
+  // regression, caught by an existing spec, and the right answer was not to
+  // relax that spec to .first(). Two identically-labelled primary buttons a
+  // screen apart is poor design and a screen reader announces them as the same
+  // control twice.
+  //
+  // The role-fit card's CTA is now the page's single primary action. This panel
+  // keeps its whole explanatory paragraph -- nothing was deleted -- and is
+  // retitled to say what it actually is now that the button lives above it.
   const panel = el("section", "panel");
-  panel.appendChild(el("h2", null, "Start Here"));
+  panel.appendChild(el("h2", null, "What happens when you start it"));
   const demo = showcase.primary_demo || {};
   panel.appendChild(el("p", null, demo.what_to_expect || ""));
-  const row = el("div", "sc-cta-row");
-  if (demo.url) {
-    const a = el("a", "button", "START THE LIVE DEMO");
-    a.href = demo.url;
-    a.target = "_blank";
-    a.rel = "noopener";
-    row.appendChild(a);
-  }
-  panel.appendChild(row);
   main.appendChild(panel);
 }
 
