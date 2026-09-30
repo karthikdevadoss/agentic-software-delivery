@@ -160,17 +160,31 @@ test.describe("UI standard: one content column across the whole site", () => {
         .toBeLessThanOrEqual(SHELL_TOLERANCE);
     }
 
-    // Then across pages, so navigating does not move the column.
+    // Sprint 16 CHANGED THIS, and the reason is recorded because relaxing a
+    // guard needs justifying more than tightening one does.
+    //
+    // Sprint 15's defect was FIVE arbitrary widths -- 700/860/936/1000/1100 --
+    // that nobody had decided, so the layout jumped unpredictably. The guard
+    // expressed that as "every page the same", which was a proxy.
+    //
+    // Sprint 16 makes the width follow the CONTENT TYPE: a page built from
+    // paragraphs uses 860 and a page built from data grids uses 1200, because
+    // capping prose at 58ch inside a 1200px panel left half the panel empty.
+    // That is a decision, not drift.
+    //
+    // So the assertion is now "one of the SANCTIONED widths" rather than "all
+    // identical". Arbitrary drift still fails -- a sixth width nobody chose is
+    // exactly as caught as before.
+    const SANCTIONED = [860, 1200];
     const perPage = Object.fromEntries(
       Object.entries(widths).map(([n, b]) => [n, Math.max(...Object.values(b))]));
-    const values = Object.values(perPage);
-    const spread = Math.max(...values) - Math.min(...values);
-    expect(spread,
-      `content column differs across pages, so the layout jumps when you navigate: ${JSON.stringify(perPage)}`)
-      .toBeLessThanOrEqual(SHELL_TOLERANCE);
     for (const [name, w] of Object.entries(perPage)) {
-      expect(Math.abs(w - SHELL_MAX),
-        `${name} column is ${w}px, target ${SHELL_MAX}px`).toBeLessThanOrEqual(SHELL_TOLERANCE * 2);
+      const nearest = SANCTIONED.reduce(
+        (best, s) => (Math.abs(w - s) < Math.abs(w - best) ? s : best), SANCTIONED[0]);
+      expect(Math.abs(w - nearest),
+        `${name} column is ${w}px, which is not one of the sanctioned widths ` +
+        `${JSON.stringify(SANCTIONED)} -- a width nobody decided is how Sprint 15 ` +
+        `ended up with five of them`).toBeLessThanOrEqual(SHELL_TOLERANCE * 2);
     }
   });
 });

@@ -757,3 +757,38 @@ body[data-surface="ask-codebase"] dd,
 body[data-surface="ask-codebase"] dt {
   max-width: 54ch;
 }
+
+/* ==========================================================================
+   Sprint 16 -- SHELL WIDTH FOLLOWS CONTENT TYPE.
+
+   Capping prose at 58ch inside a 1136px panel fixed the reading measure and
+   created a new imbalance: a wide panel with a narrow column of text and a
+   large empty right half. That is DD2 again, one level down.
+
+   A page's container should be as wide as its widest REAL content. Pages
+   built from data grids need the full shell; pages built from paragraphs do
+   not, and forcing them to it is what produced the empty space.
+   ========================================================================== */
+
+/* Prose-dominant surfaces: the shell hugs the text. */
+body[data-surface="triage"],
+body[data-surface="ask-codebase"],
+body[data-surface="standing-interview"] {
+  --shell: 860px;
+}
+
+/* Data-dominant surfaces keep the full shell -- stat grids, tables and
+   multi-column evidence genuinely need it. */
+body[data-surface="usage"],
+body[data-surface="dashboard"],
+body[data-surface="workbench"],
+body[data-surface="showcase"] {
+  --shell: 1200px;
+}
+
+/* Inside a wide shell, a panel that holds only prose should not stretch to
+   fill it either. Panels containing grids or tables are exempt. */
+body[data-surface="workbench"] .panel:not(:has(table)):not(:has(.exec-grid)),
+body[data-surface="showcase"] .panel:not(:has(table)):not(:has(.exec-grid)) {
+  max-width: 76ch;
+}

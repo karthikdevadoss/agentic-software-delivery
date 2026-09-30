@@ -1054,6 +1054,22 @@ def voice_violations(text: str, question: str | None = None) -> list[str]:
         # slip.
         bad.append("tense: %s" % t[:120])
 
+    # FIRST PERSON, enforced at generation time rather than only checked at
+    # acceptance time. The acceptance gate has caught this twice now -- "At
+    # NRG, async work mainly ran through SQS..." with no I and no we anywhere
+    # -- and a check that only runs at deploy time cannot fix an answer, it can
+    # only block it. In the gate it triggers a retry, and the retry prompt
+    # names the failure, which is what actually corrects it.
+    #
+    # SOFT, because an answer with good content and no pronoun is still worth
+    # shipping if the retry cannot improve it. And skipped entirely for short
+    # answers, where a flat factual statement is correct: "We didn't use Kafka
+    # at NRG" needs no further person in it.
+    if question is not None and len(text.split()) >= 40:
+        if not re.search(r"\b(i|i'm|i've|i'd|my|me|we|we're|we've|our)\b", text, re.I):
+            bad.append(f"{SOFT_VIOLATION} -- it describes a system instead of "
+                       f"remembering the work: no 'I' or 'we' anywhere")
+
     # Kept from the phrase-list version so the "essay about what he cannot
     # say" contract keeps its own distinct message: many limitation sentences
     # is a different failure from one volunteered clause, and the retry prompt
