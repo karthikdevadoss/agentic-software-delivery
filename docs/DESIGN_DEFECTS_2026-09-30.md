@@ -108,3 +108,58 @@ extended them to the properties that actually make a page readable.
 
 **Explicitly out of scope, by Owner instruction:** unifying the light/dark
 split. Home stays light, the other eight stay dark.
+
+---
+
+# Resolution — Sprint 16
+
+## Measured, production build vs after
+
+| | Before | After |
+|---|---|---|
+| Longest line | **172 chars** | **71–73** |
+| Paragraphs over 90 chars | **53 sitewide** | **0** |
+| Header/body ratio | **1.94** on six pages | **1.28–1.31** |
+| Duplicate adjacent links | 4 on dashboard | 0 |
+| Nav vertical position | 0px on three pages, 206–305 on six | 0–24 on all nine |
+| Visual complexity (first screen) | — | **low on all nine** |
+
+## The research this was built on, and what each finding changed
+
+| Finding | Source | What it changed here |
+|---|---|---|
+| A visual judgement forms in ~50ms | Lindgaard et al., *Behaviour & IT* 25(2) | The first screen is the whole opportunity — nav, title and one real paragraph must all land above the fold |
+| **High** visual complexity produces a **worse** first impression than low or medium | Tuch et al., *IJHCS* 2012 | Kept the per-page signatures to **one structural move each**, and measured complexity afterwards to confirm it stayed low. Two moves would have been costume |
+| Prototypicality predicts trustworthiness (29–68% of variance) | Tuch et al. 2012; follow-up *IJHCS* 2023 | Nav moved to first on every page. For a portfolio whose whole job is to be believed, structural familiarity outranks any accent choice |
+| Colourfulness and complexity together predict appeal | Reinecke et al., CHI 2013 | Accent used on four elements only — heading, section label, focus ring, active nav — never as a large fill |
+| Readable line length 50–75, 66 optimal | Long-settled typographic research | `--prose`, tuned empirically to 58ch once the guard could measure real characters rather than estimate from width |
+
+## Identity, and its justification
+
+The Owner's decision was explicit: ignore the one-accent convention, because
+eight surfaces is eight chances to look considered, and the variation is itself
+part of what the platform demonstrates. Each choice is derived from what the
+page does, not applied decoratively:
+
+| Page | Accent | Display face | Why this page |
+|---|---|---|---|
+| workbench | indigo | Sora | an agent working — geometric, engineered; squared corners and a scan-line hairline |
+| triage | amber | IBM Plex Sans | incidents — amber is the universal attention colour; left accent bar |
+| ask-codebase | cyan | Space Grotesk | retrieval — a focus glow, surfacing something from a dark corpus |
+| showcase | emerald | Outfit | proof — the colour of a passing check; ruled section labels |
+| usage | gold | JetBrains Mono | money — tabular figures that align down a column |
+| dashboard | blue | Manrope | a control surface — denser, flatter, more visible at once |
+| standing-interview | violet | Fraunces | a conversation — editorial serif, the widest breathing room |
+| case-study | warm tan | Source Serif 4 | long-form reading — 18px/1.75, editorial standfirst |
+| **home** | **unchanged** | **unchanged** | the Owner said its colour and font already look good |
+
+**The discipline that stops this being a ransom note:** the display face varies
+per page, the **body face does not**, and spacing, layout and reading measure
+are shared. Unique headings, uniform readability.
+
+## Still not covered by any assertion
+
+DD6 (flat visual hierarchy) has no guard and deliberately so — no assertion
+catches "this looks unconsidered". It was addressed by spacing scale, type
+layers and panel elevation, and verified the only way it can be: by looking at
+screenshots of all nine pages.

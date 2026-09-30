@@ -4548,7 +4548,7 @@
       "size_rationale": "suggest-estimate MEDIUM/MEDIUM/apply_known_pattern -> COMPUTED n=9, median ratio 0.39, suggested midpoint 21.4 min. DEVIATED UP to 55: the pattern (write a Playwright guard, prove it red) is well known, but three new guard classes plus a screenshot-review step is more than the single-change items that ratio was computed from. Sized and done FIRST, deliberately -- the Owner's complaint is precisely that the existing guards were green.",
       "deviated_from_suggestion": true,
       "category": "delivery",
-      "status": "active",
+      "status": "done",
       "sprint": "Sprint 16 (2026-09-30, Owner: 'none of the pages looks good in browser')",
       "source_defect_register": "docs/DESIGN_DEFECTS_2026-09-30.md",
       "created_at": "2026-09-30",
@@ -4556,7 +4556,11 @@
       "session_ids": [
         "585446aa-0fdc-4e80-b49a-e9a8fcd46e06"
       ],
-      "commit_shas": []
+      "commit_shas": [
+        "c108d13"
+      ],
+      "completed_at": "2026-09-30",
+      "completion_note": "e2e/design-standards.spec.js, 19 assertions. Proven RED against production first (9 failures). Also corrected two guard bugs found while using them: the header/body check compared BLOCK widths and passed on every page while the text was visibly 587 vs 1136, and the line-length check estimated characters from width, which broke the moment real webfonts loaded. Both now measure what the eye sees."
     },
     {
       "id": "BL-182",
@@ -4570,7 +4574,7 @@
       "size_rationale": "suggest-estimate SMALL/MEDIUM/apply_known_pattern -> COMPUTED n=8, median ratio 1.29, suggested midpoint 38.7 min. ADOPTED at 30 (the range midpoint). Note the 1.29: this is the one class where SMALL items historically run LONG, and a CSS cap that has to apply across nine pages without breaking tables, code blocks or stat cards is exactly the shape that overruns.",
       "deviated_from_suggestion": false,
       "category": "delivery",
-      "status": "active",
+      "status": "done",
       "sprint": "Sprint 16 (2026-09-30, Owner: 'none of the pages looks good in browser')",
       "source_defect_register": "docs/DESIGN_DEFECTS_2026-09-30.md",
       "created_at": "2026-09-30",
@@ -4578,7 +4582,11 @@
       "session_ids": [
         "585446aa-0fdc-4e80-b49a-e9a8fcd46e06"
       ],
-      "commit_shas": []
+      "commit_shas": [
+        "c108d13"
+      ],
+      "completed_at": "2026-09-30",
+      "completion_note": "--prose applied structurally rather than class-by-class, tuned empirically to 58ch. 172 chars -> 71-73, 53 paragraphs over 90 -> 0. Two self-inflicted bugs found and fixed: replacing a literal with var(--prose) on the two pages that do not load style.css removed the cap entirely, and an exception written `.proof *` un-capped the card paragraphs."
     },
     {
       "id": "BL-183",
@@ -4592,7 +4600,7 @@
       "size_rationale": "Same computed class as BL-182 (n=8, ratio 1.29, suggested 38.7). ADOPTED at 30. Structurally simple -- move a max-width from the block to its text children -- but it touches the shared header used by seven pages, so a mistake is visible everywhere at once.",
       "deviated_from_suggestion": false,
       "category": "delivery",
-      "status": "active",
+      "status": "done",
       "sprint": "Sprint 16 (2026-09-30, Owner: 'none of the pages looks good in browser')",
       "source_defect_register": "docs/DESIGN_DEFECTS_2026-09-30.md",
       "created_at": "2026-09-30",
@@ -4600,7 +4608,11 @@
       "session_ids": [
         "585446aa-0fdc-4e80-b49a-e9a8fcd46e06"
       ],
-      "commit_shas": []
+      "commit_shas": [
+        "c108d13"
+      ],
+      "completed_at": "2026-09-30",
+      "completion_note": "Shell width now follows content type -- 860 for prose-dominant surfaces, 1200 for data-dominant. Ratio 1.94 -> 1.28-1.31."
     },
     {
       "id": "BL-184",
@@ -4614,7 +4626,7 @@
       "size_rationale": "Same class (n=8, ratio 1.29, suggested 38.7 for a 20-40 range). ADOPTED at 35. Two unrelated small fixes bundled because both are in the shared header/nav area and splitting them would mean touching the same files twice.",
       "deviated_from_suggestion": false,
       "category": "delivery",
-      "status": "active",
+      "status": "done",
       "sprint": "Sprint 16 (2026-09-30, Owner: 'none of the pages looks good in browser')",
       "source_defect_register": "docs/DESIGN_DEFECTS_2026-09-30.md",
       "created_at": "2026-09-30",
@@ -4622,7 +4634,11 @@
       "session_ids": [
         "585446aa-0fdc-4e80-b49a-e9a8fcd46e06"
       ],
-      "commit_shas": []
+      "commit_shas": [
+        "c108d13"
+      ],
+      "completed_at": "2026-09-30",
+      "completion_note": "Nav has its own band with an accent active state and sits first on every page (prototypicality, which the research ties to trustworthiness). Dashboard evidence links now say where they go instead of four identical VIEW EVIDENCE."
     },
     {
       "id": "BL-185",
@@ -4636,7 +4652,7 @@
       "size_rationale": "suggest-estimate LARGE/MEDIUM/first_of_kind -> COMPUTED n=3, median ratio 0.21, suggested midpoint 25.2 min. DEVIATED UP HARD, to 120. Three samples is a thin basis, and all three were CODE items with a deterministic done-state. This one's acceptance is a human looking at it, which means iteration rounds that no code-derived ratio predicts. Recording the deviation loudly because it is the largest in this backlog and the retro should test whether it was right.",
       "deviated_from_suggestion": true,
       "category": "delivery",
-      "status": "active",
+      "status": "done",
       "sprint": "Sprint 16 (2026-09-30, Owner: 'none of the pages looks good in browser')",
       "source_defect_register": "docs/DESIGN_DEFECTS_2026-09-30.md",
       "created_at": "2026-09-30",
@@ -4644,7 +4660,11 @@
       "session_ids": [
         "585446aa-0fdc-4e80-b49a-e9a8fcd46e06"
       ],
-      "commit_shas": []
+      "commit_shas": [
+        "c108d13"
+      ],
+      "completed_at": "2026-09-30",
+      "completion_note": "Spacing scale, four type layers, panel elevation, and one structural signature per surface. Visual complexity measured LOW on all nine afterwards, per Tuch et al."
     },
     {
       "id": "BL-186",
@@ -4658,7 +4678,7 @@
       "size_rationale": "suggest-estimate MEDIUM/MEDIUM/first_of_kind -> INSUFFICIENT_HISTORY (n=0), so there is no computed anchor and this is a judgement call, stated as one. 80 min: less surface than BL-185 (two pages, not seven) but the highest stakes on the site -- home is the first thing a recruiter sees, and the Owner's standing rule is that nothing may read as AI-generated.",
       "deviated_from_suggestion": false,
       "category": "delivery",
-      "status": "active",
+      "status": "done",
       "sprint": "Sprint 16 (2026-09-30, Owner: 'none of the pages looks good in browser')",
       "source_defect_register": "docs/DESIGN_DEFECTS_2026-09-30.md",
       "created_at": "2026-09-30",
@@ -4666,7 +4686,11 @@
       "session_ids": [
         "585446aa-0fdc-4e80-b49a-e9a8fcd46e06"
       ],
-      "commit_shas": []
+      "commit_shas": [
+        "c108d13"
+      ],
+      "completed_at": "2026-09-30",
+      "completion_note": "home untouched by Owner instruction except line length; case-study given Source Serif 4 at 18px/1.75 with an editorial standfirst."
     },
     {
       "id": "BL-187",
@@ -4680,7 +4704,7 @@
       "size_rationale": "suggest-estimate MEDIUM/MEDIUM/apply_known_pattern -> COMPUTED n=9, ratio 0.39, suggested 21.4. DEVIATED UP to 55: Sprint 15's equivalent item (BL-179) was estimated 85 and took 50, and that was before the deploy gate had to work around the spend cap. The visual inspection step is also new and has no prior timing.",
       "deviated_from_suggestion": true,
       "category": "delivery",
-      "status": "active",
+      "status": "done",
       "sprint": "Sprint 16 (2026-09-30, Owner: 'none of the pages looks good in browser')",
       "source_defect_register": "docs/DESIGN_DEFECTS_2026-09-30.md",
       "created_at": "2026-09-30",
@@ -4688,7 +4712,11 @@
       "session_ids": [
         "585446aa-0fdc-4e80-b49a-e9a8fcd46e06"
       ],
-      "commit_shas": []
+      "commit_shas": [
+        "c108d13"
+      ],
+      "completed_at": "2026-09-30",
+      "completion_note": "86/86 guards (19 design + 67 UI), 245 Playwright passed with only the 5 known local-env failures, all nine pages inspected by eye."
     }
   ],
   "_calibration_process": {
