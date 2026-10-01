@@ -46,36 +46,37 @@ with it unless the faces are self-hosted, which is real work nobody has done.
 
 ---
 
-## 2. Standing Interview grading requires DLQ; your confirmed CV fact does not.
+## 2. A Standing Interview grading question that needs your confirmation
 
 **Status:** BLOCKED_BY_OWNER. Nothing was changed. SI behaviour is frozen by the
 brief and stayed frozen.
 
-The Standing Interview's acceptance logic appears to require an answer about NRG
-async processing to mention **SQS + DLQ**. The latest Owner-confirmed CV fact
-appears to be:
+**Details deliberately not in this public repository.** The Standing Interview's
+acceptance logic appears to require a specific technical detail in an answer about
+one employer's async processing, and whether that detail is a confirmed part of the
+Owner's record is an open question only he can settle. Discussing the confidence of
+a specific career claim in a public repository that this portfolio links to is not
+something to do on his behalf, so the specifics live outside it.
 
-| Claim | Status |
-|---|---|
-| SQS | confirmed |
-| DLQ | **not confirmed** |
+Where the full text is:
 
-If DLQ is not a real thing you did, a grader that *demands* it is training the
-system toward a claim you cannot defend in an interview — which is the worst
-possible direction for this defect to point.
+- the Sprint 17 report at `Downloads/docsforclaude/SPRINT17_FULL_REPORT_2026-09-30.md`
+- to be carried into the private context repository (`karthik-ai-context`) as part
+  of the canonical-claims work
 
-**What I need from you:** was there a dead-letter queue in the NRG async work, or
-not? One word settles it.
+**What I need from you:** read that section of the report and answer the one
+question in it. One word settles it.
 
-**The architectural fix this points at**, recorded for the future
-canonical-claims work rather than done now:
+**The architectural fix this points at**, recorded for the future canonical-claims
+work rather than done now, and safe to state publicly because it is a design
+principle rather than a claim about anyone:
 
 ```
 canonical facts  ->  graders consume canonical facts
 ```
 
-rather than career claims duplicated inside handwritten evaluator code, where
-they drift from the record and nobody notices. Logged as a backlog item.
+rather than career claims duplicated inside handwritten evaluator code, where they
+drift from the record and nobody notices. Logged as a backlog item.
 
 ---
 
