@@ -5,9 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Karthikeyan Devadoss — Senior Backend / Software Engineer (Java, Spring &amp; Agentic AI)</title>
 <meta name="description" content="Enterprise Java/Spring backend engineer building and operating a production-deployed Agentic AI platform with human control, durable workflows and measurable quality.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@700&family=IBM+Plex+Sans:wght@600&family=Space+Grotesk:wght@700&family=Outfit:wght@700&family=Manrope:wght@800&family=Fraunces:opsz,wght@9..144,600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@500;700&display=swap">
+<!-- Sprint 18: the Google Fonts stylesheet and its two preconnects were removed.
+     Verified before removing, not assumed: this page does not load /style.css
+     (which is where the Sprint 16 --font-body/--font-display identity lives) and
+     carries no font-family or font: shorthand naming any of the nine families it
+     requested -- every rule here resolves to a system stack. So the sheet was
+     downloaded, blocked rendering, and sent the visitor IP to a third party while
+     changing nothing on screen. Removal is visually neutral BY CONSTRUCTION.
+     The disputed per-page identity in style.css is untouched and still needs an
+     Owner decision -- see docs/OWNER_DECISIONS_PENDING.md. -->
 <style>
   /* Sprint 14: this page deliberately does NOT load /style.css. That sheet is
      the dark engineering-console theme shared by Workbench, Triage and Usage;
@@ -115,6 +121,19 @@
   .erow p { margin: 0; color: var(--soft); font-size: 15.5px; }
   .estat { font-size: 12.5px; font-weight: 700; letter-spacing: .04em; color: var(--accent);
            text-transform: uppercase; margin: 0 0 7px; }
+  /* Sprint 18: the status is now one of four registry values rather than free
+     prose, so it gets a pill per value. Experimental/paused is deliberately the
+     one that does not read as an achievement. */
+  .estat { display: inline-block; border: 1px solid; border-radius: 999px;
+           padding: 3px 9px; font-size: 11.5px; letter-spacing: .07em; }
+  .estat.st-live-verified       { color: #14503c; background: #e8f3ee; border-color: #bcdccd; }
+  .estat.st-tested-verified     { color: #1f4160; background: #e9f0f6; border-color: #c3d6e5; }
+  .estat.st-documented          { color: #4a4336; background: #f4f0e7; border-color: #ddd4c2; }
+  .estat.st-experimental-paused { color: #6b4a12; background: #f8f1e3; border-color: #e3d0ab; }
+  /* Sprint 18: every claim carries its own boundary, next to the claim rather
+     than collected in a disclaimer at the bottom that nobody reaches. */
+  .erow .elimit { margin-top: 7px; font-size: 14.5px; color: #6b7178; }
+  .erow .elimit b { color: var(--ink); font-weight: 650; }
   .erow .side { padding-top: 2px; }
   .erow .side a { font-size: 14.5px; font-weight: 600; text-decoration: none; }
   .erow .side a:hover { text-decoration: underline; }
@@ -125,7 +144,7 @@
   .scope p:last-child { margin-bottom: 0; }
 
   /* tiles */
-  .tiles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
   .tile { display: block; background: var(--card); border: 1px solid var(--line); padding: 18px 18px 20px;
           text-decoration: none; color: inherit; }
   .tile:hover { border-color: var(--accent); }
@@ -236,64 +255,109 @@
        credibility of an audit nobody performed. These are self-reported
        statuses with a link you can check, and the line below says so. -->
   <h2 class="sec">What is running, and how to check it</h2>
-  <p class="evnote">Everything below runs on this platform &mdash; my own system, which I build and operate myself, not an employer's. Each row links to the running thing or to the source, so you can check it rather than take my word for it.</p>
+  <p class="evnote">Everything below runs on this platform &mdash; my own system, which I build and operate myself, not an employer's. Each row links to the running thing or to the source, so you can check it rather than take my word for it, and each one states its own limitation. The seven below are the strongest; the <a href="/proof">full evidence index</a> lists every public claim with its status, evidence and boundary.</p>
+<!-- GENERATED:proof-rows:start -- do not hand-edit; run agent/build_proof_surface.py -->
   <div class="ev">
 
     <div class="erow">
       <div>
-        <p class="estat">Running in production</p>
-        <h3>Human approval boundary</h3>
+        <p class="estat st-live-verified">Live</p>
+        <h3>An AI agent that cannot approve its own writes</h3>
         <p>A change proposed by the model is applied only after a person approves it, and the approval is tied to the exact file and content that was approved. The approve step is not something the model can call.</p>
+        <p class="elimit"><b>Limitation:</b> The boundary governs writes made through this platform&#x27;s own tools, scoped to three path prefixes and two file extensions. It is not a general-purpose policy engine, and it does not govern anything changed outside the platform.</p>
       </div>
-      <div class="side"><a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/write_tools.py">How the boundary works →</a></div>
+      <div class="side">
+        <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/write_tools.py">How the boundary works &rarr;</a>
+        <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/test_write_tools.py">The tests that prove it &rarr;</a>
+        <a href="/workbench">Watch it run &rarr;</a>
+      </div>
     </div>
 
     <div class="erow">
       <div>
-        <p class="estat">Running in production</p>
-        <h3>Durable LangGraph workflow</h3>
+        <p class="estat st-live-verified">Live</p>
+        <h3>A workflow that survives a crash</h3>
         <p>Long-running work saves its progress as it goes, so it can pause for a human decision and continue after a restart without repeating anything it already did.</p>
+        <p class="elimit"><b>Limitation:</b> The crash drill&#x27;s process kills were performed locally. In production what has been demonstrated is a restart while the workflow was waiting for approval -- not a kill in the middle of the pipeline, because the pipeline completes in about five seconds and has no pause hook there.</p>
       </div>
-      <div class="side"><a href="/case-study/durable-agent">Read the case study →</a></div>
+      <div class="side">
+        <a href="/case-study/durable-agent">Read the case study &rarr;</a>
+        <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/durable_workflow.py">The workflow and its checkpointer &rarr;</a>
+        <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/workflow_drill.py">The crash drill &rarr;</a>
+      </div>
     </div>
 
     <div class="erow">
       <div>
-        <p class="estat">Measured on every build</p>
-        <h3>Retrieval with labelled evaluation</h3>
-        <p>Search quality is scored against a hand-labelled set of questions and expected answers. The build fails if the scores drop below the recorded thresholds.</p>
+        <p class="estat st-tested-verified">Tested</p>
+        <h3>Retrieval that is measured, not assumed</h3>
+        <p>Search quality is scored against a hand-labelled set of questions and expected answers, and the build fails if the scores drop below the recorded thresholds. The same read-only repository tools are also exposed over the Model Context Protocol so other AI clients can use them.</p>
+        <p class="elimit"><b>Limitation:</b> Retrieval is a local JSON index with a numpy cosine scan over small corpora, not a managed vector database, and there is no hybrid search or reranking. The MCP server runs locally rather than as a hosted service.</p>
       </div>
-      <div class="side"><a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/eval_runner.py">See the evaluation gate →</a></div>
+      <div class="side">
+        <a href="/ask-codebase">Ask the codebase yourself &rarr;</a>
+        <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/eval_runner.py">The evaluation gate &rarr;</a>
+        <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/mcp_server.py">The MCP server &rarr;</a>
+      </div>
     </div>
 
     <div class="erow">
       <div>
-        <p class="estat">Implemented and tested</p>
-        <h3>MCP server for tool integration</h3>
-        <p>The platform's read-only repository tools are also exposed over the Model Context Protocol, so other AI clients can use them. This runs locally rather than as a hosted service.</p>
-      </div>
-      <div class="side"><a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/mcp_server.py">See the MCP server →</a></div>
-    </div>
-
-    <div class="erow">
-      <div>
-        <p class="estat">Running in production</p>
-        <h3>Single model gateway with a kill switch</h3>
+        <p class="estat st-live-verified">Live</p>
+        <h3>One model boundary, with a kill switch</h3>
         <p>Every call to a language model goes through one place, which checks what the call is for and can be switched off entirely. A test fails the build if any code tries to bypass it.</p>
+        <p class="elimit"><b>Limitation:</b> It is a single-provider boundary. Multi-provider routing and failover are not implemented, and the purpose allowlist is a fixed list rather than a policy language.</p>
       </div>
-      <div class="side"><a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/reasoning_gateway.py">See the gateway →</a></div>
+      <div class="side">
+        <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/reasoning_gateway.py">The gateway &rarr;</a>
+        <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/test_reasoning_gateway_enforcement.py">The test that enforces it &rarr;</a>
+        <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/ZERO_LLM_MODE_PROOF.md">Proof the switch really disables everything &rarr;</a>
+      </div>
     </div>
 
     <div class="erow">
       <div>
-        <p class="estat">Running in production</p>
-        <h3>Durable event ledger with token and cost telemetry</h3>
-        <p>Every meaningful step and every model call is written to a durable log, including real token counts. If the log's database is unreachable the events are held locally and sent later rather than lost.</p>
+        <p class="estat st-live-verified">Live</p>
+        <h3>Every step and every model call is recorded</h3>
+        <p>Every meaningful step and every model call is written to a durable log, including real token counts. If the log&#x27;s database is unreachable the events are held locally and sent later rather than lost.</p>
+        <p class="elimit"><b>Limitation:</b> Token and cost figures are real where the provider returns them and are labelled unavailable where it does not -- browser and subscription usage has no token data, and an unavailable figure is never shown as a zero or an estimate. This is one person&#x27;s own traffic, not production load.</p>
       </div>
-      <div class="side"><a href="/usage">Open the telemetry view →</a></div>
+      <div class="side">
+        <a href="/usage">Open the telemetry view &rarr;</a>
+        <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/event_ledger.py">The ledger &rarr;</a>
+      </div>
+    </div>
+
+    <div class="erow">
+      <div>
+        <p class="estat st-live-verified">Live</p>
+        <h3>A real Java and Spring system underneath</h3>
+        <p>The platform does its engineering work on a genuine Java 21 / Spring Boot application with REST and GraphQL and real PostgreSQL with versioned migrations -- deliberately kept separate from the platform itself, so the AI work is performed on a real system rather than on a demo built to flatter it.</p>
+        <p class="elimit"><b>Limitation:</b> It is a realistic enterprise-shaped application, not a system with real users or real load. Several parts are implemented and tested but NOT provisioned in production -- the event-outbox messaging, the cache, and several services in the six-service decomposition -- and none of those is claimed above.</p>
+      </div>
+      <div class="side">
+        <a href="https://agentic-delivery-customer-app-production.up.railway.app">Open the running Java application &rarr;</a>
+        <a href="https://github.com/karthikdevadoss/agentic-software-delivery/tree/master/app/src/main/java/com/example/customer">The application source &rarr;</a>
+        <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/.github/workflows/ci.yml">The CI pipeline &rarr;</a>
+      </div>
+    </div>
+
+    <div class="erow">
+      <div>
+        <p class="estat st-experimental-paused">Experimental / paused</p>
+        <h3>An experiment that failed its own test, and was stopped</h3>
+        <p>A multi-model cross-review engine was built to a decision rule fixed in advance, measured against frozen ground truth, and then paused when the evidence failed that rule. The product thesis is unproven. The strongest finding is about measurement rather than the product: every recent headline turned out to be produced by a defect in the evaluation system, in both directions.</p>
+        <p class="elimit"><b>Limitation:</b> PAUSED, and the product thesis is UNPROVEN. It demonstrated zero genuine false-to-true corrections and zero genuine baseline false claims, so it must not be read as an accuracy product, as evidence that multiple models improve correctness, or as a partial success. It is evidence of experiment design and engineering judgement, nothing more.</p>
+      </div>
+      <div class="side">
+        <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/DEEP_CONSENSUS_CASE_STUDY.md">The one-page case study &rarr;</a>
+        <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/DEEP_CONSENSUS_FINAL_CLOSURE_2026-10-02.md">The full closing record &rarr;</a>
+        <a href="https://github.com/karthikdevadoss/agentic-software-delivery/tree/master/docs/evidence/deep-consensus-sprint6">The frozen evidence pack &rarr;</a>
+      </div>
     </div>
 
   </div>
+<!-- GENERATED:proof-rows:end -->
 
   <h2 class="sec">Current scope boundaries</h2>
   <div class="scope">
@@ -303,6 +367,7 @@
 
   <h2 class="sec">Explore the live system</h2>
   <div class="tiles">
+    <a class="tile" href="/proof"><b>Evidence Index</b><span>Every public claim with its verification status, the evidence behind it, and its stated limitation.</span></a>
     <a class="tile" href="/workbench"><b>Workbench</b><span>See the agent investigate, propose, wait for human authority and verify a change.</span></a>
     <a class="tile" href="/ask-codebase"><b>Ask the Codebase</b><span>Ask technical questions against the actual repository with grounded retrieval.</span></a>
     <a class="tile" href="/triage"><b>Triage</b><span>Work through a contained software defect: reproduction, AI diagnosis, a proposed patch, real tests and a human approval step.</span></a>

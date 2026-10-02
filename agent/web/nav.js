@@ -41,6 +41,10 @@
 // because removing it would delete the only per-page exclusion capability.
 const CANONICAL_NAV_DESTINATIONS = [
   { href: "/", label: "Home" },
+  // Sprint 18: the evidence index. It belongs in the canonical nav rather than
+  // only on the home page, because its whole purpose is to be reachable from
+  // wherever a visitor currently is when a claim makes them want to check.
+  { href: "/proof", label: "Evidence" },
   { href: "/workbench", label: "Workbench" },
   { href: "/triage", label: "Triage" },
   { href: "/ask-codebase", label: "Ask Codebase" },

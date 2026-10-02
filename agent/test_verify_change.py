@@ -125,7 +125,17 @@ class ExecutedNothingTestCase(unittest.TestCase):
     def test_high_risk_change_running_zero_commands_is_unverified_not_passed(self):
         import test_impact_analysis as tia
 
-        selection = tia.analyze(["agent/web_server.py"])
+        # Sprint 18: RE-POINTED, exactly as the assertion below instructs.
+        # agent/web_server.py stopped being an uncovered high-risk path when the
+        # Sprint 17 test-impact map was adopted -- it now maps to three
+        # whole-surface Playwright specs, which is the map getting BETTER, and
+        # this test correctly refused to pass vacuously rather than quietly
+        # reporting a verdict about a path that does select suites.
+        # agent/demo_catalogue.py is the current genuinely-uncovered
+        # HIGH / CROSS_MODULE path (verified against tia.analyze over every
+        # tracked file: four such paths exist, this is one).
+        FIXTURE = "agent/demo_catalogue.py"
+        selection = tia.analyze([FIXTURE])
         # Preconditions that make this the real known-bad case, asserted so
         # the test fails loudly (rather than passing vacuously) if TIA ever
         # starts selecting suites for this path -- at which point this test
@@ -143,7 +153,7 @@ class ExecutedNothingTestCase(unittest.TestCase):
         )
 
         # Real call. Safe and fast precisely because zero commands run.
-        evidence = vc.execute(["agent/web_server.py"], selection, dry_run=False)
+        evidence = vc.execute([FIXTURE], selection, dry_run=False)
 
         self.assertEqual(evidence["commands"], [], "fixture assumption broken: something executed")
         self.assertTrue(evidence["executed_nothing"])

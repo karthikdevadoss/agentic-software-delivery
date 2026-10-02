@@ -1489,6 +1489,20 @@ async def case_study_durable_agent_page(request: Request):
     return FileResponse(str(WEB_DIR / "case-study-durable-agent.html"))
 
 
+async def proof_page(request: Request):
+    """Sprint 18: the evidence index -- every public capability with its
+    verification status, the evidence behind it, somewhere to go and check it,
+    and its stated limitation.
+
+    GENERATED, not hand-written: agent/build_proof_surface.py renders it from
+    docs/PUBLIC_PROOF_SURFACE.yaml and docs/PORTFOLIO_CAPABILITIES.yaml, and
+    agent/proof_registry.py refuses the registry if a claim has no evidence, a
+    destination that does not resolve, or a status above the verification level
+    actually recorded for it. A test asserts the file on disk still matches the
+    registry, so hand-editing it fails the build rather than forking silently."""
+    return FileResponse(str(WEB_DIR / "proof.html"))
+
+
 async def workbench_page(request: Request):
     return FileResponse(str(WEB_DIR / "workbench.html"))
 
@@ -2362,6 +2376,7 @@ routes = [
     # preview page — Workbench is the flagship/default landing surface.
     Route("/", home_page, methods=["GET"]),
     Route("/case-study/durable-agent", case_study_durable_agent_page, methods=["GET"]),
+    Route("/proof", proof_page, methods=["GET"]),
     Route("/workbench", workbench_page, methods=["GET"]),
     Route("/dashboard", dashboard_page, methods=["GET"]),
     Route("/usage", usage_page, methods=["GET"]),

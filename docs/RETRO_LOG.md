@@ -3477,3 +3477,231 @@ New action items, all UNAPPROVED because the Owner is absent.
 | A21 | Record both wall-clock and summed-agent-effort in every concurrent estimate, and stop treating the live-run duration as the dominant term | the estimate was 3.4x despite A7/A8 |
 | A22 | Investigate the 7 Grok multi-object `cancelled` responses; they correlate with PARTIAL statuses and unparsed cross-checks | provider-side, bytes intact, currently unexplained |
 | A23 | Adjudicate the 29 NEEDS_OWNER items, starting with the 2 flagged rows that decide this sprint's verdict | the verdict depends on it |
+
+---
+
+# Sprint 18 (2026-10-02) — Evidence-First Recruiter Proof Platform V1, plus a Phase 0 governance sprint
+
+An authorized autonomous work block with the Owner away. Two phases: put
+already-made governance decisions into canonical files, then convert the
+existing engineering estate into an evidence-backed hiring argument.
+
+## 1. Estimate vs. actual
+
+The work block was authorized as a **calendar time box**, not as a sized backlog
+item with an hour estimate, so this sprint has **no estimate to compare against**
+and therefore **no tolerance ratio**. Stating that plainly rather than
+back-filling a number: a retro-computed "estimate" invented after the fact would
+corrupt the calibration history that the whole Phase 2 loop depends on, and
+`_calibration_fields.contaminated` exists precisely for this case.
+
+| | Authorized | Actual |
+|---|---|---|
+| Whole block | ~7 hours calendar | within the box; stopped at the boundary |
+| Phase 0 (governance) | 60–90 minutes | ~75 minutes |
+| Phase 1 (Sprint 18) | remainder | remainder |
+
+**What this does feed into calibration:** BL-210 was created *prospectively*
+with a `mission_card` and an hour estimate, so the NEXT sprint on this line has
+a real estimate to be measured against. That is the first item created under the
+Phase 4 rule the same sprint wrote.
+
+## 2. Engineering quality
+
+**What was built.** One registry (`docs/PORTFOLIO_CAPABILITIES.yaml`, v3, 23
+capabilities) as the authority for truth; one presentation layer
+(`docs/PUBLIC_PROOF_SURFACE.yaml`, 16 public, 7 front-door) that is mechanically
+incapable of claiming above the level the registry records; a validator with 13
+structural checks (`agent/proof_registry.py`); a generator that renders the
+public pages from the registry so they cannot drift
+(`agent/build_proof_surface.py`); a new public evidence index at `/proof` with
+three audience reading orders; and a leakage gate over every public asset
+(`agent/test_public_leakage.py`).
+
+**The design decision worth keeping.** The validator checks structure and
+references and deliberately refuses to read claim prose for truth. A script
+decides whether a claim has evidence, a destination and a stated limitation; a
+person decides whether it is true. Mechanising the second would read as stronger
+and be worse — a confident false PASS from a truth-checker is more dangerous
+than no truth-checker. This is unapproved lesson A17 applied before it could
+cost anything, rather than after.
+
+**What was deliberately not built**, because the brief forbade it and because
+none of it was needed: no new AI feature, no multi-agent anything, no model
+router, no RAG demo, no analytics, no CMS, no dashboard, no new skill or agent,
+and no Deep Consensus work of any kind.
+
+## 3. Verification quality
+
+886 blocking Python tests (1 failure, see §5), 3 quality monitors (1 known RED,
+non-blocking and printed by name), 116 browser tests green on the changed
+surfaces, 3 of 3 user journeys verified over real HTTP against a real local
+server, and a before/after capture pack measured against **real production**
+rather than against an expectation.
+
+**The verification detail that mattered most: three of this sprint's own bugs
+were caught by its own seeded-mutation tests, not by review.**
+
+1. The leakage scanner's Windows-path regex was over-escaped (`\\\\Users\\\\`
+   matches four literal backslashes, so it matched nothing). Caught by
+   `test_the_detector_detects`. Without that test it would have reported
+   "nothing private found" forever.
+2. The browser spec's registry parse collected seven status labels instead of
+   four, because it also matched the three audience labels at the same YAML
+   indent. Caught by the parse guard beside it. The membership assertion it
+   feeds would have passed with the wrong seven.
+3. `/proof` had real horizontal overflow at 390px (`scrollWidth 753` against
+   `clientWidth 390`) because 70-character source paths in `<code>` have no
+   spaces and `overflow-wrap: normal` will not break inside a word. Caught by
+   the capture pack, fixed, re-measured clean.
+
+None of the three was found by reading the code. That is the whole argument for
+the rule, restated with fresh evidence: **a detector that has only ever run
+against clean input has not been shown to detect.**
+
+## 4. What the gates found in EXISTING work on their first run
+
+This is the part worth remembering, because it is why the sprint was worth doing
+rather than merely well executed.
+
+- **8 drift findings, immediately.** Four recorded evidence paths pointed at
+  files that no longer existed at those paths (the Java classes had moved into
+  sub-packages), and three `relevant_modules` entries were not paths at all but
+  bare class names and a prose description. Public claims were citing evidence
+  that had moved.
+- **One real overclaim, caught by the pre-existing Sprint 14 claim gate against
+  my own new content.** I wrote "and Kafka eventing" into a `LIVE_VERIFIED`
+  claim about the Java application. The registry records Kafka as
+  `NOT_PRODUCTION_PROVISIONED`. The old gate refused it; the claim was corrected
+  and Kafka is now named honestly in that capability's limitation as implemented
+  and tested but not provisioned. **The gate caught the agent, which is what it
+  was for.**
+- **A pre-existing unreachable spec.** `e2e/design-standards.spec.js` had been
+  invisible to the test-impact map since Sprint 16 — a change to the nine pages
+  it guards would not have run it.
+- **The recruiter-facing pages were loading a nine-family webfont stylesheet
+  that no rule on them could resolve to.** Downloaded, render-blocking, leaking
+  the visitor's IP to a third party, changing nothing on screen.
+
+## 5. Problems left open, stated rather than smoothed
+
+- **`test_rag_index.test_new_file_triggers_only_that_files_embedding` fails in
+  the full suite and passes 13/13 alone.** It calls `build_index()` against the
+  **real repository**, so "exactly one new file" is sensitive to how many new
+  indexable files the repo has gained — and this sprint added about ten. A real
+  test-isolation defect, exposed rather than introduced, and not fixed here
+  because the fix (a fixture corpus) is its own change with its own risk.
+  Tracked as an ACTION_QUEUE item.
+- **Nine browser assertions fail for one reason each, both tied to an open Owner
+  decision.** Seven are the carried-forward `third-party-network` spec asserting
+  the sitewide font removal the Owner must decide; two are pre-existing mobile
+  overflow on `showcase` and `usage`. The specs were kept rather than weakened:
+  they are correct, and they are what will prove the decision once it is made.
+- **The duplicated route-matching helper.** `agent/proof_registry.py` and
+  `agent/test_showcase_data.py` now carry an identical
+  `internal_path_is_routable`. Consolidating it means editing a passing test
+  module this mission had no other reason to touch, so it was recorded instead
+  of done.
+
+## 6. Mission value — what this sprint actually proved or produced
+
+**Produced, and harvestable now:** a public evidence architecture where every
+claim resolves to capability → claim → status → evidence → destination →
+limitation, with the status mechanically unable to exceed the recorded
+verification level; a `/proof` index serving three audience reading orders from
+one identity; and a before/after measurement showing third-party font requests
+1 → 0 on the two recruiter-facing pages.
+
+**Proved, and the more interesting half:** the claim surface had already drifted
+from its evidence, and nothing in the project would have noticed. Eight findings
+on the first run of a gate that did not exist that morning. The recruiter-proof
+argument is now harder to break by accident than it was by lunchtime, which is a
+different and better property than it being better written.
+
+**Harvest candidates recorded for later, not written now** (the brief forbade
+starting them): an article on why a structural claim gate must refuse to read
+prose for truth; an interview story on the Kafka overclaim — the agent writing
+the overclaim and the agent's own older gate refusing it; and an interview story
+on the three self-caught bugs as concrete evidence for seeded-mutation testing.
+
+## 7. Does another sprint on this beat the next-best use of the same calendar time?
+
+**No, and the reason is not that the work is finished.** Three of the open items
+(§5) and both publication questions are **Owner decisions**, not engineering
+work. A fourth sprint touching these surfaces without his answer would repeat
+the Sprint 15/16/17 pattern: three sprints have now touched the public pages and
+he has accepted none of them, because the missing input has been his judgement
+rather than more effort. Past effort is not an argument here, and neither is
+momentum.
+
+The honest next-best use of the time is his twenty minutes with two screenshots
+and one font decision.
+
+## 8. Action items
+
+Three sections, as always. **None of these is sized, and none is authorization —
+they need explicit Owner approval before any is acted on.**
+
+### (1) Estimation-mistake improvements
+
+- **A-18.1** — An authorized calendar-box work block has no hour estimate, so it
+  produces no calibration data. Decide whether such blocks should carry a
+  nominal estimate (and be marked `contaminated` so they never skew the band),
+  or be formally exempt and excluded from the ratio history. Today it is
+  silently the second, which is defensible but undeclared.
+- **A-18.2** — `mission_card.calendar_time_box` and the sizing rubric's hour
+  estimate now coexist and measure different things (elapsed time vs. effort).
+  They were explained in the rubric this sprint but never reconciled against a
+  real two-phase block. First item: this one.
+
+### (2) Implementation-mistake improvements
+
+- **A-18.3** — Three of this sprint's own defects were caught by seeded-mutation
+  tests and none by review. Make a seeded-mutation test **mandatory** for every
+  new detector, scanner, guard or validator, not merely customary. The pattern
+  has now paid for itself four times across three sprints.
+- **A-18.4** — Fix `test_rag_index`'s real-repository dependency by giving it a
+  fixture corpus, so adding files to the repo cannot make it fail.
+- **A-18.5** — Consolidate the duplicated `internal_path_is_routable` into one
+  home that both `proof_registry` and `test_showcase_data` import.
+
+### (3) Neither, but still needed — addressing the SPRINT AS A WHOLE
+
+- **A-18.6** — **The sprint-as-a-whole item.** Carrying a spec forward from an
+  unmerged branch imports its *assertions about a state that branch created*. Nine
+  assertions are now red for a reason unrelated to this sprint's own work. There
+  is currently no concept of an "expected failure pending a named decision", so
+  the only options were a red suite or a weakened spec, and weakening is
+  forbidden. Decide whether this project wants a third bucket — blocked-on-decision
+  — alongside release health and quality monitors, with the rule that an entry
+  must name the decision and the document it waits on. **Stated as a real design
+  question, not a resolved one:** a third bucket is also a new place to park
+  inconvenient failures, which is exactly what the monitor bucket's own
+  definition warns against.
+- **A-18.7** — Answer the font decision (E1 in the review package) together with
+  `OWNER_DECISIONS_PENDING.md` item 1. They are the same decision about the same
+  CSS, and answering one without the other leaves the other incoherent.
+
+## 9. AI-characteristic defect question (Phase 2b) — answered explicitly
+
+**Did this sprint find a defect caused by how an AI agent works?** **Yes, two,
+and both get AEQ entries.**
+
+1. **An agent wrote an overclaim into a public evidence surface while building
+   the system whose purpose is to prevent overclaims.** The "Kafka eventing"
+   claim was fluent, plausible, adjacent to true (the code and tests exist) and
+   wrong about the only thing that mattered — whether it is provisioned in
+   production. It was caught by a deterministic gate written in an earlier
+   sprint, not by the agent re-reading its own text. Root cause is agentic: a
+   model generating a capability sentence from a registry entry will smooth over
+   a `production_state` field it did not weight.
+2. **A detector written by an agent was silently inert.** The over-escaped
+   backslash class matched nothing, and a scan over the real public surface
+   therefore reported clean. Root cause is agentic: regex escaping is exactly
+   the kind of detail a model gets confidently wrong, and the failure mode of a
+   broken detector is a *pass*, not an error.
+
+## 10. Continuation state
+
+**`NEEDS_OWNER_GOAL_REVIEW`** — recorded, not acted on. No next sprint is
+proposed or authorized, and this state does not authorize one.

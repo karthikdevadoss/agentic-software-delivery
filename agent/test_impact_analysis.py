@@ -138,27 +138,81 @@ MANDATORY_TRIGGERS = [
 # from the shared stylesheets as well as from each page: the Owner's defects
 # came from style.css and dashboard.css, not from the pages themselves.
 _UI_STANDARDS = "e2e/ui-standards.spec.js"
+# Sprint 16 added design-standards.spec.js and nothing mapped it, so the repo's
+# own drift ratchet (test_test_impact_analysis.FrontendSpecMapDriftTestCase) went
+# RED and stayed RED -- which is the guard working, not a nuisance. It measures
+# the SAME nine public routes ui-standards.spec.js does, so every file that can
+# move any of them maps to both.
+_DESIGN_STANDARDS = "e2e/design-standards.spec.js"
+# Two whole-surface sweeps, both of which crawl every public route rather than
+# one page: link-integrity checks that every rendered <a href> resolves, and
+# golden-journey checks each page renders its own real identity rather than
+# merely returning 200. Any page or the shared navigation can break either.
+_LINK_INTEGRITY = "e2e/link-integrity.spec.js"
+_GOLDEN_JOURNEY = "e2e/golden-journey.spec.js"
+# Sprint 17 adds three more whole-surface sweeps, each asserting a property that
+# any public page can break: horizontal overflow and console errors at four
+# widths; third-party font/tracker requests on load; and the public claims whose
+# failure mode is a recruiter drawing a false conclusion.
+_RESPONSIVE = "e2e/responsive-invariants.spec.js"
+_THIRD_PARTY = "e2e/third-party-network.spec.js"
+_COPY_CONTRACT = "e2e/copy-contract.spec.js"
+# Gated OFF by default (VISUAL_REGRESSION=1), and still MAPPED rather than
+# excluded: selecting a suite that self-skips costs nothing, and when the Owner
+# does turn it on, the paths that can move a screenshot are already wired to it.
+# Excluding it now would mean remembering to wire it later, which is the exact
+# thing this map exists to stop depending on.
+_VISUAL_REGRESSION = "e2e/visual-regression.spec.js"
+_WHOLE_SURFACE = [_UI_STANDARDS, _DESIGN_STANDARDS, _LINK_INTEGRITY, _GOLDEN_JOURNEY,
+                  _RESPONSIVE, _THIRD_PARTY, _COPY_CONTRACT, _VISUAL_REGRESSION]
 
 FRONTEND_PATH_TO_SPECS = {
     # Sprint 14: the recruiter-facing home page and the durable-agent case
     # study. nav.js is mapped here too -- it renders the canonical navigation
     # that home.spec.js asserts, so a nav change must be able to trigger it.
-    "agent/web/home.html": ["e2e/home.spec.js", _UI_STANDARDS],
-    "agent/web/case-study-durable-agent.html": ["e2e/home.spec.js", _UI_STANDARDS],
-    "agent/web/nav.js": ["e2e/home.spec.js", "e2e/nav-consistency.spec.js", _UI_STANDARDS],
+    "agent/web/home.html": ["e2e/home.spec.js"] + _WHOLE_SURFACE,
+    "agent/web/case-study-durable-agent.html": ["e2e/home.spec.js"] + _WHOLE_SURFACE,
+    "agent/web/nav.js": ["e2e/home.spec.js", "e2e/nav-consistency.spec.js"] + _WHOLE_SURFACE,
     # The shared shell and type scale. A one-line change in either of these
     # moves every page at once -- which is exactly what happened in Sprint 15.
-    "agent/web/style.css": [_UI_STANDARDS, "e2e/nav-consistency.spec.js"],
-    "agent/web/dashboard.css": [_UI_STANDARDS],
-    "agent/web/showcase.css": [_UI_STANDARDS],
-    "agent/web/showcase.js": [_UI_STANDARDS],
-    "agent/web/dashboard.html": [_UI_STANDARDS],
-    "agent/web/standing-interview.html": [_UI_STANDARDS],
-    "agent/web/workbench.html": ["e2e/workbench-catalogue.spec.js", _UI_STANDARDS],
+    "agent/web/style.css": [_UI_STANDARDS, _DESIGN_STANDARDS, _RESPONSIVE, _THIRD_PARTY,
+                            _VISUAL_REGRESSION, "e2e/nav-consistency.spec.js"],
+    "agent/web/dashboard.css": [_UI_STANDARDS, _DESIGN_STANDARDS, _RESPONSIVE, _VISUAL_REGRESSION],
+    "agent/web/showcase.css": [_UI_STANDARDS, _DESIGN_STANDARDS, _RESPONSIVE, _VISUAL_REGRESSION],
+    "agent/web/showcase.js": [_UI_STANDARDS, _DESIGN_STANDARDS, "e2e/interview-walkthrough.spec.js", _LINK_INTEGRITY],
+    # Sprint 17: showcase.html had no entry at all, so the page that carries the
+    # densest technical evidence on the public site could be edited without
+    # selecting a single browser spec.
+    "agent/web/showcase.html": ["e2e/interview-walkthrough.spec.js"] + _WHOLE_SURFACE,
+    # The Interview Walkthrough section renders this file's real contents, and
+    # a link in it that 404s is exactly the AEQ-022 defect class.
+    "docs/INTERVIEW_WALKTHROUGH.yaml": ["e2e/interview-walkthrough.spec.js", _LINK_INTEGRITY],
+    "agent/web/dashboard.html": [_UI_STANDARDS, _DESIGN_STANDARDS, _LINK_INTEGRITY],
+    "agent/web/standing-interview.html": _WHOLE_SURFACE,
+    "agent/web/workbench.html": ["e2e/workbench-catalogue.spec.js"] + _WHOLE_SURFACE,
     "agent/web/workbench.js": ["e2e/workbench-catalogue.spec.js"],
-    "agent/web/workbench.css": ["e2e/workbench-catalogue.spec.js", _UI_STANDARDS],
-    "agent/web/usage.html": ["e2e/usage.spec.js", _UI_STANDARDS],
-    "agent/web/usage.js": ["e2e/usage.spec.js", _UI_STANDARDS],
+    "agent/web/workbench.css": ["e2e/workbench-catalogue.spec.js", _UI_STANDARDS,
+                                _DESIGN_STANDARDS, _RESPONSIVE],
+    "agent/web/usage.html": ["e2e/usage.spec.js"] + _WHOLE_SURFACE,
+    "agent/web/usage.js": ["e2e/usage.spec.js", _UI_STANDARDS, _DESIGN_STANDARDS],
+    "agent/web/usage.css": [_UI_STANDARDS, _DESIGN_STANDARDS, _RESPONSIVE, _VISUAL_REGRESSION],
+    # Sprint 17: Triage and Ask the Codebase were both entirely absent from this
+    # map. Triage is one of the three pages the Owner sends recruiters to.
+    "agent/web/triage.html": _WHOLE_SURFACE,
+    "agent/web/triage.js": [_GOLDEN_JOURNEY, _LINK_INTEGRITY],
+    "agent/web/triage.css": [_UI_STANDARDS, _DESIGN_STANDARDS, _RESPONSIVE, _VISUAL_REGRESSION],
+    "agent/web/triage-b.html": [_GOLDEN_JOURNEY, _LINK_INTEGRITY],
+    "agent/web/triage-b.js": [_GOLDEN_JOURNEY],
+    "agent/web/triage-c.html": [_GOLDEN_JOURNEY, _LINK_INTEGRITY],
+    "agent/web/triage-c.js": [_GOLDEN_JOURNEY],
+    "agent/web/ask-codebase.html": ["e2e/ask-codebase.spec.js"] + _WHOLE_SURFACE,
+    "agent/web/ask-codebase.js": ["e2e/ask-codebase.spec.js", _LINK_INTEGRITY],
+    "agent/web/ask-codebase.css": ["e2e/ask-codebase.spec.js", _UI_STANDARDS,
+                                   _DESIGN_STANDARDS, _RESPONSIVE],
+    # The zero-LLM query surface behind /ask-codebase. Same precedent as
+    # agent/jd_match.py below: a backend validation change is exactly what the
+    # rendered-result spec has to catch.
+    "agent/ask_codebase.py": ["e2e/ask-codebase.spec.js"],
     "agent/web/learn.html": ["e2e/learn.spec.js"],
     "agent/web/learn.js": ["e2e/learn.spec.js"],
     # Sprint 13 / BL-097: JD Match. The backend module is mapped too, because a
@@ -171,6 +225,36 @@ FRONTEND_PATH_TO_SPECS = {
         "e2e/customer-app-update-email.spec.js",
         "e2e/customer-app-frontend.spec.js",
     ],
+    # Sprint 17: /profile's privacy is enforced by ROUTE REGISTRATION, not by
+    # any file under agent/web/ -- so the one spec that proves a recruiter
+    # cannot reach the old resume page could not be selected by editing the
+    # thing that would break it. The two whole-surface sweeps belong here for
+    # the same reason: they assert what the public route table actually serves.
+    "agent/web_server.py": ["e2e/profile.spec.js", _GOLDEN_JOURNEY, _LINK_INTEGRITY],
+}
+
+# Specs deliberately NOT selected by any source path, each with the real reason.
+#
+# This exists because "unmapped" previously meant two different things that
+# looked identical -- a spec nobody had wired up yet, and a spec that must
+# never be selected automatically. Sprint 17 split them: anything absent from
+# FRONTEND_PATH_TO_SPECS must appear here with a reason, or the drift ratchet in
+# test_test_impact_analysis.py fails. Adding an entry here to silence that test
+# is the failure mode it exists to prevent; the reason has to be real.
+INTENTIONALLY_UNMAPPED_SPECS = {
+    "e2e/pdf.spec.js": (
+        "Covers /learn's Download Complete Book control, and /learn is not a "
+        "public route -- it is registered only when PRIVATE_SURFACES_ENABLED is "
+        "set (agent/web_server.py). The spec self-skips otherwise, so selecting "
+        "it from a public-page change would only ever produce skips."
+    ),
+    "e2e/workbench-real-acceptance.spec.js": (
+        "Submits a REAL requirement through the real Workbench pipeline, which "
+        "commits, pushes and deploys a real change to the production Customer "
+        "App. It is a deliberate, operator-initiated acceptance run -- never "
+        "something a file edit should be able to trigger. Tagged `live` in "
+        "docs/testing-matrix.json."
+    ),
 }
 
 # Paths that, if changed, mean "this cannot be confidently bounded by V1's

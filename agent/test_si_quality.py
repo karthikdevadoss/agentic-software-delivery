@@ -27,6 +27,27 @@ behave differently at the moment they are written:
     CI, and CLAUDE.md is explicit that SKIPPED is not PASSED. Run
     `python agent/si_recapture.py` after deploying to produce it.
 
+SPRINT 17: THE SECOND HALF OF THAT LIST MOVED OUT OF THIS FILE
+--------------------------------------------------------------
+`ProductionAnswerQuality`, and the post-fix half of `DoesNotOverRefuse`, now
+live in agent/test_si_answer_quality_monitor.py. Nothing was skipped, deleted
+or loosened -- both still run on every release-health invocation and their real
+failure text is printed. What changed is which bucket owns the result.
+
+The reason is written out in full in that file, and the short version is this:
+what remains HERE scores a frozen archive with frozen code, so a failure means
+the measuring instrument broke and the branch genuinely cannot ship. What moved
+scores what a language model actually said, so a failure means the model
+answered worse than the bar on the draws that were captured. As of 2026-09-30
+exactly one case was red -- the over-refusal one -- and it had been red for two
+sprints, which made the exit code of the whole hermetic suite carry no
+information at all. Separating the two restores the signal without hiding the
+miss.
+
+The baseline half of `DoesNotOverRefuse` deliberately stays here and stays
+release-blocking: it proves the over-refusal gate still SEES the case it was
+built for, which is a property of the code, not of the model.
+
 MEASURED BASELINE (this oracle, over the archived capture): 37 unsolicited
 negatives across 21 of 57 answered, in four categories -- RECALL_LIMIT 15,
 SCOPE_LIMIT 11, ABSENCE 7, OWNERSHIP_DISCLAIMER 4. The audit's own hand-
@@ -90,6 +111,27 @@ def _load() -> list[dict]:
 
 RECORDS = _load()
 ANSWERED = [r for r in RECORDS if r["outcome"] == "answered"]
+
+
+def load_current_capture() -> list[dict]:
+    """The POST-FIX capture, shared with agent/test_si_answer_quality_monitor.py.
+
+    Lives here rather than there so the two files cannot drift on which file is
+    authoritative or on what the message says when it is missing. Raises rather
+    than skipping: an absent capture means the specification fix is UNVERIFIED,
+    and a skip reads as green (CLAUDE.md: SKIPPED is not PASSED).
+    """
+    if not AFTER_FIXTURE.exists():
+        raise AssertionError(
+            "UNVERIFIED: the Sprint 15 specification fix has not been "
+            "measured on production.\n"
+            f"  missing: {AFTER_FIXTURE}\n"
+            "  produce it with: python agent/si_recapture.py\n"
+            "  (deploy first -- it queries the live service)\n"
+            "This test fails rather than skips on purpose: a skip reads "
+            "as green in CI, and SKIPPED is not PASSED."
+        )
+    return json.loads(AFTER_FIXTURE.read_text(encoding="utf-8"))
 
 
 def _find(qid: str, draw: int) -> dict:
@@ -252,29 +294,11 @@ class DoesNotOverRefuse(unittest.TestCase):
             "the over-refusal gate no longer sees the case it was built for",
         )
 
-    def test_a_legitimate_interview_question_is_not_refused(self):
-        """Measured on the post-fix capture, not on history.
-
-        KNOWN CAUSE if this stays red on question m: the decline is a CORPUS
-        gap, not a gate defect. "Describe a technical disagreement" is a
-        behavioural question, and the private books are technical -- retrieval
-        genuinely finds nothing, so the model correctly declines rather than
-        inventing a story. Fixing it means adding behavioural material to the
-        corpus, which is the Owner's call on his own career content (the audit
-        parked it as SI-19), not something to patch in the gate. Loosening the
-        decline gate instead would make the system invent an anecdote about a
-        disagreement that may never have happened -- far worse than a refusal.
-        """
-        current = ProductionAnswerQuality._current()
-        refused = []
-        for r in current:
-            report = assess(r["question"], r["answer"], r["outcome"])
-            if report.over_refusal:
-                refused.append(f"{r['question_id']}/{r['draw']}: {report.over_refusal}")
-        self.assertFalse(
-            refused,
-            "legitimate interview questions were declined:\n" + "\n".join(refused),
-        )
+    # test_a_legitimate_interview_question_is_not_refused MOVED, Sprint 17 ->
+    # agent/test_si_answer_quality_monitor.py::DoesNotOverRefuseInProduction.
+    # It scores what the model actually said on the captured draws, which is a
+    # quality monitor, not a release gate. The baseline case above stays here
+    # because it scores the frozen archive and proves the gate still works.
 
 
 class RecordedBaseline(unittest.TestCase):
@@ -306,95 +330,10 @@ class RecordedBaseline(unittest.TestCase):
         self.assertGreaterEqual(max(marsh), 3)
 
 
-class ProductionAnswerQuality(unittest.TestCase):
-    """The actual bar, measured on answers generated by the FIXED prompt.
-
-    RED until agent/testdata/si_production_answers_after.json exists. That
-    file is produced by re-running the archived questions against production
-    once the fix is deployed -- which is the only evidence that can settle
-    whether the specification change worked. A prompt diff is not evidence.
-    """
-
-    @classmethod
-    def _current(cls):
-        if not AFTER_FIXTURE.exists():
-            raise AssertionError(
-                "UNVERIFIED: the Sprint 15 specification fix has not been "
-                "measured on production.\n"
-                f"  missing: {AFTER_FIXTURE}\n"
-                "  produce it with: python agent/si_recapture.py\n"
-                "  (deploy first -- it queries the live service)\n"
-                "This test fails rather than skips on purpose: a skip reads "
-                "as green in CI, and SKIPPED is not PASSED."
-            )
-        return json.loads(AFTER_FIXTURE.read_text(encoding="utf-8"))
-
-    @classmethod
-    def _current_answered(cls):
-        return [r for r in cls._current() if r["outcome"] == "answered"]
-
-    def test_production_answers_volunteer_no_unsolicited_negatives(self):
-        """The Owner's complaint, measured. Budget: zero.
-
-        KNOWN TENSION, raised by an independent review and recorded here
-        rather than quietly resolved in whichever direction was convenient.
-        This test asserts ZERO. The runtime does NOT hard-enforce zero: a
-        volunteered limitation triggers one retry, and if the retry still
-        carries one but is otherwise clean, standing_interview.answer() SHIPS
-        it rather than refusing (see SOFT_VIOLATION and only_soft_violations).
-        So the runtime can emit an answer this test rejects, and the test may
-        be unsatisfiable on a draw where the model is stubborn.
-
-        That is deliberate, and the direction matters: the test is STRICTER
-        than the runtime, never looser. The alternative -- refusing whenever a
-        retry still volunteers a caveat -- replaces a real, grounded, honest
-        answer with "I don't have that recorded", and over-refusal is its own
-        registered defect (question m, declined on all three baseline draws).
-        Availability at the edge was chosen over a clean number.
-
-        If the post-fix capture shows residual negatives, the legitimate fixes
-        are a second retry or a better prompt. Loosening THIS number is not
-        one of them -- it is the Owner's complaint, and it is the one thing in
-        this file that must not move.
-
-        RED when written -- 37 volunteered negatives across 21 of 57 answered
-        production answers, measured by this oracle (the audit's independent
-        hand count was 38 across 22). Goes green only when a post-fix capture
-        exists and shows none.
-        """
-        offenders = []
-        total = 0
-        current = self._current_answered()
-        for r in current:
-            report = assess(r["question"], r["answer"], r["outcome"])
-            if report.unsolicited:
-                total += len(report.unsolicited)
-                offenders.append(
-                    f"  {r['question_id']}/draw {r['draw']} "
-                    f"({len(report.unsolicited)}): {r['question']}\n{report.describe()}"
-                )
-        self.assertFalse(
-            offenders,
-            f"{total} unsolicited negatives across {len(offenders)} of "
-            f"{len(current)} answered production answers. Nobody asked for any "
-            f"of them:\n" + "\n".join(offenders),
-        )
-
-    def test_no_single_answer_carries_more_than_one_unsolicited_negative(self):
-        """A softer bar reported separately, so progress stays visible while
-        the zero-budget test above is still red. Marsh ran 3-5 per draw."""
-        worst = []
-        for r in self._current_answered():
-            report = assess(r["question"], r["answer"], r["outcome"])
-            if len(report.unsolicited) > 1:
-                worst.append(
-                    f"  {r['question_id']}/draw {r['draw']}: "
-                    f"{len(report.unsolicited)} unsolicited negatives"
-                )
-        self.assertFalse(
-            worst,
-            "answers stacking multiple volunteered negatives:\n" + "\n".join(worst),
-        )
+# ProductionAnswerQuality MOVED, Sprint 17 ->
+# agent/test_si_answer_quality_monitor.py. Same reason: it scores a capture of
+# real model output, so it answers "is the model good?", not "is the oracle
+# correct?". See this module's own docstring and that file's.
 
 
 if __name__ == "__main__":

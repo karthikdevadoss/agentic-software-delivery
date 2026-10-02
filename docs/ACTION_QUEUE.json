@@ -573,6 +573,62 @@
       "verification_required": "Owner says keep (close as verified) or redact (apply leaks()-pattern masking to model_reply before record_event; test observed failing first).",
       "created_at_commit": "the Sprint 13 Task 2 commit (built on 3d53074)",
       "triage_log": []
+    },
+    {
+      "id": "ACT-024",
+      "source": "Sprint 18 full-suite run, 2026-10-02",
+      "title": "test_rag_index depends on the REAL repository, so adding files to the repo makes it fail",
+      "priority": "medium",
+      "status": "open",
+      "scope": "agent/test_rag_index.py (test isolation only -- no product code)",
+      "reason": "test_new_file_triggers_only_that_files_embedding asserts files_added == 1 after calling rag_index.build_index() against the REAL repository, so \"exactly one new file\" is sensitive to how many new indexable files the repo has gained since the machine-local index was last written. Sprint 18 added about ten and it reported files_added == 10. A real test-isolation defect, EXPOSED rather than introduced. Not fixed inside Sprint 18 because the fix is a fixture corpus, which is its own change with its own risk and sits outside that mission scope. Retro action item A-18.4.",
+      "evidence": "Full suite: 886 blocking tests, 1 failure, and it is this one. Module alone: 13/13 OK (`cd agent && python -m unittest test_rag_index`). Release health is therefore reported as 886/1, NOT as green.",
+      "safe_to_auto_execute": false,
+      "verification_required": "The module must pass BOTH alone and inside the full suite, run twice.",
+      "created_at_commit": "9ba8d49",
+      "resolved_at_commit": null
+    },
+    {
+      "id": "ACT-025",
+      "source": "Sprint 18, 2026-10-02",
+      "title": "NEEDS_OWNER_DECISION: remove the Google Fonts dependency from the seven pages that load style.css?",
+      "priority": "high",
+      "status": "open",
+      "scope": "agent/web/style.css and the seven pages that load it (workbench, triage, ask-codebase, showcase, usage, standing-interview, dashboard)",
+      "reason": "All nine public pages requested a nine-family Google Fonts stylesheet. Sprint 18 removed it from the two pages where removal is visually neutral BY CONSTRUCTION -- home.html and case-study-durable-agent.html do not load style.css and carry no rule naming any of the nine families, so the sheet was downloaded, blocked rendering and sent the visitor IP to a third party while changing nothing on screen. The other seven pages genuinely USE those families through style.css --font-body / --font-display and a JetBrains Mono stack, and those variables ARE the Sprint 16 per-page visual identity the Owner called a USP and the Sprint 17 brief reversed. This is therefore the SAME decision as docs/OWNER_DECISIONS_PENDING.md item 1 and must be answered with it: answering one alone leaves the other incoherent. Doing it unilaterally would have decided the visual question by side effect, which is why it was not done.",
+      "evidence": "Measured, production vs local, three viewports: / and /case-study/durable-agent third-party font requests 1 -> 0; /proof 0. The seven others unchanged at 3. Packs: visual-audit-sprint18-before/ and visual-audit-sprint18-after/. Consequence of YES: seven currently-red e2e/third-party-network assertions go green. Consequence of NO: those seven stay red by design and need a recorded expected-failure status, see ACT-026. Full write-up: docs/SPRINT18_REVIEW_PACKAGE.md section E1.",
+      "safe_to_auto_execute": false,
+      "verification_required": "e2e/third-party-network.spec.js green on all nine pages, plus an Owner visual acceptance of the typography change.",
+      "created_at_commit": "9ba8d49",
+      "resolved_at_commit": null
+    },
+    {
+      "id": "ACT-026",
+      "source": "Sprint 18 close-out, 2026-10-02",
+      "title": "Design question: does release health need a third bucket for \"blocked on a named decision\"?",
+      "priority": "medium",
+      "status": "open",
+      "scope": "agent/ci_python_tests.py / agent/release_health.py bucket definitions",
+      "reason": "A spec carried forward from an unmerged branch imports its assertions about a state THAT branch created. Sprint 18 adopted four Sprint 17 browser specs for their objective value, and nine assertions are now red for reasons unrelated to Sprint 18 own work: seven assert the sitewide font removal awaiting ACT-025, two are pre-existing mobile overflow on showcase and usage. The only available options were a red suite or a weakened spec, and weakening verification is forbidden -- so they were kept red and documented by name. Open question: add a third bucket (blocked-on-decision) where an entry MUST name the decision and the document it waits on? Stated as a genuine question and NOT a recommendation: a third bucket is also a new place to park inconvenient failures, which is exactly what the quality-monitor bucket own definition warns against. Retro action item A-18.6.",
+      "evidence": "Playwright against the local server: home + nav-consistency + link-integrity 116 passed / 0 failed; third-party-network 7 failed (/ , /case-study, /proof all PASS it); responsive-invariants 2 failed (showcase overflow reproduced on real production in visual-audit-sprint18-before).",
+      "safe_to_auto_execute": false,
+      "verification_required": "If adopted: a seeded test proving an entry without a named decision is rejected by the bucket.",
+      "created_at_commit": "9ba8d49",
+      "resolved_at_commit": null
+    },
+    {
+      "id": "ACT-027",
+      "source": "Sprint 18, 2026-10-02",
+      "title": "Duplicated internal_path_is_routable helper in proof_registry.py and test_showcase_data.py",
+      "priority": "low",
+      "status": "open",
+      "scope": "agent/proof_registry.py, agent/test_showcase_data.py",
+      "reason": "Both now carry an identical Starlette Route.matches()-based route matcher. Consolidating it means editing a passing test module that Sprint 18 had no other reason to touch, so the duplication was recorded in proof_registry.py own docstring rather than silently left. Low priority: duplicated, not wrong. Retro action item A-18.5.",
+      "evidence": "Both helpers use the real in-process router, so they cannot disagree today; the risk is future divergence.",
+      "safe_to_auto_execute": true,
+      "verification_required": "Both test_proof_registry and test_showcase_data green after the move.",
+      "created_at_commit": "9ba8d49",
+      "resolved_at_commit": null
     }
   ]
 }

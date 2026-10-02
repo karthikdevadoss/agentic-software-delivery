@@ -12,8 +12,8 @@
 # below -> classify STRONGLY_DEMONSTRATED / PRESENT_BUT_SHOWCASE_WEAK /
 # IMPORTANT_MISSING / NOT_WORTH_ADDING -> build a showcase manifest.
 
-registry_version: 2
-last_updated: '2026-09-29'
+registry_version: 3
+last_updated: '2026-10-02'
 capabilities:
 - id: java-spring-rest-api
   display_name: Java 21 / Spring Boot 4.1.1 REST API
@@ -32,8 +32,8 @@ capabilities:
   - https://agentic-delivery-customer-app-production.up.railway.app
   - https://github.com/karthikdevadoss/agentic-software-delivery/tree/master/app/src/main/java/com/example/customer
   relevant_modules:
-  - app/src/main/java/com/example/customer/CustomerController.java
-  - app/src/main/java/com/example/customer/GlobalExceptionHandler.java
+  - app/src/main/java/com/example/customer/controller/CustomerController.java
+  - app/src/main/java/com/example/customer/exception/GlobalExceptionHandler.java
   interview_topics:
   - REST/API design
   - Bean Validation
@@ -62,8 +62,8 @@ capabilities:
   - https://github.com/karthikdevadoss/agentic-software-delivery/tree/master/app/src/main/resources/db/migration
   - https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/.github/workflows/ci.yml
   relevant_modules:
-  - app/src/main/java/com/example/customer/CustomerPreference.java
-  - app/src/main/java/com/example/customer/ContractPlan.java
+  - app/src/main/java/com/example/customer/model/CustomerPreference.java
+  - app/src/main/java/com/example/customer/model/ContractPlan.java
   interview_topics:
   - Hibernate default flush ordering (real bug found and fixed, see AEQ-family lessons)
   - Postgres partial unique indexes
@@ -93,9 +93,9 @@ capabilities:
   evidence_links:
   - https://github.com/karthikdevadoss/agentic-software-delivery/tree/master/app/src/main/java/com/example/customer
   relevant_modules:
-  - SecurityConfig.java
-  - WorkspaceAccessGuard.java
-  - AdminCustomerController.java
+  - app/src/main/java/com/example/customer/security/SecurityConfig.java
+  - app/src/main/java/com/example/customer/security/WorkspaceAccessGuard.java
+  - app/src/main/java/com/example/customer/controller/AdminCustomerController.java
   interview_topics:
   - JWT vs session auth
   - RBAC vs ABAC
@@ -126,7 +126,7 @@ capabilities:
   - https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/app/src/main/java/com/example/customer/integration/appointment/AppointmentAvailabilityClient.java
   - https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/app/src/test/java/com/example/customer/integration/appointment/AppointmentAvailabilityIntegrationTest.java
   relevant_modules:
-  - AppointmentAvailabilityClient.java (RestClient + Resilience4j composition)
+  - app/src/main/java/com/example/customer/integration/appointment/AppointmentAvailabilityClient.java
   interview_topics:
   - circuit breaker states (closed/open/half-open)
   - retry vs circuit breaker responsibilities
@@ -717,6 +717,45 @@ capabilities:
   - ai-adoption
   - estimation
   verification_level: RUNTIME_VERIFIED
+- id: falsification-preregistered-negative-result
+  display_name: 'Pre-registered evaluation that falsified its own product thesis, and the negative result kept intact'
+  engineering_problem_solved: Decide whether a multi-model cross-review design actually reduced published false claims, under a decision rule fixed in advance -- then stop the programme when the evidence failed that rule, preserve the mechanical verdict and the human adjudication separately rather than reconciling them, and refuse the four moves (a next sprint, an ablation, a rerun, a harder replacement benchmark) that would each have made the negative result disappear
+  technology:
+  - pre-registered decision rules and frozen ground truth
+  - sealed independent answers across two real model families
+  - typed claim comparison (BOOLEAN/ENUM/NUMBER/VERSION only; free text never adjudicated by code)
+  - mutation testing of the evaluator itself
+  - offline deterministic replay with zero model calls
+  - evidence-integrity manifests that refuse re-registration
+  business_scenario: Any organisation buying or building an AI assurance claim, where the real risk is that the measurement system is less reliable than the thing it measures
+  implementation_state: IMPLEMENTED
+  test_state: TESTED
+  production_state: NOT_PRODUCTION_PROVISIONED
+  evidence_links:
+  - https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/DEEP_CONSENSUS_CASE_STUDY.md
+  - https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/DEEP_CONSENSUS_FINAL_CLOSURE_2026-10-02.md
+  - https://github.com/karthikdevadoss/agentic-software-delivery/tree/master/docs/evidence/deep-consensus-sprint6
+  relevant_modules:
+  - docs/DEEP_CONSENSUS_CASE_STUDY.md
+  - docs/DEEP_CONSENSUS_FINAL_CLOSURE_2026-10-02.md
+  - docs/evidence/deep-consensus-sprint6/evidence-integrity-manifest.json
+  - docs/evidence/deep-consensus-sprint6/sprint6-selfreplay-report.json
+  evidence_note:
+  - 'Sprint 6 engineering run: 20 of 20 pre-registered cases run exactly once, 99 subscription turns, 0 paid API calls, evidence integrity 16/16 PASS, mutation gate 19 killed / 0 survived, self-replay reproduces the verdict offline with 0 differences and 0 model calls'
+  - 'The strongest finding is about measurement, not the product: 13 defects were found in Sprint 6 alone -- nine in the scorer, two in identity/routing that would have published a FALSE AGREEMENT, one in the entitlement check, two in the artefact detector itself. Sprint 5 produced a manufactured regression and Sprint 6 a manufactured catch, pointing in opposite directions, which rules out evaluator bias and licenses only the conclusion that the measurement system was not yet reliable enough to support the product claim.'
+  - 'PRODUCT THESIS UNPROVEN. Genuine baseline material false claims demonstrated: 0. Genuine FALSE -> TRUE catches: 0. Must never be presented as a working accuracy product.'
+  interview_topics:
+  - why a pre-registered decision rule is worth more than a good result
+  - how an evaluator defect manufactures a product headline in either direction
+  - why the mechanical verdict and the human adjudication are both preserved and neither rewritten
+  - the four moves that make a negative result vanish, and why each was refused
+  - assurance systems must validate their evaluators as aggressively as they validate models
+  job_market_tags:
+  - ai-evaluation
+  - experiment-design
+  - engineering-judgement
+  - llm-assurance
+  verification_level: TESTED
 _verification_levels: 'Ordered, highest first: PRODUCTION_VERIFIED > RUNTIME_VERIFIED > TESTED > IMPLEMENTED. Derived from the recorded implementation/test/production states by the BL-096 transform and
   re-derivable; JD Match may not report a requirement above the level recorded here.'
 _evidence_link_rule: Every evidence_links entry is a clickable URL that agent/test_showcase_data.classify_link() accepts (an absolute URL or a registered internal route); repo paths are GitHub blob/tree

@@ -22,7 +22,42 @@ const VIEWPORTS = [
   ["mobile", 390, 844],
 ];
 
-const CANONICAL_NAV = ["Home", "Workbench", "Triage", "Ask Codebase", "Showcase", "Usage"];
+// Sprint 18 inserted "Evidence" (the /proof evidence index) directly after
+// Home. It belongs in the canonical nav rather than only on the home page,
+// because its purpose is to be reachable from wherever a visitor is standing
+// when a claim makes them want to check it.
+const CANONICAL_NAV = ["Home", "Evidence", "Workbench", "Triage", "Ask Codebase", "Showcase", "Usage"];
+
+// Sprint 18: read from the registry that generates the rows, rather than
+// restating a number the registry already owns. yaml is not a dependency of
+// this project's node side, so the two values are parsed with a narrow regex
+// over the committed file and asserted non-trivial below -- a parse that
+// silently yielded 0 or an empty list would make these tests pass vacuously.
+const fs = require("fs");
+const path = require("path");
+const SURFACE_YAML = fs.readFileSync(
+  path.join(__dirname, "..", "docs", "PUBLIC_PROOF_SURFACE.yaml"), "utf8");
+const PRIMARY_COUNT = (SURFACE_YAML.match(/^\s*tier:\s*PRIMARY\s*$/gm) || []).length;
+// Scoped to the status_vocabulary block. The first version of this matched
+// every 4-space `label:` in the file and so collected SEVEN labels -- the four
+// statuses plus the three audience labels, which sit at the same indent under
+// `audiences:`. The membership test below would still have passed with the
+// wrong seven, which is precisely why the parse guard exists.
+const STATUS_BLOCK = SURFACE_YAML.slice(
+  SURFACE_YAML.indexOf("status_vocabulary:"),
+  SURFACE_YAML.indexOf("status_requires:"));
+const PUBLIC_STATUS_LABELS = (STATUS_BLOCK.match(/^\s{4}label:\s*(.+)$/gm) || [])
+  .map((line) => line.replace(/^\s{4}label:\s*/, "").trim());
+
+test.describe("Sprint 18 registry parse (guards the tests above from passing vacuously)", () => {
+  test("the registry really was parsed", () => {
+    expect(PRIMARY_COUNT).toBeGreaterThanOrEqual(5);
+    expect(PRIMARY_COUNT).toBeLessThanOrEqual(7);
+    expect(PUBLIC_STATUS_LABELS).toContain("Live");
+    expect(PUBLIC_STATUS_LABELS).toContain("Experimental / paused");
+    expect(PUBLIC_STATUS_LABELS.length).toBe(4);
+  });
+});
 
 test.describe("Home page — identity and claims", () => {
   test("the first screen names the person, the role and the separation", async ({ page }) => {
@@ -49,22 +84,54 @@ test.describe("Home page — identity and claims", () => {
     }
   });
 
-  test("exactly six evidence rows, each with a status and an evidence link", async ({ page }) => {
+  // Sprint 18: the count was hardcoded at 6 here and at 6 again in
+  // agent/test_public_surface_gate.py. Both now read PRIMARY_COUNT from
+  // docs/PUBLIC_PROOF_SURFACE.yaml, because the rows are generated from that
+  // registry by agent/build_proof_surface.py -- a contract stated in three
+  // places is a contract that drifts in two of them.
+  test("the evidence rows match the registry, each with a status, a limitation and a link",
+    async ({ page }) => {
+      await page.goto("/");
+      const rows = page.locator(".erow");
+      await expect(rows).toHaveCount(PRIMARY_COUNT);
+      const count = await rows.count();
+      for (let i = 0; i < count; i++) {
+        await expect(rows.nth(i).locator(".estat")).not.toBeEmpty();
+        // Sprint 18's new contract: every claim carries its own boundary,
+        // beside the claim rather than in a disclaimer nobody reaches.
+        await expect(rows.nth(i).locator(".elimit")).not.toBeEmpty();
+        await expect(rows.nth(i).locator(".side a").first()).toBeVisible();
+      }
+    });
+
+  test("every status label is one of the four published values", async ({ page }) => {
     await page.goto("/");
-    const rows = page.locator(".erow");
-    await expect(rows).toHaveCount(6);
-    const count = await rows.count();
-    for (let i = 0; i < count; i++) {
-      await expect(rows.nth(i).locator(".estat")).not.toBeEmpty();
-      await expect(rows.nth(i).locator(".side a")).toHaveCount(1);
+    const labels = await page.locator(".erow .estat").allTextContents();
+    expect(labels.length).toBe(PRIMARY_COUNT);
+    for (const label of labels) {
+      expect(PUBLIC_STATUS_LABELS, `unknown status label ${label.trim()}`)
+        .toContain(label.trim());
     }
   });
 
-  test("the MCP row does not claim production", async ({ page }) => {
+  test("the paused experiment is not presented as live", async ({ page }) => {
     await page.goto("/");
-    const mcp = page.locator(".erow").filter({ hasText: "MCP server" });
-    await expect(mcp).toHaveCount(1);
-    await expect(mcp.locator(".estat")).toHaveText("Implemented and tested");
+    const row = page.locator(".erow").filter({ hasText: "An experiment that failed its own test" });
+    await expect(row).toHaveCount(1);
+    await expect(row.locator(".estat")).toHaveText("Experimental / paused");
+    await expect(row).toContainText("unproven");
+  });
+
+  test("MCP is not presented as a hosted production service", async ({ page }) => {
+    // Sprint 18 merged the standalone MCP row into the retrieval capability the
+    // registry already bundles it with (rag-mcp-embeddings), so this no longer
+    // looks for a row titled "MCP server". It asserts the property that
+    // actually matters and survives the row being reorganised.
+    await page.goto("/");
+    const row = page.locator(".erow").filter({ hasText: "Model Context Protocol" });
+    await expect(row).toHaveCount(1);
+    await expect(row.locator(".estat")).not.toHaveText("Live");
+    await expect(row).toContainText("runs locally");
   });
 
   test("scope boundaries are present and neutrally worded", async ({ page }) => {
@@ -297,7 +364,7 @@ test.describe("Layout, accessibility and browser quality", () => {
     await page.goto("/");
     await expect(page.locator("h1")).toHaveText("Karthikeyan Devadoss");
     await expect(page.locator(".pcard")).toHaveCount(3);
-    await expect(page.locator(".erow")).toHaveCount(6);
+    await expect(page.locator(".erow")).toHaveCount(PRIMARY_COUNT);
     await ctx.close();
   });
 });

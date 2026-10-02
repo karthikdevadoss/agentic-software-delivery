@@ -1,0 +1,237 @@
+{
+  "base": "http://127.0.0.1:8420",
+  "journeys": {
+    "A -- recruiter / HR": {
+      "page": "/",
+      "http_status": 200,
+      "answers": {
+        "who is this": {
+          "needles": [
+            "Karthikeyan Devadoss"
+          ],
+          "found": [
+            "Karthikeyan Devadoss"
+          ],
+          "answerable": true
+        },
+        "what role": {
+          "needles": [
+            "Senior Backend",
+            "Agentic AI"
+          ],
+          "found": [
+            "Senior Backend",
+            "Agentic AI"
+          ],
+          "answerable": true
+        },
+        "why different": {
+          "needles": [
+            "cannot approve its own writes"
+          ],
+          "found": [
+            "cannot approve its own writes"
+          ],
+          "answerable": true
+        },
+        "where is the proof": {
+          "needles": [
+            "Evidence Index",
+            "full evidence index"
+          ],
+          "found": [
+            "Evidence Index",
+            "full evidence index"
+          ],
+          "answerable": true
+        },
+        "what to click next": {
+          "needles": [
+            "View the Workbench"
+          ],
+          "found": [
+            "View the Workbench"
+          ],
+          "answerable": true
+        },
+        "honest about scope": {
+          "needles": [
+            "Current scope boundaries"
+          ],
+          "found": [
+            "Current scope boundaries"
+          ],
+          "answerable": true
+        },
+        "separates own platform from employer": {
+          "needles": [
+            "not an NRG product"
+          ],
+          "found": [
+            "not an NRG product"
+          ],
+          "answerable": true
+        }
+      },
+      "required_links_present": [
+        "/proof",
+        "/workbench",
+        "/usage"
+      ],
+      "required_links_MISSING": []
+    },
+    "B -- AI / agentic hiring manager": {
+      "page": "/proof",
+      "http_status": 200,
+      "answers": {
+        "authority boundary": {
+          "needles": [
+            "cannot approve its own writes"
+          ],
+          "found": [
+            "cannot approve its own writes"
+          ],
+          "answerable": true
+        },
+        "durability": {
+          "needles": [
+            "survives a crash"
+          ],
+          "found": [
+            "survives a crash"
+          ],
+          "answerable": true
+        },
+        "evaluation": {
+          "needles": [
+            "measured",
+            "hand-labelled"
+          ],
+          "found": [
+            "measured",
+            "hand-labelled"
+          ],
+          "answerable": true
+        },
+        "security / kill switch": {
+          "needles": [
+            "kill switch"
+          ],
+          "found": [
+            "kill switch"
+          ],
+          "answerable": true
+        },
+        "negative result": {
+          "needles": [
+            "failed its own test",
+            "unproven"
+          ],
+          "found": [
+            "failed its own test",
+            "unproven"
+          ],
+          "answerable": true
+        },
+        "limits are stated": {
+          "needles": [
+            "Limitation"
+          ],
+          "found": [
+            "Limitation"
+          ],
+          "answerable": true
+        },
+        "status vocabulary explained": {
+          "needles": [
+            "How to read a status"
+          ],
+          "found": [
+            "How to read a status"
+          ],
+          "answerable": true
+        },
+        "reading order offered": {
+          "needles": [
+            "Where to start"
+          ],
+          "found": [
+            "Where to start"
+          ],
+          "answerable": true
+        }
+      },
+      "required_links_present": [
+        "/case-study/durable-agent",
+        "/ask-codebase",
+        "/workbench"
+      ],
+      "required_links_MISSING": []
+    },
+    "C -- backend / architecture interviewer": {
+      "page": "/proof",
+      "http_status": 200,
+      "answers": {
+        "real java/spring system": {
+          "needles": [
+            "Java 21",
+            "Spring Boot"
+          ],
+          "found": [
+            "Java 21",
+            "Spring Boot"
+          ],
+          "answerable": true
+        },
+        "schema / database": {
+          "needles": [
+            "migrations",
+            "PostgreSQL"
+          ],
+          "found": [
+            "migrations",
+            "PostgreSQL"
+          ],
+          "answerable": true
+        },
+        "multi-service architecture": {
+          "needles": [
+            "multi-process topology"
+          ],
+          "found": [
+            "multi-process topology"
+          ],
+          "answerable": true
+        },
+        "testing evidence": {
+          "needles": [
+            "Testcontainers",
+            "blocking"
+          ],
+          "found": [
+            "Testcontainers",
+            "blocking"
+          ],
+          "answerable": true
+        },
+        "architecture reasoning offered": {
+          "needles": [
+            "The microservices architecture"
+          ],
+          "found": [
+            "The microservices architecture"
+          ],
+          "answerable": true
+        }
+      },
+      "required_links_present": [
+        "https://agentic-delivery-customer-app-production.up.railway.app",
+        "MICROSERVICES_ARCHITECTURE.md",
+        "/db/migration",
+        ".github/workflows/ci.yml"
+      ],
+      "required_links_MISSING": []
+    }
+  },
+  "pass": true
+}

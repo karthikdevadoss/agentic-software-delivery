@@ -1,0 +1,512 @@
+# Public Proof Surface
+#
+# WHAT THIS IS
+# The public PRESENTATION layer over docs/PORTFOLIO_CAPABILITIES.yaml. For each
+# capability a stranger is shown, it records exactly six things:
+#
+#     capability id -> public claim -> verification status -> evidence
+#                   -> inspectable destination(s) -> limitation
+#
+# agent/proof_registry.py loads this file and refuses it unless every one of
+# those is present and resolvable. agent/build_proof_surface.py renders the
+# public pages FROM it, so the pages cannot drift from it.
+#
+# WHY IT IS A SEPARATE FILE, AND WHY THAT IS NOT A SECOND SOURCE OF TRUTH
+# docs/PORTFOLIO_CAPABILITIES.yaml answers "what exists, and how verified is
+# it" and is consumed by JD matching. This file answers "what do we say about it
+# in public, where does a visitor go, and what is the honest boundary" -- which
+# is presentation, not engineering fact, and would be noise inside a
+# JD-matching registry.
+#
+# The two cannot contradict each other, because that is mechanically enforced:
+#   * every capability_id here MUST exist in PORTFOLIO_CAPABILITIES.yaml;
+#   * public_status may never exceed the verification_level recorded there
+#     (status_requires below defines the mapping);
+#   * there is exactly one entry per capability_id.
+# So PORTFOLIO_CAPABILITIES.yaml remains the authority for truth, and this file
+# can only ever present it at or below its recorded level -- never above it.
+# A claim cannot be upgraded here; it can only be upgraded by doing the work
+# that raises the verification_level there.
+#
+# THE RULE THAT MATTERS MOST
+# Nothing in this file may be written to make something sound better than the
+# evidence supports. If a claim cannot be supported, delete the claim -- do not
+# soften it, and do not invent a limitation to balance it. An honest boundary is
+# part of the proof; a decorative one is just more marketing.
+
+surface_version: 1
+last_updated: '2026-10-02'
+
+# The whole public status vocabulary. Four values, deliberately. A visitor has
+# to be able to hold the distinction in their head after reading it once.
+status_vocabulary:
+  LIVE_VERIFIED:
+    label: Live
+    means: Running right now and independently inspectable -- the visitor can open it.
+  TESTED_VERIFIED:
+    label: Tested
+    means: Demonstrated by deterministic tests or recorded evidence, even where the visitor cannot execute it themselves.
+  DOCUMENTED:
+    label: Documented
+    means: Supported by source, history or a case study, but not publicly runnable.
+  EXPERIMENTAL_PAUSED:
+    label: Experimental / paused
+    means: Research or experimental work, stated with its limitations, not a working product.
+
+# The honesty constraint, as data rather than as a sentence nobody checks.
+# public_status -> the verification_level values in PORTFOLIO_CAPABILITIES.yaml
+# that are allowed to carry it. This is what stops a DOCUMENTED capability
+# being presented as LIVE.
+status_requires:
+  LIVE_VERIFIED:
+  - PRODUCTION_VERIFIED
+  TESTED_VERIFIED:
+  - PRODUCTION_VERIFIED
+  - RUNTIME_VERIFIED
+  - TESTED
+  DOCUMENTED:
+  - PRODUCTION_VERIFIED
+  - RUNTIME_VERIFIED
+  - TESTED
+  - IMPLEMENTED
+  EXPERIMENTAL_PAUSED:
+  - PRODUCTION_VERIFIED
+  - RUNTIME_VERIFIED
+  - TESTED
+  - IMPLEMENTED
+
+# One identity, layered disclosure -- not three personas and not three sites.
+# A capability may serve more than one audience; the routes are reading orders
+# over one body of evidence.
+audiences:
+  recruiter:
+    label: Recruiter or HR
+    question: Who is this, what role, why different, and where is the proof?
+  ai_hiring_manager:
+    label: AI / agentic hiring manager
+    question: Is the agent work real -- authority boundaries, durability, evaluation, security?
+  backend_interviewer:
+    label: Backend or architecture interviewer
+    question: Is there a real Java/Spring system under this, with real tests and real architecture reasoning?
+
+# A public destination must never point at any of these. Checked as a prefix or
+# substring match by agent/proof_registry.py. These are private surfaces, the
+# private context repository, and internal tools deliberately kept out of public
+# navigation -- a leaked link here is a real disclosure, not a broken link.
+forbidden_destination_patterns:
+- /learn
+- /jd-match
+- /control-plane
+- karthik-ai-context
+- /books/
+- /brahma/
+- /coaching/
+- /imports/
+- CURRENT_PRIORITIES
+- PLAN_DECISIONS
+- CURRENT_MODEL_ROLES
+- docsforclaude
+
+capabilities:
+
+# ---------------------------------------------------------------------------
+# PRIMARY -- the front door. Seven. Not every capability; the strongest seven.
+# Claim wording for the six that were already public is carried over verbatim
+# from the previously published home page rather than rewritten, so that
+# publishing this change does not quietly restate approved claims.
+# ---------------------------------------------------------------------------
+
+- capability_id: hitl-hash-bound-write-boundary
+  tier: PRIMARY
+  public_status: LIVE_VERIFIED
+  headline: An AI agent that cannot approve its own writes
+  public_claim: >-
+    A change proposed by the model is applied only after a person approves it,
+    and the approval is tied to the exact file and content that was approved.
+    The approve step is not something the model can call.
+  public_limitation: >-
+    The boundary governs writes made through this platform's own tools, scoped
+    to three path prefixes and two file extensions. It is not a general-purpose
+    policy engine, and it does not govern anything changed outside the platform.
+  evidence_summary: >-
+    Approval is bound to sha256(path, content) and re-checked at apply time.
+    Tests prove that a content substitution and a path substitution after
+    approval are each rejected, and that approve and reject are absent from the
+    tool schemas by exact set membership.
+  audiences: [recruiter, ai_hiring_manager]
+  destinations:
+  - label: How the boundary works
+    href: https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/write_tools.py
+  - label: The tests that prove it
+    href: https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/test_write_tools.py
+  - label: Watch it run
+    href: /workbench
+
+- capability_id: durable-langgraph-workflow
+  tier: PRIMARY
+  public_status: LIVE_VERIFIED
+  headline: A workflow that survives a crash
+  public_claim: >-
+    Long-running work saves its progress as it goes, so it can pause for a human
+    decision and continue after a restart without repeating anything it already
+    did.
+  public_limitation: >-
+    The crash drill's process kills were performed locally. In production what
+    has been demonstrated is a restart while the workflow was waiting for
+    approval -- not a kill in the middle of the pipeline, because the pipeline
+    completes in about five seconds and has no pause hook there.
+  evidence_summary: >-
+    Crash drill 22 of 22 in one run: a real child process killed after the git
+    commit and before the checkpoint, resumed by a fresh process with exactly
+    one commit and compile, test and verify completed. A corrupt checkpoint row
+    is reported as CORRUPT rather than resumed.
+  audiences: [recruiter, ai_hiring_manager, backend_interviewer]
+  destinations:
+  - label: Read the case study
+    href: /case-study/durable-agent
+  - label: The workflow and its checkpointer
+    href: https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/durable_workflow.py
+  - label: The crash drill
+    href: https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/workflow_drill.py
+
+- capability_id: rag-mcp-embeddings
+  tier: PRIMARY
+  public_status: TESTED_VERIFIED
+  headline: Retrieval that is measured, not assumed
+  public_claim: >-
+    Search quality is scored against a hand-labelled set of questions and
+    expected answers, and the build fails if the scores drop below the recorded
+    thresholds. The same read-only repository tools are also exposed over the
+    Model Context Protocol so other AI clients can use them.
+  public_limitation: >-
+    Retrieval is a local JSON index with a numpy cosine scan over small corpora,
+    not a managed vector database, and there is no hybrid search or reranking.
+    The MCP server runs locally rather than as a hosted service.
+  evidence_summary: >-
+    Measured baseline recall@3 0.833, recall@5 0.917, MRR 0.826, routing
+    accuracy 1.0, security-case accuracy 1.0. The corpus expansion from 10 to 28
+    files was a disclosed precision/coverage trade-off, not a silent one.
+  audiences: [ai_hiring_manager, backend_interviewer]
+  destinations:
+  - label: Ask the codebase yourself
+    href: /ask-codebase
+  - label: The evaluation gate
+    href: https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/eval_runner.py
+  - label: The MCP server
+    href: https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/mcp_server.py
+
+- capability_id: reasoning-gateway-kill-switch
+  tier: PRIMARY
+  public_status: LIVE_VERIFIED
+  headline: One model boundary, with a kill switch
+  public_claim: >-
+    Every call to a language model goes through one place, which checks what the
+    call is for and can be switched off entirely. A test fails the build if any
+    code tries to bypass it.
+  public_limitation: >-
+    It is a single-provider boundary. Multi-provider routing and failover are
+    not implemented, and the purpose allowlist is a fixed list rather than a
+    policy language.
+  evidence_summary: >-
+    An enforcement test fails the build on any direct SDK import outside the
+    gateway -- it caught the first version of the Standing Interview importing
+    the SDK directly. A denial is reported as its own state rather than returned
+    as an empty answer.
+  audiences: [ai_hiring_manager]
+  destinations:
+  - label: The gateway
+    href: https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/reasoning_gateway.py
+  - label: The test that enforces it
+    href: https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/test_reasoning_gateway_enforcement.py
+  - label: Proof the switch really disables everything
+    href: https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/ZERO_LLM_MODE_PROOF.md
+
+- capability_id: durable-event-ledger
+  tier: PRIMARY
+  public_status: LIVE_VERIFIED
+  headline: Every step and every model call is recorded
+  public_claim: >-
+    Every meaningful step and every model call is written to a durable log,
+    including real token counts. If the log's database is unreachable the events
+    are held locally and sent later rather than lost.
+  public_limitation: >-
+    Token and cost figures are real where the provider returns them and are
+    labelled unavailable where it does not -- browser and subscription usage has
+    no token data, and an unavailable figure is never shown as a zero or an
+    estimate. This is one person's own traffic, not production load.
+  evidence_summary: >-
+    14 focused tests against the live remote database covering insert ordering,
+    duplicate retry, outage spooling, spool sync, pre-terminal-crash durability
+    and secret redaction.
+  audiences: [recruiter, ai_hiring_manager, backend_interviewer]
+  destinations:
+  - label: Open the telemetry view
+    href: /usage
+  - label: The ledger
+    href: https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/event_ledger.py
+
+- capability_id: java-spring-rest-api
+  tier: PRIMARY
+  public_status: LIVE_VERIFIED
+  headline: A real Java and Spring system underneath
+  public_claim: >-
+    The platform does its engineering work on a genuine Java 21 / Spring Boot
+    application with REST and GraphQL and real PostgreSQL with versioned
+    migrations -- deliberately kept separate from the platform itself, so the
+    AI work is performed on a real system rather than on a demo built to
+    flatter it.
+  public_limitation: >-
+    It is a realistic enterprise-shaped application, not a system with real
+    users or real load. Several parts are implemented and tested but NOT
+    provisioned in production -- the event-outbox messaging, the cache, and
+    several services in the six-service decomposition -- and none of those is
+    claimed above.
+  evidence_summary: >-
+    Running in production and openable. Real PostgreSQL via Testcontainers in
+    CI, Flyway migration history, and a GitHub Actions pipeline with ten
+    blocking jobs across the platform and the application.
+  audiences: [recruiter, backend_interviewer]
+  destinations:
+  - label: Open the running Java application
+    href: https://agentic-delivery-customer-app-production.up.railway.app
+  - label: The application source
+    href: https://github.com/karthikdevadoss/agentic-software-delivery/tree/master/app/src/main/java/com/example/customer
+  - label: The CI pipeline
+    href: https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/.github/workflows/ci.yml
+
+- capability_id: falsification-preregistered-negative-result
+  tier: PRIMARY
+  public_status: EXPERIMENTAL_PAUSED
+  headline: An experiment that failed its own test, and was stopped
+  public_claim: >-
+    A multi-model cross-review engine was built to a decision rule fixed in
+    advance, measured against frozen ground truth, and then paused when the
+    evidence failed that rule. The product thesis is unproven. The strongest
+    finding is about measurement rather than the product: every recent headline
+    turned out to be produced by a defect in the evaluation system, in both
+    directions.
+  public_limitation: >-
+    PAUSED, and the product thesis is UNPROVEN. It demonstrated zero genuine
+    false-to-true corrections and zero genuine baseline false claims, so it must
+    not be read as an accuracy product, as evidence that multiple models improve
+    correctness, or as a partial success. It is evidence of experiment design
+    and engineering judgement, nothing more.
+  evidence_summary: >-
+    20 of 20 pre-registered cases run exactly once, 0 paid API calls, evidence
+    integrity 16 of 16, mutation gate 19 killed and 0 survived, and an offline
+    self-replay that reproduces the verdict with 0 differences and 0 model
+    calls. 13 defects were found in the final sprint alone -- nine in the
+    scorer, two in identity and routing that would have published a false
+    agreement. The mechanical verdict and the Owner's adjudication of the same
+    frozen evidence differed, and both are preserved rather than reconciled.
+  audiences: [ai_hiring_manager, backend_interviewer]
+  destinations:
+  - label: The one-page case study
+    href: https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/DEEP_CONSENSUS_CASE_STUDY.md
+  - label: The full closing record
+    href: https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/DEEP_CONSENSUS_FINAL_CLOSURE_2026-10-02.md
+  - label: The frozen evidence pack
+    href: https://github.com/karthikdevadoss/agentic-software-delivery/tree/master/docs/evidence/deep-consensus-sprint6
+
+# ---------------------------------------------------------------------------
+# SECONDARY -- reachable from the evidence index and the audience routes, kept
+# off the first screen on purpose. A front door that lists everything proves
+# nothing, because nothing stands out.
+# ---------------------------------------------------------------------------
+
+- capability_id: independent-qa-evaluator
+  tier: SECONDARY
+  public_status: TESTED_VERIFIED
+  headline: The implementer does not certify its own work
+  public_claim: >-
+    A structurally separate evaluator re-verifies an AI-generated change against
+    real evidence, and the implementer never gets the last word on whether its
+    own change succeeded.
+  public_limitation: >-
+    A second instance of the same model is an independent evidence path, not an
+    independent mind. It reliably catches unverified claims, skipped gates and
+    absent observable effects; it shares blind spots with the implementer on
+    subtle logic errors, and that residual risk is unsolved rather than managed.
+  evidence_summary: >-
+    A deliberately seeded defect (a capitalisation mismatch) was independently
+    caught with byte-exact evidence.
+  audiences: [ai_hiring_manager]
+  destinations:
+  - label: The evaluator's contract
+    href: https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/.claude/agents/qa-evaluator.md
+  - label: The evaluation plan
+    href: https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/ARCHITECTURE_V2_EVALUATION_PLAN.md
+
+- capability_id: deterministic-static-gates
+  tier: SECONDARY
+  public_status: LIVE_VERIFIED
+  headline: Recurring lessons turned into blocking checks
+  public_claim: >-
+    Classes of defect that kept recurring -- a missing executable bit, a literal
+    double dash inside an XML comment, a config key present in one Spring
+    profile and missing from another -- are enforced by zero-LLM scripts in CI
+    rather than by a rule in a document.
+  public_limitation: >-
+    These cover specific, known, mechanically-decidable defect classes. They are
+    not a general correctness check and were each written after the defect
+    escaped once.
+  evidence_summary: >-
+    Running as blocking GitHub Actions jobs, with an explicit allowlist file so
+    an intended exception is recorded rather than silently tolerated.
+  audiences: [ai_hiring_manager, backend_interviewer]
+  destinations:
+  - label: The config-drift gate
+    href: https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/check_config_drift.py
+  - label: The CI pipeline
+    href: https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/.github/workflows/ci.yml
+
+- capability_id: standing-interview-grounded-rag
+  tier: SECONDARY
+  public_status: LIVE_VERIFIED
+  headline: Grounded answers over a real private corpus
+  public_claim: >-
+    A live retrieval surface answers technical questions from a real corpus,
+    with the answer grounded in retrieved material rather than generated freely.
+  public_limitation: >-
+    Answer quality is monitored by a stochastic quality test that is currently
+    known-red on one question, and that monitor is deliberately kept out of the
+    release-blocking suite so a model's bad draw cannot be confused with a
+    wiring defect. Retrieval reaches some material inconsistently.
+  evidence_summary: >-
+    Live and answering, with acceptance checks passing over HTTP against the
+    deployed surface.
+  audiences: [ai_hiring_manager]
+  destinations:
+  - label: Open it
+    href: /standing-interview
+
+- capability_id: estimation-calibration-scrum-for-ai
+  tier: SECONDARY
+  public_status: TESTED_VERIFIED
+  headline: AI-assisted delivery that is actually estimated
+  public_claim: >-
+    Every task is sized with a numeric range and a confidence before work
+    starts; each sprint ends in a retrospective comparing estimate to actual,
+    with every gap outside tolerance diagnosed as either a wrong estimate or an
+    implementation problem, and the verdict computed by a script rather than
+    judged.
+  public_limitation: >-
+    The tolerance verdict is computed, but the sizing gate itself is not
+    mechanised -- it is applied by hand, and that is recorded as an open item
+    rather than described as automated.
+  evidence_summary: >-
+    Multiple sprints of recorded sizes, actuals and ratios verified against real
+    git commit timestamps, including one retrospective whose own conclusion was
+    corrected by an independent adversarial review.
+  audiences: [recruiter, ai_hiring_manager]
+  destinations:
+  - label: The sized backlog
+    href: https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/BACKLOG.json
+  - label: The retrospective history
+    href: https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/RETRO_LOG.md
+  - label: The script that computes the verdict
+    href: https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/backlog.py
+
+- capability_id: security-jwt-rbac
+  tier: SECONDARY
+  public_status: LIVE_VERIFIED
+  headline: Authentication and role-based authorisation
+  public_claim: >-
+    The application enforces authentication and role-based access control on its
+    API, with the authorisation decision tested rather than assumed.
+  public_limitation: >-
+    This is application-level authorisation on a system with no real users. It
+    is not an identity platform, and no external identity provider is
+    integrated.
+  evidence_summary: >-
+    Running in production, with the authorisation paths covered by tests in the
+    blocking CI pipeline.
+  audiences: [backend_interviewer]
+  destinations:
+  - label: The application source
+    href: https://github.com/karthikdevadoss/agentic-software-delivery/tree/master/app/src/main/java/com/example/customer
+
+- capability_id: postgres-jpa-flyway
+  tier: SECONDARY
+  public_status: LIVE_VERIFIED
+  headline: Versioned schema, exercised against real PostgreSQL
+  public_claim: >-
+    Schema changes are versioned migrations with an auditable history, and the
+    tests run against a real PostgreSQL instance in CI rather than an in-memory
+    substitute.
+  public_limitation: >-
+    A local H2 profile still exists for development convenience, which is a real
+    source of behaviour differences -- a JPQL string-function difference between
+    H2 and PostgreSQL was a real defect found here.
+  evidence_summary: >-
+    Real Testcontainers PostgreSQL run in CI, with a committed Flyway migration
+    history.
+  audiences: [backend_interviewer]
+  destinations:
+  - label: The migration history
+    href: https://github.com/karthikdevadoss/agentic-software-delivery/tree/master/app/src/main/resources/db/migration
+  - label: The CI pipeline
+    href: https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/.github/workflows/ci.yml
+
+- capability_id: downstream-resilience
+  tier: SECONDARY
+  public_status: LIVE_VERIFIED
+  headline: Failure handling for calls that leave the process
+  public_claim: >-
+    Calls to downstream systems are written to fail in a controlled way rather
+    than hang or cascade, and the failure behaviour is tested against a stubbed
+    downstream.
+  public_limitation: >-
+    Resilience behaviour is proven against a controlled stub, not against a real
+    unreliable third party under load.
+  evidence_summary: >-
+    Running in production, with the failure paths exercised in the blocking CI
+    pipeline.
+  audiences: [backend_interviewer]
+  destinations:
+  - label: The application source
+    href: https://github.com/karthikdevadoss/agentic-software-delivery/tree/master/app/src/main/java/com/example/customer
+
+- capability_id: real-topology-gating-tier
+  tier: SECONDARY
+  public_status: TESTED_VERIFIED
+  headline: Multi-service behaviour tested on a real topology
+  public_claim: >-
+    The microservice decomposition has a test tier that runs against a real
+    multi-process topology, because a behaviour such as routing or load
+    balancing cannot be proven by a single-process test however green it is.
+  public_limitation: >-
+    This tier is tested but not provisioned in production, and it is informational
+    in CI rather than blocking. A skipped run is reported as skipped, never as
+    passed.
+  evidence_summary: >-
+    Real per-service and cross-service suites, with distributed tracing wired
+    manually because the framework combination in use never auto-configures a
+    real tracer.
+  audiences: [backend_interviewer]
+  destinations:
+  - label: The microservices architecture
+    href: https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/MICROSERVICES_ARCHITECTURE.md
+  - label: The services
+    href: https://github.com/karthikdevadoss/agentic-software-delivery/tree/master/services
+
+- capability_id: production-deployment-verification
+  tier: SECONDARY
+  public_status: LIVE_VERIFIED
+  headline: A deployment is not done because it returned 200
+  public_claim: >-
+    A deployment is verified by checking that the specific requested change is
+    actually observable in production, not by a successful HTTP status or a
+    successful deploy log.
+  public_limitation: >-
+    Deployment is scripted but triggered by hand. There is no automated
+    continuous delivery behind this.
+  evidence_summary: >-
+    Running in production, with a verification step that reports a mismatched
+    status as a failure rather than reporting OK.
+  audiences: [ai_hiring_manager, backend_interviewer]
+  destinations:
+  - label: The platform dashboard
+    href: /dashboard
+  - label: The runbook
+    href: https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/RUNBOOK.md

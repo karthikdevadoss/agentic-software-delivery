@@ -25,6 +25,8 @@ import pathlib
 import re
 import unittest
 
+import proof_registry as pr
+
 WEB_DIR = pathlib.Path(__file__).resolve().parent / "web"
 HOME = WEB_DIR / "home.html"
 CASE_STUDY = WEB_DIR / "case-study-durable-agent.html"
@@ -44,6 +46,21 @@ def _visible_text(html: str) -> str:
     html = re.sub(r"<script.*?</script>", " ", html, flags=re.DOTALL | re.I)
     html = re.sub(r"<[^>]+>", " ", html)
     return re.sub(r"\s+", " ", html)
+
+
+def _drop_paras(html: str, class_name: str) -> str:
+    """Remove every <p class="..."> paragraph by class.
+
+    Sprint 18: the per-claim limitation lines are <p class="elimit">, not a
+    <div>, so _drop_block below cannot reach them. They are the same CATEGORY
+    as the scope block -- text whose entire job is to name what is absent or
+    bounded -- and they are therefore excluded from the positive-claim scan for
+    the same reason. test_every_limitation_really_is_a_limitation below keeps
+    that exclusion honest, exactly as the scope block's own test does.
+    """
+    pattern = re.compile(
+        r'<p class="' + re.escape(class_name) + r'".*?</p>\s*', re.DOTALL)
+    return pattern.sub(" ", html)
 
 
 def _drop_block(html: str, class_name: str) -> str:
@@ -93,6 +110,8 @@ class ForbiddenClaimTestCase(unittest.TestCase):
 
     def _claim_surface(self, path: pathlib.Path, *exclude_classes: str) -> str:
         html = path.read_text(encoding="utf-8")
+        # Sprint 18: per-claim limitations first, then the named blocks.
+        html = _drop_paras(html, "elimit")
         for cls in exclude_classes:
             html = _drop_block(html, cls)
         return _visible_text(html).lower()
@@ -105,7 +124,7 @@ class ForbiddenClaimTestCase(unittest.TestCase):
                 detail = repr(m.group(0)) if m else ""
                 self.assertIsNone(
                     m, f"home.html positively claims {name}: {detail} "
-                       f"(negated/future wording belongs in the scope-boundaries block)")
+                       f"(negated/future wording belongs in the scope-boundaries block or in a per-claim limitation)")
 
     def test_case_study_makes_no_forbidden_positive_claim(self):
         surface = self._claim_surface(CASE_STUDY, "caveat")
@@ -251,30 +270,115 @@ class HomePageStructureTestCase(unittest.TestCase):
         self.assertEqual(len(cards), 3,
                          f"the release contract specifies exactly three proof cards, found {len(cards)}")
 
-    def test_exactly_six_evidence_rows(self):
+    def test_the_evidence_rows_match_the_registry_exactly(self):
+        """Sprint 18: the row count used to be hardcoded at six. It is now
+        whatever docs/PUBLIC_PROOF_SURFACE.yaml declares PRIMARY, because the
+        registry became the single source of truth for what the page claims --
+        and a contract duplicated in two places is a contract that will drift.
+        This still asserts a declared contract; the declaration just moved to
+        where the claims themselves live."""
         rows = re.findall(r'<div class="erow">', self.html)
-        self.assertEqual(len(rows), 6,
-                         f"the release contract specifies exactly six evidence rows, found {len(rows)}")
+        expected = pr.public_entries(tier="PRIMARY")
+        self.assertEqual(
+            len(rows), len(expected),
+            f"the registry declares {len(expected)} PRIMARY capabilities but the page "
+            f"renders {len(rows)} evidence rows -- run "
+            "python agent/build_proof_surface.py --write")
+        for entry in expected:
+            with self.subTest(capability=entry["capability_id"]):
+                self.assertIn(
+                    entry["headline"], self.text,
+                    f"{entry['capability_id']} is declared PRIMARY but its headline is "
+                    "not on the page")
 
-    def test_every_evidence_row_has_a_status_and_a_link(self):
+    def test_every_evidence_row_has_a_status_a_limitation_and_a_link(self):
         blocks = re.findall(r'<div class="erow">(.*?)</div>\s*</div>', self.html, re.DOTALL)
-        self.assertEqual(len(blocks), 6)
+        self.assertEqual(len(blocks), len(pr.public_entries(tier="PRIMARY")))
         for i, block in enumerate(blocks, 1):
             with self.subTest(row=i):
-                self.assertRegex(block, r'<p class="estat">\s*\S',
+                self.assertRegex(block, r'<p class="estat[^"]*">\s*\S',
                                  f"evidence row {i} has no verification status")
+                # Sprint 18: new contract. A claim without its boundary next to
+                # it is the failure mode this sprint exists to remove -- a
+                # limitation collected in a footer nobody reaches is not a
+                # limitation, it is a disclaimer.
+                self.assertRegex(block, r'<p class="elimit">\s*\S',
+                                 f"evidence row {i} states no limitation")
                 self.assertRegex(block, r'<a href="[^"]+"',
                                  f"evidence row {i} has no evidence link")
 
-    def test_mcp_row_does_not_claim_production(self):
+    def test_every_status_label_is_a_published_vocabulary_value(self):
+        """Free-prose statuses ("Running in production", "Measured on every
+        build", "Implemented and tested") were what the page used before. They
+        read fine and meant nothing checkable. Four values, and only four."""
+        labels = {
+            meta["label"]
+            for meta in pr.load_surface()["status_vocabulary"].values()
+        }
+        rendered = re.findall(r'<p class="estat[^"]*">([^<]+)</p>', self.html)
+        self.assertTrue(rendered, "no status labels rendered at all")
+        for label in rendered:
+            with self.subTest(label=label):
+                self.assertIn(label.strip(), labels,
+                              f"{label.strip()!r} is not one of the four published statuses")
+
+    def test_every_limitation_really_is_a_limitation(self):
+        """Keeps the positive-claim scan's exclusion honest. _drop_paras removes
+        the limitation lines before scanning for overclaims, which is only safe
+        while those lines genuinely carry bounding language. If a limitation
+        were ever rewritten into marketing, this fails and the exclusion stops
+        hiding it."""
+        bounding = re.compile(
+            r"\bnot\b|\bno\b|\bonly\b|\bnever\b|\brather than\b|\bunproven\b|"
+            r"\bpaused\b|\bscoped\b|\blocal(ly)?\b|\bunavailable\b|\bwithout\b",
+            re.I)
+        limitations = re.findall(r'<p class="elimit">(.*?)</p>', self.html, re.DOTALL)
+        self.assertEqual(len(limitations), len(pr.public_entries(tier="PRIMARY")))
+        for text in limitations:
+            visible = _visible_text(text).strip()
+            with self.subTest(limitation=visible[:60]):
+                self.assertGreater(len(visible), 40,
+                                   "a one-word limitation is decoration, not a boundary")
+                self.assertRegex(visible, bounding,
+                                 "this limitation contains no bounding language, so "
+                                 "excluding it from the overclaim scan would hide a claim")
+
+    def test_the_paused_experiment_is_not_presented_as_live_on_the_home_page(self):
+        """The single most likely future overclaim on this page: the Deep
+        Consensus row is the most impressive engineering on it and its product
+        thesis failed."""
+        block = re.search(
+            r'<div class="erow">(?:(?!</div>\s*</div>).)*?'
+            r'An experiment that failed its own test.*?</div>\s*</div>',
+            self.html, re.DOTALL)
+        self.assertIsNotNone(block, "the paused-experiment evidence row is missing")
+        row = block.group(0)
+        self.assertIn("st-experimental-paused", row,
+                      "the paused experiment must carry the experimental/paused status")
+        for forbidden in ("st-live-verified", "Running in production"):
+            self.assertNotIn(forbidden, row)
+        visible = _visible_text(row).lower()
+        self.assertIn("unproven", visible,
+                      "the row must say the product thesis is unproven")
+
+    def test_mcp_is_not_presented_as_a_hosted_production_service(self):
         """Independently reverified 2026-09-29: agent/mcp_server.py is a stdio
-        server for local clients and is NOT served by the deployed web app, so
-        its row must not read as running in production."""
-        block = re.search(r'<div class="erow">(?:(?!</div>\s*</div>).)*?MCP server.*?</div>\s*</div>',
-                          self.html, re.DOTALL)
-        self.assertIsNotNone(block, "the MCP evidence row is missing")
-        self.assertNotIn("Running in production", block.group(0),
-                         "MCP runs locally over stdio; it is not a hosted production service")
+        server for local clients and is NOT served by the deployed web app.
+
+        Sprint 18 merged the standalone MCP row into the retrieval capability
+        the registry already bundles it with (rag-mcp-embeddings), so this no
+        longer looks for a row called "MCP server". It asserts the property that
+        actually matters and that survives the row being reorganised: the page
+        must disclose that MCP runs locally, and must not place MCP inside a
+        Live row."""
+        self.assertIn("runs locally", self.text,
+                      "the page no longer discloses that the MCP server is local-only")
+        block = re.search(
+            r'<div class="erow">(?:(?!</div>\s*</div>).)*?'
+            r'Model Context Protocol.*?</div>\s*</div>', self.html, re.DOTALL)
+        self.assertIsNotNone(block, "no row mentions the Model Context Protocol")
+        self.assertNotIn("st-live-verified", block.group(0),
+                         "MCP runs locally over stdio; its row must not read as Live")
 
     def test_no_internal_identifiers_or_raw_paths_are_rendered(self):
         for bad in ("AEQ-", "BL-0", "PORTFOLIO_CAPABILITIES", "C:\\", "/home/", "docs/"):
