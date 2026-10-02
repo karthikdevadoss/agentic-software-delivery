@@ -7,6 +7,13 @@
 #     capability id -> public claim -> verification status -> evidence
 #                   -> inspectable destination(s) -> limitation
 #
+# Each capability carries its limitation TWICE, on purpose: `limitation_short`
+# is one line and is always visible in the collapsed view; `public_limitation`
+# is the full boundary and sits behind the disclosure. The short one is a
+# COMPRESSION, never a softening -- a recruiter who reads only the collapsed
+# card must still see the real boundary, and a validator asserts the short form
+# is present, is genuinely short, and is not simply a copy of the long one.
+#
 # agent/proof_registry.py loads this file and refuses it unless every one of
 # those is present and resolvable. agent/build_proof_surface.py renders the
 # public pages FROM it, so the pages cannot drift from it.
@@ -124,6 +131,7 @@ capabilities:
     A change proposed by the model is applied only after a person approves it,
     and the approval is tied to the exact file and content that was approved.
     The approve step is not something the model can call.
+  limitation_short: "Covers writes through this platform only; not a general policy engine."
   public_limitation: >-
     The boundary governs writes made through this platform's own tools, scoped
     to three path prefixes and two file extensions. It is not a general-purpose
@@ -150,6 +158,7 @@ capabilities:
     Long-running work saves its progress as it goes, so it can pause for a human
     decision and continue after a restart without repeating anything it already
     did.
+  limitation_short: "Mid-pipeline crash proven locally; in production only a restart while awaiting approval."
   public_limitation: >-
     The crash drill's process kills were performed locally. In production what
     has been demonstrated is a restart while the workflow was waiting for
@@ -178,6 +187,7 @@ capabilities:
     expected answers, and the build fails if the scores drop below the recorded
     thresholds. The same read-only repository tools are also exposed over the
     Model Context Protocol so other AI clients can use them.
+  limitation_short: "Local index over small corpora, no managed vector DB, no hybrid search or reranking."
   public_limitation: >-
     Retrieval is a local JSON index with a numpy cosine scan over small corpora,
     not a managed vector database, and there is no hybrid search or reranking.
@@ -203,6 +213,7 @@ capabilities:
     Every call to a language model goes through one place, which checks what the
     call is for and can be switched off entirely. A test fails the build if any
     code tries to bypass it.
+  limitation_short: "Single provider; no multi-provider routing or failover."
   public_limitation: >-
     It is a single-provider boundary. Multi-provider routing and failover are
     not implemented, and the purpose allowlist is a fixed list rather than a
@@ -229,6 +240,7 @@ capabilities:
     Every meaningful step and every model call is written to a durable log,
     including real token counts. If the log's database is unreachable the events
     are held locally and sent later rather than lost.
+  limitation_short: "Token and cost shown only where the provider returns them, never estimated; my own traffic, not production load."
   public_limitation: >-
     Token and cost figures are real where the provider returns them and are
     labelled unavailable where it does not -- browser and subscription usage has
@@ -255,6 +267,7 @@ capabilities:
     migrations -- deliberately kept separate from the platform itself, so the
     AI work is performed on a real system rather than on a demo built to
     flatter it.
+  limitation_short: "Enterprise-shaped but no real users or load; messaging, cache and several services are tested, not provisioned."
   public_limitation: >-
     It is a realistic enterprise-shaped application, not a system with real
     users or real load. Several parts are implemented and tested but NOT
@@ -285,6 +298,7 @@ capabilities:
     finding is about measurement rather than the product: every recent headline
     turned out to be produced by a defect in the evaluation system, in both
     directions.
+  limitation_short: "PAUSED and the product thesis is UNPROVEN: zero genuine corrections demonstrated. Not an accuracy product."
   public_limitation: >-
     PAUSED, and the product thesis is UNPROVEN. It demonstrated zero genuine
     false-to-true corrections and zero genuine baseline false claims, so it must
@@ -322,6 +336,7 @@ capabilities:
     A structurally separate evaluator re-verifies an AI-generated change against
     real evidence, and the implementer never gets the last word on whether its
     own change succeeded.
+  limitation_short: "Same-model review is an independent evidence path, not an independent mind; shared blind spots remain."
   public_limitation: >-
     A second instance of the same model is an independent evidence path, not an
     independent mind. It reliably catches unverified claims, skipped gates and
@@ -346,6 +361,7 @@ capabilities:
     double dash inside an XML comment, a config key present in one Spring
     profile and missing from another -- are enforced by zero-LLM scripts in CI
     rather than by a rule in a document.
+  limitation_short: "Covers specific known defect classes only, each added after it escaped once."
   public_limitation: >-
     These cover specific, known, mechanically-decidable defect classes. They are
     not a general correctness check and were each written after the defect
@@ -367,6 +383,7 @@ capabilities:
   public_claim: >-
     A live retrieval surface answers technical questions from a real corpus,
     with the answer grounded in retrieved material rather than generated freely.
+  limitation_short: "Answer quality is monitored by a stochastic test currently known-red on one question."
   public_limitation: >-
     Answer quality is monitored by a stochastic quality test that is currently
     known-red on one question, and that monitor is deliberately kept out of the
@@ -390,6 +407,7 @@ capabilities:
     with every gap outside tolerance diagnosed as either a wrong estimate or an
     implementation problem, and the verdict computed by a script rather than
     judged.
+  limitation_short: "The tolerance verdict is computed; the sizing gate itself is still applied by hand."
   public_limitation: >-
     The tolerance verdict is computed, but the sizing gate itself is not
     mechanised -- it is applied by hand, and that is recorded as an open item
@@ -414,6 +432,7 @@ capabilities:
   public_claim: >-
     The application enforces authentication and role-based access control on its
     API, with the authorisation decision tested rather than assumed.
+  limitation_short: "Application-level authorisation on a system with no real users; no external identity provider."
   public_limitation: >-
     This is application-level authorisation on a system with no real users. It
     is not an identity platform, and no external identity provider is
@@ -434,6 +453,7 @@ capabilities:
     Schema changes are versioned migrations with an auditable history, and the
     tests run against a real PostgreSQL instance in CI rather than an in-memory
     substitute.
+  limitation_short: "An H2 dev profile still exists, and it is a real source of behaviour differences."
   public_limitation: >-
     A local H2 profile still exists for development convenience, which is a real
     source of behaviour differences -- a JPQL string-function difference between
@@ -456,6 +476,7 @@ capabilities:
     Calls to downstream systems are written to fail in a controlled way rather
     than hang or cascade, and the failure behaviour is tested against a stubbed
     downstream.
+  limitation_short: "Proven against a controlled stub, not a real unreliable third party under load."
   public_limitation: >-
     Resilience behaviour is proven against a controlled stub, not against a real
     unreliable third party under load.
@@ -475,6 +496,7 @@ capabilities:
     The microservice decomposition has a test tier that runs against a real
     multi-process topology, because a behaviour such as routing or load
     balancing cannot be proven by a single-process test however green it is.
+  limitation_short: "Tested but not provisioned in production; informational in CI, and a skip is reported as a skip."
   public_limitation: >-
     This tier is tested but not provisioned in production, and it is informational
     in CI rather than blocking. A skipped run is reported as skipped, never as
@@ -498,6 +520,7 @@ capabilities:
     A deployment is verified by checking that the specific requested change is
     actually observable in production, not by a successful HTTP status or a
     successful deploy log.
+  limitation_short: "Deployment is scripted but triggered by hand; there is no automated continuous delivery."
   public_limitation: >-
     Deployment is scripted but triggered by hand. There is no automated
     continuous delivery behind this.

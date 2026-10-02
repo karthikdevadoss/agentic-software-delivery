@@ -319,3 +319,60 @@ class GeneratedArtifactsMatchTheRegistryTestCase(unittest.TestCase):
         with patch.object(pr, "load_surface", return_value=broken):
             with self.assertRaises(ValueError):
                 bps.build()
+
+
+class ShortLimitationMutationTestCase(unittest.TestCase):
+    """Sprint 18 release closure: /proof collapses each capability, and the
+    COLLAPSED card shows only limitation_short. That makes the short form the
+    text most visitors actually read, so it gets the same seeded-mutation
+    treatment as every other check here."""
+
+    def setUp(self):
+        self.surface = copy.deepcopy(pr.load_surface())
+        self.capabilities = copy.deepcopy(pr.load_capabilities())
+        self.routes = pr._registered_get_paths()
+
+    def _problems(self):
+        return "\n".join(pr.validate(self.surface, self.capabilities, routes=self.routes))
+
+    def _first(self):
+        return self.surface["capabilities"][0]
+
+    def test_control_the_unmutated_copy_passes(self):
+        self.assertEqual(pr.validate(self.surface, self.capabilities, routes=self.routes), [])
+
+    def test_a_missing_short_limitation_is_detected(self):
+        del self._first()["limitation_short"]
+        self.assertIn("required field 'limitation_short' is missing", self._problems())
+
+    def test_an_overlong_short_limitation_is_detected(self):
+        self._first()["limitation_short"] = "x" * (pr.MAX_SHORT_LIMITATION + 1)
+        self.assertIn("it has to fit a collapsed card", self._problems())
+
+    def test_a_trivially_short_limitation_is_detected(self):
+        self._first()["limitation_short"] = "Some limits."
+        self.assertIn("a boundary that short is decoration", self._problems())
+
+    def test_a_short_limitation_copied_verbatim_from_the_long_one_is_detected(self):
+        entry = self._first()
+        entry["limitation_short"] = " ".join(entry["public_limitation"].split())
+        self.assertIn("nothing was actually compressed", self._problems())
+
+    def test_a_paused_experiment_whose_SHORT_limitation_omits_paused_is_detected(self):
+        """The most dangerous single mutation on this page: the collapsed card
+        is the only thing many readers see, so a paused experiment whose SHORT
+        limitation reads like a finished product is a real misrepresentation
+        even while the full limitation underneath is still honest."""
+        for entry in self.surface["capabilities"]:
+            if entry["public_status"] == "EXPERIMENTAL_PAUSED":
+                entry["limitation_short"] = "A multi-model verification engine with strong engineering."
+        problems = self._problems()
+        self.assertIn("limitation_short never says", problems)
+        self.assertIn("the collapsed card shows only the short form", problems)
+
+    def test_every_real_short_limitation_is_within_bounds(self):
+        for entry in self.surface["capabilities"]:
+            short = entry["limitation_short"]
+            with self.subTest(capability=entry["capability_id"]):
+                self.assertLessEqual(len(short), pr.MAX_SHORT_LIMITATION)
+                self.assertGreaterEqual(len(short), pr.MIN_SHORT_LIMITATION)

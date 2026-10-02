@@ -17,7 +17,15 @@ main#sessions-main { max-width: var(--shell); }
 }
 .session-row:hover { border-color: var(--accent); }
 .session-row .row-top { display: flex; justify-content: space-between; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
-.session-row .goal { font-size: 0.88rem; color: var(--text); margin-top: 0.35rem; }
+/* Sprint 18: measured, not guessed. At 390px this page's documentScrollWidth
+   was 435 against a 390 viewport. No element's RIGHT edge exceeded the
+   viewport -- the overflow came from unbreakable tokens INSIDE narrow
+   elements (a repo path like docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml, a
+   Java FQCN like org.postgresql.util.PSQLException): no spaces, and the
+   default overflow-wrap:normal refuses to break inside a word, so one token
+   set the width of the document. Same root cause as the /proof page's own
+   390px overflow earlier in this sprint -- third occurrence of one cause. */
+.session-row .goal { font-size: 0.88rem; color: var(--text); margin-top: 0.35rem; overflow-wrap: anywhere; }
 .session-row .meta { display: flex; flex-wrap: wrap; gap: 0.8rem; color: var(--muted); font-size: 0.8rem; margin-top: 0.35rem; }
 .session-row .score { font-weight: 700; }
 .session-row .score.high { color: var(--green); }

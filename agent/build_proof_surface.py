@@ -127,9 +127,16 @@ PROOF_CSS = """\
     font: 17px/1.62 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
-  .wrap { max-width: 1200px; margin: 0 auto; padding: 0 32px; }
+  /* A5. The shell was 1200px, which left 720px of a 1920 screen empty. It is
+     now 1400, and the capability list goes two-up once there is room for two
+     readable columns. Prose keeps its own measure independently: a wide shell
+     with a narrow text measure, never a wide shell with 1400px-long sentences.
+     Each column at 1400 is ~670px and the prose inside it caps at 58ch, so
+     widening the container cannot widen a line of text. */
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 0 32px; }
   p, li, dd { max-width: var(--prose); }
-  .routes, .routes > *, .cap, .cap > *, .caphead, .dests { max-width: none; }
+  .routes, .routes > *, .cap, .cap > *, .caphead, .dests, .caplist,
+  .cap summary, .cap .capbody { max-width: none; }
   a { color: var(--accent); }
   a:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 
@@ -170,13 +177,37 @@ PROOF_CSS = """\
   .route ol { margin: 0; padding-left: 1.2rem; font-size: .93rem; }
   .route li { margin-bottom: 4px; max-width: none; }
 
-  /* One capability. */
-  .cap { background: var(--card); border: 1px solid var(--line); border-radius: 10px;
-         padding: 20px 22px; margin-bottom: 14px; }
+  /* A3. One capability, collapsed by default.
+     Uses native <details>/<summary>: no JavaScript, keyboard-operable and
+     screen-reader-announced for free, and it still renders its content with JS
+     disabled -- which e2e/home.spec.js already asserts for the home page and is
+     the right default for a page whose whole purpose is that a stranger can
+     check things.
+     What stays VISIBLE when collapsed: name, status, the proof statement, and a
+     one-line limitation. The limitation is deliberately NOT hidden. An honest
+     boundary is part of the credibility signal, so hiding it behind a click
+     would damage the thing this page exists to do, and would also let a reader
+     leave with the claim and without its scope. What moves BEHIND the
+     disclosure is depth: full evidence, the full limitation, source paths and
+     the registry id -- a recruiter should not have to read implementation paths
+     by default. */
+  .caplist { display: grid; gap: 14px; }
+  .cap { background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
+  .cap summary { padding: 18px 20px; cursor: pointer; list-style: none; }
+  .cap summary::-webkit-details-marker { display: none; }
+  .cap[open] summary { border-bottom: 1px solid var(--line); }
+  .cap summary:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }
   .caphead { display: flex; flex-wrap: wrap; gap: 10px; align-items: baseline;
              justify-content: space-between; margin-bottom: 8px; }
   .cap h3 { margin: 0; font-size: 1.08rem; letter-spacing: -.01em; }
   .cap .claim { margin: 0 0 10px; }
+  .cap .lim1 { margin: 0 0 10px; font-size: .93rem; color: #6b7178; }
+  .cap .lim1 b { color: var(--ink); font-weight: 650; }
+  .disclose { display: inline-block; font-size: .9rem; font-weight: 650;
+              color: var(--accent); }
+  .cap summary:hover .disclose { text-decoration: underline; }
+  .cap[open] .disclose::after { content: " \2014 hide"; font-weight: 500; color: var(--soft); }
+  .cap .capbody { padding: 16px 20px 20px; }
   .cap dl { margin: 0; }
   .cap dt { font-size: .72rem; text-transform: uppercase; letter-spacing: .07em;
             color: var(--soft); font-weight: 700; margin-top: 10px; }
@@ -207,16 +238,28 @@ PROOF_CSS = """\
   .st-documented          { color: #4a4336; background: #f4f0e7; border-color: #ddd4c2; }
   .st-experimental-paused { color: #6b4a12; background: #f8f1e3; border-color: #e3d0ab; }
 
-  .note { background: #f4f2ef; border: 1px solid var(--line); border-left: 3px solid var(--accent);
-          border-radius: 8px; padding: 16px 18px; margin: 0 0 8px; }
-  .note p { margin: 0 0 8px; }
-  .note p:last-child { margin: 0; }
+  /* A4. The one sentence a recruiter must read, then the ownership separation,
+     then the mechanics behind a disclosure. */
+  .claimline { font-size: 1.12rem; font-weight: 600; margin: 0 0 10px;
+               max-width: 62ch; }
+  .ownline { color: var(--soft); margin: 0 0 14px; }
+  .how { border: 1px solid var(--line); border-radius: 8px; background: #f4f2ef; }
+  .how summary { padding: 12px 16px; cursor: pointer; list-style: none; }
+  .how summary::-webkit-details-marker { display: none; }
+  .how summary:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }
+  .how[open] summary { border-bottom: 1px solid var(--line); }
+  .how .howbody { padding: 14px 16px 16px; }
+  .how .howbody p { margin: 0 0 10px; }
+  .how .howbody p:last-child { margin: 0; }
 
   footer { margin: 56px 0 40px; padding-top: 18px; border-top: 1px solid var(--line);
            color: var(--soft); font-size: .88rem; }
   .btn { display: inline-block; background: var(--accent); color: #fff; text-decoration: none;
          font-weight: 650; padding: 11px 18px; border-radius: 8px; font-size: .95rem; }
 
+  @media (min-width: 1180px) {
+    .caplist { grid-template-columns: 1fr 1fr; align-items: start; }
+  }
   @media (max-width: 860px) {
     .routes { grid-template-columns: 1fr; }
   }
@@ -288,20 +331,32 @@ def render_proof_page(surface: dict, capabilities: dict) -> str:
       "limitation that goes with it.</p>")
     a("  </header>")
     a("")
-    a('  <div class="note">')
-    a("    <p>Each claim below is generated from a registry, not written here by hand. A "
-      "build check refuses the registry if a claim has no evidence, if a destination "
-      "does not resolve, or if a status is higher than the verification actually "
-      "recorded for it &mdash; so a claim on this page cannot quietly outgrow its "
-      "evidence.</p>")
-    a("    <p>What that check does <b>not</b> do is read a claim and decide whether it is "
-      "true. A script decides whether a claim has evidence, a destination and a stated "
-      "limitation. A person decides whether it is true. Mechanising the second would "
-      "read as stronger and would be worse, because a confident false pass is more "
-      "dangerous than no check at all.</p>")
-    a("    <p>This platform is my own system, which I build and operate myself. It is not "
-      "an employer&rsquo;s product, and the traffic on it is mine.</p>")
-    a("  </div>")
+    # A4. One sentence first. The mechanics of HOW verification works are
+    # genuinely interesting and are the wrong thing to put in front of a
+    # recruiter's first five seconds, so they sit behind a disclosure.
+    a('  <p class="claimline">Every capability shown here is tied to inspectable '
+      "evidence and an explicit verification level.</p>")
+    a('  <p class="ownline">This platform is my own system, which I build and operate '
+      "myself. It is not an employer&rsquo;s product, and the traffic on it is mine.</p>")
+    a("")
+    a('  <details class="how">')
+    a("    <summary><span class=\"disclose\">How verification works</span></summary>")
+    a('    <div class="howbody">')
+    a("      <p>Each claim on this page is generated from a registry, not written here by "
+      "hand. A build check refuses the registry if a claim has no evidence, if a "
+      "destination does not resolve, or if a status is higher than the verification "
+      "actually recorded for that capability &mdash; so a claim cannot quietly outgrow "
+      "its evidence, and the page cannot drift from the registry, because regenerating "
+      "it is enforced by a test.</p>")
+    a("      <p>What that check deliberately does <b>not</b> do is read a claim and decide "
+      "whether it is true. A script decides whether a claim has evidence, a destination "
+      "and a stated limitation. A person decides whether it is true. Mechanising the "
+      "second would read as stronger and would be worse: a confident false pass from a "
+      "truth-checker is more dangerous than no truth-checker at all.</p>")
+    a("      <p>The four verification levels are defined below, and every capability "
+      "carries its limitation in the open rather than behind this disclosure.</p>")
+    a("    </div>")
+    a("  </details>")
     a("")
 
     # --- status legend ---
@@ -329,37 +384,53 @@ def render_proof_page(surface: dict, capabilities: dict) -> str:
     a("")
 
     def capability_block(entry: dict) -> None:
+        """A3. Collapsed by default. Visible when collapsed: name, status, the
+        proof statement, and the one-line limitation. Behind the disclosure:
+        full evidence, the full limitation, source paths and the registry id.
+
+        The limitation is the one thing that is NOT hidden, in either form. A
+        page whose argument is "the claims are bounded and you can check them"
+        cannot put the bound behind a click -- a reader who stops at the
+        collapsed card would leave with the claim and without its scope, which
+        is the exact failure this surface was built to prevent."""
         cid = entry["capability_id"]
         registry_entry = capabilities.get(cid, {})
         status = entry["public_status"]
-        a('    <div class="cap">')
-        a('      <div class="caphead">')
-        a(f'        <h3>{esc(entry["headline"])}</h3>')
-        a(f'        <span class="pill {_status_class(status)}">'
+        a('    <details class="cap">')
+        a("      <summary>")
+        a('        <div class="caphead">')
+        a(f'          <h3>{esc(entry["headline"])}</h3>')
+        a(f'          <span class="pill {_status_class(status)}">'
           f'{esc(_status_label(surface, status))}</span>')
-        a("      </div>")
-        a(f'      <p class="claim">{esc(entry["public_claim"])}</p>')
-        a("      <dl>")
-        a("        <dt>Evidence</dt>")
-        a(f'        <dd>{esc(entry["evidence_summary"])}</dd>')
-        a("        <dt>Limitation</dt>")
-        a(f'        <dd>{esc(entry["public_limitation"])}</dd>')
+        a("        </div>")
+        a(f'        <p class="claim">{esc(entry["public_claim"])}</p>')
+        a(f'        <p class="lim1"><b>Limitation:</b> '
+          f'{esc(entry["limitation_short"])}</p>')
+        a('        <span class="disclose">View evidence</span>')
+        a("      </summary>")
+        a('      <div class="capbody">')
+        a("        <dl>")
+        a("          <dt>Evidence</dt>")
+        a(f'          <dd>{esc(entry["evidence_summary"])}</dd>')
+        a("          <dt>Limitation in full</dt>")
+        a(f'          <dd>{esc(entry["public_limitation"])}</dd>')
         modules = registry_entry.get("relevant_modules") or []
         if modules:
-            a("        <dt>In the source</dt>")
-            a("        <dd>" + ", ".join(f"<code>{esc(m)}</code>" for m in modules) + "</dd>")
-        a("        <dt>Go and check it</dt>")
-        a('        <dd><span class="dests">')
+            a("          <dt>In the source</dt>")
+            a("          <dd>" + ", ".join(f"<code>{esc(m)}</code>" for m in modules) + "</dd>")
+        a("          <dt>Go and check it</dt>")
+        a('          <dd><span class="dests">')
         for destination in entry["destinations"]:
-            a(f'          <a href="{esc(destination["href"])}">'
+            a(f'            <a href="{esc(destination["href"])}">'
               f'{esc(destination["label"])} &rarr;</a>')
-        a("        </span></dd>")
-        a("      </dl>")
-        a(f'      <p class="cid">Registry id: <code>{esc(cid)}</code></p>')
-        a("    </div>")
+        a("          </span></dd>")
+        a("        </dl>")
+        a(f'        <p class="cid">Registry id: <code>{esc(cid)}</code></p>')
+        a("      </div>")
+        a("    </details>")
 
     a('  <h2 class="sec">The strongest evidence</h2>')
-    a("  <div>")
+    a('  <div class="caplist">')
     for entry in primary:
         capability_block(entry)
     a("  </div>")
@@ -367,7 +438,7 @@ def render_proof_page(surface: dict, capabilities: dict) -> str:
 
     if secondary:
         a('  <h2 class="sec">Also verifiable</h2>')
-        a("  <div>")
+        a('  <div class="caplist">')
         for entry in secondary:
             capability_block(entry)
         a("  </div>")

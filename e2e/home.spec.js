@@ -63,7 +63,11 @@ test.describe("Home page — identity and claims", () => {
   test("the first screen names the person, the role and the separation", async ({ page }) => {
     await page.goto("/");
     await expect(page.locator("h1")).toHaveText("Karthikeyan Devadoss");
-    await expect(page.locator(".role")).toContainText("Java, Spring & Agentic AI");
+    // Sprint 18 reconciliation: positioning now LEADS with AI/agentic and names
+    // backend as the depth, per the Owner's current positioning. Both halves are
+    // asserted, because the whole point of the line is the combination.
+    await expect(page.locator(".role")).toContainText("AI / Agentic AI Engineer");
+    await expect(page.locator(".role")).toContainText("Java & Spring backend depth");
     await expect(page.locator(".meta")).toContainText("Berlin");
     // The NRG separation is the single most important truthfulness sentence
     // on the page: the platform must never read as an employer's product.

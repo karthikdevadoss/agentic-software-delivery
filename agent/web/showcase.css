@@ -60,7 +60,15 @@
 .sc-status-not_production_provisioned { background: #2a2e3a; color: var(--muted); }
 
 .sc-talking-points { padding-left: 1.1rem; margin: 0; }
-.sc-talking-points li { margin-bottom: 0.85rem; line-height: 1.6; font-size: 0.9rem; color: var(--text); }
+/* Sprint 18: measured, not guessed. At 390px this page's documentScrollWidth
+   was 435 against a 390 viewport. No element's RIGHT edge exceeded the
+   viewport -- the overflow came from unbreakable tokens INSIDE narrow
+   elements (a repo path like docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml, a
+   Java FQCN like org.postgresql.util.PSQLException): no spaces, and the
+   default overflow-wrap:normal refuses to break inside a word, so one token
+   set the width of the document. Same root cause as the /proof page's own
+   390px overflow earlier in this sprint -- third occurrence of one cause. */
+.sc-talking-points li { margin-bottom: 0.85rem; line-height: 1.6; font-size: 0.9rem; color: var(--text); overflow-wrap: anywhere; }
 
 .sc-evidence-list { list-style: none; padding: 0; margin: 0; }
 .sc-evidence-list li { padding: 0.5rem 0; border-bottom: 1px solid var(--border); }
@@ -149,7 +157,7 @@
   font-weight: 700;
   margin-bottom: 0.25rem;
 }
-.sc-story-field-value { font-size: 0.9rem; line-height: 1.6; color: var(--text); }
+.sc-story-field-value { font-size: 0.9rem; line-height: 1.6; color: var(--text); overflow-wrap: anywhere; }
 
 .sc-story-evidence { margin-top: 0.75rem; }
 .sc-story-evidence .sc-evidence-list { margin-top: 0.4rem; }
@@ -201,7 +209,7 @@
 .sc-det-list li:last-child { border-bottom: none; }
 .sc-det-claim { font-weight: 700; font-size: 0.88rem; color: var(--text); }
 .sc-det-mechanism { font-size: 0.85rem; color: var(--muted); margin-top: 0.25rem; line-height: 1.55; }
-.sc-det-evidence { font-size: 12.5px; color: var(--accent); margin-top: 0.3rem; }
+.sc-det-evidence { font-size: 12.5px; color: var(--accent); margin-top: 0.3rem; overflow-wrap: anywhere; }
 
 @media (max-width: 640px) {
   .sc-story-compact { flex-direction: column; }

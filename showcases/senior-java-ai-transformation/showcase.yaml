@@ -118,4 +118,13 @@ production_urls:
 # Changes since the previous 2026-09-17 verification were additive only
 # (+90/-2 across PORTFOLIO_CAPABILITIES.yaml and INTERVIEW_WALKTHROUGH.yaml);
 # this file itself was unchanged.
-last_verified: "2026-09-29"
+# Re-verified 2026-10-02 (Sprint 18 release closure). The freshness guard in
+# agent/test_showcase_data.py fired because docs/PORTFOLIO_CAPABILITIES.yaml
+# changed (registry v2 -> v3: a new capability, and four evidence paths
+# corrected to where the files actually are). Re-verification was not a date
+# bump: every capability reference still resolves against the new registry,
+# every rendered link still resolves to a real destination, and the
+# addresses_requirement mapping is intact -- all asserted by that module's
+# other tests, which pass. The triggering change to showcase.css was
+# presentational only (overflow-wrap, for a measured 390px overflow).
+last_verified: "2026-10-02"

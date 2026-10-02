@@ -86,7 +86,16 @@ FORBIDDEN_CLAIMS = [
     ("Spring AI", r"\bspring ai\b"),
     ("Kafka", r"\bkafka\b"),
     ("Northern Trust", r"\bnorthern trust\b"),
+    # Sprint 18: the digit-only version of this pattern was evaded by MY OWN
+    # draft lede, which said "Fifteen years of enterprise backend work" -- a
+    # figure published nowhere in this repository's claim authority. The regex
+    # would have let it through because the numeral was spelled out. It was
+    # caught by reading the claim boundary, not by the gate, and that is the gap.
     ("a years-of-experience figure", r"\b\d{1,2}\+?\s*years\b"),
+    ("a spelled-out years-of-experience figure",
+     r"\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|"
+     r"thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty)\s*"
+     r"(\+|plus)?\s*years\b"),
     ("platform age", r"\b(built|created|running)\s+(it\s+)?(over|for|in)\s+(the\s+)?(past\s+)?\w+\s+(weeks?|months?|years?)\b"),
     ("commit counts", r"\b\d{2,}\s+commits\b"),
     ("raw total test counts as marketing", r"\b\d{3,}\s+tests\b"),

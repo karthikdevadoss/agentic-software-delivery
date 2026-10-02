@@ -29,9 +29,16 @@
     font: 17px/1.62 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
-  .wrap { max-width: 1200px; margin: 0 auto; padding: 0 32px; }
+  /* A5. The shell was 1200px, which left 720px of a 1920 screen empty. It is
+     now 1400, and the capability list goes two-up once there is room for two
+     readable columns. Prose keeps its own measure independently: a wide shell
+     with a narrow text measure, never a wide shell with 1400px-long sentences.
+     Each column at 1400 is ~670px and the prose inside it caps at 58ch, so
+     widening the container cannot widen a line of text. */
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 0 32px; }
   p, li, dd { max-width: var(--prose); }
-  .routes, .routes > *, .cap, .cap > *, .caphead, .dests { max-width: none; }
+  .routes, .routes > *, .cap, .cap > *, .caphead, .dests, .caplist,
+  .cap summary, .cap .capbody { max-width: none; }
   a { color: var(--accent); }
   a:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 
@@ -72,13 +79,37 @@
   .route ol { margin: 0; padding-left: 1.2rem; font-size: .93rem; }
   .route li { margin-bottom: 4px; max-width: none; }
 
-  /* One capability. */
-  .cap { background: var(--card); border: 1px solid var(--line); border-radius: 10px;
-         padding: 20px 22px; margin-bottom: 14px; }
+  /* A3. One capability, collapsed by default.
+     Uses native <details>/<summary>: no JavaScript, keyboard-operable and
+     screen-reader-announced for free, and it still renders its content with JS
+     disabled -- which e2e/home.spec.js already asserts for the home page and is
+     the right default for a page whose whole purpose is that a stranger can
+     check things.
+     What stays VISIBLE when collapsed: name, status, the proof statement, and a
+     one-line limitation. The limitation is deliberately NOT hidden. An honest
+     boundary is part of the credibility signal, so hiding it behind a click
+     would damage the thing this page exists to do, and would also let a reader
+     leave with the claim and without its scope. What moves BEHIND the
+     disclosure is depth: full evidence, the full limitation, source paths and
+     the registry id -- a recruiter should not have to read implementation paths
+     by default. */
+  .caplist { display: grid; gap: 14px; }
+  .cap { background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
+  .cap summary { padding: 18px 20px; cursor: pointer; list-style: none; }
+  .cap summary::-webkit-details-marker { display: none; }
+  .cap[open] summary { border-bottom: 1px solid var(--line); }
+  .cap summary:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }
   .caphead { display: flex; flex-wrap: wrap; gap: 10px; align-items: baseline;
              justify-content: space-between; margin-bottom: 8px; }
   .cap h3 { margin: 0; font-size: 1.08rem; letter-spacing: -.01em; }
   .cap .claim { margin: 0 0 10px; }
+  .cap .lim1 { margin: 0 0 10px; font-size: .93rem; color: #6b7178; }
+  .cap .lim1 b { color: var(--ink); font-weight: 650; }
+  .disclose { display: inline-block; font-size: .9rem; font-weight: 650;
+              color: var(--accent); }
+  .cap summary:hover .disclose { text-decoration: underline; }
+  .cap[open] .disclose::after { content: " 4 hide"; font-weight: 500; color: var(--soft); }
+  .cap .capbody { padding: 16px 20px 20px; }
   .cap dl { margin: 0; }
   .cap dt { font-size: .72rem; text-transform: uppercase; letter-spacing: .07em;
             color: var(--soft); font-weight: 700; margin-top: 10px; }
@@ -109,16 +140,28 @@
   .st-documented          { color: #4a4336; background: #f4f0e7; border-color: #ddd4c2; }
   .st-experimental-paused { color: #6b4a12; background: #f8f1e3; border-color: #e3d0ab; }
 
-  .note { background: #f4f2ef; border: 1px solid var(--line); border-left: 3px solid var(--accent);
-          border-radius: 8px; padding: 16px 18px; margin: 0 0 8px; }
-  .note p { margin: 0 0 8px; }
-  .note p:last-child { margin: 0; }
+  /* A4. The one sentence a recruiter must read, then the ownership separation,
+     then the mechanics behind a disclosure. */
+  .claimline { font-size: 1.12rem; font-weight: 600; margin: 0 0 10px;
+               max-width: 62ch; }
+  .ownline { color: var(--soft); margin: 0 0 14px; }
+  .how { border: 1px solid var(--line); border-radius: 8px; background: #f4f2ef; }
+  .how summary { padding: 12px 16px; cursor: pointer; list-style: none; }
+  .how summary::-webkit-details-marker { display: none; }
+  .how summary:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }
+  .how[open] summary { border-bottom: 1px solid var(--line); }
+  .how .howbody { padding: 14px 16px 16px; }
+  .how .howbody p { margin: 0 0 10px; }
+  .how .howbody p:last-child { margin: 0; }
 
   footer { margin: 56px 0 40px; padding-top: 18px; border-top: 1px solid var(--line);
            color: var(--soft); font-size: .88rem; }
   .btn { display: inline-block; background: var(--accent); color: #fff; text-decoration: none;
          font-weight: 650; padding: 11px 18px; border-radius: 8px; font-size: .95rem; }
 
+  @media (min-width: 1180px) {
+    .caplist { grid-template-columns: 1fr 1fr; align-items: start; }
+  }
   @media (max-width: 860px) {
     .routes { grid-template-columns: 1fr; }
   }
@@ -141,11 +184,17 @@
     <p class="lede">Every engineering claim this site makes in public, with the status of its verification, somewhere you can go and check it, and the limitation that goes with it.</p>
   </header>
 
-  <div class="note">
-    <p>Each claim below is generated from a registry, not written here by hand. A build check refuses the registry if a claim has no evidence, if a destination does not resolve, or if a status is higher than the verification actually recorded for it &mdash; so a claim on this page cannot quietly outgrow its evidence.</p>
-    <p>What that check does <b>not</b> do is read a claim and decide whether it is true. A script decides whether a claim has evidence, a destination and a stated limitation. A person decides whether it is true. Mechanising the second would read as stronger and would be worse, because a confident false pass is more dangerous than no check at all.</p>
-    <p>This platform is my own system, which I build and operate myself. It is not an employer&rsquo;s product, and the traffic on it is mine.</p>
-  </div>
+  <p class="claimline">Every capability shown here is tied to inspectable evidence and an explicit verification level.</p>
+  <p class="ownline">This platform is my own system, which I build and operate myself. It is not an employer&rsquo;s product, and the traffic on it is mine.</p>
+
+  <details class="how">
+    <summary><span class="disclose">How verification works</span></summary>
+    <div class="howbody">
+      <p>Each claim on this page is generated from a registry, not written here by hand. A build check refuses the registry if a claim has no evidence, if a destination does not resolve, or if a status is higher than the verification actually recorded for that capability &mdash; so a claim cannot quietly outgrow its evidence, and the page cannot drift from the registry, because regenerating it is enforced by a test.</p>
+      <p>What that check deliberately does <b>not</b> do is read a claim and decide whether it is true. A script decides whether a claim has evidence, a destination and a stated limitation. A person decides whether it is true. Mechanising the second would read as stronger and would be worse: a confident false pass from a truth-checker is more dangerous than no truth-checker at all.</p>
+      <p>The four verification levels are defined below, and every capability carries its limitation in the open rather than behind this disclosure.</p>
+    </div>
+  </details>
 
   <h2 class="sec">How to read a status</h2>
   <ul class="legend">
@@ -189,351 +238,447 @@
   </div>
 
   <h2 class="sec">The strongest evidence</h2>
-  <div>
-    <div class="cap">
-      <div class="caphead">
-        <h3>An AI agent that cannot approve its own writes</h3>
-        <span class="pill st-live-verified">Live</span>
+  <div class="caplist">
+    <details class="cap">
+      <summary>
+        <div class="caphead">
+          <h3>An AI agent that cannot approve its own writes</h3>
+          <span class="pill st-live-verified">Live</span>
+        </div>
+        <p class="claim">A change proposed by the model is applied only after a person approves it, and the approval is tied to the exact file and content that was approved. The approve step is not something the model can call.</p>
+        <p class="lim1"><b>Limitation:</b> Covers writes through this platform only; not a general policy engine.</p>
+        <span class="disclose">View evidence</span>
+      </summary>
+      <div class="capbody">
+        <dl>
+          <dt>Evidence</dt>
+          <dd>Approval is bound to sha256(path, content) and re-checked at apply time. Tests prove that a content substitution and a path substitution after approval are each rejected, and that approve and reject are absent from the tool schemas by exact set membership.</dd>
+          <dt>Limitation in full</dt>
+          <dd>The boundary governs writes made through this platform&#x27;s own tools, scoped to three path prefixes and two file extensions. It is not a general-purpose policy engine, and it does not govern anything changed outside the platform.</dd>
+          <dt>In the source</dt>
+          <dd><code>agent/write_tools.py</code>, <code>agent/execution_tools.py</code>, <code>agent/build_tools.py</code></dd>
+          <dt>Go and check it</dt>
+          <dd><span class="dests">
+            <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/write_tools.py">How the boundary works &rarr;</a>
+            <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/test_write_tools.py">The tests that prove it &rarr;</a>
+            <a href="/workbench">Watch it run &rarr;</a>
+          </span></dd>
+        </dl>
+        <p class="cid">Registry id: <code>hitl-hash-bound-write-boundary</code></p>
       </div>
-      <p class="claim">A change proposed by the model is applied only after a person approves it, and the approval is tied to the exact file and content that was approved. The approve step is not something the model can call.</p>
-      <dl>
-        <dt>Evidence</dt>
-        <dd>Approval is bound to sha256(path, content) and re-checked at apply time. Tests prove that a content substitution and a path substitution after approval are each rejected, and that approve and reject are absent from the tool schemas by exact set membership.</dd>
-        <dt>Limitation</dt>
-        <dd>The boundary governs writes made through this platform&#x27;s own tools, scoped to three path prefixes and two file extensions. It is not a general-purpose policy engine, and it does not govern anything changed outside the platform.</dd>
-        <dt>In the source</dt>
-        <dd><code>agent/write_tools.py</code>, <code>agent/execution_tools.py</code>, <code>agent/build_tools.py</code></dd>
-        <dt>Go and check it</dt>
-        <dd><span class="dests">
-          <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/write_tools.py">How the boundary works &rarr;</a>
-          <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/test_write_tools.py">The tests that prove it &rarr;</a>
-          <a href="/workbench">Watch it run &rarr;</a>
-        </span></dd>
-      </dl>
-      <p class="cid">Registry id: <code>hitl-hash-bound-write-boundary</code></p>
-    </div>
-    <div class="cap">
-      <div class="caphead">
-        <h3>A workflow that survives a crash</h3>
-        <span class="pill st-live-verified">Live</span>
+    </details>
+    <details class="cap">
+      <summary>
+        <div class="caphead">
+          <h3>A workflow that survives a crash</h3>
+          <span class="pill st-live-verified">Live</span>
+        </div>
+        <p class="claim">Long-running work saves its progress as it goes, so it can pause for a human decision and continue after a restart without repeating anything it already did.</p>
+        <p class="lim1"><b>Limitation:</b> Mid-pipeline crash proven locally; in production only a restart while awaiting approval.</p>
+        <span class="disclose">View evidence</span>
+      </summary>
+      <div class="capbody">
+        <dl>
+          <dt>Evidence</dt>
+          <dd>Crash drill 22 of 22 in one run: a real child process killed after the git commit and before the checkpoint, resumed by a fresh process with exactly one commit and compile, test and verify completed. A corrupt checkpoint row is reported as CORRUPT rather than resumed.</dd>
+          <dt>Limitation in full</dt>
+          <dd>The crash drill&#x27;s process kills were performed locally. In production what has been demonstrated is a restart while the workflow was waiting for approval -- not a kill in the middle of the pipeline, because the pipeline completes in about five seconds and has no pause hook there.</dd>
+          <dt>In the source</dt>
+          <dd><code>agent/durable_workflow.py</code>, <code>agent/workflow_checkpointer.py</code>, <code>agent/workflow_drill.py</code>, <code>agent/test_durable_workflow.py</code></dd>
+          <dt>Go and check it</dt>
+          <dd><span class="dests">
+            <a href="/case-study/durable-agent">Read the case study &rarr;</a>
+            <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/durable_workflow.py">The workflow and its checkpointer &rarr;</a>
+            <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/workflow_drill.py">The crash drill &rarr;</a>
+          </span></dd>
+        </dl>
+        <p class="cid">Registry id: <code>durable-langgraph-workflow</code></p>
       </div>
-      <p class="claim">Long-running work saves its progress as it goes, so it can pause for a human decision and continue after a restart without repeating anything it already did.</p>
-      <dl>
-        <dt>Evidence</dt>
-        <dd>Crash drill 22 of 22 in one run: a real child process killed after the git commit and before the checkpoint, resumed by a fresh process with exactly one commit and compile, test and verify completed. A corrupt checkpoint row is reported as CORRUPT rather than resumed.</dd>
-        <dt>Limitation</dt>
-        <dd>The crash drill&#x27;s process kills were performed locally. In production what has been demonstrated is a restart while the workflow was waiting for approval -- not a kill in the middle of the pipeline, because the pipeline completes in about five seconds and has no pause hook there.</dd>
-        <dt>In the source</dt>
-        <dd><code>agent/durable_workflow.py</code>, <code>agent/workflow_checkpointer.py</code>, <code>agent/workflow_drill.py</code>, <code>agent/test_durable_workflow.py</code></dd>
-        <dt>Go and check it</dt>
-        <dd><span class="dests">
-          <a href="/case-study/durable-agent">Read the case study &rarr;</a>
-          <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/durable_workflow.py">The workflow and its checkpointer &rarr;</a>
-          <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/workflow_drill.py">The crash drill &rarr;</a>
-        </span></dd>
-      </dl>
-      <p class="cid">Registry id: <code>durable-langgraph-workflow</code></p>
-    </div>
-    <div class="cap">
-      <div class="caphead">
-        <h3>Retrieval that is measured, not assumed</h3>
-        <span class="pill st-tested-verified">Tested</span>
+    </details>
+    <details class="cap">
+      <summary>
+        <div class="caphead">
+          <h3>Retrieval that is measured, not assumed</h3>
+          <span class="pill st-tested-verified">Tested</span>
+        </div>
+        <p class="claim">Search quality is scored against a hand-labelled set of questions and expected answers, and the build fails if the scores drop below the recorded thresholds. The same read-only repository tools are also exposed over the Model Context Protocol so other AI clients can use them.</p>
+        <p class="lim1"><b>Limitation:</b> Local index over small corpora, no managed vector DB, no hybrid search or reranking.</p>
+        <span class="disclose">View evidence</span>
+      </summary>
+      <div class="capbody">
+        <dl>
+          <dt>Evidence</dt>
+          <dd>Measured baseline recall@3 0.833, recall@5 0.917, MRR 0.826, routing accuracy 1.0, security-case accuracy 1.0. The corpus expansion from 10 to 28 files was a disclosed precision/coverage trade-off, not a silent one.</dd>
+          <dt>Limitation in full</dt>
+          <dd>Retrieval is a local JSON index with a numpy cosine scan over small corpora, not a managed vector database, and there is no hybrid search or reranking. The MCP server runs locally rather than as a hosted service.</dd>
+          <dt>In the source</dt>
+          <dd><code>agent/rag_index.py</code>, <code>agent/mcp_server.py</code>, <code>agent/backend_rag_index.py</code>, <code>agent/eval_runner.py</code></dd>
+          <dt>Go and check it</dt>
+          <dd><span class="dests">
+            <a href="/ask-codebase">Ask the codebase yourself &rarr;</a>
+            <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/eval_runner.py">The evaluation gate &rarr;</a>
+            <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/mcp_server.py">The MCP server &rarr;</a>
+          </span></dd>
+        </dl>
+        <p class="cid">Registry id: <code>rag-mcp-embeddings</code></p>
       </div>
-      <p class="claim">Search quality is scored against a hand-labelled set of questions and expected answers, and the build fails if the scores drop below the recorded thresholds. The same read-only repository tools are also exposed over the Model Context Protocol so other AI clients can use them.</p>
-      <dl>
-        <dt>Evidence</dt>
-        <dd>Measured baseline recall@3 0.833, recall@5 0.917, MRR 0.826, routing accuracy 1.0, security-case accuracy 1.0. The corpus expansion from 10 to 28 files was a disclosed precision/coverage trade-off, not a silent one.</dd>
-        <dt>Limitation</dt>
-        <dd>Retrieval is a local JSON index with a numpy cosine scan over small corpora, not a managed vector database, and there is no hybrid search or reranking. The MCP server runs locally rather than as a hosted service.</dd>
-        <dt>In the source</dt>
-        <dd><code>agent/rag_index.py</code>, <code>agent/mcp_server.py</code>, <code>agent/backend_rag_index.py</code>, <code>agent/eval_runner.py</code></dd>
-        <dt>Go and check it</dt>
-        <dd><span class="dests">
-          <a href="/ask-codebase">Ask the codebase yourself &rarr;</a>
-          <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/eval_runner.py">The evaluation gate &rarr;</a>
-          <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/mcp_server.py">The MCP server &rarr;</a>
-        </span></dd>
-      </dl>
-      <p class="cid">Registry id: <code>rag-mcp-embeddings</code></p>
-    </div>
-    <div class="cap">
-      <div class="caphead">
-        <h3>One model boundary, with a kill switch</h3>
-        <span class="pill st-live-verified">Live</span>
+    </details>
+    <details class="cap">
+      <summary>
+        <div class="caphead">
+          <h3>One model boundary, with a kill switch</h3>
+          <span class="pill st-live-verified">Live</span>
+        </div>
+        <p class="claim">Every call to a language model goes through one place, which checks what the call is for and can be switched off entirely. A test fails the build if any code tries to bypass it.</p>
+        <p class="lim1"><b>Limitation:</b> Single provider; no multi-provider routing or failover.</p>
+        <span class="disclose">View evidence</span>
+      </summary>
+      <div class="capbody">
+        <dl>
+          <dt>Evidence</dt>
+          <dd>An enforcement test fails the build on any direct SDK import outside the gateway -- it caught the first version of the Standing Interview importing the SDK directly. A denial is reported as its own state rather than returned as an empty answer.</dd>
+          <dt>Limitation in full</dt>
+          <dd>It is a single-provider boundary. Multi-provider routing and failover are not implemented, and the purpose allowlist is a fixed list rather than a policy language.</dd>
+          <dt>In the source</dt>
+          <dd><code>agent/reasoning_gateway.py</code>, <code>agent/test_reasoning_gateway.py</code>, <code>agent/test_reasoning_gateway_enforcement.py</code></dd>
+          <dt>Go and check it</dt>
+          <dd><span class="dests">
+            <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/reasoning_gateway.py">The gateway &rarr;</a>
+            <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/test_reasoning_gateway_enforcement.py">The test that enforces it &rarr;</a>
+            <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/ZERO_LLM_MODE_PROOF.md">Proof the switch really disables everything &rarr;</a>
+          </span></dd>
+        </dl>
+        <p class="cid">Registry id: <code>reasoning-gateway-kill-switch</code></p>
       </div>
-      <p class="claim">Every call to a language model goes through one place, which checks what the call is for and can be switched off entirely. A test fails the build if any code tries to bypass it.</p>
-      <dl>
-        <dt>Evidence</dt>
-        <dd>An enforcement test fails the build on any direct SDK import outside the gateway -- it caught the first version of the Standing Interview importing the SDK directly. A denial is reported as its own state rather than returned as an empty answer.</dd>
-        <dt>Limitation</dt>
-        <dd>It is a single-provider boundary. Multi-provider routing and failover are not implemented, and the purpose allowlist is a fixed list rather than a policy language.</dd>
-        <dt>In the source</dt>
-        <dd><code>agent/reasoning_gateway.py</code>, <code>agent/test_reasoning_gateway.py</code>, <code>agent/test_reasoning_gateway_enforcement.py</code></dd>
-        <dt>Go and check it</dt>
-        <dd><span class="dests">
-          <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/reasoning_gateway.py">The gateway &rarr;</a>
-          <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/test_reasoning_gateway_enforcement.py">The test that enforces it &rarr;</a>
-          <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/ZERO_LLM_MODE_PROOF.md">Proof the switch really disables everything &rarr;</a>
-        </span></dd>
-      </dl>
-      <p class="cid">Registry id: <code>reasoning-gateway-kill-switch</code></p>
-    </div>
-    <div class="cap">
-      <div class="caphead">
-        <h3>Every step and every model call is recorded</h3>
-        <span class="pill st-live-verified">Live</span>
+    </details>
+    <details class="cap">
+      <summary>
+        <div class="caphead">
+          <h3>Every step and every model call is recorded</h3>
+          <span class="pill st-live-verified">Live</span>
+        </div>
+        <p class="claim">Every meaningful step and every model call is written to a durable log, including real token counts. If the log&#x27;s database is unreachable the events are held locally and sent later rather than lost.</p>
+        <p class="lim1"><b>Limitation:</b> Token and cost shown only where the provider returns them, never estimated; my own traffic, not production load.</p>
+        <span class="disclose">View evidence</span>
+      </summary>
+      <div class="capbody">
+        <dl>
+          <dt>Evidence</dt>
+          <dd>14 focused tests against the live remote database covering insert ordering, duplicate retry, outage spooling, spool sync, pre-terminal-crash durability and secret redaction.</dd>
+          <dt>Limitation in full</dt>
+          <dd>Token and cost figures are real where the provider returns them and are labelled unavailable where it does not -- browser and subscription usage has no token data, and an unavailable figure is never shown as a zero or an estimate. This is one person&#x27;s own traffic, not production load.</dd>
+          <dt>In the source</dt>
+          <dd><code>agent/event_ledger.py</code></dd>
+          <dt>Go and check it</dt>
+          <dd><span class="dests">
+            <a href="/usage">Open the telemetry view &rarr;</a>
+            <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/event_ledger.py">The ledger &rarr;</a>
+          </span></dd>
+        </dl>
+        <p class="cid">Registry id: <code>durable-event-ledger</code></p>
       </div>
-      <p class="claim">Every meaningful step and every model call is written to a durable log, including real token counts. If the log&#x27;s database is unreachable the events are held locally and sent later rather than lost.</p>
-      <dl>
-        <dt>Evidence</dt>
-        <dd>14 focused tests against the live remote database covering insert ordering, duplicate retry, outage spooling, spool sync, pre-terminal-crash durability and secret redaction.</dd>
-        <dt>Limitation</dt>
-        <dd>Token and cost figures are real where the provider returns them and are labelled unavailable where it does not -- browser and subscription usage has no token data, and an unavailable figure is never shown as a zero or an estimate. This is one person&#x27;s own traffic, not production load.</dd>
-        <dt>In the source</dt>
-        <dd><code>agent/event_ledger.py</code></dd>
-        <dt>Go and check it</dt>
-        <dd><span class="dests">
-          <a href="/usage">Open the telemetry view &rarr;</a>
-          <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/event_ledger.py">The ledger &rarr;</a>
-        </span></dd>
-      </dl>
-      <p class="cid">Registry id: <code>durable-event-ledger</code></p>
-    </div>
-    <div class="cap">
-      <div class="caphead">
-        <h3>A real Java and Spring system underneath</h3>
-        <span class="pill st-live-verified">Live</span>
+    </details>
+    <details class="cap">
+      <summary>
+        <div class="caphead">
+          <h3>A real Java and Spring system underneath</h3>
+          <span class="pill st-live-verified">Live</span>
+        </div>
+        <p class="claim">The platform does its engineering work on a genuine Java 21 / Spring Boot application with REST and GraphQL and real PostgreSQL with versioned migrations -- deliberately kept separate from the platform itself, so the AI work is performed on a real system rather than on a demo built to flatter it.</p>
+        <p class="lim1"><b>Limitation:</b> Enterprise-shaped but no real users or load; messaging, cache and several services are tested, not provisioned.</p>
+        <span class="disclose">View evidence</span>
+      </summary>
+      <div class="capbody">
+        <dl>
+          <dt>Evidence</dt>
+          <dd>Running in production and openable. Real PostgreSQL via Testcontainers in CI, Flyway migration history, and a GitHub Actions pipeline with ten blocking jobs across the platform and the application.</dd>
+          <dt>Limitation in full</dt>
+          <dd>It is a realistic enterprise-shaped application, not a system with real users or real load. Several parts are implemented and tested but NOT provisioned in production -- the event-outbox messaging, the cache, and several services in the six-service decomposition -- and none of those is claimed above.</dd>
+          <dt>In the source</dt>
+          <dd><code>app/src/main/java/com/example/customer/controller/CustomerController.java</code>, <code>app/src/main/java/com/example/customer/exception/GlobalExceptionHandler.java</code></dd>
+          <dt>Go and check it</dt>
+          <dd><span class="dests">
+            <a href="https://agentic-delivery-customer-app-production.up.railway.app">Open the running Java application &rarr;</a>
+            <a href="https://github.com/karthikdevadoss/agentic-software-delivery/tree/master/app/src/main/java/com/example/customer">The application source &rarr;</a>
+            <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/.github/workflows/ci.yml">The CI pipeline &rarr;</a>
+          </span></dd>
+        </dl>
+        <p class="cid">Registry id: <code>java-spring-rest-api</code></p>
       </div>
-      <p class="claim">The platform does its engineering work on a genuine Java 21 / Spring Boot application with REST and GraphQL and real PostgreSQL with versioned migrations -- deliberately kept separate from the platform itself, so the AI work is performed on a real system rather than on a demo built to flatter it.</p>
-      <dl>
-        <dt>Evidence</dt>
-        <dd>Running in production and openable. Real PostgreSQL via Testcontainers in CI, Flyway migration history, and a GitHub Actions pipeline with ten blocking jobs across the platform and the application.</dd>
-        <dt>Limitation</dt>
-        <dd>It is a realistic enterprise-shaped application, not a system with real users or real load. Several parts are implemented and tested but NOT provisioned in production -- the event-outbox messaging, the cache, and several services in the six-service decomposition -- and none of those is claimed above.</dd>
-        <dt>In the source</dt>
-        <dd><code>app/src/main/java/com/example/customer/controller/CustomerController.java</code>, <code>app/src/main/java/com/example/customer/exception/GlobalExceptionHandler.java</code></dd>
-        <dt>Go and check it</dt>
-        <dd><span class="dests">
-          <a href="https://agentic-delivery-customer-app-production.up.railway.app">Open the running Java application &rarr;</a>
-          <a href="https://github.com/karthikdevadoss/agentic-software-delivery/tree/master/app/src/main/java/com/example/customer">The application source &rarr;</a>
-          <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/.github/workflows/ci.yml">The CI pipeline &rarr;</a>
-        </span></dd>
-      </dl>
-      <p class="cid">Registry id: <code>java-spring-rest-api</code></p>
-    </div>
-    <div class="cap">
-      <div class="caphead">
-        <h3>An experiment that failed its own test, and was stopped</h3>
-        <span class="pill st-experimental-paused">Experimental / paused</span>
+    </details>
+    <details class="cap">
+      <summary>
+        <div class="caphead">
+          <h3>An experiment that failed its own test, and was stopped</h3>
+          <span class="pill st-experimental-paused">Experimental / paused</span>
+        </div>
+        <p class="claim">A multi-model cross-review engine was built to a decision rule fixed in advance, measured against frozen ground truth, and then paused when the evidence failed that rule. The product thesis is unproven. The strongest finding is about measurement rather than the product: every recent headline turned out to be produced by a defect in the evaluation system, in both directions.</p>
+        <p class="lim1"><b>Limitation:</b> PAUSED and the product thesis is UNPROVEN: zero genuine corrections demonstrated. Not an accuracy product.</p>
+        <span class="disclose">View evidence</span>
+      </summary>
+      <div class="capbody">
+        <dl>
+          <dt>Evidence</dt>
+          <dd>20 of 20 pre-registered cases run exactly once, 0 paid API calls, evidence integrity 16 of 16, mutation gate 19 killed and 0 survived, and an offline self-replay that reproduces the verdict with 0 differences and 0 model calls. 13 defects were found in the final sprint alone -- nine in the scorer, two in identity and routing that would have published a false agreement. The mechanical verdict and the Owner&#x27;s adjudication of the same frozen evidence differed, and both are preserved rather than reconciled.</dd>
+          <dt>Limitation in full</dt>
+          <dd>PAUSED, and the product thesis is UNPROVEN. It demonstrated zero genuine false-to-true corrections and zero genuine baseline false claims, so it must not be read as an accuracy product, as evidence that multiple models improve correctness, or as a partial success. It is evidence of experiment design and engineering judgement, nothing more.</dd>
+          <dt>In the source</dt>
+          <dd><code>docs/DEEP_CONSENSUS_CASE_STUDY.md</code>, <code>docs/DEEP_CONSENSUS_FINAL_CLOSURE_2026-10-02.md</code>, <code>docs/evidence/deep-consensus-sprint6/evidence-integrity-manifest.json</code>, <code>docs/evidence/deep-consensus-sprint6/sprint6-selfreplay-report.json</code></dd>
+          <dt>Go and check it</dt>
+          <dd><span class="dests">
+            <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/DEEP_CONSENSUS_CASE_STUDY.md">The one-page case study &rarr;</a>
+            <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/DEEP_CONSENSUS_FINAL_CLOSURE_2026-10-02.md">The full closing record &rarr;</a>
+            <a href="https://github.com/karthikdevadoss/agentic-software-delivery/tree/master/docs/evidence/deep-consensus-sprint6">The frozen evidence pack &rarr;</a>
+          </span></dd>
+        </dl>
+        <p class="cid">Registry id: <code>falsification-preregistered-negative-result</code></p>
       </div>
-      <p class="claim">A multi-model cross-review engine was built to a decision rule fixed in advance, measured against frozen ground truth, and then paused when the evidence failed that rule. The product thesis is unproven. The strongest finding is about measurement rather than the product: every recent headline turned out to be produced by a defect in the evaluation system, in both directions.</p>
-      <dl>
-        <dt>Evidence</dt>
-        <dd>20 of 20 pre-registered cases run exactly once, 0 paid API calls, evidence integrity 16 of 16, mutation gate 19 killed and 0 survived, and an offline self-replay that reproduces the verdict with 0 differences and 0 model calls. 13 defects were found in the final sprint alone -- nine in the scorer, two in identity and routing that would have published a false agreement. The mechanical verdict and the Owner&#x27;s adjudication of the same frozen evidence differed, and both are preserved rather than reconciled.</dd>
-        <dt>Limitation</dt>
-        <dd>PAUSED, and the product thesis is UNPROVEN. It demonstrated zero genuine false-to-true corrections and zero genuine baseline false claims, so it must not be read as an accuracy product, as evidence that multiple models improve correctness, or as a partial success. It is evidence of experiment design and engineering judgement, nothing more.</dd>
-        <dt>In the source</dt>
-        <dd><code>docs/DEEP_CONSENSUS_CASE_STUDY.md</code>, <code>docs/DEEP_CONSENSUS_FINAL_CLOSURE_2026-10-02.md</code>, <code>docs/evidence/deep-consensus-sprint6/evidence-integrity-manifest.json</code>, <code>docs/evidence/deep-consensus-sprint6/sprint6-selfreplay-report.json</code></dd>
-        <dt>Go and check it</dt>
-        <dd><span class="dests">
-          <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/DEEP_CONSENSUS_CASE_STUDY.md">The one-page case study &rarr;</a>
-          <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/DEEP_CONSENSUS_FINAL_CLOSURE_2026-10-02.md">The full closing record &rarr;</a>
-          <a href="https://github.com/karthikdevadoss/agentic-software-delivery/tree/master/docs/evidence/deep-consensus-sprint6">The frozen evidence pack &rarr;</a>
-        </span></dd>
-      </dl>
-      <p class="cid">Registry id: <code>falsification-preregistered-negative-result</code></p>
-    </div>
+    </details>
   </div>
 
   <h2 class="sec">Also verifiable</h2>
-  <div>
-    <div class="cap">
-      <div class="caphead">
-        <h3>The implementer does not certify its own work</h3>
-        <span class="pill st-tested-verified">Tested</span>
+  <div class="caplist">
+    <details class="cap">
+      <summary>
+        <div class="caphead">
+          <h3>The implementer does not certify its own work</h3>
+          <span class="pill st-tested-verified">Tested</span>
+        </div>
+        <p class="claim">A structurally separate evaluator re-verifies an AI-generated change against real evidence, and the implementer never gets the last word on whether its own change succeeded.</p>
+        <p class="lim1"><b>Limitation:</b> Same-model review is an independent evidence path, not an independent mind; shared blind spots remain.</p>
+        <span class="disclose">View evidence</span>
+      </summary>
+      <div class="capbody">
+        <dl>
+          <dt>Evidence</dt>
+          <dd>A deliberately seeded defect (a capitalisation mismatch) was independently caught with byte-exact evidence.</dd>
+          <dt>Limitation in full</dt>
+          <dd>A second instance of the same model is an independent evidence path, not an independent mind. It reliably catches unverified claims, skipped gates and absent observable effects; it shares blind spots with the implementer on subtle logic errors, and that residual risk is unsolved rather than managed.</dd>
+          <dt>In the source</dt>
+          <dd><code>.claude/agents/qa-evaluator.md</code>, <code>docs/ARCHITECTURE_V2_EVALUATION_PLAN.md</code></dd>
+          <dt>Go and check it</dt>
+          <dd><span class="dests">
+            <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/.claude/agents/qa-evaluator.md">The evaluator&#x27;s contract &rarr;</a>
+            <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/ARCHITECTURE_V2_EVALUATION_PLAN.md">The evaluation plan &rarr;</a>
+          </span></dd>
+        </dl>
+        <p class="cid">Registry id: <code>independent-qa-evaluator</code></p>
       </div>
-      <p class="claim">A structurally separate evaluator re-verifies an AI-generated change against real evidence, and the implementer never gets the last word on whether its own change succeeded.</p>
-      <dl>
-        <dt>Evidence</dt>
-        <dd>A deliberately seeded defect (a capitalisation mismatch) was independently caught with byte-exact evidence.</dd>
-        <dt>Limitation</dt>
-        <dd>A second instance of the same model is an independent evidence path, not an independent mind. It reliably catches unverified claims, skipped gates and absent observable effects; it shares blind spots with the implementer on subtle logic errors, and that residual risk is unsolved rather than managed.</dd>
-        <dt>In the source</dt>
-        <dd><code>.claude/agents/qa-evaluator.md</code>, <code>docs/ARCHITECTURE_V2_EVALUATION_PLAN.md</code></dd>
-        <dt>Go and check it</dt>
-        <dd><span class="dests">
-          <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/.claude/agents/qa-evaluator.md">The evaluator&#x27;s contract &rarr;</a>
-          <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/ARCHITECTURE_V2_EVALUATION_PLAN.md">The evaluation plan &rarr;</a>
-        </span></dd>
-      </dl>
-      <p class="cid">Registry id: <code>independent-qa-evaluator</code></p>
-    </div>
-    <div class="cap">
-      <div class="caphead">
-        <h3>Recurring lessons turned into blocking checks</h3>
-        <span class="pill st-live-verified">Live</span>
+    </details>
+    <details class="cap">
+      <summary>
+        <div class="caphead">
+          <h3>Recurring lessons turned into blocking checks</h3>
+          <span class="pill st-live-verified">Live</span>
+        </div>
+        <p class="claim">Classes of defect that kept recurring -- a missing executable bit, a literal double dash inside an XML comment, a config key present in one Spring profile and missing from another -- are enforced by zero-LLM scripts in CI rather than by a rule in a document.</p>
+        <p class="lim1"><b>Limitation:</b> Covers specific known defect classes only, each added after it escaped once.</p>
+        <span class="disclose">View evidence</span>
+      </summary>
+      <div class="capbody">
+        <dl>
+          <dt>Evidence</dt>
+          <dd>Running as blocking GitHub Actions jobs, with an explicit allowlist file so an intended exception is recorded rather than silently tolerated.</dd>
+          <dt>Limitation in full</dt>
+          <dd>These cover specific, known, mechanically-decidable defect classes. They are not a general correctness check and were each written after the defect escaped once.</dd>
+          <dt>In the source</dt>
+          <dd><code>agent/check_config_drift.py</code>, <code>agent/config_drift_allowlist.json</code>, <code>agent/test_check_config_drift.py</code></dd>
+          <dt>Go and check it</dt>
+          <dd><span class="dests">
+            <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/check_config_drift.py">The config-drift gate &rarr;</a>
+            <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/.github/workflows/ci.yml">The CI pipeline &rarr;</a>
+          </span></dd>
+        </dl>
+        <p class="cid">Registry id: <code>deterministic-static-gates</code></p>
       </div>
-      <p class="claim">Classes of defect that kept recurring -- a missing executable bit, a literal double dash inside an XML comment, a config key present in one Spring profile and missing from another -- are enforced by zero-LLM scripts in CI rather than by a rule in a document.</p>
-      <dl>
-        <dt>Evidence</dt>
-        <dd>Running as blocking GitHub Actions jobs, with an explicit allowlist file so an intended exception is recorded rather than silently tolerated.</dd>
-        <dt>Limitation</dt>
-        <dd>These cover specific, known, mechanically-decidable defect classes. They are not a general correctness check and were each written after the defect escaped once.</dd>
-        <dt>In the source</dt>
-        <dd><code>agent/check_config_drift.py</code>, <code>agent/config_drift_allowlist.json</code>, <code>agent/test_check_config_drift.py</code></dd>
-        <dt>Go and check it</dt>
-        <dd><span class="dests">
-          <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/check_config_drift.py">The config-drift gate &rarr;</a>
-          <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/.github/workflows/ci.yml">The CI pipeline &rarr;</a>
-        </span></dd>
-      </dl>
-      <p class="cid">Registry id: <code>deterministic-static-gates</code></p>
-    </div>
-    <div class="cap">
-      <div class="caphead">
-        <h3>Grounded answers over a real private corpus</h3>
-        <span class="pill st-live-verified">Live</span>
+    </details>
+    <details class="cap">
+      <summary>
+        <div class="caphead">
+          <h3>Grounded answers over a real private corpus</h3>
+          <span class="pill st-live-verified">Live</span>
+        </div>
+        <p class="claim">A live retrieval surface answers technical questions from a real corpus, with the answer grounded in retrieved material rather than generated freely.</p>
+        <p class="lim1"><b>Limitation:</b> Answer quality is monitored by a stochastic test currently known-red on one question.</p>
+        <span class="disclose">View evidence</span>
+      </summary>
+      <div class="capbody">
+        <dl>
+          <dt>Evidence</dt>
+          <dd>Live and answering, with acceptance checks passing over HTTP against the deployed surface.</dd>
+          <dt>Limitation in full</dt>
+          <dd>Answer quality is monitored by a stochastic quality test that is currently known-red on one question, and that monitor is deliberately kept out of the release-blocking suite so a model&#x27;s bad draw cannot be confused with a wiring defect. Retrieval reaches some material inconsistently.</dd>
+          <dt>In the source</dt>
+          <dd><code>agent/standing_interview.py</code>, <code>agent/si_acceptance.py</code>, <code>agent/si_review.py</code>, <code>scripts/build_si_corpus.py</code></dd>
+          <dt>Go and check it</dt>
+          <dd><span class="dests">
+            <a href="/standing-interview">Open it &rarr;</a>
+          </span></dd>
+        </dl>
+        <p class="cid">Registry id: <code>standing-interview-grounded-rag</code></p>
       </div>
-      <p class="claim">A live retrieval surface answers technical questions from a real corpus, with the answer grounded in retrieved material rather than generated freely.</p>
-      <dl>
-        <dt>Evidence</dt>
-        <dd>Live and answering, with acceptance checks passing over HTTP against the deployed surface.</dd>
-        <dt>Limitation</dt>
-        <dd>Answer quality is monitored by a stochastic quality test that is currently known-red on one question, and that monitor is deliberately kept out of the release-blocking suite so a model&#x27;s bad draw cannot be confused with a wiring defect. Retrieval reaches some material inconsistently.</dd>
-        <dt>In the source</dt>
-        <dd><code>agent/standing_interview.py</code>, <code>agent/si_acceptance.py</code>, <code>agent/si_review.py</code>, <code>scripts/build_si_corpus.py</code></dd>
-        <dt>Go and check it</dt>
-        <dd><span class="dests">
-          <a href="/standing-interview">Open it &rarr;</a>
-        </span></dd>
-      </dl>
-      <p class="cid">Registry id: <code>standing-interview-grounded-rag</code></p>
-    </div>
-    <div class="cap">
-      <div class="caphead">
-        <h3>AI-assisted delivery that is actually estimated</h3>
-        <span class="pill st-tested-verified">Tested</span>
+    </details>
+    <details class="cap">
+      <summary>
+        <div class="caphead">
+          <h3>AI-assisted delivery that is actually estimated</h3>
+          <span class="pill st-tested-verified">Tested</span>
+        </div>
+        <p class="claim">Every task is sized with a numeric range and a confidence before work starts; each sprint ends in a retrospective comparing estimate to actual, with every gap outside tolerance diagnosed as either a wrong estimate or an implementation problem, and the verdict computed by a script rather than judged.</p>
+        <p class="lim1"><b>Limitation:</b> The tolerance verdict is computed; the sizing gate itself is still applied by hand.</p>
+        <span class="disclose">View evidence</span>
+      </summary>
+      <div class="capbody">
+        <dl>
+          <dt>Evidence</dt>
+          <dd>Multiple sprints of recorded sizes, actuals and ratios verified against real git commit timestamps, including one retrospective whose own conclusion was corrected by an independent adversarial review.</dd>
+          <dt>Limitation in full</dt>
+          <dd>The tolerance verdict is computed, but the sizing gate itself is not mechanised -- it is applied by hand, and that is recorded as an open item rather than described as automated.</dd>
+          <dt>In the source</dt>
+          <dd><code>agent/backlog.py</code>, <code>agent/verify_tracking_updated.py</code>, <code>agent/check_id_available.py</code></dd>
+          <dt>Go and check it</dt>
+          <dd><span class="dests">
+            <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/BACKLOG.json">The sized backlog &rarr;</a>
+            <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/RETRO_LOG.md">The retrospective history &rarr;</a>
+            <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/backlog.py">The script that computes the verdict &rarr;</a>
+          </span></dd>
+        </dl>
+        <p class="cid">Registry id: <code>estimation-calibration-scrum-for-ai</code></p>
       </div>
-      <p class="claim">Every task is sized with a numeric range and a confidence before work starts; each sprint ends in a retrospective comparing estimate to actual, with every gap outside tolerance diagnosed as either a wrong estimate or an implementation problem, and the verdict computed by a script rather than judged.</p>
-      <dl>
-        <dt>Evidence</dt>
-        <dd>Multiple sprints of recorded sizes, actuals and ratios verified against real git commit timestamps, including one retrospective whose own conclusion was corrected by an independent adversarial review.</dd>
-        <dt>Limitation</dt>
-        <dd>The tolerance verdict is computed, but the sizing gate itself is not mechanised -- it is applied by hand, and that is recorded as an open item rather than described as automated.</dd>
-        <dt>In the source</dt>
-        <dd><code>agent/backlog.py</code>, <code>agent/verify_tracking_updated.py</code>, <code>agent/check_id_available.py</code></dd>
-        <dt>Go and check it</dt>
-        <dd><span class="dests">
-          <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/BACKLOG.json">The sized backlog &rarr;</a>
-          <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/RETRO_LOG.md">The retrospective history &rarr;</a>
-          <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/backlog.py">The script that computes the verdict &rarr;</a>
-        </span></dd>
-      </dl>
-      <p class="cid">Registry id: <code>estimation-calibration-scrum-for-ai</code></p>
-    </div>
-    <div class="cap">
-      <div class="caphead">
-        <h3>Authentication and role-based authorisation</h3>
-        <span class="pill st-live-verified">Live</span>
+    </details>
+    <details class="cap">
+      <summary>
+        <div class="caphead">
+          <h3>Authentication and role-based authorisation</h3>
+          <span class="pill st-live-verified">Live</span>
+        </div>
+        <p class="claim">The application enforces authentication and role-based access control on its API, with the authorisation decision tested rather than assumed.</p>
+        <p class="lim1"><b>Limitation:</b> Application-level authorisation on a system with no real users; no external identity provider.</p>
+        <span class="disclose">View evidence</span>
+      </summary>
+      <div class="capbody">
+        <dl>
+          <dt>Evidence</dt>
+          <dd>Running in production, with the authorisation paths covered by tests in the blocking CI pipeline.</dd>
+          <dt>Limitation in full</dt>
+          <dd>This is application-level authorisation on a system with no real users. It is not an identity platform, and no external identity provider is integrated.</dd>
+          <dt>In the source</dt>
+          <dd><code>app/src/main/java/com/example/customer/security/SecurityConfig.java</code>, <code>app/src/main/java/com/example/customer/security/WorkspaceAccessGuard.java</code>, <code>app/src/main/java/com/example/customer/controller/AdminCustomerController.java</code></dd>
+          <dt>Go and check it</dt>
+          <dd><span class="dests">
+            <a href="https://github.com/karthikdevadoss/agentic-software-delivery/tree/master/app/src/main/java/com/example/customer">The application source &rarr;</a>
+          </span></dd>
+        </dl>
+        <p class="cid">Registry id: <code>security-jwt-rbac</code></p>
       </div>
-      <p class="claim">The application enforces authentication and role-based access control on its API, with the authorisation decision tested rather than assumed.</p>
-      <dl>
-        <dt>Evidence</dt>
-        <dd>Running in production, with the authorisation paths covered by tests in the blocking CI pipeline.</dd>
-        <dt>Limitation</dt>
-        <dd>This is application-level authorisation on a system with no real users. It is not an identity platform, and no external identity provider is integrated.</dd>
-        <dt>In the source</dt>
-        <dd><code>app/src/main/java/com/example/customer/security/SecurityConfig.java</code>, <code>app/src/main/java/com/example/customer/security/WorkspaceAccessGuard.java</code>, <code>app/src/main/java/com/example/customer/controller/AdminCustomerController.java</code></dd>
-        <dt>Go and check it</dt>
-        <dd><span class="dests">
-          <a href="https://github.com/karthikdevadoss/agentic-software-delivery/tree/master/app/src/main/java/com/example/customer">The application source &rarr;</a>
-        </span></dd>
-      </dl>
-      <p class="cid">Registry id: <code>security-jwt-rbac</code></p>
-    </div>
-    <div class="cap">
-      <div class="caphead">
-        <h3>Versioned schema, exercised against real PostgreSQL</h3>
-        <span class="pill st-live-verified">Live</span>
+    </details>
+    <details class="cap">
+      <summary>
+        <div class="caphead">
+          <h3>Versioned schema, exercised against real PostgreSQL</h3>
+          <span class="pill st-live-verified">Live</span>
+        </div>
+        <p class="claim">Schema changes are versioned migrations with an auditable history, and the tests run against a real PostgreSQL instance in CI rather than an in-memory substitute.</p>
+        <p class="lim1"><b>Limitation:</b> An H2 dev profile still exists, and it is a real source of behaviour differences.</p>
+        <span class="disclose">View evidence</span>
+      </summary>
+      <div class="capbody">
+        <dl>
+          <dt>Evidence</dt>
+          <dd>Real Testcontainers PostgreSQL run in CI, with a committed Flyway migration history.</dd>
+          <dt>Limitation in full</dt>
+          <dd>A local H2 profile still exists for development convenience, which is a real source of behaviour differences -- a JPQL string-function difference between H2 and PostgreSQL was a real defect found here.</dd>
+          <dt>In the source</dt>
+          <dd><code>app/src/main/java/com/example/customer/model/CustomerPreference.java</code>, <code>app/src/main/java/com/example/customer/model/ContractPlan.java</code></dd>
+          <dt>Go and check it</dt>
+          <dd><span class="dests">
+            <a href="https://github.com/karthikdevadoss/agentic-software-delivery/tree/master/app/src/main/resources/db/migration">The migration history &rarr;</a>
+            <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/.github/workflows/ci.yml">The CI pipeline &rarr;</a>
+          </span></dd>
+        </dl>
+        <p class="cid">Registry id: <code>postgres-jpa-flyway</code></p>
       </div>
-      <p class="claim">Schema changes are versioned migrations with an auditable history, and the tests run against a real PostgreSQL instance in CI rather than an in-memory substitute.</p>
-      <dl>
-        <dt>Evidence</dt>
-        <dd>Real Testcontainers PostgreSQL run in CI, with a committed Flyway migration history.</dd>
-        <dt>Limitation</dt>
-        <dd>A local H2 profile still exists for development convenience, which is a real source of behaviour differences -- a JPQL string-function difference between H2 and PostgreSQL was a real defect found here.</dd>
-        <dt>In the source</dt>
-        <dd><code>app/src/main/java/com/example/customer/model/CustomerPreference.java</code>, <code>app/src/main/java/com/example/customer/model/ContractPlan.java</code></dd>
-        <dt>Go and check it</dt>
-        <dd><span class="dests">
-          <a href="https://github.com/karthikdevadoss/agentic-software-delivery/tree/master/app/src/main/resources/db/migration">The migration history &rarr;</a>
-          <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/.github/workflows/ci.yml">The CI pipeline &rarr;</a>
-        </span></dd>
-      </dl>
-      <p class="cid">Registry id: <code>postgres-jpa-flyway</code></p>
-    </div>
-    <div class="cap">
-      <div class="caphead">
-        <h3>Failure handling for calls that leave the process</h3>
-        <span class="pill st-live-verified">Live</span>
+    </details>
+    <details class="cap">
+      <summary>
+        <div class="caphead">
+          <h3>Failure handling for calls that leave the process</h3>
+          <span class="pill st-live-verified">Live</span>
+        </div>
+        <p class="claim">Calls to downstream systems are written to fail in a controlled way rather than hang or cascade, and the failure behaviour is tested against a stubbed downstream.</p>
+        <p class="lim1"><b>Limitation:</b> Proven against a controlled stub, not a real unreliable third party under load.</p>
+        <span class="disclose">View evidence</span>
+      </summary>
+      <div class="capbody">
+        <dl>
+          <dt>Evidence</dt>
+          <dd>Running in production, with the failure paths exercised in the blocking CI pipeline.</dd>
+          <dt>Limitation in full</dt>
+          <dd>Resilience behaviour is proven against a controlled stub, not against a real unreliable third party under load.</dd>
+          <dt>In the source</dt>
+          <dd><code>app/src/main/java/com/example/customer/integration/appointment/AppointmentAvailabilityClient.java</code></dd>
+          <dt>Go and check it</dt>
+          <dd><span class="dests">
+            <a href="https://github.com/karthikdevadoss/agentic-software-delivery/tree/master/app/src/main/java/com/example/customer">The application source &rarr;</a>
+          </span></dd>
+        </dl>
+        <p class="cid">Registry id: <code>downstream-resilience</code></p>
       </div>
-      <p class="claim">Calls to downstream systems are written to fail in a controlled way rather than hang or cascade, and the failure behaviour is tested against a stubbed downstream.</p>
-      <dl>
-        <dt>Evidence</dt>
-        <dd>Running in production, with the failure paths exercised in the blocking CI pipeline.</dd>
-        <dt>Limitation</dt>
-        <dd>Resilience behaviour is proven against a controlled stub, not against a real unreliable third party under load.</dd>
-        <dt>In the source</dt>
-        <dd><code>app/src/main/java/com/example/customer/integration/appointment/AppointmentAvailabilityClient.java</code></dd>
-        <dt>Go and check it</dt>
-        <dd><span class="dests">
-          <a href="https://github.com/karthikdevadoss/agentic-software-delivery/tree/master/app/src/main/java/com/example/customer">The application source &rarr;</a>
-        </span></dd>
-      </dl>
-      <p class="cid">Registry id: <code>downstream-resilience</code></p>
-    </div>
-    <div class="cap">
-      <div class="caphead">
-        <h3>Multi-service behaviour tested on a real topology</h3>
-        <span class="pill st-tested-verified">Tested</span>
+    </details>
+    <details class="cap">
+      <summary>
+        <div class="caphead">
+          <h3>Multi-service behaviour tested on a real topology</h3>
+          <span class="pill st-tested-verified">Tested</span>
+        </div>
+        <p class="claim">The microservice decomposition has a test tier that runs against a real multi-process topology, because a behaviour such as routing or load balancing cannot be proven by a single-process test however green it is.</p>
+        <p class="lim1"><b>Limitation:</b> Tested but not provisioned in production; informational in CI, and a skip is reported as a skip.</p>
+        <span class="disclose">View evidence</span>
+      </summary>
+      <div class="capbody">
+        <dl>
+          <dt>Evidence</dt>
+          <dd>Real per-service and cross-service suites, with distributed tracing wired manually because the framework combination in use never auto-configures a real tracer.</dd>
+          <dt>Limitation in full</dt>
+          <dd>This tier is tested but not provisioned in production, and it is informational in CI rather than blocking. A skipped run is reported as skipped, never as passed.</dd>
+          <dt>In the source</dt>
+          <dd><code>services/real-topology-tests/run_real_topology_test.py</code>, <code>services/legacy-billing-stub/src/main/java/com/example/legacybilling/pricing/PlanPricingController.java</code></dd>
+          <dt>Go and check it</dt>
+          <dd><span class="dests">
+            <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/MICROSERVICES_ARCHITECTURE.md">The microservices architecture &rarr;</a>
+            <a href="https://github.com/karthikdevadoss/agentic-software-delivery/tree/master/services">The services &rarr;</a>
+          </span></dd>
+        </dl>
+        <p class="cid">Registry id: <code>real-topology-gating-tier</code></p>
       </div>
-      <p class="claim">The microservice decomposition has a test tier that runs against a real multi-process topology, because a behaviour such as routing or load balancing cannot be proven by a single-process test however green it is.</p>
-      <dl>
-        <dt>Evidence</dt>
-        <dd>Real per-service and cross-service suites, with distributed tracing wired manually because the framework combination in use never auto-configures a real tracer.</dd>
-        <dt>Limitation</dt>
-        <dd>This tier is tested but not provisioned in production, and it is informational in CI rather than blocking. A skipped run is reported as skipped, never as passed.</dd>
-        <dt>In the source</dt>
-        <dd><code>services/real-topology-tests/run_real_topology_test.py</code>, <code>services/legacy-billing-stub/src/main/java/com/example/legacybilling/pricing/PlanPricingController.java</code></dd>
-        <dt>Go and check it</dt>
-        <dd><span class="dests">
-          <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/MICROSERVICES_ARCHITECTURE.md">The microservices architecture &rarr;</a>
-          <a href="https://github.com/karthikdevadoss/agentic-software-delivery/tree/master/services">The services &rarr;</a>
-        </span></dd>
-      </dl>
-      <p class="cid">Registry id: <code>real-topology-gating-tier</code></p>
-    </div>
-    <div class="cap">
-      <div class="caphead">
-        <h3>A deployment is not done because it returned 200</h3>
-        <span class="pill st-live-verified">Live</span>
+    </details>
+    <details class="cap">
+      <summary>
+        <div class="caphead">
+          <h3>A deployment is not done because it returned 200</h3>
+          <span class="pill st-live-verified">Live</span>
+        </div>
+        <p class="claim">A deployment is verified by checking that the specific requested change is actually observable in production, not by a successful HTTP status or a successful deploy log.</p>
+        <p class="lim1"><b>Limitation:</b> Deployment is scripted but triggered by hand; there is no automated continuous delivery.</p>
+        <span class="disclose">View evidence</span>
+      </summary>
+      <div class="capbody">
+        <dl>
+          <dt>Evidence</dt>
+          <dd>Running in production, with a verification step that reports a mismatched status as a failure rather than reporting OK.</dd>
+          <dt>Limitation in full</dt>
+          <dd>Deployment is scripted but triggered by hand. There is no automated continuous delivery behind this.</dd>
+          <dt>In the source</dt>
+          <dd><code>agent/demo_execution.py</code>, <code>agent/backend_execution.py</code></dd>
+          <dt>Go and check it</dt>
+          <dd><span class="dests">
+            <a href="/dashboard">The platform dashboard &rarr;</a>
+            <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/RUNBOOK.md">The runbook &rarr;</a>
+          </span></dd>
+        </dl>
+        <p class="cid">Registry id: <code>production-deployment-verification</code></p>
       </div>
-      <p class="claim">A deployment is verified by checking that the specific requested change is actually observable in production, not by a successful HTTP status or a successful deploy log.</p>
-      <dl>
-        <dt>Evidence</dt>
-        <dd>Running in production, with a verification step that reports a mismatched status as a failure rather than reporting OK.</dd>
-        <dt>Limitation</dt>
-        <dd>Deployment is scripted but triggered by hand. There is no automated continuous delivery behind this.</dd>
-        <dt>In the source</dt>
-        <dd><code>agent/demo_execution.py</code>, <code>agent/backend_execution.py</code></dd>
-        <dt>Go and check it</dt>
-        <dd><span class="dests">
-          <a href="/dashboard">The platform dashboard &rarr;</a>
-          <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/RUNBOOK.md">The runbook &rarr;</a>
-        </span></dd>
-      </dl>
-      <p class="cid">Registry id: <code>production-deployment-verification</code></p>
-    </div>
+    </details>
   </div>
 
   <p><a class="btn" href="/">&larr; Back to the home page</a></p>

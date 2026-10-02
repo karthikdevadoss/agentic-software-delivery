@@ -40,8 +40,9 @@ agent/test_proof_registry.py:
   3. public_status is one of the four published vocabulary values
   4. public_status does not exceed the recorded verification_level
      (this is what stops DOCUMENTED being presented as LIVE)
-  5. required public fields are present and non-empty -- including the
-     limitation, which is required rather than optional
+  5. required public fields are present and non-empty -- including BOTH
+     limitation forms, which are required rather than optional, with the short
+     one bounded in length and required to differ from the long one
   6. at least one destination, each with a label and an href
   7. every internal href matches a REAL registered GET route, decided by
      Starlette's own matcher rather than by string comparison
@@ -77,6 +78,7 @@ REQUIRED_FIELDS = (
     "headline",
     "public_claim",
     "public_limitation",
+    "limitation_short",
     "evidence_summary",
     "audiences",
     "destinations",
@@ -88,6 +90,13 @@ VALID_TIERS = ("PRIMARY", "SECONDARY")
 # either, for opposite reasons. The brief's range, enforced.
 MIN_PRIMARY = 5
 MAX_PRIMARY = 7
+
+# A collapsed card shows only limitation_short, so it has to carry a real
+# boundary on its own. Too long and the compression achieved nothing; identical
+# to the full text and it is not a compression at all; too short and it is
+# decoration. Checked, because the collapsed view is what most visitors read.
+MAX_SHORT_LIMITATION = 130
+MIN_SHORT_LIMITATION = 25
 
 # Words an EXPERIMENTAL_PAUSED limitation must actually contain. A presence
 # check, not a reading: it stops a paused research result being published with
@@ -239,15 +248,37 @@ def validate(surface: dict, capabilities: dict, repo_root: Path = REPO_ROOT,
                     "-- this is a claim presented above its evidence"
                 )
 
+        # 5b. the one-line limitation must be short, real, and not a copy
+        short = (entry.get("limitation_short") or "").strip()
+        full = " ".join((entry.get("public_limitation") or "").split())
+        if short:
+            if len(short) > MAX_SHORT_LIMITATION:
+                problems.append(
+                    f"{where}: limitation_short is {len(short)} chars, over the "
+                    f"{MAX_SHORT_LIMITATION} limit -- it has to fit a collapsed card"
+                )
+            if len(short) < MIN_SHORT_LIMITATION:
+                problems.append(
+                    f"{where}: limitation_short is {len(short)} chars, under "
+                    f"{MIN_SHORT_LIMITATION} -- a boundary that short is decoration"
+                )
+            if short == full:
+                problems.append(
+                    f"{where}: limitation_short is identical to public_limitation, "
+                    "so nothing was actually compressed"
+                )
+
         # 11. a paused/experimental thing must say so in its limitation
         if status == "EXPERIMENTAL_PAUSED":
-            limitation = (entry.get("public_limitation") or "").lower()
-            missing = [w for w in PAUSED_REQUIRED_WORDS if w not in limitation]
-            if missing:
-                problems.append(
-                    f"{where}: EXPERIMENTAL_PAUSED but its public_limitation never says "
-                    f"{missing} -- paused research must not read as working product"
-                )
+            for field in ("public_limitation", "limitation_short"):
+                limitation = (entry.get(field) or "").lower()
+                missing = [w for w in PAUSED_REQUIRED_WORDS if w not in limitation]
+                if missing:
+                    problems.append(
+                        f"{where}: EXPERIMENTAL_PAUSED but its {field} never says "
+                        f"{missing} -- paused research must not read as working "
+                        "product, and the collapsed card shows only the short form"
+                    )
 
         # 12. audiences
         audiences = entry.get("audiences") or []

@@ -165,6 +165,23 @@
   .btn:hover { background: var(--accent-ink); border-color: var(--accent-ink); }
   .bottom .lnk { font-size: 15.5px; font-weight: 600; text-decoration: none; }
   .bottom .lnk:hover { text-decoration: underline; }
+  /* Sprint 17 (BL-D), RESTORED in Sprint 18's reconciliation. The three things a
+     recruiter actually wants to do -- open the running system, see the code, see
+     the person -- were only at the FOOT of the page, after eight screens. They
+     belong in the first screen too, which is the one place a thirty-second visit
+     reaches. The closing row at the bottom stays: someone who read to the end
+     should not have to scroll back up.
+     Sprint 18 lost this by branching from origin/master rather than from Sprint
+     17, and it is objectively verifiable rather than a taste question -- the
+     first-screen action's Y position is measured by e2e/capture-pack.js, which
+     reported y=- (not detectable) for this page without it. Reuses .btn and .lnk
+     exactly as the closing row does, so there is one button hierarchy on the
+     page and not a second one. */
+  .hero-actions { display: flex; flex-wrap: wrap; align-items: center;
+    gap: 18px; margin: 26px 0 0; }
+  .hero-actions .lnk { font-size: 15.5px; font-weight: 600; text-decoration: none;
+    color: var(--accent); }
+  .hero-actions .lnk:hover { text-decoration: underline; }
   footer { margin: 40px 0 64px; padding-top: 20px; border-top: 1px solid var(--line);
            font-size: 14px; color: var(--soft); }
 
@@ -192,10 +209,21 @@
 
   <header>
     <h1>Karthikeyan Devadoss</h1>
-    <p class="role">Senior Backend / Software Engineer — Java, Spring &amp; Agentic AI</p>
-    <p class="lede">Enterprise Java/Spring backend engineer building and operating a production-deployed Agentic AI platform with human control, durable workflows and measurable quality.</p>
+    <p class="role">AI / Agentic AI Engineer — with senior Java &amp; Spring backend depth</p>
+    <p class="lede">I build agentic AI systems on top of real backend engineering, and I operate them. The platform below is mine: a production-deployed delivery agent with a human approval boundary it cannot cross, workflows that survive a crash, and quality that is measured rather than asserted &mdash; running against a real Java 21 / Spring Boot application. The backend depth is what makes the agentic side hold up: enterprise Java and Spring is where I came from, and it is what the AI work is built on rather than bolted to.</p>
     <p class="meta"><b>Berlin</b> · English · Open to full-time Senior / Lead IC roles in Germany</p>
     <p class="sep">Current client engagement: NRG Energy. The AI platform shown here is my own system, not an NRG product.</p>
+    <!-- Nothing invented here: no CV route is surfaced because none is public
+         (/profile is deliberately private -- e2e/profile.spec.js proves it), and
+         no email address is shown because this repository publishes none. Both
+         were offered conditionally by the Sprint 17 brief and the condition is
+         still not met. -->
+    <p class="hero-actions">
+      <a class="btn" href="/workbench" data-primary-action>Open the live Workbench</a>
+      <a class="lnk" href="/proof">See the evidence</a>
+      <a class="lnk" href="https://github.com/karthikdevadoss">GitHub</a>
+      <a class="lnk" href="https://www.linkedin.com/in/karthikeyan-devdoss/">LinkedIn</a>
+    </p>
   </header>
 
   <section class="proof" aria-label="Three proof points">
