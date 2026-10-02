@@ -10,6 +10,127 @@ benchmark ladder, near-term ordered roadmap): docs/ROADMAP.md — future
 increments only, do not build from it without an explicit task. Unresolved
 possibilities not yet decided: docs/IDEAS.md.
 
+## Mission value gate (read before starting substantial work)
+
+This project's controls were historically strong on HOW work is executed and
+weak on WHETHER a given piece of work deserved the calendar time at all. This
+section is the missing half. It governs ADMISSION to work and CONTINUATION of
+work; everything below it governs execution.
+
+### Admission: the Mission Card
+
+Every substantial platform mission establishes these eleven fields before real
+work starts — Plan Mode for interactive work, an explicit Owner authorization
+message for an unattended run. Record them with the backlog item
+(docs/BACKLOG.json, `mission_card`) or in the task contract.
+
+1. **Hiring audience** — who this is for (recruiter/HR, AI hiring manager,
+   backend interviewer, or explicitly "none — enabling work").
+2. **Primary hiring value** — the one capability it proves.
+3. **Inspectable proof artifact** — what a stranger can open and check.
+4. **Smallest useful version** — what would still be worth shipping if the time
+   ran out early.
+5. **Opportunity cost** — what the same calendar time would otherwise buy.
+6. **Calendar time box** — a wall-clock ceiling, not an effort estimate.
+7. **Success condition** — observable, written down before starting.
+8. **Stop / failure condition** — pre-registered, so that stopping is a rule
+   firing rather than a judgement made under sunk cost.
+9. **Harvest plan** — what gets written back, and where, when it ends.
+10. **Intended hiring signal** — what a real recruiter or interviewer action
+    would look like if this worked.
+11. **Fast-moving knowledge: YES / NO** — see the freshness rule below.
+
+**Enabling work is legitimate.** Not every mission is recruiter-facing. Security
+fixes, dependency repair, durability, test architecture and recovery work are
+valid with "hiring audience: none" when they are genuinely required for system
+integrity, or are a dependency of a higher-purpose mission. State which one it
+is; never invent a recruiter story for a maintenance task.
+
+**Freshness is conditional, not ceremonial.** If field 11 is YES — AI models,
+agent frameworks, SDKs, security, standards, APIs, current research, current
+platform behaviour, job requirements — resolve the claims that materially depend
+on it against current primary sources. If NO, do not browse. Repeating a whole
+market-research exercise to refresh a claim that has not moved is waste, not
+diligence.
+
+### Continuation: the sprint-boundary test
+
+At every substantial continuation or sprint boundary, answer these five in order
+and record the answer:
+
+1. What did this sprint actually prove or produce?
+2. What is harvestable right now?
+3. Did an objective stop rule fire?
+4. Does another sprint on this beat the next-best use of the same calendar time?
+5. Decision — exactly one of `CONTINUE`, `REDIRECT`, `STOPPED_BY_RULE`,
+   `NEEDS_OWNER_GOAL_REVIEW`.
+
+**Past effort is never a justification for more effort.** Time already spent,
+code already written and quality already achieved are all irrelevant to question
+4. A sprint executed excellently can still fail the continuation test — and
+excellent execution is the most dangerous case, because it feels like progress.
+Prior approval of a programme is not standing authorization for its next
+increment.
+
+A continuation argument that rests **only** on past effort is rejected outright,
+and rejecting it is not the same as answering the question. Question 4 is then
+answered on current evidence alone, and whatever state that evidence supports is
+the state — which, when nothing but the sunk cost argued for continuing, is
+`REDIRECT` or `STOPPED_BY_RULE`, never a default `CONTINUE`. Absence of a reason
+to stop is not a reason to continue.
+
+### The four terminal states
+
+- **`CONTINUE`** — the continuation test passed on its own merits.
+- **`REDIRECT`** — the goal still holds but this path does not; name the new path.
+- **`STOPPED_BY_RULE`** — an objective, already-authorized rule fired. Examples: a
+  pre-registered hard stop condition; a request to continue a frozen or paused
+  programme; a forbidden next sprint; the calendar time box; an attempt to mutate
+  protected evidence; a required hard verification gate failing where the
+  contract says fail closed. Stop THAT workstream, preserve its evidence, report
+  the exact rule by name — then continue every other independent authorized task.
+  Never idle.
+- **`NEEDS_OWNER_GOAL_REVIEW`** — judgement is required and must not be invented.
+  Examples: hiring value now looks weak; opportunity cost materially changed; a
+  proposed redirection changes the hypothesis; a significant subjective
+  visual/product decision; strategy itself must change. Record the exact decision
+  needed, take no irreversible action, and continue independent work meanwhile.
+
+A stop condition firing on one workstream is never a reason to stop the others.
+
+### Deep Consensus: hard guard
+
+The Deep Consensus experimental programme is **PAUSED**, its **product thesis is
+UNPROVEN**, and the canonical closing record is
+docs/DEEP_CONSENSUS_FINAL_CLOSURE_2026-10-02.md. Read it before touching anything
+under `deep_consensus/`.
+
+None of the following is authorized: **Sprint 7, a rerun of Sprint 6, an
+ablation, a replacement benchmark, a local MVP, new consensus architecture, or
+implementing A15–A23.** A request to do any of them under existing authority
+returns `STOPPED_BY_RULE` and names this section. Reopening the programme
+requires a new, explicit Owner decision; it cannot be inferred from the lessons
+the programme produced, because an unapproved lesson is not an authorization.
+
+Frozen evidence under `docs/evidence/deep-consensus-*/` is **read-only**. The
+mechanically-emitted result and the Owner's adjudication of it are both
+preserved, and neither may be rewritten to agree with the other.
+
+Deep Consensus may still be **presented** — as an evidence-backed research case
+study, labelled EXPERIMENTAL / PAUSED with the product thesis unproven.
+Presenting it is not continuing it. See docs/DEEP_CONSENSUS_CASE_STUDY.md.
+
+### Public language
+
+Public technical surfaces — this repository, the public site, recruiter-facing
+pages, articles — use ordinary professional engineering terminology: purpose,
+truthfulness, evidence, disciplined execution, opportunity cost, stewardship,
+non-attachment to technology, stopping criteria, continuous improvement,
+knowledge contribution, responsible authority. The Owner's private moral
+framework governs judgement; it is not public product, component or architecture
+naming. Private career strategy and private spiritual terminology never appear on
+a public surface.
+
 ## Session startup
 Before modifying anything:
 1. Run `python agent/state_brief.py`. One command replaces the former

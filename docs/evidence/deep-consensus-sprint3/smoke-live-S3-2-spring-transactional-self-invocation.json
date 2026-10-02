@@ -1,0 +1,775 @@
+{
+  "case": {
+    "case_id": "S3-2-spring-transactional-self-invocation",
+    "category": "java/spring transactions",
+    "question": "In a Spring application using the default proxy-based AOP, if a public method on a bean calls another method on the SAME bean that is annotated @Transactional, does a transaction start for that inner call? Explain why, and say what would make it work. Under 120 words.",
+    "expected_answer": "No. In proxy mode only external calls through the proxy are intercepted, so self-invocation does NOT start a transaction even though the inner method is annotated. AspectJ mode (byte-code weaving, no proxy) would make it work; so would routing the call through the proxy.",
+    "expected_claims": {
+      "self-invocation starts a transaction": "no",
+      "reason": "proxy only intercepts external calls",
+      "fix": "AspectJ mode / weaving"
+    },
+    "source_url": "https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/annotations.html",
+    "source_quote": "\"In proxy mode (which is the default), only external method calls coming in through the proxy are intercepted. This means that self-invocation (in effect, a method within the target object calling another method of the target object) does not lead to an actual transaction at runtime even if the invoked method is marked with @Transactional.\" ... \"Consider using AspectJ mode ... the target class is woven ... to support @Transactional runtime behavior on any kind of method.\"",
+    "source_accessed": "2026-10-01",
+    "wrong_answer_to_watch_for": "Any claim that the transaction DOES start, or that making the inner method public is sufficient.",
+    "notes": ""
+  },
+  "same_family_only": false,
+  "cross_family_real": true,
+  "workers": {
+    "A": {
+      "account": {
+        "family": "anthropic",
+        "transport": "CLAUDE_SUBSCRIPTION_CLI",
+        "billing": "SUBSCRIPTION",
+        "terms_status": "CONSUMER_SUBSCRIPTION_TERMS",
+        "data_label": "consumer subscription transport; retention and training behaviour are governed by the provider and by the user's own account settings; confidentiality is NOT asserted by Deep Consensus",
+        "configured_model": "claude-sonnet-5",
+        "auth_verified": "VERIFIED_SUBSCRIPTION",
+        "eligible_for_p0": true
+      },
+      "requested_model": "claude-sonnet-5",
+      "role": "voter",
+      "enabled": true
+    },
+    "B": {
+      "account": {
+        "family": "xai",
+        "transport": "GROK_SUBSCRIPTION_CLI",
+        "billing": "SUBSCRIPTION",
+        "terms_status": "CONSUMER_SUBSCRIPTION_TERMS",
+        "data_label": "consumer subscription transport (grok.com OIDC login); retention and training behaviour are governed by xAI and by the account's own coding-data-retention setting; confidentiality is NOT asserted by Deep Consensus",
+        "configured_model": "grok-4.6",
+        "auth_verified": "VERIFIED_SUBSCRIPTION",
+        "eligible_for_p0": true
+      },
+      "requested_model": "grok-4.6",
+      "role": "voter",
+      "enabled": true
+    }
+  },
+  "status": "UNRESOLVED",
+  "stop_reason": "unresolved_after_targeted_challenge",
+  "subscription_turns": 4,
+  "max_provider_calls": 4,
+  "elapsed_ms": 128685.6,
+  "governed_answer": "No. Spring's default proxy-based AOP wraps the bean in a proxy that applies advice only when a call comes in through the proxy. A self-call (this.innerMethod()) is a direct call on the raw target object's internal reference, bypassing the proxy entirely, so the @Transactional interceptor never fires\u2014no transaction starts (and no exception; it just silently runs non-transactionally). Fixes: move the method to a separate bean and call it via an injected reference (so the call goes through that bean's proxy); self-inject the bean's proxy (via ApplicationContext, AopContext.currentProxy() with exposeProxy=true, or @Lazy self-autowiring) and call through that reference; or switch to AspectJ compile-time/load-time weaving, which instruments bytecode directly and doesn't rely on proxies, so self-invocation works correctly.\n\nCORRECTIONS APPLIED AFTER CROSS-CHECK (the narrative above may still reflect the original wording):\n- fix-self-injection: corrected to 'inject the bean into itself and call via the injected proxy' after cross-check\n- fix-aspectj-weaving: corrected to 'use AspectJ compile-time or load-time weaving' after cross-check",
+  "agreed_claims": [
+    {
+      "relationship": "MATCH",
+      "type": "FACT",
+      "subject": "self-invocation-transaction",
+      "state": "AGREED",
+      "material": true,
+      "a": {
+        "claim_id": "c1",
+        "type": "FACT",
+        "subject": "self-invocation-transaction",
+        "value": "no transaction starts",
+        "text": "Calling a @Transactional method via a self-call (this.method()) on the same bean does not start a transaction under default Spring proxy-based AOP.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "A",
+        "material": true
+      },
+      "b": {
+        "claim_id": "c1",
+        "type": "FACT",
+        "subject": "inner @Transactional self-invocation",
+        "value": "no transaction starts",
+        "text": "A public method calling another @Transactional method on the same bean does not start a transaction for that inner call under default proxy-based Spring AOP.",
+        "source_cited": "Spring Framework Reference: Using @Transactional (proxy mode)",
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "B",
+        "material": true
+      },
+      "resolution_detail": {}
+    }
+  ],
+  "corrected_claims": [
+    {
+      "relationship": "CONFLICT",
+      "type": "RECOMMENDATION",
+      "subject": "fix-self-injection",
+      "state": "CORRECTED_AND_AGREED",
+      "material": true,
+      "a": {
+        "claim_id": "c5",
+        "type": "RECOMMENDATION",
+        "subject": "fix-self-injection",
+        "value": "self-inject proxy reference",
+        "text": "Self-injecting the bean (via ApplicationContext lookup, @Lazy autowired self-reference, or AopContext.currentProxy() with exposeProxy=true) and calling the method on that proxy reference makes the transaction apply.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "A",
+        "material": true
+      },
+      "b": {
+        "claim_id": "c5",
+        "type": "RECOMMENDATION",
+        "subject": "self-injection",
+        "value": "inject the bean into itself and call via the injected proxy",
+        "text": "Self-injecting the Spring bean and invoking the @Transactional method on the injected reference routes the call through the proxy so a transaction starts.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "B",
+        "material": true
+      },
+      "resolution_detail": {
+        "a_decision": "ACCEPT_OTHER",
+        "b_decision": "MAINTAIN",
+        "agreed_value": "inject the bean into itself and call via the injected proxy",
+        "why": "slot A accepted slot B's value and slot B maintained it"
+      }
+    },
+    {
+      "relationship": "CONFLICT",
+      "type": "RECOMMENDATION",
+      "subject": "fix-aspectj-weaving",
+      "state": "CORRECTED_AND_AGREED",
+      "material": true,
+      "a": {
+        "claim_id": "c6",
+        "type": "RECOMMENDATION",
+        "subject": "fix-aspectj-weaving",
+        "value": "use AspectJ weaving instead of proxies",
+        "text": "Switching to AspectJ compile-time or load-time weaving avoids the proxy limitation entirely since advice is woven directly into bytecode, so self-invocation calls are also advised.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "A",
+        "material": true
+      },
+      "b": {
+        "claim_id": "c8",
+        "type": "RECOMMENDATION",
+        "subject": "AspectJ weaving",
+        "value": "use AspectJ compile-time or load-time weaving",
+        "text": "Switching from proxy-based AOP to AspectJ weaving intercepts self-invocations, so the inner @Transactional method starts a transaction.",
+        "source_cited": "Spring Framework Reference: Using @Transactional (AspectJ mode)",
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "B",
+        "material": true
+      },
+      "resolution_detail": {
+        "a_decision": "ACCEPT_OTHER",
+        "b_decision": "MAINTAIN",
+        "agreed_value": "use AspectJ compile-time or load-time weaving",
+        "why": "slot A accepted slot B's value and slot B maintained it"
+      }
+    }
+  ],
+  "unresolved_claims": [],
+  "unknown_claims": [],
+  "one_sided_claims": [
+    {
+      "relationship": "ONE_SIDED",
+      "type": "FACT",
+      "subject": "silent-failure",
+      "state": "",
+      "material": true,
+      "a": {
+        "claim_id": "c3",
+        "type": "FACT",
+        "subject": "silent-failure",
+        "value": "no exception thrown",
+        "text": "A missed @Transactional self-call fails silently without throwing an exception; it just executes without a transaction.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "A",
+        "material": true
+      },
+      "b": null,
+      "resolution_detail": {}
+    },
+    {
+      "relationship": "ONE_SIDED",
+      "type": "RECOMMENDATION",
+      "subject": "fix-separate-bean",
+      "state": "",
+      "material": true,
+      "a": {
+        "claim_id": "c4",
+        "type": "RECOMMENDATION",
+        "subject": "fix-separate-bean",
+        "value": "extract method to another bean",
+        "text": "Moving the @Transactional method to a separate bean and invoking it through an injected reference ensures the call passes through the proxy and the transaction applies.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "A",
+        "material": true
+      },
+      "b": null,
+      "resolution_detail": {}
+    },
+    {
+      "relationship": "ONE_SIDED",
+      "type": "FACT",
+      "subject": "default Spring AOP mode",
+      "state": "",
+      "material": true,
+      "a": null,
+      "b": {
+        "claim_id": "c2",
+        "type": "FACT",
+        "subject": "default Spring AOP mode",
+        "value": "proxy-based",
+        "text": "Spring's default AOP implementation is proxy-based (JDK dynamic proxies or CGLIB).",
+        "source_cited": "Spring Framework Reference: AOP",
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "B",
+        "material": true
+      },
+      "resolution_detail": {}
+    },
+    {
+      "relationship": "ONE_SIDED",
+      "type": "FACT",
+      "subject": "inner annotation attributes",
+      "state": "",
+      "material": true,
+      "a": null,
+      "b": {
+        "claim_id": "c4",
+        "type": "FACT",
+        "subject": "inner annotation attributes",
+        "value": "ignored including REQUIRES_NEW",
+        "text": "Because the interceptor does not run, inner @Transactional attributes such as REQUIRES_NEW are ignored even if an outer transaction already exists on the thread.",
+        "source_cited": "Spring Framework Reference: Using @Transactional",
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "B",
+        "material": true
+      },
+      "resolution_detail": {}
+    },
+    {
+      "relationship": "ONE_SIDED",
+      "type": "RECOMMENDATION",
+      "subject": "AopContext.currentProxy",
+      "state": "",
+      "material": true,
+      "a": null,
+      "b": {
+        "claim_id": "c6",
+        "type": "RECOMMENDATION",
+        "subject": "AopContext.currentProxy",
+        "value": "call via AopContext.currentProxy() with exposeProxy=true",
+        "text": "Calling the method on AopContext.currentProxy() after enabling exposeProxy=true goes through the proxy and starts the transaction.",
+        "source_cited": "Spring Framework Reference: AopContext",
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "B",
+        "material": true
+      },
+      "resolution_detail": {}
+    },
+    {
+      "relationship": "ONE_SIDED",
+      "type": "RECOMMENDATION",
+      "subject": "extract to another bean",
+      "state": "",
+      "material": true,
+      "a": null,
+      "b": {
+        "claim_id": "c7",
+        "type": "RECOMMENDATION",
+        "subject": "extract to another bean",
+        "value": "move @Transactional method to a separate Spring bean",
+        "text": "Moving the annotated method onto another Spring bean makes the call external, so the proxy intercepts it and starts a transaction.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "B",
+        "material": true
+      },
+      "resolution_detail": {}
+    }
+  ],
+  "pairings": [
+    {
+      "relationship": "MATCH",
+      "type": "FACT",
+      "subject": "self-invocation-transaction",
+      "state": "AGREED",
+      "material": true,
+      "a": {
+        "claim_id": "c1",
+        "type": "FACT",
+        "subject": "self-invocation-transaction",
+        "value": "no transaction starts",
+        "text": "Calling a @Transactional method via a self-call (this.method()) on the same bean does not start a transaction under default Spring proxy-based AOP.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "A",
+        "material": true
+      },
+      "b": {
+        "claim_id": "c1",
+        "type": "FACT",
+        "subject": "inner @Transactional self-invocation",
+        "value": "no transaction starts",
+        "text": "A public method calling another @Transactional method on the same bean does not start a transaction for that inner call under default proxy-based Spring AOP.",
+        "source_cited": "Spring Framework Reference: Using @Transactional (proxy mode)",
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "B",
+        "material": true
+      },
+      "resolution_detail": {}
+    },
+    {
+      "relationship": "ONE_SIDED",
+      "type": "REASONING",
+      "subject": "proxy-mechanism",
+      "state": "",
+      "material": false,
+      "a": {
+        "claim_id": "c2",
+        "type": "REASONING",
+        "subject": "proxy-mechanism",
+        "value": "proxy intercepts only external calls",
+        "text": "Spring's default AOP uses a proxy wrapping the bean, and advice (like @Transactional) only applies when the call arrives through that proxy, not via internal 'this' references.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "A",
+        "material": false
+      },
+      "b": null,
+      "resolution_detail": {}
+    },
+    {
+      "relationship": "ONE_SIDED",
+      "type": "FACT",
+      "subject": "silent-failure",
+      "state": "",
+      "material": true,
+      "a": {
+        "claim_id": "c3",
+        "type": "FACT",
+        "subject": "silent-failure",
+        "value": "no exception thrown",
+        "text": "A missed @Transactional self-call fails silently without throwing an exception; it just executes without a transaction.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "A",
+        "material": true
+      },
+      "b": null,
+      "resolution_detail": {}
+    },
+    {
+      "relationship": "ONE_SIDED",
+      "type": "RECOMMENDATION",
+      "subject": "fix-separate-bean",
+      "state": "",
+      "material": true,
+      "a": {
+        "claim_id": "c4",
+        "type": "RECOMMENDATION",
+        "subject": "fix-separate-bean",
+        "value": "extract method to another bean",
+        "text": "Moving the @Transactional method to a separate bean and invoking it through an injected reference ensures the call passes through the proxy and the transaction applies.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "A",
+        "material": true
+      },
+      "b": null,
+      "resolution_detail": {}
+    },
+    {
+      "relationship": "CONFLICT",
+      "type": "RECOMMENDATION",
+      "subject": "fix-self-injection",
+      "state": "CORRECTED_AND_AGREED",
+      "material": true,
+      "a": {
+        "claim_id": "c5",
+        "type": "RECOMMENDATION",
+        "subject": "fix-self-injection",
+        "value": "self-inject proxy reference",
+        "text": "Self-injecting the bean (via ApplicationContext lookup, @Lazy autowired self-reference, or AopContext.currentProxy() with exposeProxy=true) and calling the method on that proxy reference makes the transaction apply.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "A",
+        "material": true
+      },
+      "b": {
+        "claim_id": "c5",
+        "type": "RECOMMENDATION",
+        "subject": "self-injection",
+        "value": "inject the bean into itself and call via the injected proxy",
+        "text": "Self-injecting the Spring bean and invoking the @Transactional method on the injected reference routes the call through the proxy so a transaction starts.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "B",
+        "material": true
+      },
+      "resolution_detail": {
+        "a_decision": "ACCEPT_OTHER",
+        "b_decision": "MAINTAIN",
+        "agreed_value": "inject the bean into itself and call via the injected proxy",
+        "why": "slot A accepted slot B's value and slot B maintained it"
+      }
+    },
+    {
+      "relationship": "CONFLICT",
+      "type": "RECOMMENDATION",
+      "subject": "fix-aspectj-weaving",
+      "state": "CORRECTED_AND_AGREED",
+      "material": true,
+      "a": {
+        "claim_id": "c6",
+        "type": "RECOMMENDATION",
+        "subject": "fix-aspectj-weaving",
+        "value": "use AspectJ weaving instead of proxies",
+        "text": "Switching to AspectJ compile-time or load-time weaving avoids the proxy limitation entirely since advice is woven directly into bytecode, so self-invocation calls are also advised.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "A",
+        "material": true
+      },
+      "b": {
+        "claim_id": "c8",
+        "type": "RECOMMENDATION",
+        "subject": "AspectJ weaving",
+        "value": "use AspectJ compile-time or load-time weaving",
+        "text": "Switching from proxy-based AOP to AspectJ weaving intercepts self-invocations, so the inner @Transactional method starts a transaction.",
+        "source_cited": "Spring Framework Reference: Using @Transactional (AspectJ mode)",
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "B",
+        "material": true
+      },
+      "resolution_detail": {
+        "a_decision": "ACCEPT_OTHER",
+        "b_decision": "MAINTAIN",
+        "agreed_value": "use AspectJ compile-time or load-time weaving",
+        "why": "slot A accepted slot B's value and slot B maintained it"
+      }
+    },
+    {
+      "relationship": "ONE_SIDED",
+      "type": "FACT",
+      "subject": "default Spring AOP mode",
+      "state": "",
+      "material": true,
+      "a": null,
+      "b": {
+        "claim_id": "c2",
+        "type": "FACT",
+        "subject": "default Spring AOP mode",
+        "value": "proxy-based",
+        "text": "Spring's default AOP implementation is proxy-based (JDK dynamic proxies or CGLIB).",
+        "source_cited": "Spring Framework Reference: AOP",
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "B",
+        "material": true
+      },
+      "resolution_detail": {}
+    },
+    {
+      "relationship": "ONE_SIDED",
+      "type": "REASONING",
+      "subject": "why inner transaction is skipped",
+      "state": "",
+      "material": false,
+      "a": null,
+      "b": {
+        "claim_id": "c3",
+        "type": "REASONING",
+        "subject": "why inner transaction is skipped",
+        "value": "self-invocation uses this and bypasses the proxy",
+        "text": "The @Transactional interceptor sits on the proxy, so only external calls through the proxy are advised; this.method() never reaches the proxy.",
+        "source_cited": "Spring Framework Reference: Using @Transactional",
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "B",
+        "material": false
+      },
+      "resolution_detail": {}
+    },
+    {
+      "relationship": "ONE_SIDED",
+      "type": "FACT",
+      "subject": "inner annotation attributes",
+      "state": "",
+      "material": true,
+      "a": null,
+      "b": {
+        "claim_id": "c4",
+        "type": "FACT",
+        "subject": "inner annotation attributes",
+        "value": "ignored including REQUIRES_NEW",
+        "text": "Because the interceptor does not run, inner @Transactional attributes such as REQUIRES_NEW are ignored even if an outer transaction already exists on the thread.",
+        "source_cited": "Spring Framework Reference: Using @Transactional",
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "B",
+        "material": true
+      },
+      "resolution_detail": {}
+    },
+    {
+      "relationship": "ONE_SIDED",
+      "type": "RECOMMENDATION",
+      "subject": "AopContext.currentProxy",
+      "state": "",
+      "material": true,
+      "a": null,
+      "b": {
+        "claim_id": "c6",
+        "type": "RECOMMENDATION",
+        "subject": "AopContext.currentProxy",
+        "value": "call via AopContext.currentProxy() with exposeProxy=true",
+        "text": "Calling the method on AopContext.currentProxy() after enabling exposeProxy=true goes through the proxy and starts the transaction.",
+        "source_cited": "Spring Framework Reference: AopContext",
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "B",
+        "material": true
+      },
+      "resolution_detail": {}
+    },
+    {
+      "relationship": "ONE_SIDED",
+      "type": "RECOMMENDATION",
+      "subject": "extract to another bean",
+      "state": "",
+      "material": true,
+      "a": null,
+      "b": {
+        "claim_id": "c7",
+        "type": "RECOMMENDATION",
+        "subject": "extract to another bean",
+        "value": "move @Transactional method to a separate Spring bean",
+        "text": "Moving the annotated method onto another Spring bean makes the call external, so the proxy intercepts it and starts a transaction.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "B",
+        "material": true
+      },
+      "resolution_detail": {}
+    }
+  ],
+  "answers": {
+    "A": {
+      "slot": "A",
+      "parse_status": "ok",
+      "verdict": "No, self-invocation bypasses the Spring proxy, so the @Transactional advice never runs.",
+      "answer": "No. Spring's default proxy-based AOP wraps the bean in a proxy that applies advice only when a call comes in through the proxy. A self-call (this.innerMethod()) is a direct call on the raw target object's internal reference, bypassing the proxy entirely, so the @Transactional interceptor never fires\u2014no transaction starts (and no exception; it just silently runs non-transactionally). Fixes: move the method to a separate bean and call it via an injected reference (so the call goes through that bean's proxy); self-inject the bean's proxy (via ApplicationContext, AopContext.currentProxy() with exposeProxy=true, or @Lazy self-autowiring) and call through that reference; or switch to AspectJ compile-time/load-time weaving, which instruments bytecode directly and doesn't rely on proxies, so self-invocation works correctly.",
+      "claims": [
+        {
+          "claim_id": "c1",
+          "type": "FACT",
+          "subject": "self-invocation-transaction",
+          "value": "no transaction starts",
+          "text": "Calling a @Transactional method via a self-call (this.method()) on the same bean does not start a transaction under default Spring proxy-based AOP.",
+          "source_cited": null,
+          "source_verification": "UNVERIFIED",
+          "evidence_type": "MODEL_ONLY",
+          "slot": "A",
+          "material": true
+        },
+        {
+          "claim_id": "c2",
+          "type": "REASONING",
+          "subject": "proxy-mechanism",
+          "value": "proxy intercepts only external calls",
+          "text": "Spring's default AOP uses a proxy wrapping the bean, and advice (like @Transactional) only applies when the call arrives through that proxy, not via internal 'this' references.",
+          "source_cited": null,
+          "source_verification": "UNVERIFIED",
+          "evidence_type": "MODEL_ONLY",
+          "slot": "A",
+          "material": false
+        },
+        {
+          "claim_id": "c3",
+          "type": "FACT",
+          "subject": "silent-failure",
+          "value": "no exception thrown",
+          "text": "A missed @Transactional self-call fails silently without throwing an exception; it just executes without a transaction.",
+          "source_cited": null,
+          "source_verification": "UNVERIFIED",
+          "evidence_type": "MODEL_ONLY",
+          "slot": "A",
+          "material": true
+        },
+        {
+          "claim_id": "c4",
+          "type": "RECOMMENDATION",
+          "subject": "fix-separate-bean",
+          "value": "extract method to another bean",
+          "text": "Moving the @Transactional method to a separate bean and invoking it through an injected reference ensures the call passes through the proxy and the transaction applies.",
+          "source_cited": null,
+          "source_verification": "UNVERIFIED",
+          "evidence_type": "MODEL_ONLY",
+          "slot": "A",
+          "material": true
+        },
+        {
+          "claim_id": "c5",
+          "type": "RECOMMENDATION",
+          "subject": "fix-self-injection",
+          "value": "self-inject proxy reference",
+          "text": "Self-injecting the bean (via ApplicationContext lookup, @Lazy autowired self-reference, or AopContext.currentProxy() with exposeProxy=true) and calling the method on that proxy reference makes the transaction apply.",
+          "source_cited": null,
+          "source_verification": "UNVERIFIED",
+          "evidence_type": "MODEL_ONLY",
+          "slot": "A",
+          "material": true
+        },
+        {
+          "claim_id": "c6",
+          "type": "RECOMMENDATION",
+          "subject": "fix-aspectj-weaving",
+          "value": "use AspectJ weaving instead of proxies",
+          "text": "Switching to AspectJ compile-time or load-time weaving avoids the proxy limitation entirely since advice is woven directly into bytecode, so self-invocation calls are also advised.",
+          "source_cited": null,
+          "source_verification": "UNVERIFIED",
+          "evidence_type": "MODEL_ONLY",
+          "slot": "A",
+          "material": true
+        }
+      ],
+      "uncertainties": [
+        "Did not verify exact current Spring Framework version behavior (this has been consistent since early Spring AOP versions through at least Spring 6.x as of knowledge cutoff), but no breaking change is known in this area."
+      ]
+    },
+    "B": {
+      "slot": "B",
+      "parse_status": "ok",
+      "verdict": "No: the inner @Transactional call does not start a transaction because self-invocation bypasses the Spring AOP proxy.",
+      "answer": "No. Default Spring AOP is proxy-based, so @Transactional advice runs only for calls that enter the bean through its Spring proxy. A same-bean call uses this and never hits the proxy, so no transaction interceptor runs and no transaction starts for the inner method. Route the call through the proxy to make it work: self-inject the bean and call the injected reference, use AopContext.currentProxy() with exposeProxy=true, move the annotated method to another bean, or switch to AspectJ compile-time or load-time weaving.",
+      "claims": [
+        {
+          "claim_id": "c1",
+          "type": "FACT",
+          "subject": "inner @Transactional self-invocation",
+          "value": "no transaction starts",
+          "text": "A public method calling another @Transactional method on the same bean does not start a transaction for that inner call under default proxy-based Spring AOP.",
+          "source_cited": "Spring Framework Reference: Using @Transactional (proxy mode)",
+          "source_verification": "UNVERIFIED",
+          "evidence_type": "MODEL_ONLY",
+          "slot": "B",
+          "material": true
+        },
+        {
+          "claim_id": "c2",
+          "type": "FACT",
+          "subject": "default Spring AOP mode",
+          "value": "proxy-based",
+          "text": "Spring's default AOP implementation is proxy-based (JDK dynamic proxies or CGLIB).",
+          "source_cited": "Spring Framework Reference: AOP",
+          "source_verification": "UNVERIFIED",
+          "evidence_type": "MODEL_ONLY",
+          "slot": "B",
+          "material": true
+        },
+        {
+          "claim_id": "c3",
+          "type": "REASONING",
+          "subject": "why inner transaction is skipped",
+          "value": "self-invocation uses this and bypasses the proxy",
+          "text": "The @Transactional interceptor sits on the proxy, so only external calls through the proxy are advised; this.method() never reaches the proxy.",
+          "source_cited": "Spring Framework Reference: Using @Transactional",
+          "source_verification": "UNVERIFIED",
+          "evidence_type": "MODEL_ONLY",
+          "slot": "B",
+          "material": false
+        },
+        {
+          "claim_id": "c4",
+          "type": "FACT",
+          "subject": "inner annotation attributes",
+          "value": "ignored including REQUIRES_NEW",
+          "text": "Because the interceptor does not run, inner @Transactional attributes such as REQUIRES_NEW are ignored even if an outer transaction already exists on the thread.",
+          "source_cited": "Spring Framework Reference: Using @Transactional",
+          "source_verification": "UNVERIFIED",
+          "evidence_type": "MODEL_ONLY",
+          "slot": "B",
+          "material": true
+        },
+        {
+          "claim_id": "c5",
+          "type": "RECOMMENDATION",
+          "subject": "self-injection",
+          "value": "inject the bean into itself and call via the injected proxy",
+          "text": "Self-injecting the Spring bean and invoking the @Transactional method on the injected reference routes the call through the proxy so a transaction starts.",
+          "source_cited": null,
+          "source_verification": "UNVERIFIED",
+          "evidence_type": "MODEL_ONLY",
+          "slot": "B",
+          "material": true
+        },
+        {
+          "claim_id": "c6",
+          "type": "RECOMMENDATION",
+          "subject": "AopContext.currentProxy",
+          "value": "call via AopContext.currentProxy() with exposeProxy=true",
+          "text": "Calling the method on AopContext.currentProxy() after enabling exposeProxy=true goes through the proxy and starts the transaction.",
+          "source_cited": "Spring Framework Reference: AopContext",
+          "source_verification": "UNVERIFIED",
+          "evidence_type": "MODEL_ONLY",
+          "slot": "B",
+          "material": true
+        },
+        {
+          "claim_id": "c7",
+          "type": "RECOMMENDATION",
+          "subject": "extract to another bean",
+          "value": "move @Transactional method to a separate Spring bean",
+          "text": "Moving the annotated method onto another Spring bean makes the call external, so the proxy intercepts it and starts a transaction.",
+          "source_cited": null,
+          "source_verification": "UNVERIFIED",
+          "evidence_type": "MODEL_ONLY",
+          "slot": "B",
+          "material": true
+        },
+        {
+          "claim_id": "c8",
+          "type": "RECOMMENDATION",
+          "subject": "AspectJ weaving",
+          "value": "use AspectJ compile-time or load-time weaving",
+          "text": "Switching from proxy-based AOP to AspectJ weaving intercepts self-invocations, so the inner @Transactional method starts a transaction.",
+          "source_cited": "Spring Framework Reference: Using @Transactional (AspectJ mode)",
+          "source_verification": "UNVERIFIED",
+          "evidence_type": "MODEL_ONLY",
+          "slot": "B",
+          "material": true
+        }
+      ],
+      "uncertainties": [
+        "If the outer method is already @Transactional, the inner work still runs in that existing ThreadLocal transaction; the inner annotation still does not start or customize a transaction."
+      ]
+    }
+  },
+  "independence_warning": "Independent model agreement is not external verification.",
+  "evidence_type": "MODEL_ONLY",
+  "metrics_deliberately_not_computed": [
+    "initial correctness per FAMILY",
+    "errors caught by the SECOND family",
+    "errors introduced by cross-family reconciliation"
+  ],
+  "cross_family_note": "Cross-family run: slot A anthropic, slot B xai, both real subscription transports. Agreement here is between two independent model families -- which is still NOT external verification.",
+  "metrics_omitted_because_same_family": false
+}

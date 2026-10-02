@@ -1,0 +1,414 @@
+{
+  "case": {
+    "case_id": "S3-1-postgres-create-index-locking",
+    "category": "database/locking",
+    "question": "In PostgreSQL, when you run a plain CREATE INDEX (without CONCURRENTLY) on a large table, does it block reads of that table, block writes, or both, while the index is being built? Name the table-level lock mode it acquires. Answer in under 120 words.",
+    "expected_answer": "A plain CREATE INDEX acquires a SHARE lock on the table. It BLOCKS WRITES (INSERT/UPDATE/DELETE) but ALLOWS concurrent READS (SELECT) for the duration of the build.",
+    "expected_claims": {
+      "lock mode": "SHARE",
+      "reads": "allowed / not blocked",
+      "writes": "blocked"
+    },
+    "source_url": "https://www.postgresql.org/docs/current/explicit-locking.html",
+    "source_quote": "SHARE -- Acquired by CREATE INDEX (without CONCURRENTLY). ... This mode protects a table against concurrent data changes. Also, from sql-createindex.html: \"a standard index build locks out writes (but not reads) on the table until it's done.\"",
+    "source_accessed": "2026-10-01",
+    "wrong_answer_to_watch_for": "ACCESS EXCLUSIVE, or any claim that reads are blocked. This is the exact error Deep Consensus itself published in Sprint 1 run dcr_361112bc329048a8, unchallenged by either reviewer.",
+    "notes": "Chosen deliberately: it is the system's own recorded failure, so it is the one case where a regression would be most embarrassing and most informative."
+  },
+  "same_family_only": false,
+  "cross_family_real": true,
+  "workers": {
+    "A": {
+      "account": {
+        "family": "anthropic",
+        "transport": "CLAUDE_SUBSCRIPTION_CLI",
+        "billing": "SUBSCRIPTION",
+        "terms_status": "CONSUMER_SUBSCRIPTION_TERMS",
+        "data_label": "consumer subscription transport; retention and training behaviour are governed by the provider and by the user's own account settings; confidentiality is NOT asserted by Deep Consensus",
+        "configured_model": "claude-sonnet-5",
+        "auth_verified": "VERIFIED_SUBSCRIPTION",
+        "eligible_for_p0": true
+      },
+      "requested_model": "claude-sonnet-5",
+      "role": "voter",
+      "enabled": true
+    },
+    "B": {
+      "account": {
+        "family": "xai",
+        "transport": "GROK_SUBSCRIPTION_CLI",
+        "billing": "SUBSCRIPTION",
+        "terms_status": "CONSUMER_SUBSCRIPTION_TERMS",
+        "data_label": "consumer subscription transport (grok.com OIDC login); retention and training behaviour are governed by xAI and by the account's own coding-data-retention setting; confidentiality is NOT asserted by Deep Consensus",
+        "configured_model": "grok-4.6",
+        "auth_verified": "VERIFIED_SUBSCRIPTION",
+        "eligible_for_p0": true
+      },
+      "requested_model": "grok-4.6",
+      "role": "voter",
+      "enabled": true
+    }
+  },
+  "status": "UNRESOLVED",
+  "stop_reason": "no_material_disagreement_early_stop",
+  "subscription_turns": 2,
+  "max_provider_calls": 4,
+  "elapsed_ms": 28977.5,
+  "governed_answer": "A plain CREATE INDEX acquires a SHARE lock on the table. SHARE allows concurrent reads (SELECT) but blocks any writes \u2014 INSERT, UPDATE, DELETE, and also other DDL that needs a conflicting lock \u2014 for the duration of the index build. This is why CREATE INDEX CONCURRENTLY exists: it instead takes SHARE UPDATE EXCLUSIVE, which permits both reads and writes to proceed concurrently, at the cost of a slower, two-pass build and no transactional guarantee of atomicity.",
+  "agreed_claims": [
+    {
+      "relationship": "MATCH",
+      "type": "FACT",
+      "subject": "plain CREATE INDEX table lock mode",
+      "state": "AGREED",
+      "material": true,
+      "a": {
+        "claim_id": "c1",
+        "type": "FACT",
+        "subject": "plain CREATE INDEX table lock mode",
+        "value": "SHARE",
+        "text": "A plain CREATE INDEX (without CONCURRENTLY) acquires a SHARE lock on the table being indexed.",
+        "source_cited": "PostgreSQL documentation (Explicit Locking / CREATE INDEX)",
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "A",
+        "material": true
+      },
+      "b": {
+        "claim_id": "c1",
+        "type": "FACT",
+        "subject": "CREATE INDEX lock mode",
+        "value": "SHARE",
+        "text": "Plain CREATE INDEX acquires a table-level SHARE lock.",
+        "source_cited": "PostgreSQL docs: Explicit Locking / CREATE INDEX",
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "B",
+        "material": true
+      },
+      "resolution_detail": {}
+    }
+  ],
+  "corrected_claims": [],
+  "unresolved_claims": [],
+  "unknown_claims": [],
+  "one_sided_claims": [
+    {
+      "relationship": "ONE_SIDED",
+      "type": "FACT",
+      "subject": "CREATE INDEX CONCURRENTLY lock mode",
+      "state": "",
+      "material": true,
+      "a": {
+        "claim_id": "c4",
+        "type": "FACT",
+        "subject": "CREATE INDEX CONCURRENTLY lock mode",
+        "value": "SHARE UPDATE EXCLUSIVE",
+        "text": "CREATE INDEX CONCURRENTLY acquires a SHARE UPDATE EXCLUSIVE lock instead, which does not block reads or writes.",
+        "source_cited": "PostgreSQL documentation",
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "A",
+        "material": true
+      },
+      "b": null,
+      "resolution_detail": {}
+    },
+    {
+      "relationship": "ONE_SIDED",
+      "type": "FACT",
+      "subject": "CREATE INDEX vs reads",
+      "state": "",
+      "material": true,
+      "a": null,
+      "b": {
+        "claim_id": "c2",
+        "type": "FACT",
+        "subject": "CREATE INDEX vs reads",
+        "value": "does not block reads",
+        "text": "SHARE does not conflict with ACCESS SHARE, so SELECT on the table can proceed during the build.",
+        "source_cited": "PostgreSQL docs: Explicit Locking",
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "B",
+        "material": true
+      },
+      "resolution_detail": {}
+    },
+    {
+      "relationship": "ONE_SIDED",
+      "type": "FACT",
+      "subject": "CREATE INDEX vs writes",
+      "state": "",
+      "material": true,
+      "a": null,
+      "b": {
+        "claim_id": "c3",
+        "type": "FACT",
+        "subject": "CREATE INDEX vs writes",
+        "value": "blocks writes",
+        "text": "SHARE conflicts with ROW EXCLUSIVE, so INSERT, UPDATE, and DELETE wait until the index build finishes.",
+        "source_cited": "PostgreSQL docs: CREATE INDEX",
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "B",
+        "material": true
+      },
+      "resolution_detail": {}
+    }
+  ],
+  "pairings": [
+    {
+      "relationship": "MATCH",
+      "type": "FACT",
+      "subject": "plain CREATE INDEX table lock mode",
+      "state": "AGREED",
+      "material": true,
+      "a": {
+        "claim_id": "c1",
+        "type": "FACT",
+        "subject": "plain CREATE INDEX table lock mode",
+        "value": "SHARE",
+        "text": "A plain CREATE INDEX (without CONCURRENTLY) acquires a SHARE lock on the table being indexed.",
+        "source_cited": "PostgreSQL documentation (Explicit Locking / CREATE INDEX)",
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "A",
+        "material": true
+      },
+      "b": {
+        "claim_id": "c1",
+        "type": "FACT",
+        "subject": "CREATE INDEX lock mode",
+        "value": "SHARE",
+        "text": "Plain CREATE INDEX acquires a table-level SHARE lock.",
+        "source_cited": "PostgreSQL docs: Explicit Locking / CREATE INDEX",
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "B",
+        "material": true
+      },
+      "resolution_detail": {}
+    },
+    {
+      "relationship": "ONE_SIDED",
+      "type": "REASONING",
+      "subject": "SHARE lock read behavior",
+      "state": "",
+      "material": false,
+      "a": {
+        "claim_id": "c2",
+        "type": "REASONING",
+        "subject": "SHARE lock read behavior",
+        "value": "reads allowed",
+        "text": "The SHARE lock mode allows concurrent SELECT queries to proceed while the index is being built.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "A",
+        "material": false
+      },
+      "b": null,
+      "resolution_detail": {}
+    },
+    {
+      "relationship": "ONE_SIDED",
+      "type": "REASONING",
+      "subject": "SHARE lock write behavior",
+      "state": "",
+      "material": false,
+      "a": {
+        "claim_id": "c3",
+        "type": "REASONING",
+        "subject": "SHARE lock write behavior",
+        "value": "writes blocked",
+        "text": "The SHARE lock mode conflicts with locks needed for INSERT, UPDATE, and DELETE, so writes are blocked until the index build completes.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "A",
+        "material": false
+      },
+      "b": null,
+      "resolution_detail": {}
+    },
+    {
+      "relationship": "ONE_SIDED",
+      "type": "FACT",
+      "subject": "CREATE INDEX CONCURRENTLY lock mode",
+      "state": "",
+      "material": true,
+      "a": {
+        "claim_id": "c4",
+        "type": "FACT",
+        "subject": "CREATE INDEX CONCURRENTLY lock mode",
+        "value": "SHARE UPDATE EXCLUSIVE",
+        "text": "CREATE INDEX CONCURRENTLY acquires a SHARE UPDATE EXCLUSIVE lock instead, which does not block reads or writes.",
+        "source_cited": "PostgreSQL documentation",
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "A",
+        "material": true
+      },
+      "b": null,
+      "resolution_detail": {}
+    },
+    {
+      "relationship": "ONE_SIDED",
+      "type": "FACT",
+      "subject": "CREATE INDEX vs reads",
+      "state": "",
+      "material": true,
+      "a": null,
+      "b": {
+        "claim_id": "c2",
+        "type": "FACT",
+        "subject": "CREATE INDEX vs reads",
+        "value": "does not block reads",
+        "text": "SHARE does not conflict with ACCESS SHARE, so SELECT on the table can proceed during the build.",
+        "source_cited": "PostgreSQL docs: Explicit Locking",
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "B",
+        "material": true
+      },
+      "resolution_detail": {}
+    },
+    {
+      "relationship": "ONE_SIDED",
+      "type": "FACT",
+      "subject": "CREATE INDEX vs writes",
+      "state": "",
+      "material": true,
+      "a": null,
+      "b": {
+        "claim_id": "c3",
+        "type": "FACT",
+        "subject": "CREATE INDEX vs writes",
+        "value": "blocks writes",
+        "text": "SHARE conflicts with ROW EXCLUSIVE, so INSERT, UPDATE, and DELETE wait until the index build finishes.",
+        "source_cited": "PostgreSQL docs: CREATE INDEX",
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "B",
+        "material": true
+      },
+      "resolution_detail": {}
+    }
+  ],
+  "answers": {
+    "A": {
+      "slot": "A",
+      "parse_status": "ok",
+      "verdict": "Plain CREATE INDEX blocks all writes (INSERT/UPDATE/DELETE) but allows concurrent reads (SELECT) on the table.",
+      "answer": "A plain CREATE INDEX acquires a SHARE lock on the table. SHARE allows concurrent reads (SELECT) but blocks any writes \u2014 INSERT, UPDATE, DELETE, and also other DDL that needs a conflicting lock \u2014 for the duration of the index build. This is why CREATE INDEX CONCURRENTLY exists: it instead takes SHARE UPDATE EXCLUSIVE, which permits both reads and writes to proceed concurrently, at the cost of a slower, two-pass build and no transactional guarantee of atomicity.",
+      "claims": [
+        {
+          "claim_id": "c1",
+          "type": "FACT",
+          "subject": "plain CREATE INDEX table lock mode",
+          "value": "SHARE",
+          "text": "A plain CREATE INDEX (without CONCURRENTLY) acquires a SHARE lock on the table being indexed.",
+          "source_cited": "PostgreSQL documentation (Explicit Locking / CREATE INDEX)",
+          "source_verification": "UNVERIFIED",
+          "evidence_type": "MODEL_ONLY",
+          "slot": "A",
+          "material": true
+        },
+        {
+          "claim_id": "c2",
+          "type": "REASONING",
+          "subject": "SHARE lock read behavior",
+          "value": "reads allowed",
+          "text": "The SHARE lock mode allows concurrent SELECT queries to proceed while the index is being built.",
+          "source_cited": null,
+          "source_verification": "UNVERIFIED",
+          "evidence_type": "MODEL_ONLY",
+          "slot": "A",
+          "material": false
+        },
+        {
+          "claim_id": "c3",
+          "type": "REASONING",
+          "subject": "SHARE lock write behavior",
+          "value": "writes blocked",
+          "text": "The SHARE lock mode conflicts with locks needed for INSERT, UPDATE, and DELETE, so writes are blocked until the index build completes.",
+          "source_cited": null,
+          "source_verification": "UNVERIFIED",
+          "evidence_type": "MODEL_ONLY",
+          "slot": "A",
+          "material": false
+        },
+        {
+          "claim_id": "c4",
+          "type": "FACT",
+          "subject": "CREATE INDEX CONCURRENTLY lock mode",
+          "value": "SHARE UPDATE EXCLUSIVE",
+          "text": "CREATE INDEX CONCURRENTLY acquires a SHARE UPDATE EXCLUSIVE lock instead, which does not block reads or writes.",
+          "source_cited": "PostgreSQL documentation",
+          "source_verification": "UNVERIFIED",
+          "evidence_type": "MODEL_ONLY",
+          "slot": "A",
+          "material": true
+        }
+      ],
+      "uncertainties": [
+        "Exact lock mode name and conflict table are from memory of PostgreSQL documentation and not independently re-verified in this session."
+      ]
+    },
+    "B": {
+      "slot": "B",
+      "parse_status": "ok",
+      "verdict": "Plain CREATE INDEX takes SHARE and blocks writes, not reads.",
+      "answer": "A plain CREATE INDEX (no CONCURRENTLY) acquires a SHARE lock on the table. That lock allows concurrent SELECT (ACCESS SHARE) and blocks INSERT, UPDATE, and DELETE (ROW EXCLUSIVE) until the build finishes. Reads continue; writers wait. CREATE INDEX CONCURRENTLY is the path that avoids blocking writers.",
+      "claims": [
+        {
+          "claim_id": "c1",
+          "type": "FACT",
+          "subject": "CREATE INDEX lock mode",
+          "value": "SHARE",
+          "text": "Plain CREATE INDEX acquires a table-level SHARE lock.",
+          "source_cited": "PostgreSQL docs: Explicit Locking / CREATE INDEX",
+          "source_verification": "UNVERIFIED",
+          "evidence_type": "MODEL_ONLY",
+          "slot": "B",
+          "material": true
+        },
+        {
+          "claim_id": "c2",
+          "type": "FACT",
+          "subject": "CREATE INDEX vs reads",
+          "value": "does not block reads",
+          "text": "SHARE does not conflict with ACCESS SHARE, so SELECT on the table can proceed during the build.",
+          "source_cited": "PostgreSQL docs: Explicit Locking",
+          "source_verification": "UNVERIFIED",
+          "evidence_type": "MODEL_ONLY",
+          "slot": "B",
+          "material": true
+        },
+        {
+          "claim_id": "c3",
+          "type": "FACT",
+          "subject": "CREATE INDEX vs writes",
+          "value": "blocks writes",
+          "text": "SHARE conflicts with ROW EXCLUSIVE, so INSERT, UPDATE, and DELETE wait until the index build finishes.",
+          "source_cited": "PostgreSQL docs: CREATE INDEX",
+          "source_verification": "UNVERIFIED",
+          "evidence_type": "MODEL_ONLY",
+          "slot": "B",
+          "material": true
+        }
+      ],
+      "uncertainties": []
+    }
+  },
+  "independence_warning": "Independent model agreement is not external verification.",
+  "evidence_type": "MODEL_ONLY",
+  "metrics_deliberately_not_computed": [
+    "initial correctness per FAMILY",
+    "errors caught by the SECOND family",
+    "errors introduced by cross-family reconciliation"
+  ],
+  "cross_family_note": "Cross-family run: slot A anthropic, slot B xai, both real subscription transports. Agreement here is between two independent model families -- which is still NOT external verification.",
+  "metrics_omitted_because_same_family": false
+}

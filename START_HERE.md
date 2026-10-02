@@ -19,6 +19,29 @@ Three connected goals, in this priority order when they conflict:
 2. A genuinely valuable, trustworthy software-delivery product.
 3. Long-term: a company built on repeatable, verified customer value.
 
+## Deep Consensus: CLOSED
+
+> **DEEP CONSENSUS EXPERIMENTAL PROGRAM: PAUSED AFTER SPRINT 6**
+> **PRODUCT THESIS: UNPROVEN**
+> **NEXT SPRINT: NONE AUTHORIZED**
+
+Deep Consensus was a separate experimental program, not part of the
+Workbench. It is **closed**. Do not start Sprint 7, do not run an ablation,
+do not rerun Sprint 6, and do not build a replacement benchmark.
+
+Read [docs/DEEP_CONSENSUS_FINAL_CLOSURE_2026-10-02.md](docs/DEEP_CONSENSUS_FINAL_CLOSURE_2026-10-02.md)
+before touching anything under `deep_consensus/`. For the one-page version
+written for interviews, see
+[docs/DEEP_CONSENSUS_CASE_STUDY.md](docs/DEEP_CONSENSUS_CASE_STUDY.md).
+
+Short version: the frozen pipeline mechanically emitted `ONE MORE LOOK`, the
+Owner reviewed the two flagged rows it depended on, found them to be
+representation/scoring artifacts rather than genuine baseline falsehoods, and
+adjudicated **PAUSE**. Both results are preserved; the mechanical one was not
+rewritten. The program's strongest finding is about measurement, not the
+product: every recent product headline was decided by a defect in the
+evaluation system rather than by demonstrated capability.
+
 ## What is the flagship product?
 
 The **Agentic Software Delivery platform** itself — not the Customer app

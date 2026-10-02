@@ -1,0 +1,187 @@
+{
+  "status": "OK",
+  "model_calls_made_by_this_audit": 0,
+  "changed_any_score": false,
+  "changed_any_case": false,
+  "changed_any_rule": false,
+  "suspect_baseline_falsehoods": [
+    {
+      "case_id": "S6-BLIND-JV-1-bare-transactional-defaults",
+      "set_type": "BLIND",
+      "subject": "default_propagation",
+      "outcome": "FALSE",
+      "why": "enum 'required' against 'propagation_required'; enum tokens are compared by equality only, never by similarity",
+      "model_value": "PROPAGATION_REQUIRED",
+      "model_value_type": "ENUM",
+      "golden_value": "REQUIRED",
+      "golden_value_type": "ENUM",
+      "comparison_verdict": "CONFLICT",
+      "suspicion": "SUSPECT_SYNONYM_FORM",
+      "suspicion_why": "the frozen golden claim pins one spelling of an enum that has more than one documented form; 'PROPAGATION_REQUIRED' appears to be 'REQUIRED' with a qualifier prefix or suffix, so this may be the SAME answer rather than a falsehood. A human must decide; no string rule can."
+    },
+    {
+      "case_id": "S6-BLIND-JV-1-bare-transactional-defaults",
+      "set_type": "BLIND",
+      "subject": "default_isolation_level",
+      "outcome": "FALSE",
+      "why": "enum 'default' against 'isolation_default'; enum tokens are compared by equality only, never by similarity",
+      "model_value": "ISOLATION_DEFAULT",
+      "model_value_type": "ENUM",
+      "golden_value": "DEFAULT",
+      "golden_value_type": "ENUM",
+      "comparison_verdict": "CONFLICT",
+      "suspicion": "SUSPECT_SYNONYM_FORM",
+      "suspicion_why": "the frozen golden claim pins one spelling of an enum that has more than one documented form; 'ISOLATION_DEFAULT' appears to be 'DEFAULT' with a qualifier prefix or suffix, so this may be the SAME answer rather than a falsehood. A human must decide; no string rule can."
+    }
+  ],
+  "suspect_catches": [
+    {
+      "case_id": "S6-BLIND-JV-1-bare-transactional-defaults",
+      "set_type": "BLIND",
+      "kind": "CORRECTED",
+      "subject": "default_propagation",
+      "outcome": "CORRECT",
+      "why": "both normalise to enum 'required'",
+      "model_value": "REQUIRED",
+      "model_value_type": "ENUM",
+      "golden_value": "REQUIRED",
+      "golden_value_type": "ENUM",
+      "comparison_verdict": "AGREE",
+      "dc_disposition": "CORRECTED",
+      "dc_disposition_why": "the baseline published a material falsehood on this subject and Deep Consensus produced the correct typed value without publishing the false claim as settled",
+      "dc_claim_state": "AGREED",
+      "published_as_settled": true,
+      "baseline_outcome": "FALSE",
+      "suspicion": "SUSPECT_SYNONYM_FORM",
+      "suspicion_why": "credited for correcting or exposing a baseline claim that is itself flagged as a spelling difference rather than a falsehood, so there may have been nothing to catch"
+    },
+    {
+      "case_id": "S6-BLIND-JV-1-bare-transactional-defaults",
+      "set_type": "BLIND",
+      "kind": "CORRECTED",
+      "subject": "default_isolation_level",
+      "outcome": "CORRECT",
+      "why": "both normalise to enum 'default'",
+      "model_value": "DEFAULT",
+      "model_value_type": "ENUM",
+      "golden_value": "DEFAULT",
+      "golden_value_type": "ENUM",
+      "comparison_verdict": "AGREE",
+      "dc_disposition": "CORRECTED",
+      "dc_disposition_why": "the baseline published a material falsehood on this subject and Deep Consensus produced the correct typed value without publishing the false claim as settled",
+      "dc_claim_state": "AGREED",
+      "published_as_settled": true,
+      "baseline_outcome": "FALSE",
+      "suspicion": "SUSPECT_SYNONYM_FORM",
+      "suspicion_why": "credited for correcting or exposing a baseline claim that is itself flagged as a spelling difference rather than a falsehood, so there may have been nothing to catch"
+    }
+  ],
+  "per_case": [
+    {
+      "case_id": "S6-BLIND-AP-1-text-claim-comparator-threshold",
+      "suspect_falsehoods": 0,
+      "suspect_catches": 0
+    },
+    {
+      "case_id": "S6-BLIND-AP-2-convergence-score-and-stop-authority",
+      "suspect_falsehoods": 0,
+      "suspect_catches": 0
+    },
+    {
+      "case_id": "S6-BLIND-DB-1-add-column-constant-default-rewrite",
+      "suspect_falsehoods": 0,
+      "suspect_catches": 0
+    },
+    {
+      "case_id": "S6-BLIND-DB-2-lock-timeout-default",
+      "suspect_falsehoods": 0,
+      "suspect_catches": 0
+    },
+    {
+      "case_id": "S6-BLIND-JV-1-bare-transactional-defaults",
+      "suspect_falsehoods": 2,
+      "suspect_catches": 2
+    },
+    {
+      "case_id": "S6-BLIND-CC-1-repeatable-read-concurrent-update",
+      "suspect_falsehoods": 0,
+      "suspect_catches": 0
+    },
+    {
+      "case_id": "S6-BLIND-SEC-1-oauth-public-client-grant-choice",
+      "suspect_falsehoods": 0,
+      "suspect_catches": 0
+    },
+    {
+      "case_id": "S6-BLIND-VER-1-default-charset-utf8",
+      "suspect_falsehoods": 0,
+      "suspect_catches": 0
+    },
+    {
+      "case_id": "S6-CHAL-DB-1-refresh-matview-lock",
+      "suspect_falsehoods": 0,
+      "suspect_catches": 0
+    },
+    {
+      "case_id": "S6-CHAL-DB-2-concurrently-lock-asymmetry",
+      "suspect_falsehoods": 0,
+      "suspect_catches": 0
+    },
+    {
+      "case_id": "S6-CHAL-DB-3-truncate-rollback-and-mvcc",
+      "suspect_falsehoods": 0,
+      "suspect_catches": 0
+    },
+    {
+      "case_id": "S6-CHAL-DB-4-read-committed-update-recheck",
+      "suspect_falsehoods": 0,
+      "suspect_catches": 0
+    },
+    {
+      "case_id": "S6-CHAL-SPR-1-required-unexpected-rollback",
+      "suspect_falsehoods": 0,
+      "suspect_catches": 0
+    },
+    {
+      "case_id": "S6-CHAL-SPR-2-configuration-proxy-bean-methods",
+      "suspect_falsehoods": 0,
+      "suspect_catches": 0
+    },
+    {
+      "case_id": "S6-CHAL-JV-1-jep491-synchronized-pinning",
+      "suspect_falsehoods": 0,
+      "suspect_catches": 0
+    },
+    {
+      "case_id": "S6-CHAL-JV-2-jep400-default-charset",
+      "suspect_falsehoods": 0,
+      "suspect_catches": 0
+    },
+    {
+      "case_id": "S6-CHAL-JV-3-chm-iterator-and-size",
+      "suspect_falsehoods": 0,
+      "suspect_catches": 0
+    },
+    {
+      "case_id": "S6-CHAL-HTTP-1-no-cache-vs-no-store",
+      "suspect_falsehoods": 0,
+      "suspect_catches": 0
+    },
+    {
+      "case_id": "S6-CHAL-HTTP-2-401-vs-403-and-www-authenticate",
+      "suspect_falsehoods": 0,
+      "suspect_catches": 0
+    },
+    {
+      "case_id": "S6-CHAL-SEC-1-ropc-vs-implicit-normative-strength",
+      "suspect_falsehoods": 0,
+      "suspect_catches": 0
+    }
+  ],
+  "mechanical_catch_total": 2,
+  "catches_excluding_suspect": 0,
+  "mechanical_baseline_falsehoods": 2,
+  "baseline_falsehoods_excluding_suspect": 0,
+  "flagged_rows_are_not_proven_artefacts": "A flagged row is a row a human must look at, not a row proven to be a scoring artefact. The excluding-flagged figures show what the frozen rule yields IF every flagged row is an artefact. Neither figure is the answer on its own; the Owner's adjudication of the named rows is.",
+  "interpretation": "The mechanical figures are what the frozen rule was applied to and are reported as such. The excluding-suspect figures are what the same rule yields if every flagged row is a scoring artefact rather than a real falsehood. Both are published because the difference is a question for the Owner, and because a verdict resting on a flagged row should not be presented as if it rested on evidence."
+}

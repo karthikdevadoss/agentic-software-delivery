@@ -1,0 +1,53 @@
+{
+  "1_initialize": {
+    "http_status": 200,
+    "server_info": {
+      "name": "deep-consensus",
+      "version": ""
+    },
+    "session_id_issued": true
+  },
+  "2_tools_list": {
+    "http_status": 200,
+    "tool_names": [
+      "deep_review"
+    ],
+    "exactly_one_tool_deep_review": true
+  },
+  "3_valid_call": {
+    "http_status": 200,
+    "is_error": false,
+    "run_id": "dcr_cb4cdc59c1514155",
+    "status": "CONVERGED",
+    "provider_mode": "mock_mock",
+    "convergence_score": 1.0,
+    "provider_calls": 4,
+    "round_count": 1,
+    "stop_reason": "bounded_convergence",
+    "dissent": [],
+    "tokens": {
+      "input": null,
+      "output": null,
+      "total": null
+    },
+    "audit_path": "C:\\Users\\Hemapriya\\agentic-software-delivery\\deep_consensus\\audit_log.jsonl"
+  },
+  "4_invalid_call_is_controlled": {
+    "http_status": 200,
+    "is_error": true,
+    "message": "Error executing tool deep_review: question is required and must not be empty"
+  },
+  "5_internal_stage_not_exposed": {
+    "http_status": 200,
+    "is_error": true,
+    "message": "Unknown tool: run_deep_review"
+  },
+  "6_server_alive_after_both_failures": {
+    "http_status": 200,
+    "tool_names": [
+      "deep_review"
+    ]
+  }
+}
+
+PROBE RESULT: PASS (all 8 checks)

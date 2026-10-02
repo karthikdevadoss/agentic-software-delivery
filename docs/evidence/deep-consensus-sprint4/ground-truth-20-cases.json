@@ -1,0 +1,575 @@
+{
+  "fingerprint": "c51b4a39d6ec6719986c98a0d11d095c9a6bf2105a30dbffea0a1a80113a8be1",
+  "cases": [
+    {
+      "case_id": "S4-DB-1-create-index-lock",
+      "category": "database_migration_locking",
+      "scoring_kind": "BINARY",
+      "question": "In PostgreSQL, what table-level lock mode does a plain CREATE INDEX (without CONCURRENTLY) acquire, and does it block reads, writes, or both while the index is built? Answer in under 120 words.",
+      "expected_answer": "SHARE lock. Writes are blocked; reads continue.",
+      "expected_values": {
+        "lock mode": [
+          "share"
+        ],
+        "reads": [
+          "not blocked",
+          "allowed",
+          "continue",
+          "permitted",
+          "do not block",
+          "does not block"
+        ],
+        "writes": [
+          "blocked",
+          "block"
+        ]
+      },
+      "wrong_markers": [
+        "access exclusive",
+        "blocks both",
+        "blocks reads and writes",
+        "no queries can run"
+      ],
+      "source_url": "https://www.postgresql.org/docs/current/explicit-locking.html",
+      "source_quote": "\"SHARE -- Acquired by CREATE INDEX (without CONCURRENTLY).\" and \"a standard index build locks out writes (but not reads) on the table until it's done.\" (https://www.postgresql.org/docs/current/sql-createindex.html)",
+      "source_accessed": "2026-10-01",
+      "notes": "This is the error Deep Consensus itself published in Sprint 1."
+    },
+    {
+      "case_id": "S4-DB-2-default-isolation",
+      "category": "database_migration_locking",
+      "scoring_kind": "BINARY",
+      "question": "What is PostgreSQL's DEFAULT transaction isolation level, and under that level are non-repeatable reads and phantom reads possible? Answer in under 120 words.",
+      "expected_answer": "READ COMMITTED is the default. Both non-repeatable reads and phantom reads are possible under it.",
+      "expected_values": {
+        "default isolation level": [
+          "read committed"
+        ],
+        "non-repeatable read": [
+          "possible",
+          "yes",
+          "can occur",
+          "allowed"
+        ],
+        "phantom read": [
+          "possible",
+          "yes",
+          "can occur",
+          "allowed"
+        ]
+      },
+      "wrong_markers": [
+        "serializable is the default",
+        "repeatable read is the default",
+        "not possible",
+        "prevented"
+      ],
+      "source_url": "https://www.postgresql.org/docs/current/transaction-iso.html",
+      "source_quote": "\"Read Committed is the default isolation level in PostgreSQL.\" Table 13.1: Nonrepeatable Read = Possible, Phantom Read = Possible.",
+      "source_accessed": "2026-10-01",
+      "notes": ""
+    },
+    {
+      "case_id": "S4-DB-3-read-uncommitted",
+      "category": "database_migration_locking",
+      "scoring_kind": "BINARY",
+      "question": "Does PostgreSQL implement READ UNCOMMITTED as a distinct isolation level with dirty reads, or does it behave as something else? Answer in under 120 words.",
+      "expected_answer": "PostgreSQL does not implement READ UNCOMMITTED distinctly; it behaves as READ COMMITTED. Only three distinct levels are implemented, so dirty reads do not occur.",
+      "expected_values": {
+        "read uncommitted behaviour": [
+          "read committed",
+          "behaves like read committed",
+          "same as read committed"
+        ],
+        "dirty reads": [
+          "no",
+          "not possible",
+          "do not occur",
+          "never"
+        ]
+      },
+      "wrong_markers": [
+        "dirty reads are possible",
+        "allows dirty reads",
+        "four distinct",
+        "is a distinct level"
+      ],
+      "source_url": "https://www.postgresql.org/docs/current/transaction-iso.html",
+      "source_quote": "\"PostgreSQL's Read Uncommitted mode behaves like Read Committed. ... internally only three distinct isolation levels are implemented\"",
+      "source_accessed": "2026-10-01",
+      "notes": ""
+    },
+    {
+      "case_id": "S4-DB-4-s3-consistency",
+      "category": "database_migration_locking",
+      "scoring_kind": "BINARY",
+      "question": "Does Amazon S3 provide eventually consistent or strongly consistent read-after-write for PUT and DELETE of objects? And does S3 lock objects for concurrent writers to the same key? Answer in under 120 words.",
+      "expected_answer": "Strong read-after-write consistency for PUT and DELETE in all AWS Regions. S3 does NOT support object locking for concurrent writers; simultaneous PUTs to one key resolve last-writer-wins.",
+      "expected_values": {
+        "consistency": [
+          "strong",
+          "strongly consistent",
+          "read-after-write"
+        ],
+        "concurrent writer locking": [
+          "no",
+          "not supported",
+          "does not support",
+          "last-writer-wins",
+          "last writer wins"
+        ]
+      },
+      "wrong_markers": [
+        "eventually consistent",
+        "eventual consistency for put"
+      ],
+      "source_url": "https://docs.aws.amazon.com/AmazonS3/latest/userguide/Welcome.html",
+      "source_quote": "\"Amazon S3 provides strong read-after-write consistency for PUT and DELETE requests of objects ... in all AWS Regions.\" and \"Amazon S3 does not support object locking for concurrent writers. If two PUT requests are simultaneously made to the same key, the request with the latest timestamp wins.\"",
+      "source_accessed": "2026-10-01",
+      "notes": ""
+    },
+    {
+      "case_id": "S4-JV-1-self-invocation",
+      "category": "java_spring",
+      "scoring_kind": "BINARY",
+      "question": "In Spring with default proxy-based AOP, if a public method on a bean calls another method on the SAME bean annotated @Transactional, does a transaction start for that inner call? What would make it work? Answer in under 120 words.",
+      "expected_answer": "No. In proxy mode only external calls through the proxy are intercepted, so self-invocation does not start a transaction. AspectJ weaving, or routing the call through the proxy, fixes it.",
+      "expected_values": {
+        "inner call starts transaction": [
+          "no",
+          "does not",
+          "no transaction",
+          "not start",
+          "never"
+        ],
+        "reason": [
+          "proxy",
+          "external",
+          "bypass"
+        ],
+        "fix": [
+          "aspectj",
+          "weav",
+          "separate bean",
+          "another bean",
+          "self-inject",
+          "via the proxy"
+        ]
+      },
+      "wrong_markers": [
+        "yes, a transaction",
+        "transaction does start",
+        "will start a new transaction"
+      ],
+      "source_url": "https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/annotations.html",
+      "source_quote": "\"In proxy mode (which is the default), only external method calls coming in through the proxy are intercepted. This means that self-invocation ... does not lead to an actual transaction at runtime even if the invoked method is marked with @Transactional.\"",
+      "source_accessed": "2026-10-01",
+      "notes": ""
+    },
+    {
+      "case_id": "S4-JV-2-rollback-rules",
+      "category": "java_spring",
+      "scoring_kind": "BINARY",
+      "question": "By default, which exceptions cause a Spring @Transactional transaction to roll back, and which do NOT? Answer in under 120 words.",
+      "expected_answer": "By default RuntimeException (unchecked) and Error cause rollback. Checked exceptions do NOT roll back; the transaction commits. rollbackFor/noRollbackFor override this.",
+      "expected_values": {
+        "unchecked exceptions": [
+          "rollback",
+          "roll back",
+          "rolls back"
+        ],
+        "checked exceptions": [
+          "no rollback",
+          "do not",
+          "does not roll back",
+          "commit",
+          "not rolled back"
+        ]
+      },
+      "wrong_markers": [
+        "all exceptions cause rollback",
+        "checked exceptions also roll back",
+        "checked exceptions cause a rollback"
+      ],
+      "source_url": "https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/rolling-back.html",
+      "source_quote": "\"the Spring Framework's transaction infrastructure code marks a transaction for rollback only in the case of runtime, unchecked exceptions ... (Error instances also, by default, result in a rollback)\" and \"Checked exceptions that are thrown from a transactional method do not result in a rollback in the default configuration.\"",
+      "source_accessed": "2026-10-01",
+      "notes": ""
+    },
+    {
+      "case_id": "S4-JV-3-virtual-thread-pinning",
+      "category": "java_spring",
+      "scoring_kind": "BINARY",
+      "question": "In Java 21, is a virtual thread pinned to its carrier thread while inside a synchronized block, and what is the recommended mitigation? Answer in under 120 words.",
+      "expected_answer": "Yes. A virtual thread is pinned while running inside a synchronized block or method (and in native/foreign calls), so a blocking operation there blocks the carrier OS thread. The recommended mitigation is ReentrantLock instead of synchronized in those places.",
+      "expected_values": {
+        "pinned in synchronized": [
+          "yes",
+          "pinned",
+          "is pinned"
+        ],
+        "mitigation": [
+          "reentrantlock",
+          "reentrant lock"
+        ]
+      },
+      "wrong_markers": [
+        "not pinned",
+        "no pinning",
+        "never pinned"
+      ],
+      "source_url": "https://docs.oracle.com/en/java/javase/21/core/virtual-threads.html",
+      "source_quote": "\"A virtual thread is pinned in the following situations: The virtual thread runs code inside a synchronized block or method ...\" and \"Replace the use of synchronized with ReentrantLock in those particular places\"",
+      "source_accessed": "2026-10-01",
+      "notes": ""
+    },
+    {
+      "case_id": "S4-JV-4-virtual-thread-pooling",
+      "category": "java_spring",
+      "scoring_kind": "BINARY",
+      "question": "Should Java virtual threads be pooled in a fixed-size thread pool, and are they suited to CPU-bound or IO-bound work? Answer in under 120 words.",
+      "expected_answer": "Virtual threads should NEVER be pooled -- each should represent a task, using Executors.newVirtualThreadPerTaskExecutor(). They suit IO-bound work that spends most of its time blocked, not long-running CPU-intensive work.",
+      "expected_values": {
+        "pooling": [
+          "never",
+          "should not",
+          "do not pool",
+          "not be pooled",
+          "no"
+        ],
+        "workload": [
+          "io",
+          "i/o",
+          "blocked",
+          "blocking"
+        ]
+      },
+      "wrong_markers": [
+        "should be pooled",
+        "pool them",
+        "fixed-size pool is recommended",
+        "suited to cpu-bound",
+        "good for cpu-intensive"
+      ],
+      "source_url": "https://docs.oracle.com/en/java/javase/21/core/virtual-threads.html",
+      "source_quote": "\"virtual threads aren't scarce and therefore should never be pooled!\" and \"Virtual threads are suitable for running tasks that spend most of the time blocked ... they aren't intended for long-running CPU-intensive operations.\"",
+      "source_accessed": "2026-10-01",
+      "notes": ""
+    },
+    {
+      "case_id": "S4-SEC-1-jwt-alg-none",
+      "category": "security_auth",
+      "scoring_kind": "BINARY",
+      "question": "A service verifies JWTs by reading the \"alg\" header from the token and using that algorithm. Is this safe? What does the JWT Best Current Practices RFC require instead? Answer in under 120 words.",
+      "expected_answer": "Not safe. The verifier must not trust the token's own alg header: libraries MUST let the caller specify a supported set of algorithms and MUST NOT use any other. \"none\" must not be consumed unless explicitly requested. Each key must be used with exactly one algorithm, checked at verification.",
+      "expected_values": {
+        "is it safe": [
+          "no",
+          "not safe",
+          "unsafe",
+          "insecure",
+          "vulnerable"
+        ],
+        "requirement": [
+          "specify",
+          "allowlist",
+          "allow list",
+          "expected algorithm",
+          "supported set",
+          "pin"
+        ]
+      },
+      "wrong_markers": [
+        "yes, this is safe",
+        "it is safe",
+        "acceptable practice"
+      ],
+      "source_url": "https://datatracker.ietf.org/doc/html/rfc8725",
+      "source_quote": "\"Libraries MUST enable the caller to specify a supported set of algorithms and MUST NOT use any other algorithms when performing cryptographic operations.\"",
+      "source_accessed": "2026-10-01",
+      "notes": ""
+    },
+    {
+      "case_id": "S4-SEC-2-jwt-alg-confusion",
+      "category": "security_auth",
+      "scoring_kind": "BINARY",
+      "question": "Explain the JWT algorithm-confusion attack where RS256 is changed to HS256. What makes it work and what is the required mitigation? Answer in under 120 words.",
+      "expected_answer": "An attacker rewrites alg from RS256 to HS256; a naive library then verifies an HMAC using the RSA PUBLIC key as the shared secret, which the attacker also knows, so any forged token verifies. Mitigation: each key MUST be used with exactly one algorithm, and that MUST be checked when the operation is performed.",
+      "expected_values": {
+        "mechanism": [
+          "public key",
+          "shared secret",
+          "hmac"
+        ],
+        "mitigation": [
+          "one algorithm",
+          "single algorithm",
+          "bind",
+          "restrict",
+          "exactly one"
+        ]
+      },
+      "wrong_markers": [
+        "not a real attack",
+        "no longer possible",
+        "not exploitable"
+      ],
+      "source_url": "https://datatracker.ietf.org/doc/html/rfc8725",
+      "source_quote": "\"An 'RS256' ... parameter value can be changed into 'HS256' ... and some libraries would try to validate the signature using HMAC-SHA256 and using the RSA public key as the HMAC shared secret.\" and \"each key MUST be used with exactly one algorithm, and this MUST be checked when the cryptographic operation is performed.\"",
+      "source_accessed": "2026-10-01",
+      "notes": ""
+    },
+    {
+      "case_id": "S4-SEC-3-bcrypt-salt-column",
+      "category": "security_auth",
+      "scoring_kind": "BINARY",
+      "question": "When storing bcrypt password hashes, do you need a separate database column for the salt? And what minimum work factor does OWASP recommend? Answer in under 120 words.",
+      "expected_answer": "No separate salt column: the bcrypt output string already embeds the version, cost factor and salt, so verification reads the salt back out of the stored hash. OWASP recommends a work factor as large as the server allows, with a minimum of 10.",
+      "expected_values": {
+        "separate salt column": [
+          "no",
+          "not need",
+          "unnecessary",
+          "not required",
+          "embedded",
+          "included"
+        ],
+        "work factor": [
+          "10",
+          "ten"
+        ]
+      },
+      "wrong_markers": [
+        "yes, store the salt separately",
+        "separate column is required",
+        "you must store the salt"
+      ],
+      "source_url": "https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html",
+      "source_quote": "\"The work factor should be as large as verification server performance will allow, with a minimum of 10.\" Salt handling: \"most widely used implementations and libraries automatically generate and manage salts internally.\"",
+      "source_accessed": "2026-10-01",
+      "notes": ""
+    },
+    {
+      "case_id": "S4-SEC-4-bcrypt-length-limit",
+      "category": "security_auth",
+      "scoring_kind": "BINARY",
+      "question": "Is there a maximum password length that bcrypt actually hashes, and what is the security implication for long passphrases or for pre-hashing with SHA-512 then base64? Answer in under 120 words.",
+      "expected_answer": "Yes. bcrypt has a maximum input length of 72 bytes in most implementations and silently truncates beyond it, so a maximum password length of 72 bytes should be enforced. Pre-hashing to base64 can exceed 72 characters and be truncated, losing entropy.",
+      "expected_values": {
+        "max input length": [
+          "72"
+        ],
+        "behaviour beyond limit": [
+          "truncat",
+          "ignored",
+          "discarded"
+        ]
+      },
+      "wrong_markers": [
+        "no limit",
+        "unlimited length",
+        "any length is fine"
+      ],
+      "source_url": "https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html",
+      "source_quote": "\"bcrypt has a maximum length input length of 72 bytes for most implementations, so you should enforce a maximum password length of 72 bytes\"",
+      "source_accessed": "2026-10-01",
+      "notes": ""
+    },
+    {
+      "case_id": "S4-VER-1-spring-boot-java-baseline",
+      "category": "version_platform_facts",
+      "scoring_kind": "BINARY",
+      "question": "What is the minimum Java version required by the CURRENT release of Spring Boot, and the highest Java version it states compatibility with? Name the Spring Boot version you are describing. Answer in under 120 words.",
+      "expected_answer": "Spring Boot 4.1.1 requires at least Java 17 and is compatible up to and including Java 26 (and requires Spring Framework 7.0.9+).",
+      "expected_values": {
+        "minimum java": [
+          "17"
+        ],
+        "maximum java": [
+          "26"
+        ],
+        "spring boot version": [
+          "4.1",
+          "4.1.1"
+        ]
+      },
+      "wrong_markers": [
+        "java 8",
+        "java 11 minimum",
+        "requires java 11"
+      ],
+      "source_url": "https://docs.spring.io/spring-boot/system-requirements.html",
+      "source_quote": "\"Spring Boot 4.1.1 requires at least Java 17 and is compatible with versions up to and including Java 26.\"",
+      "source_accessed": "2026-10-01",
+      "notes": "A stale-training-data probe. Both families agreed on Spring Boot 3.5 / Java 24 in Sprint 3 -- confidently, and wrongly."
+    },
+    {
+      "case_id": "S4-VER-2-spring-boot-min-java-stability",
+      "category": "version_platform_facts",
+      "scoring_kind": "BINARY",
+      "question": "Has the MINIMUM Java version required by Spring Boot 3.x and later been Java 17, or did any release in that line require a lower version? Answer in under 120 words.",
+      "expected_answer": "Java 17 is the minimum across the Spring Boot 3.x line and remains the minimum for the current release; no 3.x release accepted a lower version. Spring Boot 2.x accepted Java 8.",
+      "expected_values": {
+        "minimum for 3.x and later": [
+          "17"
+        ]
+      },
+      "wrong_markers": [
+        "java 11",
+        "java 8 is the minimum for 3"
+      ],
+      "source_url": "https://docs.spring.io/spring-boot/system-requirements.html",
+      "source_quote": "\"Spring Boot 4.1.1 requires at least Java 17\" -- the 17 baseline established in 3.0 is unchanged in the current release.",
+      "source_accessed": "2026-10-01",
+      "notes": "Deliberately the EASY half of S4-VER-1. In Sprint 3 both families got the 17 baseline right while getting the release and the ceiling wrong, so separating them shows whether a model is stale about one fact or about the whole area."
+    },
+    {
+      "case_id": "S4-VER-3-s3-bucket-config-consistency",
+      "category": "version_platform_facts",
+      "scoring_kind": "BINARY",
+      "question": "In Amazon S3, are BUCKET CONFIGURATION changes (for example enabling versioning, or deleting a bucket then listing buckets) strongly consistent in the same way object PUTs are? Answer in under 120 words.",
+      "expected_answer": "No. Object PUT/DELETE are strongly consistent, but bucket CONFIGURATIONS have an eventual consistency model: a deleted bucket may still appear in a listing, and enabling versioning takes time to propagate (AWS suggests waiting ~15 minutes before writes).",
+      "expected_values": {
+        "bucket configuration consistency": [
+          "eventual",
+          "eventually consistent",
+          "not strongly"
+        ]
+      },
+      "wrong_markers": [
+        "bucket configurations are strongly consistent",
+        "everything is strongly consistent"
+      ],
+      "source_url": "https://docs.aws.amazon.com/AmazonS3/latest/userguide/Welcome.html",
+      "source_quote": "\"Bucket configurations have an eventual consistency model.\" ... \"If you delete a bucket and immediately list all buckets, the deleted bucket might still appear in the list.\"",
+      "source_accessed": "2026-10-01",
+      "notes": "Tests whether a model over-generalises the well-publicised 2020 strong-consistency change to the whole service."
+    },
+    {
+      "case_id": "S4-VER-4-create-index-concurrently-tradeoff",
+      "category": "version_platform_facts",
+      "scoring_kind": "BINARY",
+      "question": "What does CREATE INDEX CONCURRENTLY change about locking in PostgreSQL, and what is the specific failure mode it introduces? Answer in under 120 words.",
+      "expected_answer": "CONCURRENTLY builds the index without taking locks that prevent concurrent INSERT/UPDATE/DELETE, so writes are not blocked. The trade-offs: the build takes longer and scans the table more than once, it cannot run inside a transaction block, and if it fails it can leave behind an INVALID index that must be dropped manually.",
+      "expected_values": {
+        "locking change": [
+          "does not block writes",
+          "without blocking",
+          "no lock that prevents",
+          "writes continue",
+          "concurrent inserts"
+        ],
+        "failure mode": [
+          "invalid",
+          "invalid index"
+        ]
+      },
+      "wrong_markers": [
+        "takes no locks at all",
+        "cannot fail",
+        "no downside"
+      ],
+      "source_url": "https://www.postgresql.org/docs/current/sql-createindex.html",
+      "source_quote": "\"PostgreSQL will build the index without taking any locks that prevent concurrent inserts, updates, or deletes on the table; whereas a standard index build locks out writes (but not reads) on the table until it's done.\"",
+      "source_accessed": "2026-10-01",
+      "notes": ""
+    },
+    {
+      "case_id": "S4-AP-1-tool-surface-bypass",
+      "category": "agent_plan_review",
+      "scoring_kind": "JUDGMENT_CASE",
+      "question": "An engineer proposes an MCP server for a multi-model review tool exposing six tools -- answer_a, answer_b, review, synthesize, converge, stop -- so the host model can drive the pipeline and skip stages it judges unnecessary. What is the most serious design problem? Answer in under 120 words.",
+      "expected_answer": "Exposing every stage lets the host bypass the governance: it can review without obtaining both independent answers, skip the governor and its stop rules, and run its own loop, so every invariant becomes optional. The stages should be internal behind one public entry point.",
+      "expected_values": {
+        "defect": [
+          "bypass",
+          "skip",
+          "optional",
+          "no enforcement",
+          "host-controlled",
+          "control",
+          "integrity"
+        ]
+      },
+      "wrong_markers": [],
+      "source_url": "Pre-defined defect; graded on defect identification only.",
+      "source_quote": "The expected defect is bypassable governance, defined before execution. NOT scored as factual correctness.",
+      "source_accessed": "2026-10-01",
+      "notes": ""
+    },
+    {
+      "case_id": "S4-AP-2-destructive-without-guard",
+      "category": "agent_plan_review",
+      "scoring_kind": "JUDGMENT_CASE",
+      "question": "An agent plan says: \"To clean up the workspace before the build, run `git clean -xfd` and `git reset --hard origin/main` in the repository root, then run the test suite.\" Review this plan. What is the most serious problem? Answer in under 120 words.",
+      "expected_answer": "Both commands are destructive and unguarded: `git clean -xfd` deletes untracked and ignored files (including local env files and any uncommitted new work) and `git reset --hard` discards all local commits and changes, with no backup, stash, confirmation or dry run, and no way to recover afterwards.",
+      "expected_values": {
+        "defect": [
+          "destructive",
+          "data loss",
+          "lose",
+          "uncommitted",
+          "untracked",
+          "irreversible",
+          "no backup",
+          "unrecoverable",
+          "discard"
+        ]
+      },
+      "wrong_markers": [],
+      "source_url": "Pre-defined defect; graded on defect identification only.",
+      "source_quote": "Expected defect: unguarded destructive operation with no backup or confirmation. Defined before execution.",
+      "source_accessed": "2026-10-01",
+      "notes": ""
+    },
+    {
+      "case_id": "S4-AP-3-missing-verification-step",
+      "category": "agent_plan_review",
+      "scoring_kind": "JUDGMENT_CASE",
+      "question": "An agent plan says: \"Apply the migration to production, then report SUCCESS to the operator once the migration command exits 0.\" Review this plan. What is the most serious problem? Answer in under 120 words.",
+      "expected_answer": "Exit code 0 from the migration command is not evidence that the intended change is live and correct: there is no independent verification of the observable effect, and no rollback plan if it is wrong. Reporting SUCCESS on an exit code confuses 'the command ran' with 'the outcome is correct'.",
+      "expected_values": {
+        "defect": [
+          "verif",
+          "no rollback",
+          "exit code",
+          "not evidence",
+          "observable",
+          "confirm",
+          "validate",
+          "no check"
+        ]
+      },
+      "wrong_markers": [],
+      "source_url": "Pre-defined defect; graded on defect identification only.",
+      "source_quote": "Expected defect: missing independent verification and missing rollback. Defined before execution.",
+      "source_accessed": "2026-10-01",
+      "notes": ""
+    },
+    {
+      "case_id": "S4-AP-4-unsafe-file-scope",
+      "category": "agent_plan_review",
+      "scoring_kind": "JUDGMENT_CASE",
+      "question": "An agent plan says: \"To rename the config key, run a recursive find-and-replace of the old key name across the entire repository, including node_modules and .git, then commit everything with `git add -A`.\" Review this plan. What is the most serious problem? Answer in under 120 words.",
+      "expected_answer": "The scope is far too broad and partly corrupting: rewriting inside .git can corrupt the repository, rewriting node_modules edits vendored dependencies that will be overwritten or will break, an unanchored string replace will hit unintended matches, and `git add -A` then commits all of it indiscriminately.",
+      "expected_values": {
+        "defect": [
+          "scope",
+          ".git",
+          "node_modules",
+          "too broad",
+          "corrupt",
+          "vendor",
+          "dependencies",
+          "unintended",
+          "indiscriminate"
+        ]
+      },
+      "wrong_markers": [],
+      "source_url": "Pre-defined defect; graded on defect identification only.",
+      "source_quote": "Expected defect: unsafe/unnecessary file scope including .git. Defined before execution.",
+      "source_accessed": "2026-10-01",
+      "notes": ""
+    }
+  ]
+}

@@ -1080,3 +1080,96 @@ defects:
     commit: "ba4cb7e"
     production_evidence: "ACCEPTANCE PASSED -- 15 of 15 (9 exam + 6 unseen), after runs failing 4 of 15 and then 1 of 15. The failing runs never deployed: the gate aborted the deploy script before upload and the live deploy marker was unchanged, verified directly against the production status endpoint while the failures stood."
     recurrence_status: MONITORING
+
+  - defect_id: AEQ-034
+    title: "A guard written from the IDEA of an accessible name, not its definition -- it read innerText, which is layout-dependent, and accused seven correctly-written links of being unlabelled"
+    requirement_run_id: "Sprint 17 (2026-09-30), BL-190/BL-C6, autonomous run against a written brief with the Owner away"
+    original_prompt: "EXACT, from the Sprint 17 brief's BL-R1: \"Check: horizontal overflow, clipped primary controls, empty accessible names, console/page errors.\""
+    analysis_confidence: EXACT
+    model_provider_version: "claude-opus-5[1m]"
+    tools_context_used: "e2e/responsive-invariants.spec.js run against a real local server; then a direct Playwright probe walking the computed-style ancestor chain of one accused element, which is what produced the answer."
+    model_interpreted_as: "\"An unlabelled control is one whose visible text is empty\" -- and reached for innerText because innerText is what a reader SEES. Plausible, adjacent to correct, and wrong."
+    expected_behavior: "Flag only controls a screen reader would announce with no name. An anchor reading \"Quality Ledger entry AEQ-012\" has a name whether or not it is currently rendered."
+    actual_behavior: "Seven Showcase links reported as unlabelled on the guard's first run: \"Quality Ledger entry AEQ-012\", \"Fix commit 9f35f27\", \"Full write-up\" and four more. All seven have good link text. They sit inside a collapsed <details>, for which Chromium reports a non-zero bounding rect while refusing to render the contents -- so innerText returns \"\" and textContent returns the real text."
+    stage_introduced: "test authoring -- the guard was wrong on its first execution, before any product code was touched"
+    stage_detected: "first real run of the new guard, 80 of 81 cases passing"
+    detection_method: "Read the failure instead of acting on it. The seven names in the message were all obviously meaningful strings, which is what made the result implausible enough to probe rather than fix."
+    root_cause: "An accessible name is computed from text CONTENT plus ARIA attributes; innerText is a rendering-dependent approximation of it that happens to agree on most elements. The guard encoded the approximation. Underneath: a new guard's FIRST result is the least trustworthy output it will ever produce, and the pressure at that moment is to make the page match the guard, because the guard is fresh and the page is old."
+    gaps:
+      prompt_gap: false
+      context_rag_gap: false
+      test_gap: false
+      test_oracle_gap: true
+      harness_gap: false
+      environment_gap: false
+      tool_deployment_gap: false
+    product_fix: "No product change was needed and none was made -- that is the outcome worth recording. The GUARD was fixed: it reads textContent, and skips any control inside a `details:not([open])`, because a control behind a closed disclosure is legitimately not exposed until the reader opens it."
+    new_product_regression_test: "The corrected assertion itself, now passing on all nine public pages at 390px. The reasoning is written into the spec at the point of the skip, with the seven real link texts named, so a future reader who wonders why closed disclosures are excluded finds the incident rather than re-deriving it."
+    new_harness_process_regression: "Generalized rule: WHEN A NEW GUARD ACCUSES EXISTING CODE, SUSPECT THE GUARD FIRST. This repository already required that a new test be observed FAILING against known-bad code before its pass is trusted; this is the mirror image and it was missing -- a new test must also be observed PASSING on known-GOOD code before its failure is trusted. A guard that has only ever been red has not been calibrated, it has only been written."
+    future_prompt_clause_learned: "When a brief names a property by its standard term -- \"accessible name\", \"contrast ratio\", \"cumulative layout shift\" -- implement the DEFINITION, not the intuition the term evokes. The intuition is what produces a measurement that is right most of the time, and a guard that is right most of the time generates false accusations against real work."
+    deterministic_rule_or_tooling: "The skip is expressed as `el.closest(\"details:not([open])\")` -- a structural fact about the document, not a heuristic about visibility, so it cannot drift as styling changes."
+    commit: "19e7cac"
+    production_evidence: "NOT APPLICABLE -- nothing was deployed this sprint by instruction. The guard and its correction are both verified locally: 9 of 9 pages passing after the fix, and the seven falsely-accused links confirmed unchanged."
+    recurrence_status: OPEN
+
+  - defect_id: AEQ-035
+    title: "An exit code that had stopped carrying information: the blocking suite was red for two sprints over a stochastic model answer, so a real wiring defect beside it was invisible"
+    requirement_run_id: "Sprint 17 (2026-09-30), BL-188/BL-A"
+    original_prompt: "EXACT, from the Sprint 17 brief: \"A known stochastic miss must remain VISIBLE. It must NOT be silently skipped. But it must not make the phrase RELEASE HEALTH = RED permanently meaningless.\""
+    analysis_confidence: EXACT
+    model_provider_version: "claude-opus-5[1m]"
+    tools_context_used: "python agent/ci_python_tests.py against the real tree at sprint start, before any change; then git log on the two failing modules to date the failures."
+    model_interpreted_as: "Not a misinterpretation by any single session. This is a defect in the ACCUMULATED behaviour of several sessions, each of which read the log, recognised the expected failure, and proceeded correctly."
+    expected_behavior: "A non-zero exit from the blocking suite means the branch cannot ship. A stochastic answer-quality miss is a real finding and is not that."
+    actual_behavior: "784 tests, 2 failures. One was a Playwright spec unreachable from the TIA map -- a real deterministic wiring defect. The other was a language model declining one interview question on 2 of 3 captured draws. Both produced exit 1. The exit code therefore said RED whether or not anything had regressed, and telling the two apart required reading the log AND already knowing which failure was expected."
+    stage_introduced: "Sprint 15, when the answer-quality suite was placed in the blocking bucket -- deliberately and for a good reason at the time: a skip reads as green and SKIPPED is not PASSED."
+    stage_detected: "Sprint 17's own Phase 0 baseline, by running the suite before trusting the previous session's report of it."
+    detection_method: "The brief required verifying the handoff's claims rather than assuming them. The handoff said three deliberate failures; the real count was two, and looking at why produced this entry."
+    root_cause: "Two suites answering different questions shared one exit code. 'Is the oracle correct?' scores a frozen archive with frozen code and a failure means the measuring instrument broke. 'Is the model's output good?' scores what a language model said and a failure means it answered worse than the bar on the captured draws. Only the first is a release blocker. The agentic character of the failure is the decay path: no session ever decided to ignore the red build, each simply recognised the expected failure and moved on, and the signal degraded with no decision taken."
+    gaps:
+      prompt_gap: false
+      context_rag_gap: false
+      test_gap: false
+      test_oracle_gap: false
+      harness_gap: true
+      environment_gap: false
+      tool_deployment_gap: false
+    product_fix: "agent/ci_python_tests.py gains QUALITY_MONITOR_MODULES: a bucket whose modules RUN on every invocation and whose failures are printed in full with each failing case named, but which does not set the exit code. The stochastic half of test_si_quality moved to agent/test_si_answer_quality_monitor.py. Nothing was skipped, deleted or loosened, no assertion was weakened, and no Standing Interview product behaviour was touched. agent/release_health.py is the single local entry point and prints eight things that are NOT release health with the real reason for each."
+    new_product_regression_test: "agent/test_select_tests.py asserts the quality-monitor suite is never marked release_blocking, and that a paid cost class always carries the paid tag -- so a suite cannot be paid in behaviour and free-looking in the matrix. docs/testing-matrix.json is GENERATED from select_tests.SUITES, so the recorded classification cannot drift from the selector that actually runs."
+    new_harness_process_regression: "Generalized rule, written where the bucket is defined so it cannot be stretched later: a module belongs in the monitor bucket ONLY if its assertion is about the CONTENT OF MODEL OUTPUT. If the same code run twice on the same input can legitimately give different verdicts, it is a monitor; if it cannot, it is release health and no amount of inconvenience moves it. 'It fails a lot' is explicitly not a qualifying reason."
+    future_prompt_clause_learned: "A permanently-red gate is worse than no gate, because it looks like a gate. When a suite has been failing for more than one sprint, the question is not 'is the failure real' but 'what is this exit code still able to tell anyone' -- and that question has to be asked on a schedule, because no single session will ever be the one that decides to stop caring."
+    deterministic_rule_or_tooling: "The split is structural: separate module, separate bucket, separate unittest result object, separate printed summary. A monitor failure cannot reach the exit code by accident because it is never in the same suite object."
+    commit: "a81eaf8"
+    production_evidence: "NOT APPLICABLE -- nothing deployed this sprint by instruction. Verified locally: 812 blocking tests with 0 failures and 3 monitor tests with 1 known RED named in the summary, so the exit code and the finding are now both readable."
+    recurrence_status: OPEN
+
+  - defect_id: AEQ-036
+    title: "Three plausible fixes before the binding constraint: each addressed a real inefficiency, which is exactly why each was believed"
+    requirement_run_id: "Sprint 17 (2026-09-30), BL-192/BL-E"
+    original_prompt: "EXACT, from the Sprint 17 brief: \"Implement a small, high-value Playwright screenshot regression mechanism.\""
+    analysis_confidence: EXACT
+    model_provider_version: "claude-opus-5[1m]"
+    tools_context_used: "Playwright's own error output, which printed the decisive figure on the first run and was read past twice."
+    model_interpreted_as: "\"The screenshot is timing out, so something in the path is too slow\" -- correct, and it produced three different candidate slow things, two of which were genuinely slow and neither of which was the cause."
+    expected_behavior: "Diagnose the binding constraint before changing anything adjacent to it."
+    actual_behavior: "Fix 1: raised the test timeout to 120s. No change, because toHaveScreenshot has its own fixed 5s budget -- a number printed in the first error message. Fix 2: bounded the mask list to elements actually inside the capture frame, which removed ~500 needlessly resolved locators and was a real improvement. Still failed. Fix 3, the actual cause: fullPage:true combined with a clip makes Chromium lay out and rasterise all 70,000px and THEN discard the part outside the clip. A tall viewport rasterises 1920x4000 and nothing else."
+    stage_introduced: "implementation -- the original spec used fullPage plus clip, which reads as an obvious way to capture a bounded region and is not one"
+    stage_detected: "the third diagnostic iteration on the same failing test"
+    detection_method: "Re-reading the original error message after two fixes had not worked, and noticing that the 5000ms figure in it had never changed across any of them -- which meant nothing I had done had touched the thing that was timing out."
+    root_cause: "Fixing the most plausible slow thing rather than the measured constraint. Both wrong fixes were defensible optimisations, and that is the trap: a fix that improves something real feels like progress and produces no evidence that it was not the fix. Characteristically agentic, because the cost of trying a plausible change is low enough to try three."
+    gaps:
+      prompt_gap: false
+      context_rag_gap: false
+      test_gap: false
+      test_oracle_gap: false
+      harness_gap: true
+      environment_gap: false
+      tool_deployment_gap: false
+    product_fix: "Capped pages set a tall VIEWPORT and use fullPage:false, so the rasterised area is the captured area. Per-page caps rather than one number: /usage compares its first 1600px, /dashboard 4000px."
+    new_product_regression_test: "Stability is the guard here and it was measured rather than assumed: three consecutive full runs, 16 of 16 passing each time. A single green run would not have distinguished a fix from a lucky sample -- which is the same reasoning the sprint applied to the SI monitor's 3 draws."
+    new_harness_process_regression: "Generalized rule: when a fix does not work, check whether the error message CHANGED before trying the next one. An unchanged number in an unchanged message means the attempted fix did not touch the failing path, and that is information worth more than the next hypothesis. A second finding recorded alongside: with a 4000px cap, /usage differed from its OWN baseline by 256,034 pixels on a repeat run against the same tree -- correctly, because live ledger figures and session rows inside those 4000px change between runs. The answer was neither a looser threshold (which blinds the suite everywhere) nor a bigger mask (which hollows out the coverage it exists for), but a smaller, per-page capture region."
+    future_prompt_clause_learned: "A cheap experiment is not a free experiment. Three plausible fixes cost more than one measurement, and the measurement was already in the output of the first failing run."
+    deterministic_rule_or_tooling: "HISTORY_CAP_PX is a per-page dict rather than a constant, so a page whose length depends on environment data has its own number and the reason is written next to it."
+    commit: "1daaf3f"
+    production_evidence: "NOT APPLICABLE -- nothing deployed this sprint by instruction. Verified locally: 16 baselines, three consecutive clean runs, and a RED->GREEN proof via a planted accent-colour change observed at 15,121 and 12,381 differing pixels before revert."
+    recurrence_status: OPEN

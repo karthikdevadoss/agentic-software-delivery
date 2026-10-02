@@ -88,3 +88,8 @@ playwright/.cache/
 # Durable-workflow crash-drill evidence (derived/local per-run record -- see agent/workflow_drill.py;
 # the committed record of a drill is the summary in docs/DURABLE_EXECUTION_RECOVERY.md)
 agent/.workflow_drill_evidence/
+
+# Deep Consensus local audit log (run output, never a committed artefact)
+deep_consensus/audit_log.jsonl
+deep_consensus/__pycache__/
+deep_consensus/sprint4_turn_ledger.jsonl

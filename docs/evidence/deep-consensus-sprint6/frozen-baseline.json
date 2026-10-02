@@ -1,0 +1,27 @@
+{
+  "frozen_requested_model": "claude-sonnet-5",
+  "frozen_reported_model": null,
+  "basis": "OPUS_ENTITLEMENT_NOT_GRANTED_FALLBACK_TO_VERIFIED_SONNET",
+  "why": "the single entitlement invocation did not grant Opus (one invocation of claude-opus-5 through the verified Claude subscription CLI answered, and the provider reported claude-haiku-4-5-20251001. That is NOT an Opus, so the subscription did not serve the r), so the already-verified Sonnet identity is frozen. No retry, no alias sweep, no API fallback.",
+  "transport": "CLAUDE_SUBSCRIPTION_CLI",
+  "entitlement": {
+    "attempted": true,
+    "attempted_at_utc": "2026-10-02T07:39:58.542265+00:00",
+    "requested_model": "claude-opus-5",
+    "transport": "CLAUDE_SUBSCRIPTION_CLI",
+    "preflight_auth": "VERIFIED_SUBSCRIPTION",
+    "preflight_reason": "authMethod=claude.ai, subscriptionType=max",
+    "succeeded": false,
+    "answered": true,
+    "served_requested_tier": false,
+    "reported_model": "claude-haiku-4-5-20251001",
+    "provider_id": "claude_cli",
+    "family": "anthropic",
+    "content": "4",
+    "latency_ms": 5830.8,
+    "input_tokens": 2,
+    "output_tokens": 3,
+    "reason": "one invocation of claude-opus-5 through the verified Claude subscription CLI answered, and the provider reported claude-haiku-4-5-20251001. That is NOT an Opus, so the subscription did not serve the requested tier and entitlement is NOT granted. The call is recorded as answered but not entitled; no retry and no alias sweep follows."
+  },
+  "switching_after_results_forbidden": true
+}

@@ -1,0 +1,262 @@
+[
+  {
+    "run_id": "dcr_361112bc329048a8",
+    "timestamp": "2026-10-01T15:53:39.034977+00:00",
+    "question": "A team is about to add a database index to a 40-million-row table in a live Postgres service during business hours. Should they use CREATE INDEX CONCURRENTLY, and what is the single biggest risk they are most likely to overlook? Answer in under 150 words.",
+    "providers": {
+      "A": {
+        "is_mock": false,
+        "model_id": "claude-sonnet-5",
+        "provider_id": "anthropic"
+      },
+      "B": {
+        "is_mock": false,
+        "model_id": "claude-haiku-4-5-20251001",
+        "provider_id": "anthropic"
+      }
+    },
+    "provider_mode": "real_real",
+    "status": "PARTIAL",
+    "convergence_score": 0.0,
+    "stop_reason": "unresolved_no_second_round_budget",
+    "round_count": 1,
+    "provider_calls": 4,
+    "tokens": {
+      "input": 1977,
+      "output": 2746,
+      "total": 4723
+    },
+    "elapsed_ms": 35492.8,
+    "governed_answer": "Yes, they should use CREATE INDEX CONCURRENTLY — on a live 40M-row table during business hours, a plain CREATE INDEX takes an ACCESS EXCLUSIVE lock that blocks all reads and writes for the duration of the build, which is unacceptable in production. CONCURRENTLY avoids that by using weaker locks and scanning the table twice without blocking normal DML. The risk most teams overlook: CONCURRENTLY can fail partway through (e.g., due to a deadlock, timeout, or killed session) and leave behind an INVALID index that still consumes disk space, write overhead, and planner attention but is unusable for queries — and Postgres will NOT automatically clean it up. Teams must monitor for this, explicitly DROP the invalid index, and retry. It also can't run inside a transaction block, and takes noticeably longer and more I/O than a regular build, so timing and monitoring (pg_stat_progress_create_index) matter.",
+    "governed_answer_basis": "best_supported_candidate_dissent_preserved",
+    "dissent": [
+      {
+        "claim": "(whole answer)",
+        "model": "claude-sonnet-5",
+        "provider": "anthropic",
+        "reason": "{\"decision\": \"DISAGREE\", \"reason\": \"The other answer's core technical claim is off-target. CREATE INDEX CONCURRENTLY does not consume transaction IDs at an unusual rate, and a single index build is extremely unlikely to trigger wraparound (which requires ~2 billion unconsumed XIDs) unless the database was already critically mismanaged beforehand — framing this as 'the single biggest risk' for a routine index addition is misleading and not what Postgres documentation or practitioners flag. The ac",
+        "reviewed_slot": "B",
+        "reviewer_slot": "A",
+        "round": 1
+      },
+      {
+        "claim": "(whole answer)",
+        "model": "claude-haiku-4-5-20251001",
+        "provider": "anthropic",
+        "reason": "While the other answer correctly identifies that CREATE INDEX CONCURRENTLY should be used and mentions valid concerns, it misidentifies the single biggest risk most teams overlook. The other answer focuses on invalid indexes left behind after failures—a real but less common and less catastrophic risk. XID wraparound is the genuinely severe, often-overlooked risk that can render the entire database read-only. The other answer's risk is more of an operational annoyance (requiring manual cleanup and retry); XID wraparound is a production emergency. Additionally, the claim that CONCURRENTLY 'can't run inside a transaction block' is correct but tangential—teams building indexes are typically aware of this. The other answer provides good operational details but identifies the wrong primary risk.",
+        "reviewed_slot": "A",
+        "reviewer_slot": "B",
+        "round": 1
+      },
+      {
+        "claim": "Invalid indexes left behind after CONCURRENTLY failure is the single biggest risk overlooked",
+        "model": "claude-haiku-4-5-20251001",
+        "provider": "anthropic",
+        "reason": "reviewer marked this claim CONTRADICTED",
+        "reviewed_slot": "A",
+        "reviewer_slot": "B",
+        "round": 1
+      }
+    ],
+    "has_review_rounds_key": false,
+    "reviews_final_round": [
+      {
+        "reviewer_slot": "A",
+        "reviewed_slot": "B",
+        "round_index": 1,
+        "model_id": "claude-sonnet-5",
+        "decision": "UNRESOLVED_PROVIDER_FORMAT_ERROR",
+        "parse_status": "provider_format_error",
+        "reason": "{\"decision\": \"DISAGREE\", \"reason\": \"The other answer's core technical claim is off-target. CREATE INDEX CONCURRENTLY does not consume transaction IDs at an unusual rate, and a single index build is extremely unlikely to trigger wraparound (which requires ~2 billion unconsumed XIDs) unless the database was already critically mismanaged beforehand — framing this as 'the single biggest risk' for a routine index addition is misleading and not what Postgres documentation or practitioners flag. The ac",
+        "truncated": null,
+        "provider_stop_reason": null,
+        "input_tokens": 945,
+        "output_tokens": 900,
+        "claims": []
+      },
+      {
+        "reviewer_slot": "B",
+        "reviewed_slot": "A",
+        "round_index": 1,
+        "model_id": "claude-haiku-4-5-20251001",
+        "decision": "DISAGREE",
+        "parse_status": "ok",
+        "reason": "While the other answer correctly identifies that CREATE INDEX CONCURRENTLY should be used and mentions valid concerns, it misidentifies the single biggest risk most teams overlook. The other answer focuses on invalid indexes left behind after failures—a real but less common and less catastrophic risk. XID wraparound is the genuinely severe, often-overlooked risk that can render the entire database read-only. The other answer's risk is more of an operational annoyance (requiring manual cleanup and retry); XID wraparound is a production emergency. Additionally, the claim that CONCURRENTLY 'can't run inside a transaction block' is correct but tangential—teams building indexes are typically aware of this. The other answer provides good operational details but identifies the wrong primary risk.",
+        "truncated": null,
+        "provider_stop_reason": null,
+        "input_tokens": 613,
+        "output_tokens": 708,
+        "claims": [
+          {
+            "claim": "CREATE INDEX CONCURRENTLY should be used to avoid blocking reads/writes",
+            "evidence": [
+              "ACCESS EXCLUSIVE lock from regular CREATE INDEX blocks all activity",
+              "CONCURRENTLY uses weaker locks and allows normal DML"
+            ],
+            "status": "SUPPORTED"
+          },
+          {
+            "claim": "Invalid indexes left behind after CONCURRENTLY failure is the single biggest risk overlooked",
+            "evidence": [
+              "Invalid index cleanup is manual but straightforward; teams can retry",
+              "XID wraparound during extended CONCURRENTLY operation can render entire database read-only—a more severe, less visible, and more commonly overlooked risk",
+              "On heavily-trafficked systems, the longer duration of CONCURRENTLY increases XID consumption risk"
+            ],
+            "status": "CONTRADICTED"
+          },
+          {
+            "claim": "CONCURRENTLY can't run inside a transaction block",
+            "evidence": [
+              "This is a known Postgres limitation"
+            ],
+            "status": "SUPPORTED"
+          },
+          {
+            "claim": "CONCURRENTLY scans the table twice without blocking DML",
+            "evidence": [
+              "This is accurate behavior of CREATE INDEX CONCURRENTLY"
+            ],
+            "status": "SUPPORTED"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "run_id": "dcr_570b0babbe6744d1",
+    "timestamp": "2026-10-01T15:58:33.926724+00:00",
+    "question": "A team is about to add a database index to a 40-million-row table in a live Postgres service during business hours. Should they use CREATE INDEX CONCURRENTLY, and what is the single biggest risk they are most likely to overlook? Answer in under 150 words.",
+    "providers": {
+      "A": {
+        "is_mock": false,
+        "model_id": "claude-sonnet-5",
+        "provider_id": "anthropic"
+      },
+      "B": {
+        "is_mock": false,
+        "model_id": "claude-haiku-4-5-20251001",
+        "provider_id": "anthropic"
+      }
+    },
+    "provider_mode": "real_real",
+    "status": "PARTIAL",
+    "convergence_score": 0.5,
+    "stop_reason": "bounded_convergence",
+    "round_count": 1,
+    "provider_calls": 4,
+    "tokens": {
+      "input": 1834,
+      "output": 2931,
+      "total": 4765
+    },
+    "elapsed_ms": 32587.7,
+    "governed_answer": "Yes, use CREATE INDEX CONCURRENTLY — a plain CREATE INDEX on a 40M-row table takes a lock that blocks writes for the whole build, unacceptable during business hours. CONCURRENTLY avoids this by scanning the table twice without a write-blocking lock, at the cost of being slower and non-transactional.\n\nThe biggest overlooked risk: if the build fails partway (deadlock, cancelled session, constraint violation), it leaves an INVALID index behind. This index consumes disk space and is silently ignored by the query planner — it does NOT cause queries to fail — but teams often don't notice it's invalid, assume the index is live, and forget to check pg_index.indisvalid, drop it, and retry. Monitoring and a cleanup/retry plan are essential rather than assuming success.",
+    "governed_answer_basis": "revision_accepted_by_counterpart",
+    "dissent": [
+      {
+        "claim": "An invalid index can cause queries to fail if the planner tries to use it",
+        "model": "claude-sonnet-5",
+        "provider": "anthropic",
+        "reason": "reviewer marked this claim CONTRADICTED",
+        "reviewed_slot": "B",
+        "reviewer_slot": "A",
+        "round": 1
+      }
+    ],
+    "has_review_rounds_key": true,
+    "reviews_final_round": [
+      {
+        "reviewer_slot": "A",
+        "reviewed_slot": "B",
+        "round_index": 1,
+        "model_id": "claude-sonnet-5",
+        "decision": "REVISE",
+        "parse_status": "ok",
+        "reason": "The core recommendation (use CONCURRENTLY) and the identification of leftover INVALID indexes as the overlooked risk are correct and match my own answer. However, the claim that an invalid index 'can cause queries to fail if the planner tries to use it' is factually wrong — Postgres never considers an invalid index for query planning; it's simply skipped (though it still consumes disk space and must be manually dropped and rebuilt). This mischaracterizes the actual danger, which is silent omission/wasted space/false sense of security, not query failures.",
+        "truncated": false,
+        "provider_stop_reason": "end_turn",
+        "input_tokens": 858,
+        "output_tokens": 1310,
+        "claims": [
+          {
+            "claim": "CREATE INDEX CONCURRENTLY should be used to avoid blocking writes on a live 40M-row table",
+            "evidence": [
+              "Standard CREATE INDEX takes a lock conflicting with writes for the duration of the build on large tables; CONCURRENTLY avoids this trade-off at the cost of speed and robustness."
+            ],
+            "status": "SUPPORTED"
+          },
+          {
+            "claim": "A failed concurrent index build leaves behind an INVALID index that consumes disk space and requires manual cleanup",
+            "evidence": [
+              "Documented Postgres behavior: on failure, CREATE INDEX CONCURRENTLY leaves an invalid index visible in pg_index.indisvalid=false that must be dropped manually."
+            ],
+            "status": "SUPPORTED"
+          },
+          {
+            "claim": "An invalid index can cause queries to fail if the planner tries to use it",
+            "evidence": [
+              "Postgres explicitly excludes invalid indexes from query planning; they are simply never considered as access paths, so they cannot cause query failures — the real risk is wasted space and false assumption that the index exists/is being used."
+            ],
+            "status": "CONTRADICTED"
+          }
+        ]
+      },
+      {
+        "reviewer_slot": "B",
+        "reviewed_slot": "A",
+        "round_index": 1,
+        "model_id": "claude-haiku-4-5-20251001",
+        "decision": "ACCEPT",
+        "parse_status": "ok",
+        "reason": "The other model's answer is substantively correct and more comprehensive than mine. It accurately identifies CREATE INDEX CONCURRENTLY as the right choice, correctly explains why (avoiding SHARE locks that block writes), and identifies the primary overlooked risk (invalid index left behind after failure requiring manual cleanup). The additional details provided—about transaction block limitations, two table scans, lock queuing, and monitoring needs—are all accurate and valuable context that doesn't contradict my answer but enhances it. The answer stays under 150 words while being more thorough.",
+        "truncated": false,
+        "provider_stop_reason": "end_turn",
+        "input_tokens": 557,
+        "output_tokens": 532,
+        "claims": [
+          {
+            "claim": "CREATE INDEX CONCURRENTLY should be used to avoid blocking writes on a live 40M-row table",
+            "evidence": [
+              "Regular CREATE INDEX takes SHARE lock blocking writes",
+              "CONCURRENTLY uses multi-pass non-blocking build",
+              "This is standard PostgreSQL best practice for production"
+            ],
+            "status": "SUPPORTED"
+          },
+          {
+            "claim": "Failed CONCURRENT index creation leaves an invalid index consuming disk space requiring manual cleanup",
+            "evidence": [
+              "This matches my own answer exactly",
+              "Accurate description of detection via pg_index.indisvalid",
+              "Requires DROP INDEX to clean up"
+            ],
+            "status": "SUPPORTED"
+          },
+          {
+            "claim": "CONCURRENTLY cannot run inside a transaction block",
+            "evidence": [
+              "This is a documented PostgreSQL constraint on CREATE INDEX CONCURRENTLY"
+            ],
+            "status": "SUPPORTED"
+          },
+          {
+            "claim": "CONCURRENTLY takes longer and requires two full table scans",
+            "evidence": [
+              "Multi-pass approach requires multiple table scans",
+              "This is a known characteristic of concurrent index creation"
+            ],
+            "status": "SUPPORTED"
+          },
+          {
+            "claim": "Lock can queue behind long-running transactions",
+            "evidence": [
+              "CONCURRENTLY still needs brief locks during certain phases",
+              "These can be queued behind existing activity"
+            ],
+            "status": "SUPPORTED"
+          }
+        ]
+      }
+    ]
+  }
+]

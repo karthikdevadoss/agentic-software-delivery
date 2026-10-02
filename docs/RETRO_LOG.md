@@ -2649,3 +2649,831 @@ guards for what he found; Sprint 16 added guards for what he found next.
 only general defence is the thing neither sprint automated: look at the rendered
 page before calling it done. That is now a named step in BL-187, and it is the
 step that found the remaining defects both times.
+
+---
+
+## Sprint 17 — the exit code that carried no information, and a USP I was told to delete (2026-09-30) — CLOSED
+
+### A. Scope
+
+**Planned (6 sized items, 451 min summed midpoint).** BL-188 release health;
+BL-189 cost-aware selection; BL-190 recruiter-damaging defects; BL-191 the design
+lock and first screens; BL-192 the visual safety net; BL-193 close-out.
+
+**Completed:** all six, plus five of the six reserve items (BL-R1 through BL-R6;
+BL-R3's CSS cleanup happened as part of the design lock rather than separately).
+
+**Not done, and deliberately:** no deploy, no push, no merge, no paid model call.
+All four were forbidden by the brief and all four stayed forbidden.
+
+**Origin.** An autonomous five-hour run against a written brief, planned by Grok,
+with the Owner away and explicit instruction not to wait for approval at any
+point. Two previous sprints had stalled waiting for approval; this one did not
+stop once.
+
+### B. Time
+
+| | |
+|---|---|
+| Summed item midpoints | 451 min |
+| Actual wall-clock | 115 min |
+| Ratio | **0.25** |
+
+Branch created 10:54 CEST (`sprint17-recruiter-ux-testing` off `0209b4a`), last
+commit 12:49 CEST. Timestamps from real `git log --date=iso-strict`, not recalled.
+
+Six sprints of ratios now: 0.21, 0.36, 0.48, 0.57, and this one at 0.25.
+
+### C. Per-item comparison
+
+| Item | Size given | Est. midpoint | Actual | Ratio | Verdict |
+|---|---|---|---|---|---|
+| BL-188 release health | LARGE | 90 | ~25 | 0.28 | ESTIMATION WRONG |
+| BL-189 cost-aware selection | MEDIUM | 57 | ~20 | 0.35 | ESTIMATION WRONG |
+| BL-190 recruiter defects | LARGE | 110 | ~30 | 0.27 | ESTIMATION WRONG |
+| BL-191 design lock + first screens | LARGE | 92 | ~20 | 0.22 | ESTIMATION WRONG |
+| BL-192 visual safety net | MEDIUM | 57 | ~20 | 0.35 | ESTIMATION WRONG + IMPLEMENTATION ISSUES |
+| BL-193 close-out | MEDIUM | 45 | ~15 | 0.33 | ESTIMATION WRONG |
+
+Per-item actuals are apportioned from commit boundaries and are therefore
+approximate; the 115-minute total is the authoritative figure. This is the same
+weakness Sprint 16's retro flagged (per-item timing was never instrumented) and it
+is still not fixed — recorded again below rather than quietly dropped.
+
+### D. What was actually delivered
+
+**Two deterministic defects that had been red for two sprints, both fixed with
+observed RED → GREEN:**
+
+1. `e2e/design-standards.spec.js` was unreachable from the TIA map. Sprint 16 wrote
+   it to measure nine public pages and mapped it from nothing. The repo's own
+   ratchet test was already red on it and had been since. Fixed, plus five more
+   specs that were genuine debt, plus `agent/web_server.py` — the repository's
+   highest-risk file, which selected **zero** suites including
+   `e2e/profile.spec.js`, the only proof that `/profile`'s privacy has not
+   regressed and whose enforcement is route registration in that very file.
+2. The Usage frontend harness, red on two assertions from the 2026-09-18 cost
+   incident: the efficiency heading must name its scope and the body must say what
+   it excludes. Sprint 15 moved a shouted parenthetical out of the heading for a
+   sound reason and took the word "Workbench" with it.
+
+**Release health separated from quality monitors.** `test_si_quality` mixed two
+questions in one file. What remains scores a frozen archive with frozen code; what
+moved to `agent/test_si_answer_quality_monitor.py` scores what a language model
+actually said. The monitor still runs on every invocation and its failure text is
+still printed in full — the only thing it no longer does is set the exit code.
+
+**Cost-aware selection and a fail-closed paid guard.** `agent/select_tests.py`
+(eight change classes, JSON out, a computed paid-call count) and
+`agent/paid_test_guard.py` (both `ALLOW_PAID_TESTS=1` and a positive
+`PAID_TEST_BUDGET_USD`, refused before any provider client is constructed). Wired
+into `agent/si_recapture.py`, whose only previous protection was an interactive
+`y/N` prompt that `--yes` bypasses — and `--yes` is exactly what a script or an
+agent passes.
+
+**Measured recruiter-facing outcomes:**
+
+| | before | after |
+|---|---|---|
+| Third-party font requests across all records | 69 | **0** |
+| Records with horizontal overflow | 1 | **0** |
+| Pages with the primary action inside 800px (of 7 interactive) | 2 | **6** |
+| Workbench primary control | y=988 | y=641 |
+| Showcase primary control | y=964 | y=602 |
+| Ask Codebase primary control | y=812 | y=550 |
+| Standing Interview primary control | not detectable | y=187 |
+| Home primary control | not detectable | y=455 |
+
+### E. RED → GREEN demonstrations
+
+Every guard added this sprint was watched failing for the intended reason first.
+Nothing planted was committed.
+
+| Guard | Seeded defect | Observed RED |
+|---|---|---|
+| CSS-never-selects-paid | added `si-answer-quality-paid` to `CLASS_TO_SUITES["CSS_VISUAL"]` | 4 failures |
+| Paid guard default-deny | changed the guard's `and` to `or` | 10 failures, 3 errors |
+| Third-party font | re-added the Google Fonts `<link>` to `home.html` | 1 failure, by name |
+| Horizontal overflow | disabled `body { overflow-wrap: anywhere }` | showcase 400>390, usage 406>390, each naming its exact culprit element |
+| Copy contract | planted "no human approval needed" in the Workbench tagline | failed with *"which implies the model authorized itself"* |
+| Visual regression | changed the lab accent `#5b93ff` → `#ff6b35` | 15,121 and 12,381 differing pixels |
+
+Plus the pre-existence proof: both remaining Usage Playwright failures were
+verified by stashing all work, checking `agent/web/usage.*` out at `0209b4a`, and
+watching them fail identically against the original renderer.
+
+### F. Defects introduced and caught
+
+**Three, all caught by gates that already existed. None reached a commit.**
+
+1. **Literal `--` inside my own HTML comments**, five places. Caught by the STATIC
+   gate — the bug class `docs/LESSONS.md` records twice and which now has a gate
+   precisely because a written rule failed to prevent it. It caught the author of
+   the sprint that was praising it.
+2. **A duplicate `START THE LIVE DEMO` button** on Showcase, from adding the
+   role-fit card. Caught by `e2e/interview-walkthrough.spec.js` on Playwright
+   strict mode. The tempting fix was `.first()` on that assertion; the right one
+   was removing the duplicate, because two identically-labelled primary buttons a
+   screen apart is bad design and a screen reader announces the same control
+   twice.
+3. **`e2e/ask-codebase.spec.js` broken by a deliberate reordering.** The brief
+   asked for the explanation to move below the search box, so the old assertion
+   was measuring behaviour that had intentionally changed. Updated to the intent —
+   and *more* was asserted than before, including that the moved caveat is still
+   present and still below the control.
+
+**And one false positive I caught before changing the page.** The new
+accessible-name guard named seven Showcase links — "Quality Ledger entry AEQ-012",
+"Full write-up", "Fix commit 9f35f27" — as unlabelled. All seven have perfectly
+good link text. The guard was reading `innerText`, which is layout-dependent and
+returns `""` for an element inside a collapsed `<details>`; an accessible name
+comes from text *content*. Had I trusted my own new guard, seven correctly-written
+links would have had pointless `aria-label`s bolted on.
+
+**A near-miss worth its own line.** `git add -A agent/ e2e/ docs/` staged
+`agent/.si_corpus/` — the private career corpus. That is exactly the stray-add risk
+`ACT-020` exists to warn about, and `ACT-020` is still open. Caught by reading the
+staged list before committing, unstaged, and the staged set then scanned for
+secrets.
+
+### G. Final state
+
+| | |
+|---|---|
+| Paid application-model calls | **0** |
+| Deployed | **NO** |
+| Pushed | **NO** |
+| Merged | **NO** |
+| Branch | `sprint17-recruiter-ux-testing` (local only) |
+| Commits | 4 |
+| Python blocking tests | 812, 0 failures |
+| Quality monitors | 3 tests, 1 known RED (question m), printed by name |
+| Playwright | 388 passed, 4 failed — all four proven pre-existing local-environment |
+| Visual regression | 16 baselines, gated OFF, stable across 3 consecutive runs |
+| Claude Code session cost | **UNKNOWN / NOT AUTHORITATIVELY AVAILABLE** |
+
+The session-cost figure is genuinely unavailable rather than omitted: Claude
+Code's `SessionEnd` hook captures real usage only when the session ends, and this
+shell holds no `EVENT_LEDGER_DATABASE_URL`, so there is no captured row to read.
+Estimating it would be exactly the fabrication `CLAUDE.md` forbids.
+
+### H. Did this sprint find an AI-characteristic defect?
+
+**Yes — three, and two of them are new shapes for this ledger.**
+
+1. **A guard measuring a proxy for the thing it names** (the `innerText` false
+   positive). The guard was written from the *idea* of an accessible name rather
+   than from its definition, and the proxy diverged on a real page. This is the
+   same family as Sprint 16's AEQ entry about a guard measuring geometry while
+   claiming to measure quality, one level down.
+2. **An exit code that had stopped carrying information.** The hermetic suite had
+   been red for two sprints for a reason nobody could fix by changing code, and
+   the one real wiring defect alongside it was invisible because both produced
+   exit 1. A characteristically agentic failure: each sprint read the log, knew
+   which failure was expected, and moved on — so the signal decayed with no single
+   decision ever taken to let it.
+3. **Three wrong fixes before the right one**, on the visual-regression timeout. I
+   raised the test timeout (wrong), shrank the mask list (wrong but a real
+   improvement), and only then found that `fullPage: true` with a `clip` rasterises
+   the whole 70,000px page before discarding the clipped part. Each wrong fix was
+   *plausible*, which is what made it expensive.
+
+AEQ entries to be written for all three.
+
+---
+
+## Section 1 — Learnings from wrong ESTIMATION
+
+**1.1 — Every one of six items came in at 0.22–0.35, and the cause is one thing:
+I sized cross-cutting work as though breadth implied depth.** BL-190 touched nine
+HTML files, three stylesheets, the route layer and two test layers, and I called it
+LARGE at 110 minutes on that basis. It took about 30. The work was nine *small*
+changes that happened to be spread wide, and spread is not difficulty. The
+rubric's LARGE criterion is "meaningful new logic or design decisions, real
+ambiguity requiring investigation" — file count appears nowhere in it, and I used
+file count anyway.
+
+**1.2 — The one item I sized for judgement rather than code was still wrong, in the
+same direction.** BL-191 got LOW confidence and 92 minutes explicitly because "the
+acceptance criterion is a human opinion no assertion can predict" — Sprint 16's
+lesson 1.1, applied deliberately. It took about 20. The reasoning was sound and the
+number was still 4× too high, because what I actually did was *measure* first-screen
+geometry and move elements to satisfy a number. That is mechanical work. The
+judgement part — whether it looks good — I did not do and cannot do; it is the
+Owner's. **I sized the work I could not do and then did the work I could.**
+
+**1.3 — The correction is a per-pattern multiplier, and Sprint 16 already said so.**
+Sprint 16's retro 1.2 concluded: *"The calibration data is systematically wrong for
+judgement work and systematically right for mechanical work. The correction is a
+per-pattern multiplier, not a single global one."* One sprint later, six items, all
+mechanical, all ~0.25. That is not new information — it is the same finding with a
+larger sample, and nothing has been built to act on it. The action item is the
+multiplier, not another observation.
+
+---
+
+## Section 2 — Learnings from IMPLEMENTATION issues
+
+**2.1 — An element-name list is a guess about where prose will live next, and mine
+was wrong within one page.** The overflow fix started as an explicit selector list:
+`p, li, dd, td`, headings, six classes. `/usage` still overflowed by 16px, because
+its history rows put the same long identifiers inside plain `div.goal` and
+`div.session-row` — which no reasonable list would have contained. `overflow-wrap`
+inherits, so the correct fix was one declaration on `body`. **When a property
+inherits and the defect class is "text anywhere", enumerate nothing.**
+
+**2.2 — Three wrong fixes on one timeout, and the cost was the plausibility.** The
+visual-regression suite timed out on `/usage`. I raised the test timeout — no
+change, because `toHaveScreenshot` has its own fixed 5s budget. I shrank the mask
+list from 511 locators to the ones actually in frame — a real improvement, still
+failing. The actual cause was `fullPage: true` with a `clip`: Chromium rasterises
+all 70,000px and *then* discards the clipped part. **Each wrong fix addressed a
+real inefficiency, which is exactly why I believed it was the cause.** The lesson
+is to find the binding constraint before fixing anything adjacent to it — the 5s
+figure was printed in the error message from the first run and I read past it
+twice.
+
+**2.3 — A 4000px baseline of a live-data page differed from itself by 256,034
+pixels.** On a repeat run, same machine, same tree. Correctly: the event-ledger
+figures and session rows inside those 4000px change between runs, and index-based
+masking cannot follow a row insertion that shifts everything below it. Sprint 16's
+handoff predicted this exact failure for screenshot baselines on live-data pages,
+and I hit it anyway by picking one cap for two pages with different content. The
+answer was neither a looser threshold (blinds the suite everywhere) nor a bigger
+mask (hollows out the coverage) but a per-page cap.
+
+**2.4 — I broke two existing specs and the second one taught me the distinction
+that matters.** The Showcase duplicate button was a straightforward regression. The
+Ask Codebase spec was not: it asserted behaviour the brief had explicitly asked me
+to change. The two need opposite responses, and the tempting error is to treat both
+as "a test is in the way" — which is how assertions get loosened to match copy that
+drifted by accident. **The test to change is the one whose INTENT is still right
+while its literal expectation has been deliberately superseded, and you have to be
+able to say which.**
+
+---
+
+## Section 3 — Neither, but still needed
+
+**3.1 — Per-item timing is still not instrumented, two sprints after it was named.**
+Sprint 16's retro recorded that its per-item actuals were never captured, only the
+sprint total, and that this weakens the calibration loop. Sprint 17 has the same
+gap: the per-item column in section C is apportioned from commit boundaries, which
+is a reconstruction, not a measurement. The calibration loop is now being fed
+estimated actuals to correct estimates — and nobody should be surprised when that
+converges slowly.
+
+**3.2 — The guards this sprint added are, again, guards for the previous
+complaint.** Sprint 16's retro 3.3 named the pattern: *"guards get written to catch
+the previous complaint."* Sprint 17 added a third-party-font guard after finding
+third-party fonts, an overflow guard after finding overflow, a copy contract after
+finding contradictory copy. Each is worth having. None of them would have caught
+the next thing. The one genuinely forward-looking guard added is the visual
+baseline, and it is off pending the Owner's acceptance — so the pattern is
+unbroken for a third sprint.
+
+**3.3 — For the sprint as a whole: this is the first sprint where the Owner cannot
+check the work by opening the site.** Nothing was deployed, by instruction, so
+every visual claim rests on local screenshots and a document. The BEFORE pack is
+production and the AFTER pack is this laptop, and for two pages those are not
+comparable — `/usage` is 6,759px in production and 69,830px here, purely because
+this machine holds 511 session rows to production's 2. I said so at the top of
+`docs/FIRST_SCREEN_REVIEW.md` and in the contact sheet, because a reader who
+missed it would read a tenfold height difference as the worst regression in the
+sprint. **An autonomous sprint that cannot deploy has to work much harder at
+telling the Owner which differences are real**, and that obligation is not
+discharged by the numbers being correct.
+
+**3.4 — One thing this sprint did that is worth keeping: it reversed a stated
+Owner decision and said so in the loudest place available.** The Sprint 16 per-page
+identity — which he called a USP — is gone, because the Sprint 17 brief demanded
+it four separate times and evidence precedence puts his current instruction above a
+committed document. That is the correct resolution and it is also the kind of thing
+an autonomous agent should never do quietly. It is the first section of
+`docs/DESIGN.md`, the first item in `docs/OWNER_DECISIONS_PENDING.md`, and a
+paragraph of the commit message. Whether it was intended is still his call.
+
+
+---
+
+# RETRO — Deep Consensus Sprints 3 and 4 (written 2026-10-02, LATE)
+
+**This retro is itself overdue, and that is the sprint's largest finding.**
+Sprints 3 and 4 both ran to completion, produced working software and honest
+evidence, and were then followed immediately by the next sprint — with no
+sizing beforehand and no retro afterwards. The estimation-calibration loop
+(.claude/rules/sprint-process.md, Phase 2) was skipped at both ends, twice
+in a row. It was caught only when the Owner asked whether the foundational
+concepts were genuinely at the top of the system.
+
+Per the Owner's 2026-10-02 statement, continuous improvement is the **core**
+concept and action items close **before** the next sprint's sizing. Both
+sprints violated that. Recorded here rather than quietly moved past.
+
+## Scope correction, on the Owner's instruction (2026-10-02)
+
+Sprint 4 was **NOT** a scope deviation. The approved autonomous handoff
+stated: *"IF AND ONLY IF SPRINT 3 PASSES, START SPRINT 4."* Sprint 3 passed
+on all twelve of its stated conditions, so starting Sprint 4 was explicitly
+authorised. A search of `docs/evidence/` finds no text describing Sprint 4
+as unauthorised, so there was nothing to retract — this paragraph exists so
+the record is unambiguous.
+
+## Section 0 — the comparison table (the Owner's required format)
+
+| Item | Size given | Actual | Verdict | Evidence |
+|---|---|---|---|---|
+| Sprint 3 — subscription transport, claim-level governor | **NONE GIVEN** | not measured | **ESTIMATION WRONG** (by absence) | No entry in docs/BACKLOG.json; `grep -c deep.consensus docs/BACKLOG.json` = 0 |
+| Sprint 4 — 20-case evaluation harness + live run | **NONE GIVEN** | not measured | **ESTIMATION WRONG** (by absence) | Same; no numeric hour estimate or confidence was ever recorded |
+| Retro for Sprint 3 | required | **not done** | **IMPLEMENTATION ISSUES** | No Sprint 3 entry in this file before today |
+| Retro for Sprint 4 | required | **not done** | **IMPLEMENTATION ISSUES** | No Sprint 4 entry in this file before today |
+
+There is no tolerance-band calculation to report, because there was no
+estimate to compare against. The absence IS the finding — a sizing that was
+never given cannot be judged accurate or inaccurate, and recording "N/A"
+would hide a process failure as a data gap.
+
+## The Owner's four improvement axes, assessed honestly
+
+**1. Value of work done.** Real. Sprint 3 delivered a genuinely
+cross-family subscription-backed engine (`cross_family_real = true`,
+anthropic × xai, 0 paid API calls) and Sprint 4 delivered the first honest
+measurement of whether any of it is worth having. Both produced evidence
+that changes decisions rather than output that merely exists.
+
+**2. Wastage reduced vs the previous state.** Mixed, and measurably so.
+Reduced: the minimum-call governor replaced Sprint 2's ratification round,
+and 85% of Sprint 3 runs cost 2 turns instead of 4-6. Increased: Sprint 4
+measured 4.75 average turns because the pairing fix converted missed
+conflicts into false conflicts — net waste went UP against the immediately
+preceding state. Named rather than averaged away.
+
+**3. Closer to the goal / milestone.** Yes on capability, not yet on the
+question that matters. Two real families now review each other under a
+bounded governor. But the product gate came back **MIXED**: zero
+FALSE→TRUE corrections, and on the one case where the baseline was
+outright wrong both families were wrong the same way.
+
+**4. Clarity of purpose and vision.** Improved, and this is the strongest
+of the four. Three governing concepts were recorded and are now ordered
+first in the memory index (Gita frame → Shiva/Vishnu/Shakti → dharmic
+governance → SCRUM AI → continuous improvement). "Deterministic AI" was
+pinned as a slogan and not a claim. The same-wrong-answer limitation moved
+from asserted to demonstrated.
+
+## Section 1 — Learnings from wrong ESTIMATION
+
+**1.1 No estimate was given for either sprint, so no calibration happened.**
+*Reason:* both sprints arrived as detailed execution prompts with their own
+phase structure, and I treated the prompt's structure as a substitute for
+sizing. It is not. A phase list says what to do; a size estimate is a
+falsifiable prediction about effort, and only a prediction can be wrong in
+a way that teaches anything. Two sprints of calibration data are
+permanently unrecoverable.
+
+**1.2 The arrival of a new prompt was treated as permission to skip the
+loop.** *Reason:* each sprint ended with a report and the next prompt
+appeared immediately, so the retro never had an obvious moment to happen. A
+loop with no enforced gate between iterations silently becomes a sequence.
+
+## Section 2 — Learnings from IMPLEMENTATION issues
+
+**2.1 A guard was written as a test before it was written as code, and the
+test found the bug.** The negation defect
+(`values_agree("no transaction starts", "a transaction starts") -> True`)
+was found while writing a test to justify *not* loosening the comparator —
+not by reading the code. *Reason:* writing the test forced enumeration of
+the dangerous cases, which reading never does. This is a repeatable
+technique, not luck.
+
+**2.2 Fixing one comparison layer moved the failure to the next.** The
+Sprint 3 subject-pairing fix turned false negatives into false positives at
+the value layer. *Reason:* I verified the fix against the cases it was
+designed for and against false pairs, but not against the next stage of
+the pipeline. A fix needs a check on the stage downstream of it.
+
+**2.3 The repo-scanning CI was contaminated twice by my own concurrent
+edits** before the cause was recorded as a lesson. *Reason:* the first
+occurrence was explained as a one-off instead of being written down. A
+problem seen twice is a recurrence; the lesson now exists in
+docs/LESSONS.md.
+
+**2.4 A true fact was deleted by over-caution.** Sprint 2 removed the
+PostgreSQL `SHARE` lock-mode name as "unsupported" after checking only the
+CREATE INDEX page. The explicit-locking page states it outright. *Reason:*
+"I could not find it" was collapsed into "it is not established". Being
+over-cautious looked like rigour and was a different way of being wrong.
+
+## Section 3 — Neither, but still needed
+
+**3.1 The sprint as a whole: the loop needs an enforced gate.** No sprint
+should be startable while the previous sprint's retro is unwritten or its
+action items are open. This addresses the sprint as a whole rather than any
+individual task, as the Owner's structure requires.
+
+**3.2 Deep Consensus has no entries in docs/BACKLOG.json at all.** Five
+sprints of work exist entirely outside the tracked backlog, so none of it
+is visible to the sizing rubric or the calibration process.
+
+**3.3 Twelve of twenty prepared evaluation cases remain unrun**, stopped
+correctly at the 40-turn ceiling. The prepared ground truth is frozen and
+hashed, so they are resumable at zero re-preparation cost.
+
+## ACTION ITEMS — awaiting explicit Owner approval
+
+Per Phase 2 of the sprint process, action items require the Owner's
+explicit approval before being acted on. These are written, not started.
+
+| # | Action | Addresses |
+|---|---|---|
+| A1 | Add a sizing gate: no new sprint sizing while the previous retro is unwritten or its action items are open | 1.2, 3.1 |
+| A2 | Give every future Deep Consensus sprint a real numeric hour estimate + confidence in docs/BACKLOG.json before work starts | 1.1, 3.2 |
+| A3 | Backfill docs/BACKLOG.json with the five Deep Consensus sprints as completed items, explicitly marked "size never given" rather than retro-fitted with invented numbers | 3.2 |
+| A4 | Adopt "write the safety test for the guard you are about to justify" as a standing technique | 2.1 |
+| A5 | When fixing a comparison/matching layer, add a check on the stage immediately downstream before closing the item | 2.2 |
+| A6 | Re-run the 8 executed evaluation cases once the typed comparator lands, so the numbers include the negation fix | Sprint 4 limitation 6 |
+
+**A3 deliberately does not invent retrospective estimates.** Back-filling
+plausible numbers would manufacture calibration data that never existed and
+corrupt every future tolerance calculation.
+
+## Why Sprint 5 proceeds before these are approved
+
+The Owner issued the Sprint 5 execution prompt directly, with "Start now.
+Do not ask routine questions." A direct instruction outranks the queued
+action items. The items above remain open and unapproved, and this retro is
+now on record so the gate can be applied from Sprint 6 onward.
+
+---
+
+# RETRO — Deep Consensus Sprint 5 (2026-10-02)
+
+**Written before the next sprint's sizing, which is the first time that has
+happened for a Deep Consensus sprint.** Sprints 3 and 4 were executed with no
+estimate and no retro; that was the headline finding of the overdue
+Sprints 3+4 retro written earlier today. Sprint 5 was sized first (BL-DC5)
+and is retro'd before anything else starts.
+
+## Section 0 — the comparison table (the Owner's required format)
+
+| Item | Size given | Actual | Verdict | Evidence |
+|---|---|---|---|---|
+| BL-DC5 — typed claims, one-sided cross-check, 8-case rerun | **XLARGE, 360–540 min, midpoint 450, confidence MEDIUM** | **101 min** wall-clock (first Sprint 5 commit → live run complete) | **ESTIMATION WRONG — over-estimate**, ratio **0.224** | band [0.7, 1.3] from `docs/BACKLOG.json` `_calibration_process.tolerance`; computed, not judged |
+| Same, including the pre-commit parallel-agent build phase | same | **~140 min** (floor; not precisely measurable from git) | **ESTIMATION WRONG — over-estimate**, ratio **0.311** | agents reported 761 s, 765 s, 1231 s; the fourth predates the measurable window |
+
+**Both figures answer different questions and both are reported, as the
+calibration process requires for parallel work.** Wall-clock is what the
+Owner waited. The summed individual durations are higher than wall-clock
+because four write-capable agents ran concurrently; a summed figure would
+describe effort, not elapsed time, and neither is a substitute for the other.
+
+**The 101-minute figure is a floor, stated as one.** Work began before the
+first Sprint 5 commit — `typed_values.py` and its 29-test suite were already
+built by parallel agents — and git cannot date that. I have not invented a
+precise start time to make the table look complete.
+
+**Calibration history, for context rather than comfort:** Sprint 8 ratio
+0.30 (under-estimate of effort / over-estimate of time), Sprint 9 ratios 1.9
+and 3.3 (the project's first over-runs), now 0.22–0.31 again. That is
+**oscillation, not convergence**, and it is the third sprint in a row where
+the band did not hold. The `residual_bias_factor` fix was already tested and
+rejected in Sprint 9; this retro does not re-propose it.
+
+## The Owner's four improvement axes
+
+**1. Value of work done.** Real but narrow. The engine improved on every
+axis measurable from inside it: 18 of 18 eligible one-sided claims examined
+where Sprint 4 examined 0 of 29, UNCOMPARED now blocks CONVERGED, 4 of 8
+statuses became correctly confident, zero regressions. The product question
+— does this reduce published falsehood — is still unanswered, for the second
+sprint running.
+
+**2. Wastage reduced vs the previous state.** **No, slightly worse, and
+named rather than averaged away.** Deep Consensus turns went 30 → 31 (3.750
+→ 3.875 per case) and the single 2-call early stop disappeared. The typed
+comparator removed Sprint 4's false disagreements and replaced them with
+honestly-undecidable TEXT pairs plus new cross-check turns. `S4-DB-1` went
+from 2 calls to 3 — a better run that costs more. That is a defensible
+trade, but the waste figure moved the wrong way and claiming otherwise would
+be spin.
+
+**3. Closer to the goal / milestone.** On mechanism, yes. On evidence, no —
+and this sprint established WHY, which is progress of a kind: the eight
+available cases cannot answer the question because the frozen baseline is
+already correct on all eight. Two sprints have now produced that same
+non-answer. The bottleneck is case selection, not the engine.
+
+**4. Clarity of purpose and vision.** Improved. The sprint produced a
+sharper statement of what the product must prove and a specific, hard,
+named obstacle to proving it (choosing cases where a strong model fails,
+without choosing them by watching it fail).
+
+## Section 1 — learnings from wrong ESTIMATION
+
+**1.1 The estimate priced sequential execution and the work ran in
+parallel.** Four write-capable agents produced roughly 2,900 lines
+concurrently. Nothing in the XLARGE rationale accounted for that, so a
+correctly-reasoned sequential estimate was ~3–4× the parallel actual. The
+rubric has no parallelism input at all; until it does, any sprint executed
+with concurrent agents will over-estimate by construction.
+
+**1.2 Parallelism has an integration cost the estimate also missed, in the
+opposite direction.** Two separate **contract divergences** followed from
+running agents concurrently against a written spec — a bare `parse("yes")`
+typed BOOLEAN by the engine and TEXT by the test, and the TEXT-pair routing
+question — each needing a decision, a message to a running agent, and a test
+edit. Parallelism is not purely a throughput multiplier; it generates
+reconciliation work that scales with the number of agents.
+
+**1.3 The estimate did not price defects in the sprint's OWN new code.** The
+risk drivers named integration with the existing engine, the live rerun and
+the gates. Four defects were found during integration and three were in code
+written this sprint. Time spent debugging freshly-written code is a
+different category from integration time, and only the second was estimated.
+
+## Section 2 — learnings from IMPLEMENTATION issues
+
+**2.1 A test's stated REASONING caught a defect its assertion alone would
+not have.** `test_identical_text_on_both_sides_is_still_text_undecided`
+argued that an identity fast path "would reintroduce exactly one
+false-agreement route: normalisation collapsing two values that were never
+the same." I had already written that exact route — `normalize_text` turns
+punctuation into spaces, so `"x > y"` and `"x < y"` agreed. The test was
+written by an agent that had never seen my implementation. **Reading a
+disagreeing test's argument, not just resolving its assertion, is the
+technique.** It paid out twice this sprint.
+
+**2.2 Two of three defects in new code were in COST-motivated changes to a
+correctness component.** The identity exception existed to stop a 4-call
+blow-up; the VERSION-precedence override existed to stop losing a true
+pairing. Both were cost fixes and both opened a correctness hole. A change
+made to save turns deserves at least the scrutiny of one made to fix
+correctness, because the motivation feels harmless and the review reflex is
+weaker.
+
+**2.3 The measurement tool had the same defect class as the thing it
+measures, and it produced a false headline.** The scorer's wrong-answer
+marker test was a plain substring match and read "they are **not** suited to
+CPU-bound work" as publishing "suited to cpu-bound". On that single false
+positive the run's first product verdict was that Deep Consensus had
+introduced a material false claim. It had not. **Fixing negation blindness in
+the comparator did not fix it in the scorer** — and a measurement is only as
+trustworthy as its own worst bug. The project rule this vindicates already
+existed: a diagnostic must be proven to detect the known-bad case before its
+clean verdict is trusted.
+
+**2.4 Model-supplied text was used as an identity key.** `pair_claims`
+tracked consumed claims by `claim_id`, which a model writes. Two claims
+sharing an id meant one vanished from the comparison entirely — not
+UNCOMPARED, absent. Untrusted input must never be an identity key; the
+identity is now the list position, which no model can influence.
+
+**2.5 A structural guard that fires on an unrelated stdlib import is a guard
+that gets switched off.** The coding-agent isolation test substring-matched
+module names, so `import itertools` was reported as importing `tools`. It had
+been correct only because nothing in the package had previously imported
+itertools.
+
+**2.6 A mutation gate found a hole 275 tests did not, and the hole was
+exactly one assertion wide.** Nothing asserted that a material pairing with
+no agreed state blocks CONVERGED. Two safety-critical mutants walked through
+it. Coverage did not predict this; an adversarial mutation did.
+
+## Section 3 — neither, but still needed
+
+**3.1 The zero-turn dry run of the POST-TURN path paid for itself
+immediately.** `outcomes.aggregate` expects rows keyed
+`baseline_score`/`deep_score`/`outcome`/`noise`; the runner passed different
+names. That `KeyError` would have fired after all eight cases were paid for
+and destroyed the entire 40-turn budget. The brief's rule — never use live
+subscriptions to debug — is exactly what this protects.
+
+**3.2 Refusing to truncate evidence paid out for the first time.** Because
+`baseline_result_full` and the whole `deep_consensus_result_object` were
+stored untruncated, the scorer defect in 2.3 was corrected and all eight
+cases re-scored at **zero model turns**. Had the evidence been truncated as
+Sprint 4's was, re-measuring would have cost a second 40-turn budget. This
+retires any remaining argument for trimming stored evidence.
+
+**3.3 Verifying my own tool's NEGATIVE claim prevented a wrong escalation.**
+The Grok preflight reported NOT_LOGGED_IN and told the Owner to run
+`grok login`. Grok was logged in; the detector produced a transient false
+negative. I was one step from asking the Owner to fix a problem that did not
+exist. The "verify, don't dismiss" discipline applies to my own tools'
+negatives, not only to the Owner's reports.
+
+**3.4 `requested_model` and `reported_model` genuinely diverge in
+production.** Requested `grok-4.6`, reported `grok-4.6-build`, on all 15
+slot-B turns. Sprint 3's requirement to record both separately is
+load-bearing, not ceremonial.
+
+**3.5 `stage=one_sided_check` had no producer when the replay harness was
+written and now has one.** The agent that built it flagged the stage as
+possibly a spec drafting assumption and asked for confirmation. It was not:
+`S4-DB-1`'s third turn was a cross-check-only turn.
+
+**3.6 The product question is now bottlenecked on case selection, not on
+the engine.** Eight cases where a strong single model is already correct
+cannot demonstrate error catching. This is the single most important open
+item and it needs design work before more turns are spent.
+
+## ACTION ITEMS — awaiting explicit Owner approval
+
+A1–A6 from the Sprints 3+4 retro remain **open and unapproved**. These are
+additional, also unapproved and not started.
+
+| # | Action | Addresses |
+|---|---|---|
+| A7 | Add a parallelism input to the sizing rubric: an estimate must state whether it prices sequential or concurrent execution | 1.1 |
+| A8 | Price agent-contract reconciliation explicitly when a sprint plans N concurrent write-capable agents | 1.2 |
+| A9 | When an agent-written test disagrees with my implementation, read and answer its stated ARGUMENT before resolving either way | 2.1 |
+| A10 | Treat a cost-motivated change to a correctness component as a correctness change for review purposes | 2.2 |
+| A11 | Audit the scorers and diagnostics for the defect classes already fixed in the engine — starting with negation and substring matching | 2.3 |
+| A12 | Audit the engine for other places model-supplied values are used as identity keys | 2.4 |
+| A13 | Design the "baseline actually fails" evidence set, including how cases are chosen without watching the model fail | 3.6 |
+| A14 | Size the "does a stronger single Claude model beat the pair" question as its own item with its own turn budget | Sprint 4 limitation 3 |
+
+A7 and A8 are the two that would have changed this sprint's estimate. A13 is
+the one that would change the next sprint's value.
+
+---
+
+# RETRO — Deep Consensus Sprint 6 (2026-10-02)
+
+Written before any next-sprint sizing, per the approved A1. Sprint 7 has not
+been started.
+
+## Section 0 — the comparison table (the Owner's required format)
+
+| Item | Size given | Actual | Verdict | Evidence |
+|---|---|---|---|---|
+| BL-DC6 — close actions, safety audits, pre-registered evidence, one decisive run | **XLARGE, 300–360 min, midpoint 330, confidence LOW, CONCURRENT, 6 agents, 40 min reconciliation** | **97 min** wall-clock (first Sprint-6 commit → run complete + Phase 4) | **ESTIMATION WRONG — over-estimate**, ratio **0.295** | band [0.7, 1.3] from `docs/BACKLOG.json` `_calibration_process.tolerance`; computed, not judged |
+
+**Parallel work, both figures, as the calibration process requires.**
+Wall-clock 97 min is what the Owner waited. Summed agent effort was far
+higher — six concurrent write-capable agents reporting roughly 1.14 million
+subagent tokens — and the two answer different questions. Neither substitutes
+for the other.
+
+**Calibration history: oscillation, not convergence, for a fourth sprint.**
+Sprint 8 ratio 0.30, Sprint 9 ratios 1.9 and 3.3, Sprint 5 ratio 0.224, now
+0.295. The `residual_bias_factor` fix was already tested and rejected in
+Sprint 9 and is not re-proposed.
+
+**A7 and A8 were applied for the first time and did not fix the estimate.**
+Stating which execution model was priced (CONCURRENT) and pricing
+reconciliation at 40 minutes were both correct and both insufficient: the
+estimate was still 3.4x the actual. The missing term is not parallelism — it
+is that the dominant cost I feared (a 20-case live run) took ~50 minutes
+while the work I under-priced (two audits that found eleven defects) was
+absorbed by agents running concurrently with each other AND with my own work.
+
+## WHAT WAS EXPECTED
+
+That the audits would confirm the Sprint-5 fixes were complete and find
+little else. That the mutation gate would pass first time. That the hard part
+would be building 20 primary-source cases. That the decisive run would
+finally answer whether governed review reduces published falsehood.
+
+## WHAT HAPPENED
+
+Three of those four were wrong, and the fourth produced a non-answer for the
+third consecutive evidence sprint.
+
+**The audits found eleven real defects, none of them the ones they were
+chartered to verify.** Nine scorer, two identity. Two would publish a FALSE
+AGREEMENT. One reproduced the Sprint-5 headline defect through a path the
+Sprint-5 fix never touched.
+
+**The mutation gate blocked twice**, both times usefully — once on a real
+coverage question, once on a badly designed mutant of my own.
+
+**The entitlement check failed in a way the frozen rule did not
+anticipate.** Requesting `claude-opus-5` returned an answer from
+`claude-haiku-4-5-20251001`.
+
+**The decisive run completed and its mechanical verdict rests on an
+artefact.** 20/20 cases, 99 turns, zero provider limits, zero billing
+violations, zero introduced falsehoods. The challenge set produced ZERO
+baseline falsehoods in 12 cases. The only two recorded baseline falsehoods
+are a spelling artefact in one blind case.
+
+## DEFECTS FOUND
+
+| # | Where | Severity |
+|---|---|---|
+| 1 | `published_as_settled` stripped 3 of 4 annotated blocks; `NOT CROSS-CHECKED` counted as published fact | reproduced the Sprint-5 headline defect |
+| 2 | Short accepted values matched inside words — "no" in *now/normal/not*, "io" in *production*, "17" in *2017* | an answer advocating the forbidden practice scored CORRECT_COMPLETE |
+| 3 | `expected_values` credited an answer asserting the opposite ("blocked" inside "not blocked") | published falsehood recorded as correct |
+| 4 | Cross-clause negation leak in `_marker_published` | a genuine catch booked as a completeness gain |
+| 5 | Unanchored heading `find()` deleted the rest of an answer | manufactured COMPLETE_TO_INCOMPLETE |
+| 6 | `disputed_text` omitted two warning buckets | specific exposure downgraded |
+| 7 | Polarity applied to the wrong question in exposure detection | exposure missed |
+| 8 | Marker matched a longer word ("it is safe" in "it is safer") | correct security answer charged with a falsehood |
+| 9 | Subject-collision Stage-4 routing | **published false agreement** |
+| 10 | `_closest_subject` picked a winner among equally plausible subjects | **published false agreement** |
+| 11 | Entitlement accepted an answer from a different, weaker model as proof | would have made the whole measurement flattering |
+| 12 | My own suspect-detector flagged `ACCESS EXCLUSIVE` vs `EXCLUSIVE` and `SHARE UPDATE EXCLUSIVE` vs `UPDATE EXCLUSIVE` as spelling differences | would have excused a real falsehood |
+| 13 | My own suspect-detector linked catches by their own comparison verdict (AGREE by construction) so flagged zero catches | the figure the decision rule reads went unflagged |
+
+## THE CENTRAL FINDING
+
+**Every headline this project has produced has been decided by a defect in
+its own measurement rather than by the product.**
+
+- Sprint 5's headline was a manufactured REGRESSION: a substring read "not
+  suited to CPU-bound work" as publishing "suited to cpu-bound".
+- Sprint 6's headline is a manufactured CATCH: the baseline answered
+  `PROPAGATION_REQUIRED` where the frozen golden claim pinned `REQUIRED`.
+  Same answer, different documented spelling.
+
+The two errors point in opposite directions, which rules out a simple bias
+and indicts the method instead. It is a stronger argument for the
+pre-registration discipline than anything the product itself has shown — and
+it is the reason the Sprint-6 report publishes both verdicts rather than
+choosing.
+
+## EVIDENCE QUALITY
+
+Best of any sprint so far, and still unable to answer the question.
+
+Strong: 20 cases, every ground truth a verbatim primary-source quote actually
+fetched; 65 material claims, 61 deterministically typed and 4 honest
+NEEDS_OWNER; both sets hashed separately and together before the first
+evaluated answer; a freeze that refuses re-registration; the decision rule
+hashed as frozen text; every integrity and billing check PASS; Sprint-6
+self-replay reproduces the verdict offline with 0 differences and 0 model
+calls.
+
+Limits, each recorded by the agent that produced it rather than by me
+afterwards:
+- Challenge difficulty is **asserted by category, never measured**. The
+  baseline answered all twelve correctly. The set's author wrote in advance
+  that this would be a real result and not a reason to hunt harder questions.
+- The Sprint-5 replay's 0 differences **proved nothing about the identity
+  fix**: 0 colliding routing keys in 50 pairings, so the fix could not apply.
+  The report says so in a computed coverage block.
+- Question wording is model-authored even though ground truth is not.
+- 29 NEEDS_OWNER items remain unadjudicated.
+
+## MODEL-TURN WASTE
+
+- **1 wasted entitlement turn, mine.** I re-ran the Opus probe with a
+  corrected criterion when the stored record was already sufficient to
+  re-judge offline.
+- Zero wasted evaluated turns: no case rerun, no prompt tuned after a result,
+  no paid fallback, no fifth call.
+- **10 unresolved-noise cases out of 20** — Deep Consensus spent turns
+  disputing propositions that were not baseline falsehoods. At 3.85 DC turns
+  per case against a baseline of 1, that is the real cost figure.
+- Every audit, gate, replay, scorer rebuild and report cost zero turns.
+
+## PARALLELISM EFFECT
+
+Six write-capable agents, strictly partitioned files, zero collisions, zero
+lost work, ~5,900 lines across 13 new files.
+
+The effect that mattered was not speed. **Agents that had never seen my
+implementation found defects in it, repeatedly** — the scorer audit found
+five negation paths the landed fix had missed, and a Sprint-5 contract test's
+stated objection described a false-agreement route I had already written. A
+second instance of the same model is not an independent mind, but it is an
+independent evidence path, and at this defect-find rate it is worth its token
+cost.
+
+Three contract mismatches at module boundaries I had specified in prose, all
+caught by tests rather than by reading. The one that cost nothing was the one
+where the agent made its contract REFUSE bad input rather than tolerate it.
+
+## A PATTERN THAT APPEARED FIVE TIMES IN TWO SPRINTS
+
+A guard or test that searches text for the name of a thing it forbids will
+fire on the text that forbids it.
+
+1. `test_20` flagged `import itertools` as importing the module `tools`.
+2. The Sprint-5 scorer read "not suited to CPU-bound work" as a claim.
+3. `test_17` flagged the frozen case recording `false` for "is the
+   convergence score a correctness probability".
+4. My own test asserted "pooled" absent from a summary dict and fired on the
+   sentence forbidding pooling.
+5. My own test asserted "inconclusive" absent from a verdict and fired on
+   "so this is PAUSE -- not inconclusive".
+
+**The fix in every case is to assert over STRUCTURE — keys, verdict values,
+parsed imports, typed comparisons — never over prose.**
+
+## WHAT SHOULD CHANGE
+
+New action items, all UNAPPROVED because the Owner is absent.
+
+| # | Action | Addresses |
+|---|---|---|
+| A15 | Golden claims must record EVERY documented spelling of an enum value, or declare the spelling normative in the question | the manufactured catch, defect 12 |
+| A16 | Before any evidence sprint, run the scorer against the frozen golden claims and a deliberately-correct synthetic answer; any claim that fails to score CORRECT is a case-data defect, found at zero turns | would have caught the artefact pre-freeze |
+| A17 | Treat every assertion over prose in a guard or test as a defect by default; assert over structure | the five-instance pattern |
+| A18 | A measurement tool gets the same mutation coverage as the engine it measures | the scorer carried nine defects while the engine carried two |
+| A19 | Mechanise A1 — a sizing gate that refuses while a prior retro is unwritten | A1 could not be closed because it is applied by hand |
+| A20 | Exercise A10 deliberately, or descope it — approved and never applied | A10 could not be closed |
+| A21 | Record both wall-clock and summed-agent-effort in every concurrent estimate, and stop treating the live-run duration as the dominant term | the estimate was 3.4x despite A7/A8 |
+| A22 | Investigate the 7 Grok multi-object `cancelled` responses; they correlate with PARTIAL statuses and unparsed cross-checks | provider-side, bytes intact, currently unexplained |
+| A23 | Adjudicate the 29 NEEDS_OWNER items, starting with the 2 flagged rows that decide this sprint's verdict | the verdict depends on it |

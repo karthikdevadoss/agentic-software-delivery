@@ -1,0 +1,791 @@
+{
+  "generated_at": "2026-10-02T08:17:33.904095+00:00",
+  "files": [
+    {
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "turns": 77,
+      "exists": true
+    }
+  ],
+  "row_count": 77,
+  "case_count": 20,
+  "cases": [
+    "S6-BLIND-AP-1-text-claim-comparator-threshold",
+    "S6-BLIND-AP-2-convergence-score-and-stop-authority",
+    "S6-BLIND-DB-1-add-column-constant-default-rewrite",
+    "S6-BLIND-DB-2-lock-timeout-default",
+    "S6-BLIND-JV-1-bare-transactional-defaults",
+    "S6-BLIND-CC-1-repeatable-read-concurrent-update",
+    "S6-BLIND-SEC-1-oauth-public-client-grant-choice",
+    "S6-BLIND-VER-1-default-charset-utf8",
+    "S6-CHAL-DB-1-refresh-matview-lock",
+    "S6-CHAL-DB-2-concurrently-lock-asymmetry",
+    "S6-CHAL-DB-3-truncate-rollback-and-mvcc",
+    "S6-CHAL-DB-4-read-committed-update-recheck",
+    "S6-CHAL-SPR-1-required-unexpected-rollback",
+    "S6-CHAL-SPR-2-configuration-proxy-bean-methods",
+    "S6-CHAL-JV-1-jep491-synchronized-pinning",
+    "S6-CHAL-JV-2-jep400-default-charset",
+    "S6-CHAL-JV-3-chm-iterator-and-size",
+    "S6-CHAL-HTTP-1-no-cache-vs-no-store",
+    "S6-CHAL-HTTP-2-401-vs-403-and-www-authenticate",
+    "S6-CHAL-SEC-1-ropc-vs-implicit-normative-strength"
+  ],
+  "arm_counts": {
+    "baseline": 0,
+    "deep_consensus": 77,
+    "UNCLASSIFIED": 0
+  },
+  "stage_counts": {
+    "sealed": 40,
+    "one_sided_check": 15,
+    "challenge": 22
+  },
+  "unclassified_stages": [],
+  "row_fields": [
+    "case_id",
+    "provider",
+    "arm",
+    "turn",
+    "file",
+    "hash"
+  ],
+  "hash_basis": "sha256 over json.dumps(record, ensure_ascii=False, sort_keys=True, default=str) of the WHOLE recorded turn -- the same canonical encoding record_turn wrote, so any edit to any field (answer, prompt, reported model) changes the hash, while a re-ordered key or a different newline does not.",
+  "full_text_preserved": {
+    "checked_turns": 77,
+    "incomplete_turns": 0,
+    "incomplete": [],
+    "anomaly_turns": 7,
+    "anomalies": [
+      {
+        "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+        "case_id": "S6-BLIND-SEC-1-oauth-public-client-grant-choice",
+        "stage": "challenge",
+        "slot": "B",
+        "reasons": [
+          "raw_content holds a COMPLETE JSON object followed by 39 more character(s); the stored text is whole, the provider emitted more than one object",
+          "recorded stop_reason is 'cancelled'"
+        ],
+        "raw_content_chars": 78,
+        "output_tokens": 288,
+        "stop_reason": "cancelled"
+      },
+      {
+        "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+        "case_id": "S6-CHAL-DB-2-concurrently-lock-asymmetry",
+        "stage": "challenge",
+        "slot": "B",
+        "reasons": [
+          "raw_content holds a COMPLETE JSON object followed by 39 more character(s); the stored text is whole, the provider emitted more than one object",
+          "recorded stop_reason is 'cancelled'"
+        ],
+        "raw_content_chars": 78,
+        "output_tokens": 2829,
+        "stop_reason": "cancelled"
+      },
+      {
+        "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+        "case_id": "S6-CHAL-DB-4-read-committed-update-recheck",
+        "stage": "challenge",
+        "slot": "B",
+        "reasons": [
+          "raw_content holds a COMPLETE JSON object followed by 1468 more character(s); the stored text is whole, the provider emitted more than one object"
+        ],
+        "raw_content_chars": 1470,
+        "output_tokens": 6782,
+        "stop_reason": "end_turn"
+      },
+      {
+        "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+        "case_id": "S6-CHAL-JV-1-jep491-synchronized-pinning",
+        "stage": "one_sided_check",
+        "slot": "B",
+        "reasons": [
+          "raw_content holds a COMPLETE JSON object followed by 242 more character(s); the stored text is whole, the provider emitted more than one object",
+          "recorded stop_reason is 'cancelled'"
+        ],
+        "raw_content_chars": 508,
+        "output_tokens": 1118,
+        "stop_reason": "cancelled"
+      },
+      {
+        "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+        "case_id": "S6-CHAL-JV-2-jep400-default-charset",
+        "stage": "one_sided_check",
+        "slot": "B",
+        "reasons": [
+          "raw_content holds a COMPLETE JSON object followed by 39 more character(s); the stored text is whole, the provider emitted more than one object",
+          "recorded stop_reason is 'cancelled'"
+        ],
+        "raw_content_chars": 78,
+        "output_tokens": 210,
+        "stop_reason": "cancelled"
+      },
+      {
+        "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+        "case_id": "S6-CHAL-JV-3-chm-iterator-and-size",
+        "stage": "one_sided_check",
+        "slot": "B",
+        "reasons": [
+          "raw_content holds a COMPLETE JSON object followed by 39 more character(s); the stored text is whole, the provider emitted more than one object",
+          "recorded stop_reason is 'cancelled'"
+        ],
+        "raw_content_chars": 78,
+        "output_tokens": 2727,
+        "stop_reason": "cancelled"
+      },
+      {
+        "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+        "case_id": "S6-CHAL-HTTP-2-401-vs-403-and-www-authenticate",
+        "stage": "challenge",
+        "slot": "B",
+        "reasons": [
+          "raw_content holds a COMPLETE JSON object followed by 320 more character(s); the stored text is whole, the provider emitted more than one object",
+          "recorded stop_reason is 'cancelled'"
+        ],
+        "raw_content_chars": 640,
+        "output_tokens": 397,
+        "stop_reason": "cancelled"
+      }
+    ],
+    "raw_content_total_chars": 149402,
+    "raw_content_min_chars": 37,
+    "raw_content_max_chars": 3909,
+    "complete_raw_content_preserved": true,
+    "assertion": "Every indexed fixture still holds the COMPLETE raw_content: no turn is flagged truncated, no replay-critical field is empty, no answer ends in a truncation marker, and every JSON answer parses in full. Checked against the real stored text, because Sprint 5's scoring correction was free only BECAUSE nothing had been sliced. Limit: this detects a store that cut the text, not a model that stopped early -- stop_reason is the record for that."
+  },
+  "secrets": {
+    "patterns_checked": 5,
+    "patterns": [
+      "sk-ant-[A-Za-z0-9\\-_]{8,}",
+      "sk-proj-[A-Za-z0-9\\-_]{8,}",
+      "\\bxai-[A-Za-z0-9\\-_]{8,}",
+      "\\bBearer\\s+[A-Za-z0-9\\-._~+/]{12,}",
+      "(?i)\\b(api[_-]?key|authorization|secret[_-]?key)\\b\\s*[:=]\\s*\\S{8,}"
+    ],
+    "lines_scanned": 77,
+    "matches": 0,
+    "expected_matches": 0,
+    "clean": true,
+    "detail": [],
+    "basis": "Independent re-scan of the stored lines, not a restatement of record_turn's fail-closed guard. A clean result means none of the 5 declared credential shapes appears in the file; it is not a proof that no secret of an undeclared shape is present."
+  },
+  "rows": [
+    {
+      "case_id": "S6-BLIND-AP-1-text-claim-comparator-threshold",
+      "provider": "claude_cli",
+      "arm": "deep_consensus",
+      "turn": 1,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "e682414962a4e31e981ded01fa6c2f7b9af45e0d169c14dbf310d9114d248d31"
+    },
+    {
+      "case_id": "S6-BLIND-AP-1-text-claim-comparator-threshold",
+      "provider": "grok_cli",
+      "arm": "deep_consensus",
+      "turn": 2,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "1b84e29c9647711249aa28009faf9b43b522e1d809c64febe0b39a6616ed980e"
+    },
+    {
+      "case_id": "S6-BLIND-AP-1-text-claim-comparator-threshold",
+      "provider": "grok_cli",
+      "arm": "deep_consensus",
+      "turn": 3,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "e64430ee131777bed6fa01f9a3a649e954d6c480b207c7cab4b1b93076504cbc"
+    },
+    {
+      "case_id": "S6-BLIND-AP-2-convergence-score-and-stop-authority",
+      "provider": "claude_cli",
+      "arm": "deep_consensus",
+      "turn": 1,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "e08200b3302c9f8070bdee617ea3929a55c7994d88a1343510054bd2f2538e50"
+    },
+    {
+      "case_id": "S6-BLIND-AP-2-convergence-score-and-stop-authority",
+      "provider": "grok_cli",
+      "arm": "deep_consensus",
+      "turn": 2,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "998a0e28113abc129697ad3b7db7319a111ffcebf83a02e55a05ae57bfdd3469"
+    },
+    {
+      "case_id": "S6-BLIND-AP-2-convergence-score-and-stop-authority",
+      "provider": "claude_cli",
+      "arm": "deep_consensus",
+      "turn": 3,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "0ff8a4338e49e43168b8c0802c15bc7f9b84db96181cbc9106b81f37a541a59f"
+    },
+    {
+      "case_id": "S6-BLIND-DB-1-add-column-constant-default-rewrite",
+      "provider": "claude_cli",
+      "arm": "deep_consensus",
+      "turn": 1,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "1d6a40b64536f75a2b68d8e50a710e128ddebe38b43fdb9224aa77ca3329168e"
+    },
+    {
+      "case_id": "S6-BLIND-DB-1-add-column-constant-default-rewrite",
+      "provider": "grok_cli",
+      "arm": "deep_consensus",
+      "turn": 2,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "0c0b92257fdfcf820c28ce6f112af040e43dbc3b034864402f6376cedce44aef"
+    },
+    {
+      "case_id": "S6-BLIND-DB-1-add-column-constant-default-rewrite",
+      "provider": "claude_cli",
+      "arm": "deep_consensus",
+      "turn": 3,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "e61fe8edc9b0a38de0f78e1d40fbd4ebb4ac9e3b6fe42091dc8d1dd72dd770fc"
+    },
+    {
+      "case_id": "S6-BLIND-DB-1-add-column-constant-default-rewrite",
+      "provider": "grok_cli",
+      "arm": "deep_consensus",
+      "turn": 4,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "0782a53f2c3535ad9aade12a31a1c8afd7d8d1b04d064d7fe17503c6079d03f4"
+    },
+    {
+      "case_id": "S6-BLIND-DB-2-lock-timeout-default",
+      "provider": "claude_cli",
+      "arm": "deep_consensus",
+      "turn": 1,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "04de2b057c2b4c2d1d22efc487907367119993322b8d54108044e8b550ddf884"
+    },
+    {
+      "case_id": "S6-BLIND-DB-2-lock-timeout-default",
+      "provider": "grok_cli",
+      "arm": "deep_consensus",
+      "turn": 2,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "69fd269af7d43ebef95a9e92e72a22cee68dd40e297a53118904fc9a402c124b"
+    },
+    {
+      "case_id": "S6-BLIND-DB-2-lock-timeout-default",
+      "provider": "claude_cli",
+      "arm": "deep_consensus",
+      "turn": 3,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "5158b6b4c8c11d5cee222373c5803f3adca4afef03a4763e3053863f31b9ff77"
+    },
+    {
+      "case_id": "S6-BLIND-DB-2-lock-timeout-default",
+      "provider": "grok_cli",
+      "arm": "deep_consensus",
+      "turn": 4,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "37cf175d4e3611b113965dcd2baef3836eebc51beb9c66724517d602aaf5a784"
+    },
+    {
+      "case_id": "S6-BLIND-JV-1-bare-transactional-defaults",
+      "provider": "claude_cli",
+      "arm": "deep_consensus",
+      "turn": 1,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "114ebcab5de4e84c2dee055f9704d9a3d475dce6db63909bd5ff4a1175bea57f"
+    },
+    {
+      "case_id": "S6-BLIND-JV-1-bare-transactional-defaults",
+      "provider": "grok_cli",
+      "arm": "deep_consensus",
+      "turn": 2,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "4ac46c50079533ddb2c2928fde1f9925bd342280a8896fee413cc2753e4d744d"
+    },
+    {
+      "case_id": "S6-BLIND-JV-1-bare-transactional-defaults",
+      "provider": "claude_cli",
+      "arm": "deep_consensus",
+      "turn": 3,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "f1de71a8fa54aca4d9625255d3f92ad736107101d0adb3f406e88a212ecbde4d"
+    },
+    {
+      "case_id": "S6-BLIND-JV-1-bare-transactional-defaults",
+      "provider": "grok_cli",
+      "arm": "deep_consensus",
+      "turn": 4,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "161bcc9887ee7e59d6426a33ed93d6dc9ec682de03543f822adaaee8e7ad605e"
+    },
+    {
+      "case_id": "S6-BLIND-CC-1-repeatable-read-concurrent-update",
+      "provider": "claude_cli",
+      "arm": "deep_consensus",
+      "turn": 1,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "b52f27d81ae545fecb362a7aa1283462ee6e58cb90d9618d3d99b579fcadb5d2"
+    },
+    {
+      "case_id": "S6-BLIND-CC-1-repeatable-read-concurrent-update",
+      "provider": "grok_cli",
+      "arm": "deep_consensus",
+      "turn": 2,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "8b9eaeb119b94c8b817fe833376a46f8f7ae369fc7cf1ee3af14c66078ee98ba"
+    },
+    {
+      "case_id": "S6-BLIND-CC-1-repeatable-read-concurrent-update",
+      "provider": "claude_cli",
+      "arm": "deep_consensus",
+      "turn": 3,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "0ecbccdc9a2e03c36cab8b63ea896835105c283ae3b1731e189e91f374b32209"
+    },
+    {
+      "case_id": "S6-BLIND-CC-1-repeatable-read-concurrent-update",
+      "provider": "grok_cli",
+      "arm": "deep_consensus",
+      "turn": 4,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "8c1ed36f14243c961d51e94dc1bb9362bac621b1e040a69defd63d945728e77e"
+    },
+    {
+      "case_id": "S6-BLIND-SEC-1-oauth-public-client-grant-choice",
+      "provider": "claude_cli",
+      "arm": "deep_consensus",
+      "turn": 1,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "6ee10994c9803030c85d178e77590b3aeabf796dc8cf3ad53f51be204623258d"
+    },
+    {
+      "case_id": "S6-BLIND-SEC-1-oauth-public-client-grant-choice",
+      "provider": "grok_cli",
+      "arm": "deep_consensus",
+      "turn": 2,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "9a176a4a92a66f855b590b6911bcb7173455554ad307fb0f6e13182807c66616"
+    },
+    {
+      "case_id": "S6-BLIND-SEC-1-oauth-public-client-grant-choice",
+      "provider": "claude_cli",
+      "arm": "deep_consensus",
+      "turn": 3,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "a8803cd93e09cfa4e4b031ac7516e5b8b0c0030636b207ccfab0036e6ec4fc70"
+    },
+    {
+      "case_id": "S6-BLIND-SEC-1-oauth-public-client-grant-choice",
+      "provider": "grok_cli",
+      "arm": "deep_consensus",
+      "turn": 4,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "93d2557b77573cea1f953c7f17c01d5f892da93f82c3c4c7686fe816fb964e35"
+    },
+    {
+      "case_id": "S6-BLIND-VER-1-default-charset-utf8",
+      "provider": "claude_cli",
+      "arm": "deep_consensus",
+      "turn": 1,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "cd64868e438df8f603037b9222df63763b032df6923bae78db193b8c00881fd2"
+    },
+    {
+      "case_id": "S6-BLIND-VER-1-default-charset-utf8",
+      "provider": "grok_cli",
+      "arm": "deep_consensus",
+      "turn": 2,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "efd045aa35d8993d217e96fac0c91a850aac6e64f6fc1c5b069a5bced1e06cbf"
+    },
+    {
+      "case_id": "S6-BLIND-VER-1-default-charset-utf8",
+      "provider": "claude_cli",
+      "arm": "deep_consensus",
+      "turn": 3,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "063208a80ac9a20e55108f56055330eb3510c6ab52e48a0213cbfa54c1d296ba"
+    },
+    {
+      "case_id": "S6-BLIND-VER-1-default-charset-utf8",
+      "provider": "grok_cli",
+      "arm": "deep_consensus",
+      "turn": 4,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "91b1e8d48e29d586f6217c4e8e28498366aaf068b512d211f9fa9f2da40c00b2"
+    },
+    {
+      "case_id": "S6-CHAL-DB-1-refresh-matview-lock",
+      "provider": "claude_cli",
+      "arm": "deep_consensus",
+      "turn": 1,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "9061f7fafe1014279cbb96c853c6f1476b34ff9982b0dc560490fe59ec05db8a"
+    },
+    {
+      "case_id": "S6-CHAL-DB-1-refresh-matview-lock",
+      "provider": "grok_cli",
+      "arm": "deep_consensus",
+      "turn": 2,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "5308bc77b81c807245e9807bbe41e1bdb46b4869c304a1c5466359e2f5db1d74"
+    },
+    {
+      "case_id": "S6-CHAL-DB-1-refresh-matview-lock",
+      "provider": "claude_cli",
+      "arm": "deep_consensus",
+      "turn": 3,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "55707ab10addb062f0d5128ae6d03ab2249097210230ed117b96487fde1ca459"
+    },
+    {
+      "case_id": "S6-CHAL-DB-1-refresh-matview-lock",
+      "provider": "grok_cli",
+      "arm": "deep_consensus",
+      "turn": 4,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "c4803d8ef1e83e7022bf8e528aba16408608d96c9e620bfcb9e7bbf10f4303d6"
+    },
+    {
+      "case_id": "S6-CHAL-DB-2-concurrently-lock-asymmetry",
+      "provider": "claude_cli",
+      "arm": "deep_consensus",
+      "turn": 1,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "a54569e779d8786df3d07fa4015e0a3f992cf36938329762750f5e8f4e9ea2bb"
+    },
+    {
+      "case_id": "S6-CHAL-DB-2-concurrently-lock-asymmetry",
+      "provider": "grok_cli",
+      "arm": "deep_consensus",
+      "turn": 2,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "24863a76cdaa56b9c7920f18504ad392046c3a8c8f8e121866f0bd51202eabaf"
+    },
+    {
+      "case_id": "S6-CHAL-DB-2-concurrently-lock-asymmetry",
+      "provider": "claude_cli",
+      "arm": "deep_consensus",
+      "turn": 3,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "abdd3fb3cb095af1113c029c575a544a6933146d390a6adcafd9d65016dbf2a3"
+    },
+    {
+      "case_id": "S6-CHAL-DB-2-concurrently-lock-asymmetry",
+      "provider": "grok_cli",
+      "arm": "deep_consensus",
+      "turn": 4,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "dc85403e4bb001f7f7eb56f6f88d2fe558a91d3f4ff6bd308a6627460e892b6b"
+    },
+    {
+      "case_id": "S6-CHAL-DB-3-truncate-rollback-and-mvcc",
+      "provider": "claude_cli",
+      "arm": "deep_consensus",
+      "turn": 1,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "4e42b1cb9b62101693650fb1a5a4a3791d3701a518e728872b6509de6d2f91f7"
+    },
+    {
+      "case_id": "S6-CHAL-DB-3-truncate-rollback-and-mvcc",
+      "provider": "grok_cli",
+      "arm": "deep_consensus",
+      "turn": 2,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "adb075a41b27cc9c2436e1af1949d64ed590596cd0a8fb4bac1de2a61896c3c3"
+    },
+    {
+      "case_id": "S6-CHAL-DB-3-truncate-rollback-and-mvcc",
+      "provider": "claude_cli",
+      "arm": "deep_consensus",
+      "turn": 3,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "a33af68c36c42a57f27fd895167de80a24321136fe9c588d93448c37864284f1"
+    },
+    {
+      "case_id": "S6-CHAL-DB-4-read-committed-update-recheck",
+      "provider": "claude_cli",
+      "arm": "deep_consensus",
+      "turn": 1,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "ec76193bed5959ff92c0781c60e6db0b1d00c9b0d603f447ba80da57e2c243fe"
+    },
+    {
+      "case_id": "S6-CHAL-DB-4-read-committed-update-recheck",
+      "provider": "grok_cli",
+      "arm": "deep_consensus",
+      "turn": 2,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "f6e2a8a7cf2084222b40fc9370107afe04f1770fba6809462e52b71818123c62"
+    },
+    {
+      "case_id": "S6-CHAL-DB-4-read-committed-update-recheck",
+      "provider": "claude_cli",
+      "arm": "deep_consensus",
+      "turn": 3,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "59f78376a39648c72f0a601c5210f431715d1a2ecfdbc142a8976e9ec0172e0f"
+    },
+    {
+      "case_id": "S6-CHAL-DB-4-read-committed-update-recheck",
+      "provider": "grok_cli",
+      "arm": "deep_consensus",
+      "turn": 4,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "aef09ca4f72a78645775b17563e61b29caf5c7a00de2948c22ff5bb861d8d7b0"
+    },
+    {
+      "case_id": "S6-CHAL-SPR-1-required-unexpected-rollback",
+      "provider": "claude_cli",
+      "arm": "deep_consensus",
+      "turn": 1,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "07eaebc334dd1e34c9a43e7ff745535ff5699c538a6183362c4e70ad87c632e1"
+    },
+    {
+      "case_id": "S6-CHAL-SPR-1-required-unexpected-rollback",
+      "provider": "grok_cli",
+      "arm": "deep_consensus",
+      "turn": 2,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "5365682086358c3401530ad407e8b7b4a5bb1476f9a3bf8c308b6bd40ddeb71a"
+    },
+    {
+      "case_id": "S6-CHAL-SPR-1-required-unexpected-rollback",
+      "provider": "claude_cli",
+      "arm": "deep_consensus",
+      "turn": 3,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "a7089e9ce8a281fa137b7ae9753923d12c6a26c6a346797085f3b68319c0e606"
+    },
+    {
+      "case_id": "S6-CHAL-SPR-1-required-unexpected-rollback",
+      "provider": "grok_cli",
+      "arm": "deep_consensus",
+      "turn": 4,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "c5a3bdf9ae80188167475ca2be1ff50e7879ee64262c84c09be75881dee75787"
+    },
+    {
+      "case_id": "S6-CHAL-SPR-2-configuration-proxy-bean-methods",
+      "provider": "claude_cli",
+      "arm": "deep_consensus",
+      "turn": 1,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "50124d7babb62dfa4c1e560bd6a500f2905363bcdc12f11ff893033799e487a6"
+    },
+    {
+      "case_id": "S6-CHAL-SPR-2-configuration-proxy-bean-methods",
+      "provider": "grok_cli",
+      "arm": "deep_consensus",
+      "turn": 2,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "2d283d4f8a3b763a00cc499ca747b2d2007ad326b7d5c09581585e08daab8262"
+    },
+    {
+      "case_id": "S6-CHAL-SPR-2-configuration-proxy-bean-methods",
+      "provider": "claude_cli",
+      "arm": "deep_consensus",
+      "turn": 3,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "17748293bb7c40dd9dfe5abad9325a1b0215c64889579642ac94bb44411558ae"
+    },
+    {
+      "case_id": "S6-CHAL-SPR-2-configuration-proxy-bean-methods",
+      "provider": "grok_cli",
+      "arm": "deep_consensus",
+      "turn": 4,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "505f4404611610310dfda8d04b35298d724a3f7d33f5e7c84707367649d400a0"
+    },
+    {
+      "case_id": "S6-CHAL-JV-1-jep491-synchronized-pinning",
+      "provider": "claude_cli",
+      "arm": "deep_consensus",
+      "turn": 1,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "b75f32588d385524083122b45230ee029b7d7c57832f89cb7b63cb8cb8e63ee3"
+    },
+    {
+      "case_id": "S6-CHAL-JV-1-jep491-synchronized-pinning",
+      "provider": "grok_cli",
+      "arm": "deep_consensus",
+      "turn": 2,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "5e2d43242ddb987e19df79c81ea2d7528b470fa1c28b27b4b4e8e5bc2dcef9e2"
+    },
+    {
+      "case_id": "S6-CHAL-JV-1-jep491-synchronized-pinning",
+      "provider": "claude_cli",
+      "arm": "deep_consensus",
+      "turn": 3,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "ecf0b48377e7b2e65bfd127464d61b1de469cb0b8a4116a35082caafdba70bb9"
+    },
+    {
+      "case_id": "S6-CHAL-JV-1-jep491-synchronized-pinning",
+      "provider": "grok_cli",
+      "arm": "deep_consensus",
+      "turn": 4,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "867643bb0fff246a1fe99ea9435d5d751f24517ba8860d0fdbbf5f438b6e5524"
+    },
+    {
+      "case_id": "S6-CHAL-JV-2-jep400-default-charset",
+      "provider": "claude_cli",
+      "arm": "deep_consensus",
+      "turn": 1,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "81a691d4edfe983857c907a971cbcb749232c6cdfbaa1a868d504397beada265"
+    },
+    {
+      "case_id": "S6-CHAL-JV-2-jep400-default-charset",
+      "provider": "grok_cli",
+      "arm": "deep_consensus",
+      "turn": 2,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "10d6b473b134e87f56c4a5696bf4c5e57b32cf6393501badc062fec3ad6f7cef"
+    },
+    {
+      "case_id": "S6-CHAL-JV-2-jep400-default-charset",
+      "provider": "claude_cli",
+      "arm": "deep_consensus",
+      "turn": 3,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "4a934fa26ba0e30790e2dd35f357e2a722309c980c08f0d7c30caf383324af0e"
+    },
+    {
+      "case_id": "S6-CHAL-JV-2-jep400-default-charset",
+      "provider": "grok_cli",
+      "arm": "deep_consensus",
+      "turn": 4,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "ba3aed96f2a6177112d12ef6098aad5d3a4f2f0a9671b5fcb20701168ca6b774"
+    },
+    {
+      "case_id": "S6-CHAL-JV-3-chm-iterator-and-size",
+      "provider": "claude_cli",
+      "arm": "deep_consensus",
+      "turn": 1,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "84493a3e89a5aac8a9762b23cf313fe278c745b42ae8907f02a206e8625a62fd"
+    },
+    {
+      "case_id": "S6-CHAL-JV-3-chm-iterator-and-size",
+      "provider": "grok_cli",
+      "arm": "deep_consensus",
+      "turn": 2,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "1cfbb7d5a883a2d8f65c91721f2dd60e3ea5e38819f9edc1da931233ed2b12d7"
+    },
+    {
+      "case_id": "S6-CHAL-JV-3-chm-iterator-and-size",
+      "provider": "claude_cli",
+      "arm": "deep_consensus",
+      "turn": 3,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "80339e9fc33373a10626c9462b770d0acbc9f09547711b868e6fdac3910116e9"
+    },
+    {
+      "case_id": "S6-CHAL-JV-3-chm-iterator-and-size",
+      "provider": "grok_cli",
+      "arm": "deep_consensus",
+      "turn": 4,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "c7cc7ac055e89e76053b5efd1ce8cda8c0310fc01d445d78278a3fc9e7a391df"
+    },
+    {
+      "case_id": "S6-CHAL-HTTP-1-no-cache-vs-no-store",
+      "provider": "claude_cli",
+      "arm": "deep_consensus",
+      "turn": 1,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "f6b071b1b4000a1bcf35b45c6949f642be10d36bec3023fd7a0047743b214574"
+    },
+    {
+      "case_id": "S6-CHAL-HTTP-1-no-cache-vs-no-store",
+      "provider": "grok_cli",
+      "arm": "deep_consensus",
+      "turn": 2,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "62de314573bef3b5f62e8d4f0ad9a1a8532573ccb731461193f46af793209248"
+    },
+    {
+      "case_id": "S6-CHAL-HTTP-1-no-cache-vs-no-store",
+      "provider": "claude_cli",
+      "arm": "deep_consensus",
+      "turn": 3,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "2d6ffa967c76fc29b2dae97165adfe266abd288faf44daf5a8c4de32f2091664"
+    },
+    {
+      "case_id": "S6-CHAL-HTTP-1-no-cache-vs-no-store",
+      "provider": "grok_cli",
+      "arm": "deep_consensus",
+      "turn": 4,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "02a79402fe09f171878da16b2fbb24b2895ae54895599ae38140a950fd3b35d8"
+    },
+    {
+      "case_id": "S6-CHAL-HTTP-2-401-vs-403-and-www-authenticate",
+      "provider": "claude_cli",
+      "arm": "deep_consensus",
+      "turn": 1,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "7172b338156f6ecbbb19714d2649b1d14951f42447cd6e496b11ac5a6e978445"
+    },
+    {
+      "case_id": "S6-CHAL-HTTP-2-401-vs-403-and-www-authenticate",
+      "provider": "grok_cli",
+      "arm": "deep_consensus",
+      "turn": 2,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "839c02440cde3ec6bf490661b76d4f2bc4b64b64783e759385e9d0ee42e431c4"
+    },
+    {
+      "case_id": "S6-CHAL-HTTP-2-401-vs-403-and-www-authenticate",
+      "provider": "claude_cli",
+      "arm": "deep_consensus",
+      "turn": 3,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "c9c8a6b41b28c87f504993f3e392c0221a52707370325cf6877f8a0d96b71284"
+    },
+    {
+      "case_id": "S6-CHAL-HTTP-2-401-vs-403-and-www-authenticate",
+      "provider": "grok_cli",
+      "arm": "deep_consensus",
+      "turn": 4,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "427586b4949dda1ec14d6602df522b37deaff3f4ba1e80507ce5e407ae33780c"
+    },
+    {
+      "case_id": "S6-CHAL-SEC-1-ropc-vs-implicit-normative-strength",
+      "provider": "claude_cli",
+      "arm": "deep_consensus",
+      "turn": 1,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "211bd3af06a9e421e45a16a00f43604bf3da71f5243fd0fb56f4f52746df5813"
+    },
+    {
+      "case_id": "S6-CHAL-SEC-1-ropc-vs-implicit-normative-strength",
+      "provider": "grok_cli",
+      "arm": "deep_consensus",
+      "turn": 2,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "32fdc6d5cc085660e1a874edecf8bf762f06a85dd6c6c9d92fd08ef8509337d7"
+    },
+    {
+      "case_id": "S6-CHAL-SEC-1-ropc-vs-implicit-normative-strength",
+      "provider": "claude_cli",
+      "arm": "deep_consensus",
+      "turn": 3,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "714ccc963dbd03b4ba894ac0a88d75b52629c6019bc2e5ed026a9fd2743b73a3"
+    },
+    {
+      "case_id": "S6-CHAL-SEC-1-ropc-vs-implicit-normative-strength",
+      "provider": "grok_cli",
+      "arm": "deep_consensus",
+      "turn": 4,
+      "file": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+      "hash": "dc8358350dfe161ca491fa57dd9a514767c8f32877f458101010d93fa7a44ff3"
+    }
+  ]
+}

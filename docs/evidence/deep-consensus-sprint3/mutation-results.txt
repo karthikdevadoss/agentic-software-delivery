@@ -1,0 +1,55 @@
+MUTATION: api_key_stripping_off
+  detected by 3 test(s)
+   - ERROR: test_04_05_injected_keys_never_reach_the_child_environment
+   - ERROR: test_04_child_still_gets_what_the_cli_needs_to_authenticate
+   - ERROR: test_05_unknown_api_key_shaped_variable_is_also_excluded
+  Ran 90 tests in 10.675s | FAILED (errors=3)
+  VERDICT: CAUGHT
+
+MUTATION: leak_assertion_off
+  detected by 4 test(s)
+   - FAIL: test_07_assert_no_billing_env_refuses_a_leaky_environment
+   - FAIL: test_07_assert_no_billing_env_refuses_a_leaky_environment
+   - FAIL: test_07_assert_no_billing_env_refuses_a_leaky_environment
+   - FAIL: test_07_env_extra_cannot_smuggle_a_billing_variable
+  Ran 90 tests in 10.668s | FAILED (failures=4)
+  VERDICT: CAUGHT
+
+MUTATION: eligibility_ignores_auth
+  detected by 5 test(s)
+   - FAIL: test_03_preflight_failure_blocks_dispatch_with_zero_calls
+   - FAIL: test_03_api_key_auth_is_never_eligible_for_p0
+   - FAIL: test_03_declared_subscription_with_unproven_auth_is_still_blocked
+   - FAIL: test_03_logged_out_is_never_eligible_for_p0
+   - FAIL: test_03_unverified_blocks_rather_than_assuming_subscription
+  Ran 90 tests in 10.693s | FAILED (failures=5)
+  VERDICT: CAUGHT
+
+MUTATION: conflict_detection_off
+  detected by 21 test(s)
+   - ERROR: test_24_challenge_contains_only_disputed_material
+   - ERROR: test_25_agreed_claims_are_not_re_debated
+   - FAIL: test_32_material_unresolved_prevents_converged
+   - FAIL: test_18_different_numbers_are_a_conflict
+   - FAIL: test_18_different_values_are_a_conflict
+   - FAIL: test_18_different_versions_are_a_conflict
+  Ran 90 tests in 10.605s | FAILED (failures=19, errors=2)
+  VERDICT: CAUGHT
+
+MUTATION: call_cap_off
+  detected by 1 test(s)
+   - FAIL: test_23_call_cap_is_enforced_before_dispatch
+  Ran 90 tests in 10.801s | FAILED (failures=1)
+  VERDICT: CAUGHT
+
+MUTATION: unresolved_does_not_block_convergence
+  detected by 7 test(s)
+   - FAIL: test_32_convergence_predicate_rejects_unresolved_directly
+   - FAIL: test_32_material_unresolved_prevents_converged
+   - FAIL: test_28_mutual_concession_is_unresolved_not_agreement
+   - FAIL: test_28_unresolved_when_both_maintain
+   - FAIL: test_30_missing_decision_is_unresolved_never_assumed_agreed
+   - FAIL: test_30_out_of_vocabulary_decision_is_not_coerced
+  Ran 90 tests in 10.724s | FAILED (failures=7)
+  VERDICT: CAUGHT
+

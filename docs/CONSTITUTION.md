@@ -320,3 +320,43 @@ product or engagement"), not this project's existing engineering
 architecture, which is unaffected by this section. No scripture research
 is authorized by this entry — see the future dedicated task referenced
 above.
+
+## 19. Purpose, discernment, non-waste and non-attachment are STOP CHECKS
+Added 2026-10-02. §1, §5, §7 and §10 were already correct and were already
+being followed as values — and they still failed to stop a programme that no
+longer served its purpose, because none of them was attached to a decision
+boundary where a stop could actually happen. A principle with no boundary to
+fire at remains true while being operationally inert. This section attaches
+them.
+
+**They are active checks, not advisory values.** Clear purpose (§1),
+discernment before action (§5), non-waste (§7) and non-attachment to our own
+technology (§10) are evaluated at the admission and continuation boundaries
+defined in CLAUDE.md's "Mission value gate", and either may stop work.
+
+**Prior approval does not automatically authorize the next increment.** An
+approved programme is approved for what it was approved for. Its continuation
+is a new decision, made on current evidence.
+
+**Sunk cost never satisfies the continuation test.** Effort already spent,
+code already written and quality already achieved are not arguments for
+continuing. Neither is good engineering: a sprint may be executed excellently
+and still fail the test, and that case is the easiest to get wrong because it
+feels like progress.
+
+**When evidence shows that continuation no longer serves the higher purpose:**
+stop under existing authority rather than inventing new authority, preserve the
+truth and evidence of what was found (including the negative result), and
+escalate or redirect per §12/§16. Stopping our own work is a legitimate
+outcome, not a failure of determination (§3) — the prohibition in §3 is on
+bending evidence to force a result, which includes forcing the result
+"continue".
+
+**Governance may interpret evidence; it may never rewrite it.** A governing
+principle, an Owner adjudication or a later reading may *interpret* experimental
+evidence and may reach a different conclusion from the mechanical one. It may
+not alter frozen evidence, pre-registered results, recorded measurements or
+historical records to agree with that interpretation. Where a mechanical result
+and a human adjudication differ, both are preserved and labelled; the
+disagreement is itself evidence, and erasing it would destroy the only proof
+that the process was followed rather than steered.

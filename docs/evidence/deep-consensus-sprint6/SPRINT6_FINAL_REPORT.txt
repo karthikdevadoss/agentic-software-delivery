@@ -1,0 +1,438 @@
+==============================================================================
+SPRINT 6 FINAL REPORT
+==============================================================================
+
+SPRINT 6 STATUS:                           PASS
+
+------------------------------------------------------------------------------
+SIZING
+
+estimated hours:                           5.0-6.0 h (300-360 min, midpoint 330)
+confidence:                                LOW
+execution assumption:                      CONCURRENT
+concurrent write-capable agents:           6 planned, 6 used
+reconciliation allowance:                  40 min
+
+------------------------------------------------------------------------------
+PHASE 1
+
+scorer negation audit:                     COMPLETE -- 9 defects, all fixed, each observed failing first
+scorer substring audit:                    COMPLETE -- substring and short-value matching removed from the decision path
+identity-key audit:                        COMPLETE -- 2 defects, incl. a published false agreement
+duplicate-id regression:                   PRESENT (test_identity_safety.py)
+downstream tests:                          PRESENT for every fix (A5)
+mutation gate:                             PASS -- 19 killed / 0 survived
+
+------------------------------------------------------------------------------
+BASELINE
+
+entitlement invocation attempted:          True
+entitlement answered:                      True
+entitlement result:                        NOT GRANTED
+requested model:                           claude-opus-5
+reported model:                            claude-haiku-4-5-20251001
+frozen baseline:                           claude-sonnet-5
+basis:                                     OPUS_ENTITLEMENT_NOT_GRANTED_FALLBACK_TO_VERIFIED_SONNET
+
+------------------------------------------------------------------------------
+FROZEN DATASETS
+
+blind N:                                   8
+blind hash:                                50e94aef19e56b5ec17d62708934a55c34e96cf8d6d0cc300c00304b565736cb
+challenge N:                               12
+challenge hash:                            5cd28db988a720f7dccf8c137b16a169eee76bf93bc15d6ec717b1036adb20b4
+sources/scoring hash:                      bceedd51113d0fa7fa0142b2807d0aced64767a44f1a160d7b9c6162a8164796
+decision-rule hash:                        1bd284c96815d8867475a726531b4f2bac5df7741ad87ec0fef546e5d63977a5
+freeze git HEAD:                           a66f9d88a8c52faad9bebedfd068c97ba3cf0beb
+frozen at (UTC):                           2026-10-02T07:40:50.855909+00:00
+
+------------------------------------------------------------------------------
+BLIND SET RESULTS
+  baseline material false claims:            2
+  corrected:                                 2
+  specifically exposed:                      0
+  repeated:                                  0
+  DC introduced:                             0
+  unresolved useful:                         0
+  unresolved noise:                          3
+  NEEDS_OWNER:                               11
+  average DC turns:                          3.75
+  n cases:                                   8
+
+------------------------------------------------------------------------------
+CHALLENGE SET RESULTS
+  baseline material false claims:            0
+  corrected:                                 0
+  specifically exposed:                      0
+  repeated:                                  0
+  DC introduced:                             0
+  unresolved useful:                         0
+  unresolved noise:                          7
+  NEEDS_OWNER:                               18
+  average DC turns:                          3.92
+  n cases:                                   12
+
+------------------------------------------------------------------------------
+TOTAL DECISION INPUTS
+
+  baseline material false claims:            2
+  corrected:                                 2
+  specifically exposed:                      0
+  repeated:                                  0
+  DC introduced:                             0
+  unresolved useful:                         0
+  unresolved noise:                          10
+  NEEDS_OWNER:                               29
+  average DC turns:                          3.85
+  median DC turns:                           4.0
+  2-turn cases:                              0
+  3-turn cases:                              3
+  4-turn cases:                              17
+
+  N=20. Raw counts, not rates. No statistical significance is claimed. Blind and Challenge are never pooled.
+
+------------------------------------------------------------------------------
+PROVIDERS
+
+Claude subscription calls:                 61
+Grok subscription calls:                   38
+paid API calls:                            0
+billing violations:                        0
+provider-limit events:                     0
+turn ceiling for this run:                 102
+turns committed:                           99
+
+------------------------------------------------------------------------------
+REPLAY
+
+Sprint-5 recordings replayed:              8
+Sprint-5 replay differences:               6
+REPLAY_DIVERGED:                           0
+Sprint-5 replay model calls:               0
+Sprint-6 recordings stored:                77
+
+------------------------------------------------------------------------------
+EVIDENCE INTEGRITY
+
+frozen hashes still match:                 PASS
+cases changed after freeze:                NO
+sources changed after freeze:              NO
+scoring changed after freeze:              NO
+decision rule changed:                     NO
+baseline switched:                         NO
+evaluated cases rerun:                     NO
+four-call cap respected:                   PASS
+overall integrity:                         PASS
+
+------------------------------------------------------------------------------
+SUSPECT SCORING -- READ BEFORE THE VERDICT
+
+  mechanical baseline false claims:          2
+  mechanical catches:                        2
+  FLAGGED baseline false claims:             2
+  FLAGGED catches:                           2
+  baseline false claims if flagged are artefacts: 0
+  catches if flagged are artefacts:          0
+
+  FLAGGED S6-BLIND-JV-1-bare-transactional-defaults / default_propagation
+  FLAGGED S6-BLIND-JV-1-bare-transactional-defaults / default_isolation_level
+
+  A flagged row is a row a human must look at, not a row proven to be a scoring artefact. The excluding-flagged figures show what the frozen rule yields IF every flagged row is an artefact. Neither figure is the answer on its own; the Owner's adjudication of the named rows is.
+
+------------------------------------------------------------------------------
+FROZEN PRODUCT VERDICT
+
+  ONE_MORE_LOOK
+
+  RULE APPLIED:
+  Rule 5 -- >= 1 baseline material false claim corrected OR specifically exposed, AND Deep Consensus introduced zero material false claims -> ONE_MORE_LOOK.
+
+  WHY (facts only):
+  The baseline published 2 material false claim(s) across 12 case(s). Deep Consensus corrected 2 and specifically exposed 0 (2 catch(es) counted within the 4-call cap) and introduced 0 material false claims. ONE_MORE_LOOK does NOT mean proven, validated, or ready to ship. It means the baseline published at least one material falsehood, Deep Consensus caught at least one of them within the four-call cap, and Deep Consensus introduced none of its own -- which earns one more look and nothing further.
+
+------------------------------------------------------------------------------
+THE SAME FROZEN RULE, WITH EVERY FLAGGED ROW SET ASIDE
+
+  PAUSE
+
+  RULE APPLIED:
+  Rule 3 -- baseline material false claims == 0 -> PAUSE. This is NOT inconclusive, NOT rerun, NOT collect harder cases.
+
+  The mechanical verdict above rests ENTIRELY on the flagged rows.
+  Both are published because the difference between them is a question
+  for the Owner, not a number this report may choose between.
+
+------------------------------------------------------------------------------
+NEEDS_OWNER
+
+  items awaiting Owner adjudication:         29
+  (each counts as NEITHER a catch NOR an introduced error)
+
+  case        : S6-BLIND-DB-2-lock-timeout-default (BLIND)
+  arm         : baseline
+  proposition : default_lock_timeout
+  expected    : 0
+  model value : false
+  source      : https://www.postgresql.org/docs/current/runtime-config-client.html Client Connection Defaults -- Statement Behavior -- lock_timeout
+  source fact : lock_timeout -- "Abort any statement that waits longer than the specified amount of time while attempting to acquire a lock on a table, index, row, or other database object. The time limit applies separately to each lock acquisition attempt. ... If this value is specified without units, it is taken 
+  why owner   : the typed comparator declined (UNCOMPARED): value types differ (NUMBER vs BOOLEAN) and are not the NUMBER/VERSION pair, so there is no comparator that applies to both. A declined comparison is never reported as a falsehood.
+
+  case        : S6-BLIND-DB-2-lock-timeout-default (BLIND)
+  arm         : baseline
+  proposition : lock_timeout_unitless_value_unit
+  expected    : milliseconds
+  model value : 0
+  source      : https://www.postgresql.org/docs/current/runtime-config-client.html Client Connection Defaults -- Statement Behavior -- lock_timeout
+  source fact : lock_timeout -- "Abort any statement that waits longer than the specified amount of time while attempting to acquire a lock on a table, index, row, or other database object. The time limit applies separately to each lock acquisition attempt. ... If this value is specified without units, it is taken 
+  why owner   : the typed comparator declined (UNCOMPARED): value types differ (ENUM vs NUMBER) and are not the NUMBER/VERSION pair, so there is no comparator that applies to both. A declined comparison is never reported as a falsehood.
+
+  case        : S6-BLIND-DB-2-lock-timeout-default (BLIND)
+  arm         : deep_consensus
+  proposition : lock_timeout_unitless_value_unit
+  expected    : milliseconds
+  model value : 0
+  source      : https://www.postgresql.org/docs/current/runtime-config-client.html Client Connection Defaults -- Statement Behavior -- lock_timeout
+  source fact : lock_timeout -- "Abort any statement that waits longer than the specified amount of time while attempting to acquire a lock on a table, index, row, or other database object. The time limit applies separately to each lock acquisition attempt. ... If this value is specified without units, it is taken 
+  why owner   : the typed comparator declined (UNCOMPARED): value types differ (ENUM vs NUMBER) and are not the NUMBER/VERSION pair, so there is no comparator that applies to both. A declined comparison is never reported as a falsehood.
+
+  case        : S6-BLIND-JV-1-bare-transactional-defaults (BLIND)
+  arm         : baseline
+  proposition : read_only_by_default
+  expected    : false
+  model value : read-write
+  source      : https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/annotations.html Using @Transactional -- the "@Transactional Settings" list of default settings
+  source fact : "The propagation setting is PROPAGATION_REQUIRED. The isolation level is ISOLATION_DEFAULT. The transaction is read-write. The transaction timeout defaults to the default timeout of the underlying transaction system, or to none if timeouts are not supported. Any RuntimeException or Error triggers ro
+  why owner   : the typed comparator declined (UNCOMPARED): value types differ (BOOLEAN vs ENUM) and are not the NUMBER/VERSION pair, so there is no comparator that applies to both. A declined comparison is never reported as a falsehood.
+
+  case        : S6-BLIND-JV-1-bare-transactional-defaults (BLIND)
+  arm         : baseline
+  proposition : default_transaction_timeout
+  expected    : the default timeout of the underlying transaction system, or none if that system does not support timeouts
+  model value : none (underlying transaction system default)
+  source      : https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/annotations.html Using @Transactional -- the "@Transactional Settings" list of default settings
+  source fact : "The propagation setting is PROPAGATION_REQUIRED. The isolation level is ISOLATION_DEFAULT. The transaction is read-write. The transaction timeout defaults to the default timeout of the underlying transaction system, or to none if timeouts are not supported. Any RuntimeException or Error triggers ro
+  why owner   : The source states no number and no enum token. The correct answer is a conditional deferral to another system, and any attempt to type it -- as NUMBER -1, as ENUM NONE, as 'infinite' -- would invent a fact the reference does not state and would then mark a correct answer wrong. Spring's TransactionD
+
+  case        : S6-BLIND-JV-1-bare-transactional-defaults (BLIND)
+  arm         : deep_consensus
+  proposition : read_only_by_default
+  expected    : false
+  model value : read-write
+  source      : https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/annotations.html Using @Transactional -- the "@Transactional Settings" list of default settings
+  source fact : "The propagation setting is PROPAGATION_REQUIRED. The isolation level is ISOLATION_DEFAULT. The transaction is read-write. The transaction timeout defaults to the default timeout of the underlying transaction system, or to none if timeouts are not supported. Any RuntimeException or Error triggers ro
+  why owner   : the typed comparator declined (UNCOMPARED): value types differ (BOOLEAN vs ENUM) and are not the NUMBER/VERSION pair, so there is no comparator that applies to both. A declined comparison is never reported as a falsehood.
+
+  case        : S6-BLIND-JV-1-bare-transactional-defaults (BLIND)
+  arm         : deep_consensus
+  proposition : default_transaction_timeout
+  expected    : the default timeout of the underlying transaction system, or none if that system does not support timeouts
+  model value : default timeout of the underlying transaction system
+  source      : https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/annotations.html Using @Transactional -- the "@Transactional Settings" list of default settings
+  source fact : "The propagation setting is PROPAGATION_REQUIRED. The isolation level is ISOLATION_DEFAULT. The transaction is read-write. The transaction timeout defaults to the default timeout of the underlying transaction system, or to none if timeouts are not supported. Any RuntimeException or Error triggers ro
+  why owner   : The source states no number and no enum token. The correct answer is a conditional deferral to another system, and any attempt to type it -- as NUMBER -1, as ENUM NONE, as 'infinite' -- would invent a fact the reference does not state and would then mark a correct answer wrong. Spring's TransactionD
+
+  case        : S6-BLIND-SEC-1-oauth-public-client-grant-choice (BLIND)
+  arm         : baseline
+  proposition : pkce_required_for_public_clients
+  expected    : true
+  model value : required
+  source      : https://www.rfc-editor.org/rfc/rfc9700.html RFC 9700, Best Current Practice for OAuth 2.0 Security (January 2025), section 2.1.1 "Authorization Code Grant" and section 2.4 "Resource Owner Password Credentials Grant"
+  source fact : Section 2.1.1 -- "Public clients MUST use PKCE [RFC7636] to this end, as motivated in Section 4.5.3.1." and "For confidential clients, the use of PKCE [RFC7636] is RECOMMENDED, as it provides strong protection against misuse and injection of authorization codes as described in Section 4.5.3.1." Sect
+  why owner   : the typed comparator declined (UNCOMPARED): side b did not parse: declared BOOLEAN but 'required' is not one of the accepted boolean tokens ['disabled', 'enabled', 'false', 'no', 'true', 'yes']. A declined comparison is never reported as a falsehood.
+
+  case        : S6-BLIND-SEC-1-oauth-public-client-grant-choice (BLIND)
+  arm         : baseline
+  proposition : pkce_normative_keyword_for_public_clients
+  expected    : MUST
+  model value : required
+  source      : https://www.rfc-editor.org/rfc/rfc9700.html RFC 9700, Best Current Practice for OAuth 2.0 Security (January 2025), section 2.1.1 "Authorization Code Grant" and section 2.4 "Resource Owner Password Credentials Grant"
+  source fact : Section 2.1.1 -- "Public clients MUST use PKCE [RFC7636] to this end, as motivated in Section 4.5.3.1." and "For confidential clients, the use of PKCE [RFC7636] is RECOMMENDED, as it provides strong protection against misuse and injection of authorization codes as described in Section 4.5.3.1." Sect
+  why owner   : the typed comparator declined (UNCOMPARED): side b did not parse: declared BOOLEAN but 'required' is not one of the accepted boolean tokens ['disabled', 'enabled', 'false', 'no', 'true', 'yes']. A declined comparison is never reported as a falsehood.
+
+  case        : S6-BLIND-SEC-1-oauth-public-client-grant-choice (BLIND)
+  arm         : deep_consensus
+  proposition : pkce_required_for_public_clients
+  expected    : true
+  model value : required
+  source      : https://www.rfc-editor.org/rfc/rfc9700.html RFC 9700, Best Current Practice for OAuth 2.0 Security (January 2025), section 2.1.1 "Authorization Code Grant" and section 2.4 "Resource Owner Password Credentials Grant"
+  source fact : Section 2.1.1 -- "Public clients MUST use PKCE [RFC7636] to this end, as motivated in Section 4.5.3.1." and "For confidential clients, the use of PKCE [RFC7636] is RECOMMENDED, as it provides strong protection against misuse and injection of authorization codes as described in Section 4.5.3.1." Sect
+  why owner   : the typed comparator declined (UNCOMPARED): side b did not parse: declared BOOLEAN but 'required' is not one of the accepted boolean tokens ['disabled', 'enabled', 'false', 'no', 'true', 'yes']. A declined comparison is never reported as a falsehood.
+
+  case        : S6-BLIND-SEC-1-oauth-public-client-grant-choice (BLIND)
+  arm         : deep_consensus
+  proposition : pkce_normative_keyword_for_public_clients
+  expected    : MUST
+  model value : required
+  source      : https://www.rfc-editor.org/rfc/rfc9700.html RFC 9700, Best Current Practice for OAuth 2.0 Security (January 2025), section 2.1.1 "Authorization Code Grant" and section 2.4 "Resource Owner Password Credentials Grant"
+  source fact : Section 2.1.1 -- "Public clients MUST use PKCE [RFC7636] to this end, as motivated in Section 4.5.3.1." and "For confidential clients, the use of PKCE [RFC7636] is RECOMMENDED, as it provides strong protection against misuse and injection of authorization codes as described in Section 4.5.3.1." Sect
+  why owner   : the typed comparator declined (UNCOMPARED): side b did not parse: declared BOOLEAN but 'required' is not one of the accepted boolean tokens ['disabled', 'enabled', 'false', 'no', 'true', 'yes']. A declined comparison is never reported as a falsehood.
+
+  case        : S6-CHAL-DB-1-refresh-matview-lock (CHALLENGE)
+  arm         : deep_consensus
+  proposition : plain_select_blocked
+  expected    : true
+  model value : ACCESS SHARE
+  source      : https://www.postgresql.org/docs/current/explicit-locking.html PostgreSQL 18 documentation, section 13.3.1 Table-Level Locks -- the ACCESS EXCLUSIVE (AccessExclusiveLock) entry, and the Tip that immediately follows the lock-mode list
+  source fact : "Acquired by the DROP TABLE, TRUNCATE, REINDEX, CLUSTER, VACUUM FULL, and REFRESH MATERIALIZED VIEW (without CONCURRENTLY) commands." and "Only an ACCESS EXCLUSIVE lock blocks a SELECT (without FOR UPDATE/SHARE) statement."
+  why owner   : the typed comparator declined (UNCOMPARED): value types differ (BOOLEAN vs ENUM) and are not the NUMBER/VERSION pair, so there is no comparator that applies to both. A declined comparison is never reported as a falsehood.
+
+  case        : S6-CHAL-DB-2-concurrently-lock-asymmetry (CHALLENGE)
+  arm         : baseline
+  proposition : writes_blocked_by_create_index_concurrently
+  expected    : false
+  model value : SHARE UPDATE EXCLUSIVE
+  source      : https://www.postgresql.org/docs/current/explicit-locking.html PostgreSQL 18 documentation, section 13.3.1 Table-Level Locks -- the SHARE UPDATE EXCLUSIVE and EXCLUSIVE entries
+  source fact : SHARE UPDATE EXCLUSIVE: "Acquired by VACUUM (without FULL), ANALYZE, CREATE INDEX CONCURRENTLY, CREATE STATISTICS, COMMENT ON, REINDEX CONCURRENTLY, and certain ALTER INDEX and ALTER TABLE variants". EXCLUSIVE: "This mode allows only concurrent ACCESS SHARE locks, i.e., only reads from the table can
+  why owner   : the typed comparator declined (UNCOMPARED): value types differ (BOOLEAN vs ENUM) and are not the NUMBER/VERSION pair, so there is no comparator that applies to both. A declined comparison is never reported as a falsehood.
+
+  case        : S6-CHAL-DB-2-concurrently-lock-asymmetry (CHALLENGE)
+  arm         : deep_consensus
+  proposition : writes_blocked_by_create_index_concurrently
+  expected    : false
+  model value : SHARE UPDATE EXCLUSIVE
+  source      : https://www.postgresql.org/docs/current/explicit-locking.html PostgreSQL 18 documentation, section 13.3.1 Table-Level Locks -- the SHARE UPDATE EXCLUSIVE and EXCLUSIVE entries
+  source fact : SHARE UPDATE EXCLUSIVE: "Acquired by VACUUM (without FULL), ANALYZE, CREATE INDEX CONCURRENTLY, CREATE STATISTICS, COMMENT ON, REINDEX CONCURRENTLY, and certain ALTER INDEX and ALTER TABLE variants". EXCLUSIVE: "This mode allows only concurrent ACCESS SHARE locks, i.e., only reads from the table can
+  why owner   : the typed comparator declined (UNCOMPARED): value types differ (BOOLEAN vs ENUM) and are not the NUMBER/VERSION pair, so there is no comparator that applies to both. A declined comparison is never reported as a falsehood.
+
+  case        : S6-CHAL-DB-2-concurrently-lock-asymmetry (CHALLENGE)
+  arm         : deep_consensus
+  proposition : writes_blocked_by_refresh_matview_concurrently
+  expected    : true
+  model value : ExclusiveLock
+  source      : https://www.postgresql.org/docs/current/explicit-locking.html PostgreSQL 18 documentation, section 13.3.1 Table-Level Locks -- the SHARE UPDATE EXCLUSIVE and EXCLUSIVE entries
+  source fact : SHARE UPDATE EXCLUSIVE: "Acquired by VACUUM (without FULL), ANALYZE, CREATE INDEX CONCURRENTLY, CREATE STATISTICS, COMMENT ON, REINDEX CONCURRENTLY, and certain ALTER INDEX and ALTER TABLE variants". EXCLUSIVE: "This mode allows only concurrent ACCESS SHARE locks, i.e., only reads from the table can
+  why owner   : the typed comparator declined (UNCOMPARED): value types differ (BOOLEAN vs ENUM) and are not the NUMBER/VERSION pair, so there is no comparator that applies to both. A declined comparison is never reported as a falsehood.
+
+  case        : S6-CHAL-DB-4-read-committed-update-recheck (CHALLENGE)
+  arm         : baseline
+  proposition : why_this_can_still_be_unsafe
+  expected    : An updating command under READ COMMITTED can observe an inconsistent snapshot: the effects of concurrent updates on the rows it is updating, but not their effects on other rows -- so a multi-row conditional update is not made safe by the re-evaluation.
+  model value : None
+  source      : https://www.postgresql.org/docs/current/transaction-iso.html PostgreSQL 18 documentation, section 13.2.1 Read Committed Isolation Level
+  source fact : "If the first updater commits, the second updater will ignore the row if the first updater deleted it, otherwise it will attempt to apply its operation to the updated version of the row. The search condition of the command (the WHERE clause) is re-evaluated to see if the updated version of the row s
+  why owner   : The claim is an explanation of a consequence, not a value. There is no boolean or enum whose equality decides whether a given wording conveys it, and scoring it lexically is exactly the substring matching that produced a false headline in Sprint 5 (SPRINT5_RESULTS.md §6).
+
+  case        : S6-CHAL-DB-4-read-committed-update-recheck (CHALLENGE)
+  arm         : deep_consensus
+  proposition : why_this_can_still_be_unsafe
+  expected    : An updating command under READ COMMITTED can observe an inconsistent snapshot: the effects of concurrent updates on the rows it is updating, but not their effects on other rows -- so a multi-row conditional update is not made safe by the re-evaluation.
+  model value : None
+  source      : https://www.postgresql.org/docs/current/transaction-iso.html PostgreSQL 18 documentation, section 13.2.1 Read Committed Isolation Level
+  source fact : "If the first updater commits, the second updater will ignore the row if the first updater deleted it, otherwise it will attempt to apply its operation to the updated version of the row. The search condition of the command (the WHERE clause) is re-evaluated to see if the updated version of the row s
+  why owner   : The claim is an explanation of a consequence, not a value. There is no boolean or enum whose equality decides whether a given wording conveys it, and scoring it lexically is exactly the substring matching that produced a false headline in Sprint 5 (SPRINT5_RESULTS.md §6).
+
+  case        : S6-CHAL-SPR-1-required-unexpected-rollback (CHALLENGE)
+  arm         : baseline
+  proposition : outer_transaction_commits
+  expected    : false
+  model value : rolls back
+  source      : https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/tx-propagation.html Spring Framework reference, Transaction Propagation -- Understanding PROPAGATION_REQUIRED
+  source fact : "In the case of standard PROPAGATION_REQUIRED behavior, all these scopes are mapped to the same physical transaction. So a rollback-only marker set in the inner transaction scope does affect the outer transaction's chance to actually commit." and "However, in the case where an inner transaction scop
+  why owner   : the typed comparator declined (UNCOMPARED): value types differ (BOOLEAN vs ENUM) and are not the NUMBER/VERSION pair, so there is no comparator that applies to both. A declined comparison is never reported as a falsehood.
+
+  case        : S6-CHAL-JV-1-jep491-synchronized-pinning (CHALLENGE)
+  arm         : baseline
+  proposition : reentrantlock_migration_must_be_reverted
+  expected    : false
+  model value : not required
+  source      : https://openjdk.org/jeps/491 JEP 491: Synchronize Virtual Threads without Pinning -- Status: Closed/Delivered, Release: 24; Summary, Description and Alternatives sections
+  source fact : "Improve the scalability of Java code that uses synchronized methods and statements by arranging for virtual threads that block in such constructs to release their underlying platform threads for use by other virtual threads. This will eliminate nearly all cases of virtual threads being pinned to pl
+  why owner   : the typed comparator declined (UNCOMPARED): value types differ (BOOLEAN vs ENUM) and are not the NUMBER/VERSION pair, so there is no comparator that applies to both. A declined comparison is never reported as a falsehood.
+
+  case        : S6-CHAL-JV-1-jep491-synchronized-pinning (CHALLENGE)
+  arm         : baseline
+  proposition : remaining_pinning_situations
+  expected    : Pinning still occurs when a virtual thread is executing native code (a native method or the Foreign Function & Memory API) that calls back into blocking Java code, and in class-loading/class-initialization cases where a native frame is on the stack or the thread waits for another thread to finish initializing a class.
+  model value : None
+  source      : https://openjdk.org/jeps/491 JEP 491: Synchronize Virtual Threads without Pinning -- Status: Closed/Delivered, Release: 24; Summary, Description and Alternatives sections
+  source fact : "Improve the scalability of Java code that uses synchronized methods and statements by arranging for virtual threads that block in such constructs to release their underlying platform threads for use by other virtual threads. This will eliminate nearly all cases of virtual threads being pinned to pl
+  why owner   : An open-ended enumeration. Credit depends on whether the cases named are among the documented ones and whether the list is presented as exhaustive, which no equality test over a value can decide.
+
+  case        : S6-CHAL-JV-1-jep491-synchronized-pinning (CHALLENGE)
+  arm         : deep_consensus
+  proposition : remaining_pinning_situations
+  expected    : Pinning still occurs when a virtual thread is executing native code (a native method or the Foreign Function & Memory API) that calls back into blocking Java code, and in class-loading/class-initialization cases where a native frame is on the stack or the thread waits for another thread to finish initializing a class.
+  model value : None
+  source      : https://openjdk.org/jeps/491 JEP 491: Synchronize Virtual Threads without Pinning -- Status: Closed/Delivered, Release: 24; Summary, Description and Alternatives sections
+  source fact : "Improve the scalability of Java code that uses synchronized methods and statements by arranging for virtual threads that block in such constructs to release their underlying platform threads for use by other virtual threads. This will eliminate nearly all cases of virtual threads being pinned to pl
+  why owner   : An open-ended enumeration. Credit depends on whether the cases named are among the documented ones and whether the list is presented as exhaustive, which no equality test over a value can decide.
+
+  case        : S6-CHAL-JV-2-jep400-default-charset (CHALLENGE)
+  arm         : baseline
+  proposition : default_charset
+  expected    : UTF-8
+  model value : use explicit charset
+  source      : https://openjdk.org/jeps/400 JEP 400: UTF-8 by Default -- Status: Closed/Delivered, Release: 18; Summary, Motivation, and 'The file.encoding and native.encoding system properties' sections
+  source fact : "Specify UTF-8 as the default charset of the standard Java APIs." and "We propose to change the specification of Charset.defaultCharset() to say that the default charset is UTF-8 unless configured otherwise by an implementation-specific means." and "We will revise the treatment of the system propert
+  why owner   : the typed comparator declined (UNCOMPARED): value types differ (ENUM vs TEXT) and are not the NUMBER/VERSION pair, so there is no comparator that applies to both. A declined comparison is never reported as a falsehood.
+
+  case        : S6-CHAL-JV-3-chm-iterator-and-size (CHALLENGE)
+  arm         : baseline
+  proposition : size_reliable_for_program_control_under_concurrent_updates
+  expected    : false
+  model value : unreliable for exact control
+  source      : https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/concurrent/ConcurrentHashMap.html Java SE 25 API documentation, java.util.concurrent.ConcurrentHashMap -- class description, paragraphs 2 and 3
+  source fact : "Iterators, Spliterators and Enumerations return elements reflecting the state of the hash table at some point at or since the creation of the iterator/enumeration. They do not throw ConcurrentModificationException. However, iterators are designed to be used by only one thread at a time." and "Bear 
+  why owner   : the typed comparator declined (UNCOMPARED): value types differ (BOOLEAN vs ENUM) and are not the NUMBER/VERSION pair, so there is no comparator that applies to both. A declined comparison is never reported as a falsehood.
+
+  case        : S6-CHAL-HTTP-1-no-cache-vs-no-store (CHALLENGE)
+  arm         : baseline
+  proposition : no_cache_forbids_storage
+  expected    : false
+  model value : no-store
+  source      : https://www.rfc-editor.org/rfc/rfc9111.html RFC 9111 (HTTP Caching), sections 5.2.2.4 no-cache and 5.2.2.5 no-store
+  source fact : "The no-cache response directive, in its unqualified form (without an argument), indicates that the response MUST NOT be used to satisfy any other request without forwarding it for validation and receiving a successful response" and "The no-store response directive indicates that a cache MUST NOT st
+  why owner   : the typed comparator declined (UNCOMPARED): value types differ (BOOLEAN vs ENUM) and are not the NUMBER/VERSION pair, so there is no comparator that applies to both. A declined comparison is never reported as a falsehood.
+
+  case        : S6-CHAL-HTTP-2-401-vs-403-and-www-authenticate (CHALLENGE)
+  arm         : baseline
+  proposition : www_authenticate_mandatory_on_401
+  expected    : true
+  model value : WWW-Authenticate
+  source      : https://www.rfc-editor.org/rfc/rfc9110.html RFC 9110 (HTTP Semantics), sections 15.5.2 401 Unauthorized and 15.5.4 403 Forbidden
+  source fact : "The 401 (Unauthorized) status code indicates that the request has not been applied because it lacks valid authentication credentials for the target resource. The server generating a 401 response MUST send a WWW-Authenticate header field (Section 11.6.1) containing at least one challenge applicable 
+  why owner   : the typed comparator declined (UNCOMPARED): value types differ (BOOLEAN vs TEXT) and are not the NUMBER/VERSION pair, so there is no comparator that applies to both. A declined comparison is never reported as a falsehood.
+
+  case        : S6-CHAL-HTTP-2-401-vs-403-and-www-authenticate (CHALLENGE)
+  arm         : deep_consensus
+  proposition : www_authenticate_mandatory_on_401
+  expected    : true
+  model value : WWW-Authenticate
+  source      : https://www.rfc-editor.org/rfc/rfc9110.html RFC 9110 (HTTP Semantics), sections 15.5.2 401 Unauthorized and 15.5.4 403 Forbidden
+  source fact : "The 401 (Unauthorized) status code indicates that the request has not been applied because it lacks valid authentication credentials for the target resource. The server generating a 401 response MUST send a WWW-Authenticate header field (Section 11.6.1) containing at least one challenge applicable 
+  why owner   : the typed comparator declined (UNCOMPARED): value types differ (BOOLEAN vs ENUM) and are not the NUMBER/VERSION pair, so there is no comparator that applies to both. A declined comparison is never reported as a falsehood.
+
+  case        : S6-CHAL-SEC-1-ropc-vs-implicit-normative-strength (CHALLENGE)
+  arm         : baseline
+  proposition : condition_attached_to_the_implicit_prohibition
+  expected    : The SHOULD NOT on the implicit grant is qualified: it applies unless access token injection in the authorization response is prevented and the token leakage vectors of sections 4.1, 4.2, 4.3 and 4.6 are mitigated; clients SHOULD instead use response type code.
+  model value : None
+  source      : https://www.rfc-editor.org/rfc/rfc9700.html RFC 9700 / BCP 240 (January 2025), sections 2.1.2 Implicit Grant and 2.4 Resource Owner Password Credentials Grant
+  source fact : Section 2.4: "The resource owner password credentials grant [RFC6749] MUST NOT be used. This grant type insecurely exposes the credentials of the resource owner to the client." Section 2.1.2: "In order to avoid these issues, clients SHOULD NOT use the implicit grant (response type token) or other re
+  why owner   : Whether a given paraphrase of the escape clause is faithful is a reading of normative prose, not a value equality. Scoring it automatically would require deciding whether an answer's conditions are equivalent to the RFC's, which is the adjudication being avoided.
+
+  case        : S6-CHAL-SEC-1-ropc-vs-implicit-normative-strength (CHALLENGE)
+  arm         : deep_consensus
+  proposition : both_grants_have_the_same_requirement_level
+  expected    : false
+  model value : MUST NOT
+  source      : https://www.rfc-editor.org/rfc/rfc9700.html RFC 9700 / BCP 240 (January 2025), sections 2.1.2 Implicit Grant and 2.4 Resource Owner Password Credentials Grant
+  source fact : Section 2.4: "The resource owner password credentials grant [RFC6749] MUST NOT be used. This grant type insecurely exposes the credentials of the resource owner to the client." Section 2.1.2: "In order to avoid these issues, clients SHOULD NOT use the implicit grant (response type token) or other re
+  why owner   : the typed comparator declined (UNCOMPARED): value types differ (BOOLEAN vs ENUM) and are not the NUMBER/VERSION pair, so there is no comparator that applies to both. A declined comparison is never reported as a falsehood.
+
+  case        : S6-CHAL-SEC-1-ropc-vs-implicit-normative-strength (CHALLENGE)
+  arm         : deep_consensus
+  proposition : condition_attached_to_the_implicit_prohibition
+  expected    : The SHOULD NOT on the implicit grant is qualified: it applies unless access token injection in the authorization response is prevented and the token leakage vectors of sections 4.1, 4.2, 4.3 and 4.6 are mitigated; clients SHOULD instead use response type code.
+  model value : None
+  source      : https://www.rfc-editor.org/rfc/rfc9700.html RFC 9700 / BCP 240 (January 2025), sections 2.1.2 Implicit Grant and 2.4 Resource Owner Password Credentials Grant
+  source fact : Section 2.4: "The resource owner password credentials grant [RFC6749] MUST NOT be used. This grant type insecurely exposes the credentials of the resource owner to the client." Section 2.1.2: "In order to avoid these issues, clients SHOULD NOT use the implicit grant (response type token) or other re
+  why owner   : Whether a given paraphrase of the escape clause is faithful is a reading of normative prose, not a value equality. Scoring it automatically would require deciding whether an answer's conditions are equivalent to the RFC's, which is the adjudication being avoided.
+
+------------------------------------------------------------------------------
+BRANCH
+
+branch:                                    deep-consensus-sprint5-typed-claims
+PUSHED:                                    NO
+DEPLOYED:                                  NO
+NEXT SPRINT STARTED:                       NO

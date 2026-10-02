@@ -1,0 +1,169 @@
+{
+  "sprint": 6,
+  "model_calls_made_by_this_audit": 0,
+  "evidence_integrity": {
+    "overall": "PASS",
+    "checks": [
+      {
+        "check": "frozen_hashes_still_match",
+        "status": "PASS",
+        "detail": "re-hashed the live case modules against the stored freeze",
+        "detail_checks": {
+          "blind_hash": {
+            "frozen": "50e94aef19e56b5ec17d62708934a55c34e96cf8d6d0cc300c00304b565736cb",
+            "current": "50e94aef19e56b5ec17d62708934a55c34e96cf8d6d0cc300c00304b565736cb",
+            "match": true
+          },
+          "challenge_hash": {
+            "frozen": "5cd28db988a720f7dccf8c137b16a169eee76bf93bc15d6ec717b1036adb20b4",
+            "current": "5cd28db988a720f7dccf8c137b16a169eee76bf93bc15d6ec717b1036adb20b4",
+            "match": true
+          },
+          "sources_scoring_hash": {
+            "frozen": "bceedd51113d0fa7fa0142b2807d0aced64767a44f1a160d7b9c6162a8164796",
+            "current": "bceedd51113d0fa7fa0142b2807d0aced64767a44f1a160d7b9c6162a8164796",
+            "match": true
+          },
+          "decision_rule_hash": {
+            "frozen": "1bd284c96815d8867475a726531b4f2bac5df7741ad87ec0fef546e5d63977a5",
+            "current": "1bd284c96815d8867475a726531b4f2bac5df7741ad87ec0fef546e5d63977a5",
+            "match": true
+          },
+          "package_hash": {
+            "frozen": "a4d7e1c7c70e2da1adca72ffa923b2459022f53e48e8d5c0224fa7044711dd5f",
+            "current": "a4d7e1c7c70e2da1adca72ffa923b2459022f53e48e8d5c0224fa7044711dd5f",
+            "match": true
+          },
+          "blind_n": {
+            "frozen": 8,
+            "current": 8,
+            "match": true
+          },
+          "challenge_n": {
+            "frozen": 12,
+            "current": 12,
+            "match": true
+          }
+        }
+      },
+      {
+        "check": "case_counts_unchanged",
+        "status": "PASS",
+        "detail": "blind and challenge N compared against the freeze"
+      },
+      {
+        "check": "sources_and_scoring_unchanged",
+        "status": "PASS",
+        "detail": "the sources/scoring/materiality/baseline rule block is inside the hash, so a changed source or scoring rule moves it"
+      },
+      {
+        "check": "decision_rule_unchanged",
+        "status": "PASS",
+        "detail": "the product decision rule is hashed as frozen text"
+      },
+      {
+        "check": "no_evaluated_case_rerun",
+        "status": "PASS",
+        "detail": "each frozen case appears at most once in the results",
+        "duplicate_case_ids": []
+      },
+      {
+        "check": "every_executed_case_was_pre_registered",
+        "status": "PASS",
+        "detail": "no case was introduced after the freeze",
+        "unregistered_case_ids": []
+      },
+      {
+        "check": "baseline_never_switched",
+        "status": "PASS",
+        "detail": "one frozen baseline identity across every case",
+        "requested_models_seen": [
+          "claude-sonnet-5"
+        ]
+      },
+      {
+        "check": "four_call_cap_respected",
+        "status": "PASS",
+        "detail": "no case used a fifth Deep Consensus model call",
+        "over_cap_case_ids": []
+      }
+    ]
+  },
+  "billing_and_auth": {
+    "overall": "PASS",
+    "checks": [
+      {
+        "check": "parent_env_billing_vars",
+        "status": "PASS",
+        "detail": "recorded for context only; a key here is not a violation because the child environment is sanitised and asserted clean before every call",
+        "present_in_parent": []
+      },
+      {
+        "check": "no_billing_var_in_child_allowlist",
+        "status": "PASS",
+        "detail": "the transport's child-environment allowlist contains no metered-credential variable",
+        "leaked": []
+      },
+      {
+        "check": "billing_denylist_present",
+        "status": "PASS",
+        "detail": "the transport asserts a denylist of billing variables"
+      },
+      {
+        "check": "no_billing_violation",
+        "status": "PASS",
+        "detail": "no run reported metered billing",
+        "violation_case_ids": []
+      },
+      {
+        "check": "provider_limit_events_recorded",
+        "status": "PASS",
+        "detail": "recorded, not treated as failures; a provider's own limit is never an invitation to fall back to a metered API",
+        "provider_limit_case_ids": []
+      },
+      {
+        "check": "cross_family_real_on_every_case",
+        "status": "PASS",
+        "detail": "both workers real, eligible and from DIFFERENT real families",
+        "not_cross_family_case_ids": []
+      },
+      {
+        "check": "baseline_used_subscription_transport",
+        "status": "PASS",
+        "detail": "every baseline call went through a subscription CLI transport",
+        "transports_seen": [
+          "CLAUDE_SUBSCRIPTION_CLI"
+        ]
+      },
+      {
+        "check": "notional_cost_not_converted_to_billed",
+        "status": "PASS",
+        "detail": "provider-emitted cost metadata is recorded as notional. Claude reports costBasis='list' so its figure is NOT_APPLICABLE_SUBSCRIPTION; Grok reports no costBasis so its figure stays UNKNOWN. Neither is reported as money charged."
+      }
+    ]
+  },
+  "secret_scan": {
+    "status": "PASS",
+    "files_scanned": [
+      {
+        "path": "C:\\Users\\Hemapriya\\agentic-software-delivery\\docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+        "bytes": 448840
+      },
+      {
+        "path": "C:\\Users\\Hemapriya\\agentic-software-delivery\\docs\\evidence\\deep-consensus-sprint6\\sprint6-decisive-results.json",
+        "bytes": 1416990
+      },
+      {
+        "path": "C:\\Users\\Hemapriya\\agentic-software-delivery\\docs\\evidence\\deep-consensus-sprint6\\frozen-evidence-manifest.json",
+        "bytes": 83036
+      },
+      {
+        "path": "C:\\Users\\Hemapriya\\agentic-software-delivery\\docs\\evidence\\deep-consensus-sprint6\\frozen-baseline.json",
+        "bytes": 1547
+      }
+    ],
+    "findings": [],
+    "note": "matched text is deliberately not reproduced; only offsets and lengths are reported, because an audit that prints the secret it found has leaked it"
+  },
+  "overall": "PASS"
+}

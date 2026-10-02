@@ -1,0 +1,659 @@
+{
+  "generated_at": "2026-10-02T08:18:39.327205+00:00",
+  "what_this_answers": "Does the CURRENT governor and the CURRENT scorer treat the real Sprint-5 recorded model output the same way the Sprint-5 engine did? It does NOT answer whether the models would still say this.",
+  "source": {
+    "results": "docs\\evidence\\deep-consensus-sprint6\\sprint6-decisive-results.json",
+    "transcripts": "docs\\evidence\\deep-consensus-sprint6\\transcripts.jsonl",
+    "recorded_turns": 77,
+    "recorded_runs": 20
+  },
+  "engine_fingerprint": {
+    "files": {
+      "claim_review.py": "3b2b655a0a286d17",
+      "claim_engine.py": "855141238a572a39",
+      "typed_values.py": "aabb0e5a9a4e78d7",
+      "candidates.py": "cddd38e519386350",
+      "outcomes.py": "a4d801a31626c808",
+      "transcripts.py": "f0c662323c92a49d"
+    },
+    "combined": "7e0c9beb278520f1"
+  },
+  "runs_replayed": 20,
+  "runs_compared": 20,
+  "replay_diverged_count": 0,
+  "replay_diverged_runs": [],
+  "difference_count": 0,
+  "explained_count": 0,
+  "defect_count": 0,
+  "defects": [],
+  "explained": [],
+  "compared_dimensions": [
+    "paired_claims",
+    "typed_comparison_verdict",
+    "one_sided_routing",
+    "claim_state",
+    "convergence_state",
+    "cross_check_ledger",
+    "scoring_outcome",
+    "call_pattern",
+    "governed_answer"
+  ],
+  "classification_rules": [
+    "scorer_negation_fix",
+    "identity_key_fix"
+  ],
+  "corpus_coverage": {
+    "pairings_total": 162,
+    "runs_with_identity_key_collisions": 0,
+    "identity_key_collisions": {},
+    "note": "A colliding normalised subject is the ONLY condition the identity-key fix acts on. Where the count above is zero, this replay provides NO evidence about that fix on this corpus -- it shows the fix changed nothing here because it could not apply, which is a different statement from the fix being correct. Fresh cases that actually collide are needed for that, and this report must not be cited as covering it."
+  },
+  "classification_policy": "FAILS CLOSED. A difference is EXPLAINED only when a named rule inspected the real values and returned a reason; everything else is a DEFECT. There is no rule of last resort.",
+  "model_calls": 0,
+  "model_calls_assertion": "0, asserted not claimed: every provider was a transcripts.ReplaySource, and cli_transport.run_cli -- the only function in this package through which a live subscription turn can leave the process -- was replaced for the duration of the replay by a counter that raises. The value above is that real counter. Honest limit: it proves nothing left via run_cli, which is the only exit this package has today.",
+  "live_call_attempts": 0,
+  "verdict": "NO_DIFFERENCES",
+  "runs": [
+    {
+      "run_id": "dcr5_62c58230b2ab4252",
+      "case_id": "S6-BLIND-AP-1-text-claim-comparator-threshold",
+      "recorded_turns": 3,
+      "recorded_turns_by_slot": {
+        "A": 1,
+        "B": 2
+      },
+      "replay_status": "REPLAY_COMPLETED",
+      "question": "Question:\nReview this proposed change to our claim comparator. A teammate wants to compare two models' free-text claim values with embedding cosine similarity, returning AGREE above 0.9 and CONFLICT below it, to cut the number of cross-check calls. What verdict does the comparator in typed_values.py return today for two values typed TEXT, and is the proposed similarity threshold consistent with that module's stated rules? Answer in under 150 words.\n\nContext:\nThe repository is the Deep Consensus package. The relevant module is deep_consensus/typed_values.py, whose module docstring and compare() docstring state the comparison rules. Assume the model can read that file.",
+      "status_old": "UNRESOLVED",
+      "status_new": "UNRESOLVED",
+      "stop_reason_old": "uncompared_material_claims_remain",
+      "stop_reason_new": "uncompared_material_claims_remain",
+      "provider_calls_old": 3,
+      "provider_calls_new": 3,
+      "differences": [],
+      "explained_count": 0,
+      "defect_count": 0,
+      "replayed_turns_by_slot": {
+        "A": 1,
+        "B": 2
+      },
+      "scoring_note": "case 'S6-BLIND-AP-1-text-claim-comparator-threshold' is not in eval_cases, so the scoring dimension was NOT compared for this run. The governance dimensions above were still compared in full.",
+      "score_verdict_old": null,
+      "score_verdict_new": null,
+      "governance_diverged": false,
+      "identity_key_collisions": [],
+      "pairing_count": 8
+    },
+    {
+      "run_id": "dcr5_113ad4200d8748f4",
+      "case_id": "S6-BLIND-AP-2-convergence-score-and-stop-authority",
+      "recorded_turns": 3,
+      "recorded_turns_by_slot": {
+        "A": 2,
+        "B": 1
+      },
+      "replay_status": "REPLAY_COMPLETED",
+      "question": "Question:\nReview this proposal for our review loop. The plan is to surface convergence_score to end users as a confidence score, and to replace the fixed round cap with a judge model that decides each round whether the run has converged enough to stop. Against governor.py as it stands: is convergence_score a correctness or confidence figure, does any model take part in the stop decision today, and what is the maximum number of review rounds? Answer in under 150 words.\n\nContext:\nThe repository is the Deep Consensus package. The relevant module is deep_consensus/governor.py, whose module docstring, constants and convergence_score() docstring define the behaviour. Assume the model can read that file.",
+      "status_old": "CONVERGED",
+      "status_new": "CONVERGED",
+      "stop_reason_old": "resolved_after_cross_check",
+      "stop_reason_new": "resolved_after_cross_check",
+      "provider_calls_old": 3,
+      "provider_calls_new": 3,
+      "differences": [],
+      "explained_count": 0,
+      "defect_count": 0,
+      "replayed_turns_by_slot": {
+        "A": 2,
+        "B": 1
+      },
+      "scoring_note": "case 'S6-BLIND-AP-2-convergence-score-and-stop-authority' is not in eval_cases, so the scoring dimension was NOT compared for this run. The governance dimensions above were still compared in full.",
+      "score_verdict_old": null,
+      "score_verdict_new": null,
+      "governance_diverged": false,
+      "identity_key_collisions": [],
+      "pairing_count": 8
+    },
+    {
+      "run_id": "dcr5_481be1ff6e054085",
+      "case_id": "S6-BLIND-DB-1-add-column-constant-default-rewrite",
+      "recorded_turns": 4,
+      "recorded_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "replay_status": "REPLAY_COMPLETED",
+      "question": "Question:\nI need to run ALTER TABLE orders ADD COLUMN status text NOT NULL DEFAULT 'pending' on a 400 million row table in production PostgreSQL 16. Does this rewrite the whole table, what table-level lock does the ALTER TABLE take, and would changing the default to clock_timestamp() change the rewrite behaviour? Answer in under 150 words.",
+      "status_old": "UNRESOLVED",
+      "status_new": "UNRESOLVED",
+      "stop_reason_old": "uncompared_material_claims_remain",
+      "stop_reason_new": "uncompared_material_claims_remain",
+      "provider_calls_old": 4,
+      "provider_calls_new": 4,
+      "differences": [],
+      "explained_count": 0,
+      "defect_count": 0,
+      "replayed_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "scoring_note": "case 'S6-BLIND-DB-1-add-column-constant-default-rewrite' is not in eval_cases, so the scoring dimension was NOT compared for this run. The governance dimensions above were still compared in full.",
+      "score_verdict_old": null,
+      "score_verdict_new": null,
+      "governance_diverged": false,
+      "identity_key_collisions": [],
+      "pairing_count": 10
+    },
+    {
+      "run_id": "dcr5_19aeaa464a68456f",
+      "case_id": "S6-BLIND-DB-2-lock-timeout-default",
+      "recorded_turns": 4,
+      "recorded_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "replay_status": "REPLAY_COMPLETED",
+      "question": "Question:\nWhen a migration statement in PostgreSQL has to wait for a lock held by a long-running query, does the server give up after some default period on its own? What is the default value of lock_timeout, and what does that value mean? Answer in under 150 words.",
+      "status_old": "CONVERGED",
+      "status_new": "CONVERGED",
+      "stop_reason_old": "resolved_after_cross_check",
+      "stop_reason_new": "resolved_after_cross_check",
+      "provider_calls_old": 4,
+      "provider_calls_new": 4,
+      "differences": [],
+      "explained_count": 0,
+      "defect_count": 0,
+      "replayed_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "scoring_note": "case 'S6-BLIND-DB-2-lock-timeout-default' is not in eval_cases, so the scoring dimension was NOT compared for this run. The governance dimensions above were still compared in full.",
+      "score_verdict_old": null,
+      "score_verdict_new": null,
+      "governance_diverged": false,
+      "identity_key_collisions": [],
+      "pairing_count": 5
+    },
+    {
+      "run_id": "dcr5_ad028ead679643ef",
+      "case_id": "S6-BLIND-JV-1-bare-transactional-defaults",
+      "recorded_turns": 4,
+      "recorded_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "replay_status": "REPLAY_COMPLETED",
+      "question": "Question:\nA service method is annotated with a bare @Transactional and no attributes. According to the Spring Framework reference, which propagation setting, which isolation level, which read-write mode and which timeout does that method get? Answer in under 150 words.",
+      "status_old": "CONVERGED",
+      "status_new": "CONVERGED",
+      "stop_reason_old": "resolved_after_cross_check",
+      "stop_reason_new": "resolved_after_cross_check",
+      "provider_calls_old": 4,
+      "provider_calls_new": 4,
+      "differences": [],
+      "explained_count": 0,
+      "defect_count": 0,
+      "replayed_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "scoring_note": "case 'S6-BLIND-JV-1-bare-transactional-defaults' is not in eval_cases, so the scoring dimension was NOT compared for this run. The governance dimensions above were still compared in full.",
+      "score_verdict_old": null,
+      "score_verdict_new": null,
+      "governance_diverged": false,
+      "identity_key_collisions": [],
+      "pairing_count": 5
+    },
+    {
+      "run_id": "dcr5_256b22f4a1244243",
+      "case_id": "S6-BLIND-CC-1-repeatable-read-concurrent-update",
+      "recorded_turns": 4,
+      "recorded_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "replay_status": "REPLAY_COMPLETED",
+      "question": "Question:\nIn PostgreSQL at REPEATABLE READ, transaction A runs UPDATE on a row that concurrent transaction B has already updated and committed after A began. What happens to transaction A, what SQLSTATE does it get, and what must the application do about it? Answer in under 150 words.",
+      "status_old": "CONVERGED",
+      "status_new": "CONVERGED",
+      "stop_reason_old": "resolved_after_cross_check",
+      "stop_reason_new": "resolved_after_cross_check",
+      "provider_calls_old": 4,
+      "provider_calls_new": 4,
+      "differences": [],
+      "explained_count": 0,
+      "defect_count": 0,
+      "replayed_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "scoring_note": "case 'S6-BLIND-CC-1-repeatable-read-concurrent-update' is not in eval_cases, so the scoring dimension was NOT compared for this run. The governance dimensions above were still compared in full.",
+      "score_verdict_old": null,
+      "score_verdict_new": null,
+      "governance_diverged": false,
+      "identity_key_collisions": [],
+      "pairing_count": 9
+    },
+    {
+      "run_id": "dcr5_995988af9a314aac",
+      "case_id": "S6-BLIND-SEC-1-oauth-public-client-grant-choice",
+      "recorded_turns": 4,
+      "recorded_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "replay_status": "REPLAY_COMPLETED",
+      "question": "Question:\nWe are adding OAuth 2.0 login to a mobile app, which is a public client with no client secret. Per the current IETF Best Current Practice for OAuth 2.0 security (RFC 9700): is PKCE required for public clients using the authorization code grant, and may we use the resource owner password credentials grant to let users type their password into our app? Answer in under 150 words.",
+      "status_old": "PARTIAL",
+      "status_new": "PARTIAL",
+      "stop_reason_old": "uncompared_material_claims_remain",
+      "stop_reason_new": "uncompared_material_claims_remain",
+      "provider_calls_old": 4,
+      "provider_calls_new": 4,
+      "differences": [],
+      "explained_count": 0,
+      "defect_count": 0,
+      "replayed_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "scoring_note": "case 'S6-BLIND-SEC-1-oauth-public-client-grant-choice' is not in eval_cases, so the scoring dimension was NOT compared for this run. The governance dimensions above were still compared in full.",
+      "score_verdict_old": null,
+      "score_verdict_new": null,
+      "governance_diverged": false,
+      "identity_key_collisions": [],
+      "pairing_count": 7
+    },
+    {
+      "run_id": "dcr5_e797666f0a104f03",
+      "case_id": "S6-BLIND-VER-1-default-charset-utf8",
+      "recorded_turns": 4,
+      "recorded_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "replay_status": "REPLAY_COMPLETED",
+      "question": "Question:\nWe are upgrading a service from JDK 17 to JDK 21. It has code using new FileReader(path) and String.getBytes() with no charset argument, previously run on a Windows host with a non-UTF-8 system locale. Does the default charset of the standard Java APIs change, from which JDK release, and what is the default afterwards? Answer in under 150 words.",
+      "status_old": "UNRESOLVED",
+      "status_new": "UNRESOLVED",
+      "stop_reason_old": "unresolved_after_targeted_challenge",
+      "stop_reason_new": "unresolved_after_targeted_challenge",
+      "provider_calls_old": 4,
+      "provider_calls_new": 4,
+      "differences": [],
+      "explained_count": 0,
+      "defect_count": 0,
+      "replayed_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "scoring_note": "case 'S6-BLIND-VER-1-default-charset-utf8' is not in eval_cases, so the scoring dimension was NOT compared for this run. The governance dimensions above were still compared in full.",
+      "score_verdict_old": null,
+      "score_verdict_new": null,
+      "governance_diverged": false,
+      "identity_key_collisions": [],
+      "pairing_count": 12
+    },
+    {
+      "run_id": "dcr5_745fdcfe7089433c",
+      "case_id": "S6-CHAL-DB-1-refresh-matview-lock",
+      "recorded_turns": 4,
+      "recorded_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "replay_status": "REPLAY_COMPLETED",
+      "question": "Question:\nIn PostgreSQL, what table-level lock mode does REFRESH MATERIALIZED VIEW (without CONCURRENTLY) acquire on the materialized view, and can a plain SELECT against that materialized view run while the refresh is in progress? Answer in under 150 words.\n\nContext:\nA nightly job refreshes a reporting materialized view while a read-only dashboard queries it. The operator wants to know whether the dashboard will stall.",
+      "status_old": "CONVERGED",
+      "status_new": "CONVERGED",
+      "stop_reason_old": "resolved_after_cross_check",
+      "stop_reason_new": "resolved_after_cross_check",
+      "provider_calls_old": 4,
+      "provider_calls_new": 4,
+      "differences": [],
+      "explained_count": 0,
+      "defect_count": 0,
+      "replayed_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "scoring_note": "case 'S6-CHAL-DB-1-refresh-matview-lock' is not in eval_cases, so the scoring dimension was NOT compared for this run. The governance dimensions above were still compared in full.",
+      "score_verdict_old": null,
+      "score_verdict_new": null,
+      "governance_diverged": false,
+      "identity_key_collisions": [],
+      "pairing_count": 7
+    },
+    {
+      "run_id": "dcr5_10e90b6f788049ec",
+      "case_id": "S6-CHAL-DB-2-concurrently-lock-asymmetry",
+      "recorded_turns": 4,
+      "recorded_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "replay_status": "REPLAY_COMPLETED",
+      "question": "Question:\nThe keyword CONCURRENTLY appears in both CREATE INDEX CONCURRENTLY and REFRESH MATERIALIZED VIEW CONCURRENTLY. For each command, name the table-level lock mode PostgreSQL acquires, and state whether concurrent INSERT/UPDATE/DELETE on the target relation can proceed while it runs. Answer in under 150 words.\n\nContext:\nA migration review. The author has used CONCURRENTLY on both statements and written 'non-blocking' in the change ticket for both of them.",
+      "status_old": "PARTIAL",
+      "status_new": "PARTIAL",
+      "stop_reason_old": "uncompared_material_claims_remain",
+      "stop_reason_new": "uncompared_material_claims_remain",
+      "provider_calls_old": 4,
+      "provider_calls_new": 4,
+      "differences": [],
+      "explained_count": 0,
+      "defect_count": 0,
+      "replayed_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "scoring_note": "case 'S6-CHAL-DB-2-concurrently-lock-asymmetry' is not in eval_cases, so the scoring dimension was NOT compared for this run. The governance dimensions above were still compared in full.",
+      "score_verdict_old": null,
+      "score_verdict_new": null,
+      "governance_diverged": false,
+      "identity_key_collisions": [],
+      "pairing_count": 8
+    },
+    {
+      "run_id": "dcr5_3a5bc9b431004c57",
+      "case_id": "S6-CHAL-DB-3-truncate-rollback-and-mvcc",
+      "recorded_turns": 3,
+      "recorded_turns_by_slot": {
+        "A": 2,
+        "B": 1
+      },
+      "replay_status": "REPLAY_COMPLETED",
+      "question": "Question:\nIn PostgreSQL: (a) if TRUNCATE runs inside a transaction that then rolls back, is the truncation undone? (b) is TRUNCATE MVCC-safe with respect to concurrent transactions holding a snapshot taken before it? (c) what table lock does it take? Answer in under 150 words.\n\nContext:\nA data-reload script wraps TRUNCATE plus COPY in a single transaction and relies on rollback to leave the table intact if the load fails.",
+      "status_old": "CONVERGED",
+      "status_new": "CONVERGED",
+      "stop_reason_old": "resolved_after_cross_check",
+      "stop_reason_new": "resolved_after_cross_check",
+      "provider_calls_old": 3,
+      "provider_calls_new": 3,
+      "differences": [],
+      "explained_count": 0,
+      "defect_count": 0,
+      "replayed_turns_by_slot": {
+        "A": 2,
+        "B": 1
+      },
+      "scoring_note": "case 'S6-CHAL-DB-3-truncate-rollback-and-mvcc' is not in eval_cases, so the scoring dimension was NOT compared for this run. The governance dimensions above were still compared in full.",
+      "score_verdict_old": null,
+      "score_verdict_new": null,
+      "governance_diverged": false,
+      "identity_key_collisions": [],
+      "pairing_count": 8
+    },
+    {
+      "run_id": "dcr5_1f9835e0f2944e80",
+      "case_id": "S6-CHAL-DB-4-read-committed-update-recheck",
+      "recorded_turns": 4,
+      "recorded_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "replay_status": "REPLAY_COMPLETED",
+      "question": "Question:\nPostgreSQL, default READ COMMITTED. T1 runs UPDATE t SET n = n + 1 WHERE status = 'open' and blocks on a row locked by T2. T2 then commits, having set that row's status to 'closed'. Does T1 apply its update to that row? Explain what PostgreSQL does with the WHERE clause when T1 unblocks. Answer in under 150 words.\n\nContext:\nA reviewer is deciding whether a conditional counter update needs SELECT ... FOR UPDATE or a higher isolation level.",
+      "status_old": "PARTIAL",
+      "status_new": "PARTIAL",
+      "stop_reason_old": "uncompared_material_claims_remain",
+      "stop_reason_new": "uncompared_material_claims_remain",
+      "provider_calls_old": 4,
+      "provider_calls_new": 4,
+      "differences": [],
+      "explained_count": 0,
+      "defect_count": 0,
+      "replayed_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "scoring_note": "case 'S6-CHAL-DB-4-read-committed-update-recheck' is not in eval_cases, so the scoring dimension was NOT compared for this run. The governance dimensions above were still compared in full.",
+      "score_verdict_old": null,
+      "score_verdict_new": null,
+      "governance_diverged": false,
+      "identity_key_collisions": [],
+      "pairing_count": 11
+    },
+    {
+      "run_id": "dcr5_c7fc220b51794a05",
+      "case_id": "S6-CHAL-SPR-1-required-unexpected-rollback",
+      "recorded_turns": 4,
+      "recorded_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "replay_status": "REPLAY_COMPLETED",
+      "question": "Question:\nA Spring bean method annotated @Transactional (default propagation REQUIRED) calls a method on ANOTHER bean, also @Transactional with default propagation. The inner call throws a RuntimeException. The outer method catches it, logs it, and returns normally. Does the outer transaction commit? Name any exception the caller of the outer method sees, and say how many physical transactions were involved. Answer in under 150 words.\n\nContext:\nAn audit-logging refactor added a try/catch around a best-effort inner call so that a failure there would not fail the request.",
+      "status_old": "CONVERGED",
+      "status_new": "CONVERGED",
+      "stop_reason_old": "resolved_after_cross_check",
+      "stop_reason_new": "resolved_after_cross_check",
+      "provider_calls_old": 4,
+      "provider_calls_new": 4,
+      "differences": [],
+      "explained_count": 0,
+      "defect_count": 0,
+      "replayed_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "scoring_note": "case 'S6-CHAL-SPR-1-required-unexpected-rollback' is not in eval_cases, so the scoring dimension was NOT compared for this run. The governance dimensions above were still compared in full.",
+      "score_verdict_old": null,
+      "score_verdict_new": null,
+      "governance_diverged": false,
+      "identity_key_collisions": [],
+      "pairing_count": 9
+    },
+    {
+      "run_id": "dcr5_a3c3db35d8d541e6",
+      "case_id": "S6-CHAL-SPR-2-configuration-proxy-bean-methods",
+      "recorded_turns": 4,
+      "recorded_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "replay_status": "REPLAY_COMPLETED",
+      "question": "Question:\nInside a @Configuration class, one @Bean method calls another @Bean method of the same class directly, as a plain Java call. With Spring's defaults, does the caller receive the shared singleton instance or a newly constructed one? State the default value of @Configuration's proxyBeanMethods attribute, the mechanism that implements it, and what changes when it is false. Answer in under 150 words.\n\nContext:\nA reviewer has been told to add proxyBeanMethods = false to every @Configuration class for startup performance, and wants to know what that gives up.",
+      "status_old": "UNRESOLVED",
+      "status_new": "UNRESOLVED",
+      "stop_reason_old": "unresolved_after_targeted_challenge",
+      "stop_reason_new": "unresolved_after_targeted_challenge",
+      "provider_calls_old": 4,
+      "provider_calls_new": 4,
+      "differences": [],
+      "explained_count": 0,
+      "defect_count": 0,
+      "replayed_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "scoring_note": "case 'S6-CHAL-SPR-2-configuration-proxy-bean-methods' is not in eval_cases, so the scoring dimension was NOT compared for this run. The governance dimensions above were still compared in full.",
+      "score_verdict_old": null,
+      "score_verdict_new": null,
+      "governance_diverged": false,
+      "identity_key_collisions": [],
+      "pairing_count": 6
+    },
+    {
+      "run_id": "dcr5_9345055ed4384e1c",
+      "case_id": "S6-CHAL-JV-1-jep491-synchronized-pinning",
+      "recorded_turns": 4,
+      "recorded_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "replay_status": "REPLAY_COMPLETED",
+      "question": "Question:\nIn the current JDK, does a virtual thread that blocks inside a synchronized method or statement pin its carrier platform thread? Name the JDK release in which this changed, state whether code already migrated from synchronized to ReentrantLock must now be reverted, and say whether pinning has been eliminated entirely. Answer in under 150 words.\n\nContext:\nA service on a current JDK shows carrier-thread starvation. An engineer is about to start a large migration of synchronized blocks to ReentrantLock on the strength of a 2023 article.",
+      "status_old": "PARTIAL",
+      "status_new": "PARTIAL",
+      "stop_reason_old": "uncompared_material_claims_remain",
+      "stop_reason_new": "uncompared_material_claims_remain",
+      "provider_calls_old": 4,
+      "provider_calls_new": 4,
+      "differences": [],
+      "explained_count": 0,
+      "defect_count": 0,
+      "replayed_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "scoring_note": "case 'S6-CHAL-JV-1-jep491-synchronized-pinning' is not in eval_cases, so the scoring dimension was NOT compared for this run. The governance dimensions above were still compared in full.",
+      "score_verdict_old": null,
+      "score_verdict_new": null,
+      "governance_diverged": false,
+      "identity_key_collisions": [],
+      "pairing_count": 8
+    },
+    {
+      "run_id": "dcr5_d7db0a46ee4f412f",
+      "case_id": "S6-CHAL-JV-2-jep400-default-charset",
+      "recorded_turns": 4,
+      "recorded_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "replay_status": "REPLAY_COMPLETED",
+      "question": "Question:\nOn a JDK 18 or later runtime on Windows whose system codepage is windows-1252, what does Charset.defaultCharset() return? Name the JDK release that made this the specification, and say whether passing -Dfile.encoding on the java command line is a SUPPORTED way to configure the default charset, and what value restores the previous locale-dependent behaviour. Answer in under 150 words.\n\nContext:\nA Windows build writes a file with new FileWriter(path) and reads it elsewhere. The team is deciding whether to set -Dfile.encoding or to pass explicit charsets.",
+      "status_old": "PARTIAL",
+      "status_new": "PARTIAL",
+      "stop_reason_old": "uncompared_material_claims_remain",
+      "stop_reason_new": "uncompared_material_claims_remain",
+      "provider_calls_old": 4,
+      "provider_calls_new": 4,
+      "differences": [],
+      "explained_count": 0,
+      "defect_count": 0,
+      "replayed_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "scoring_note": "case 'S6-CHAL-JV-2-jep400-default-charset' is not in eval_cases, so the scoring dimension was NOT compared for this run. The governance dimensions above were still compared in full.",
+      "score_verdict_old": null,
+      "score_verdict_new": null,
+      "governance_diverged": false,
+      "identity_key_collisions": [],
+      "pairing_count": 11
+    },
+    {
+      "run_id": "dcr5_a3dfc9b03b6347d7",
+      "case_id": "S6-CHAL-JV-3-chm-iterator-and-size",
+      "recorded_turns": 4,
+      "recorded_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "replay_status": "REPLAY_COMPLETED",
+      "question": "Question:\nCan iterating a java.util.concurrent.ConcurrentHashMap while another thread puts and removes entries throw ConcurrentModificationException? Is it safe to share one iterator across threads? And can size() be relied on for program control while the map is being updated concurrently? Answer in under 150 words.\n\nContext:\nA code review of a shared registry iterated by a background sweeper thread, with a batch trigger written as if (map.size() >= BATCH).",
+      "status_old": "PARTIAL",
+      "status_new": "PARTIAL",
+      "stop_reason_old": "uncompared_material_claims_remain",
+      "stop_reason_new": "uncompared_material_claims_remain",
+      "provider_calls_old": 4,
+      "provider_calls_new": 4,
+      "differences": [],
+      "explained_count": 0,
+      "defect_count": 0,
+      "replayed_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "scoring_note": "case 'S6-CHAL-JV-3-chm-iterator-and-size' is not in eval_cases, so the scoring dimension was NOT compared for this run. The governance dimensions above were still compared in full.",
+      "score_verdict_old": null,
+      "score_verdict_new": null,
+      "governance_diverged": false,
+      "identity_key_collisions": [],
+      "pairing_count": 9
+    },
+    {
+      "run_id": "dcr5_8fbdceef745d43fd",
+      "case_id": "S6-CHAL-HTTP-1-no-cache-vs-no-store",
+      "recorded_turns": 4,
+      "recorded_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "replay_status": "REPLAY_COMPLETED",
+      "question": "Question:\nPer RFC 9111, does Cache-Control: no-cache on a response forbid a cache from STORING that response? Which response directive forbids storage? And may a cache reuse a no-cache response to satisfy a later request without contacting the origin server? Answer in under 150 words.\n\nContext:\nA reviewer is choosing headers for an authenticated page containing personal data and has written Cache-Control: no-cache on the grounds that the data must not be retained.",
+      "status_old": "CONVERGED",
+      "status_new": "CONVERGED",
+      "stop_reason_old": "resolved_after_cross_check",
+      "stop_reason_new": "resolved_after_cross_check",
+      "provider_calls_old": 4,
+      "provider_calls_new": 4,
+      "differences": [],
+      "explained_count": 0,
+      "defect_count": 0,
+      "replayed_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "scoring_note": "case 'S6-CHAL-HTTP-1-no-cache-vs-no-store' is not in eval_cases, so the scoring dimension was NOT compared for this run. The governance dimensions above were still compared in full.",
+      "score_verdict_old": null,
+      "score_verdict_new": null,
+      "governance_diverged": false,
+      "identity_key_collisions": [],
+      "pairing_count": 5
+    },
+    {
+      "run_id": "dcr5_a315942583094f5d",
+      "case_id": "S6-CHAL-HTTP-2-401-vs-403-and-www-authenticate",
+      "recorded_turns": 4,
+      "recorded_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "replay_status": "REPLAY_COMPLETED",
+      "question": "Question:\nPer RFC 9110, which status code applies when a request lacks valid authentication credentials, and which when the server understood the request but refuses to fulfil it? Is any response header field MANDATORY on either of those responses? Answer in under 150 words.\n\nContext:\nAn API gateway returns 403 for missing bearer tokens and 401 for insufficient scope. A reviewer asks whether that is backwards.",
+      "status_old": "PARTIAL",
+      "status_new": "PARTIAL",
+      "stop_reason_old": "unresolved_after_targeted_challenge",
+      "stop_reason_new": "unresolved_after_targeted_challenge",
+      "provider_calls_old": 4,
+      "provider_calls_new": 4,
+      "differences": [],
+      "explained_count": 0,
+      "defect_count": 0,
+      "replayed_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "scoring_note": "case 'S6-CHAL-HTTP-2-401-vs-403-and-www-authenticate' is not in eval_cases, so the scoring dimension was NOT compared for this run. The governance dimensions above were still compared in full.",
+      "score_verdict_old": null,
+      "score_verdict_new": null,
+      "governance_diverged": false,
+      "identity_key_collisions": [],
+      "pairing_count": 8
+    },
+    {
+      "run_id": "dcr5_9da2a404779249bd",
+      "case_id": "S6-CHAL-SEC-1-ropc-vs-implicit-normative-strength",
+      "recorded_turns": 4,
+      "recorded_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "replay_status": "REPLAY_COMPLETED",
+      "question": "Question:\nIn RFC 9700 (BCP 240, Best Current Practice for OAuth 2.0 Security), what normative requirement level is placed on the resource owner password credentials grant, and what level on the implicit grant? Are the two the same? Quote the normative keyword used for each. Answer in under 150 words.\n\nContext:\nA security review of two legacy integrations: a mobile app using the password grant, and an SPA using the implicit flow. The question is which must be removed and which may be argued for with compensating controls.",
+      "status_old": "CONVERGED",
+      "status_new": "CONVERGED",
+      "stop_reason_old": "resolved_after_cross_check",
+      "stop_reason_new": "resolved_after_cross_check",
+      "provider_calls_old": 4,
+      "provider_calls_new": 4,
+      "differences": [],
+      "explained_count": 0,
+      "defect_count": 0,
+      "replayed_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "scoring_note": "case 'S6-CHAL-SEC-1-ropc-vs-implicit-normative-strength' is not in eval_cases, so the scoring dimension was NOT compared for this run. The governance dimensions above were still compared in full.",
+      "score_verdict_old": null,
+      "score_verdict_new": null,
+      "governance_diverged": false,
+      "identity_key_collisions": [],
+      "pairing_count": 8
+    }
+  ],
+  "verdict_note": "Zero differences on all compared dimensions. This establishes a baseline and says the replay harness agrees with the recording; it does NOT by itself prove the harness can detect a change -- that is what the negative controls in test_replay_offline.py are for, and the EXPLAINED rule table is UNEXERCISED by real data in a report with no differences."
+}

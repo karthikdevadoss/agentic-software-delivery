@@ -1,0 +1,23 @@
+{
+  "sprint": "deep-consensus-sprint2",
+  "approved_prompt_file": "docs/evidence/deep-consensus-sprint2/APPROVED_PROMPT.md",
+  "approved_prompt_sha256": "38c1a353bd349982bd7700bfa45f45e5f7b37609e391db365beb54bc8a721f7a",
+  "approved_prompt_bytes": 24115,
+  "branch": "deep-consensus-sprint2",
+  "starting_commit_sha_at_sprint_open": "90364d6c3bd510604605191c949639c559a7cecf",
+  "commit_sha_at_this_prompt_version": "b48c169897f7c80098c3570c6831539bece9089d",
+  "recorded_at_utc": "2026-10-01T17:31:57.978586+00:00",
+  "owner_authorised_ceilings": {
+    "max_real_provider_calls": 30,
+    "max_known_provider_spend_usd": 2.0
+  },
+  "ceilings_are_sprint_totals_including_pre_halt_calls": true,
+  "superseded_versions": [
+    {
+      "file": "docs/evidence/deep-consensus-sprint2/APPROVED_PROMPT_v1_superseded.md",
+      "sha256": "3eac64fb7b606b84be8e39d64a2e2169d88b525fdae576d6c88ad40b618f8f2d",
+      "note": "First Sprint 2 prompt. Superseded the same day. Differences that changed behaviour: slot-B priority became GEMINI FIRST then OpenAI (v1 had OpenAI first); 35 required tests rather than 23; cross_family_real field name; explicit statement that Sprint 2 is a capped API proof and NOT the future economic model, with subscription-backed transport deferred. Kept because a superseded approval is still part of the record."
+    }
+  ],
+  "note": "SHA-256 is of the stored file as written, normalised to this repo's line endings. It identifies the stored artefact, not the original chat keystrokes, which cannot be byte-recovered."
+}

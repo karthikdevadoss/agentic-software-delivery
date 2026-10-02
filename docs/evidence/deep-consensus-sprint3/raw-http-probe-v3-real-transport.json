@@ -1,0 +1,61 @@
+{
+  "1_initialize": {
+    "http_status": 200,
+    "server_info": {
+      "name": "deep-consensus-v3",
+      "version": ""
+    },
+    "session_id_issued": true
+  },
+  "2_tools_list": {
+    "http_status": 200,
+    "tool_names": [
+      "deep_review"
+    ],
+    "exactly_one_tool_deep_review": true,
+    "schema_requires_question": true
+  },
+  "3_valid_call": {
+    "http_status": 200,
+    "is_error": false,
+    "run_id": "dcr3_fedccc170307426f",
+    "status": "UNRESOLVED",
+    "stop_reason": "no_material_disagreement_early_stop",
+    "provider_calls": 2,
+    "max_provider_calls": 4,
+    "has_unknowns": false,
+    "independence_warning": "Independent model agreement is not external verification.",
+    "evidence_type": "MODEL_ONLY",
+    "workers": {
+      "A": {
+        "family": "anthropic",
+        "transport": "CLAUDE_SUBSCRIPTION_CLI",
+        "billing": "SUBSCRIPTION",
+        "auth_verified": "VERIFIED_SUBSCRIPTION"
+      },
+      "B": {
+        "family": "MOCK-NO-FAMILY",
+        "transport": "MOCK",
+        "billing": "MOCK",
+        "auth_verified": "MOCK"
+      }
+    }
+  },
+  "4_invalid_call_is_controlled": {
+    "http_status": 200,
+    "is_error": true,
+    "message": "Error executing tool deep_review: question is required and must not be empty"
+  },
+  "5_internal_stage_not_exposed": {
+    "http_status": 200,
+    "message": "Unknown tool: deep_review_claims"
+  },
+  "6_server_alive_after_failures": {
+    "http_status": 200,
+    "tool_names": [
+      "deep_review"
+    ]
+  }
+}
+
+PROBE RESULT: PASS (all 11 checks)

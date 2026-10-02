@@ -1,0 +1,170 @@
+REAL PROVIDER SMOKE TEST: authorized
+  declared budget USD : 0.5
+  slot A              : anthropic / claude-sonnet-5
+  slot B              : anthropic / claude-haiku-4-5-20251001
+  provider call cap   : 6 (4 on the happy path)
+
+{
+  "run_id": "dcr_570b0babbe6744d1",
+  "provider_mode": "real_real",
+  "stakes": "high",
+  "review_depth": "deep",
+  "governed_answer": "Yes, use CREATE INDEX CONCURRENTLY \u2014 a plain CREATE INDEX on a 40M-row table takes a lock that blocks writes for the whole build, unacceptable during business hours. CONCURRENTLY avoids this by scanning the table twice without a write-blocking lock, at the cost of being slower and non-transactional.\n\nThe biggest overlooked risk: if the build fails partway (deadlock, cancelled session, constraint violation), it leaves an INVALID index behind. This index consumes disk space and is silently ignored by the query planner \u2014 it does NOT cause queries to fail \u2014 but teams often don't notice it's invalid, assume the index is live, and forget to check pg_index.indisvalid, drop it, and retry. Monitoring and a cleanup/retry plan are essential rather than assuming success.",
+  "governed_answer_basis": "revision_accepted_by_counterpart",
+  "status": "PARTIAL",
+  "convergence_score": 0.5,
+  "convergence_score_meaning": "process convergence between independent reviewers only -- NOT a confidence, correctness probability or truth score",
+  "dissent": [
+    {
+      "provider": "anthropic",
+      "model": "claude-sonnet-5",
+      "reviewer_slot": "A",
+      "reviewed_slot": "B",
+      "claim": "An invalid index can cause queries to fail if the planner tries to use it",
+      "reason": "reviewer marked this claim CONTRADICTED",
+      "round": 1
+    }
+  ],
+  "evidence": [
+    {
+      "type": "MODEL_EVIDENCE",
+      "provider": "anthropic",
+      "model": "claude-sonnet-5",
+      "slot": "A",
+      "claim": "Plain CREATE INDEX takes a lock that blocks concurrent writes for the whole build, making it risky on a live table during business hours.",
+      "evidence": "PostgreSQL documentation on CREATE INDEX locking behavior"
+    },
+    {
+      "type": "MODEL_EVIDENCE",
+      "provider": "anthropic",
+      "model": "claude-sonnet-5",
+      "slot": "A",
+      "claim": "CREATE INDEX CONCURRENTLY can fail and leave an invalid index that must be manually dropped.",
+      "evidence": "PostgreSQL docs: 'If a problem arises while scanning the table, such as a deadlock or a uniqueness violation... the index will be left as invalid'"
+    },
+    {
+      "type": "MODEL_EVIDENCE",
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5-20251001",
+      "slot": "B",
+      "claim": "CREATE INDEX CONCURRENTLY is the appropriate choice for 40M-row tables during business hours",
+      "evidence": "Postgres documentation on CREATE INDEX CONCURRENTLY; Lock types in Postgres transactions"
+    },
+    {
+      "type": "MODEL_EVIDENCE",
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5-20251001",
+      "slot": "B",
+      "claim": "Failed concurrent index creation leaves an INVALID index that still consumes resources",
+      "evidence": "Postgres INVALID index behavior; Common monitoring gaps in index creation"
+    },
+    {
+      "type": "MODEL_EVIDENCE",
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5-20251001",
+      "slot": "B",
+      "claim": "Teams often neglect to monitor or clean up failed indexes",
+      "evidence": "Operational experience with index management"
+    },
+    {
+      "type": "MODEL_EVIDENCE",
+      "provider": "anthropic",
+      "model": "claude-sonnet-5",
+      "slot": "A",
+      "claim": "CREATE INDEX CONCURRENTLY should be used to avoid blocking writes on a live 40M-row table",
+      "evidence": "Standard CREATE INDEX takes a lock conflicting with writes for the duration of the build on large tables; CONCURRENTLY avoids this trade-off at the cost of speed and robustness."
+    },
+    {
+      "type": "MODEL_EVIDENCE",
+      "provider": "anthropic",
+      "model": "claude-sonnet-5",
+      "slot": "A",
+      "claim": "A failed concurrent index build leaves behind an INVALID index that consumes disk space and requires manual cleanup",
+      "evidence": "Documented Postgres behavior: on failure, CREATE INDEX CONCURRENTLY leaves an invalid index visible in pg_index.indisvalid=false that must be dropped manually."
+    },
+    {
+      "type": "MODEL_EVIDENCE",
+      "provider": "anthropic",
+      "model": "claude-sonnet-5",
+      "slot": "A",
+      "claim": "An invalid index can cause queries to fail if the planner tries to use it",
+      "evidence": "Postgres explicitly excludes invalid indexes from query planning; they are simply never considered as access paths, so they cannot cause query failures \u2014 the real risk is wasted space and false assumption that the index exists/is being used."
+    },
+    {
+      "type": "MODEL_EVIDENCE",
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5-20251001",
+      "slot": "B",
+      "claim": "CREATE INDEX CONCURRENTLY should be used to avoid blocking writes on a live 40M-row table",
+      "evidence": "Regular CREATE INDEX takes SHARE lock blocking writes; CONCURRENTLY uses multi-pass non-blocking build; This is standard PostgreSQL best practice for production"
+    },
+    {
+      "type": "MODEL_EVIDENCE",
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5-20251001",
+      "slot": "B",
+      "claim": "Failed CONCURRENT index creation leaves an invalid index consuming disk space requiring manual cleanup",
+      "evidence": "This matches my own answer exactly; Accurate description of detection via pg_index.indisvalid; Requires DROP INDEX to clean up"
+    },
+    {
+      "type": "MODEL_EVIDENCE",
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5-20251001",
+      "slot": "B",
+      "claim": "CONCURRENTLY cannot run inside a transaction block",
+      "evidence": "This is a documented PostgreSQL constraint on CREATE INDEX CONCURRENTLY"
+    },
+    {
+      "type": "MODEL_EVIDENCE",
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5-20251001",
+      "slot": "B",
+      "claim": "CONCURRENTLY takes longer and requires two full table scans",
+      "evidence": "Multi-pass approach requires multiple table scans; This is a known characteristic of concurrent index creation"
+    },
+    {
+      "type": "MODEL_EVIDENCE",
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5-20251001",
+      "slot": "B",
+      "claim": "Lock can queue behind long-running transactions",
+      "evidence": "CONCURRENTLY still needs brief locks during certain phases; These can be queued behind existing activity"
+    }
+  ],
+  "round_count": 1,
+  "provider_calls": 4,
+  "tokens": {
+    "input": 1834,
+    "output": 2931,
+    "total": 4765
+  },
+  "elapsed_ms": 32587.7,
+  "stop_reason": "bounded_convergence",
+  "provider_errors": [],
+  "providers": {
+    "A": {
+      "provider_id": "anthropic",
+      "model_id": "claude-sonnet-5",
+      "is_mock": false
+    },
+    "B": {
+      "provider_id": "anthropic",
+      "model_id": "claude-haiku-4-5-20251001",
+      "is_mock": false
+    }
+  },
+  "trace": "<7 entries -- see audit log>",
+  "audit_path": "C:\\Users\\Hemapriya\\agentic-software-delivery\\deep_consensus\\audit_log.jsonl"
+}
+
+--- SMOKE TEST SUMMARY (all values real, none estimated) ---
+provider_mode     : real_real
+status            : PARTIAL
+convergence_score : 0.5
+round_count       : 1
+provider_calls    : 4
+tokens            : {"input": 1834, "output": 2931, "total": 4765}
+elapsed_ms        : 32587.7
+stop_reason       : bounded_convergence
+dissent entries   : 1
+audit_path        : C:\Users\Hemapriya\agentic-software-delivery\deep_consensus\audit_log.jsonl

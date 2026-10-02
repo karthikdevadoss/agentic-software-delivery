@@ -1,0 +1,26 @@
+{
+  "tools": [
+    {
+      "name": "deep_review",
+      "description": "Run a governed, bounded multi-model review of one question.\n\nTwo model slots answer independently and sealed (neither sees the other's\nanswer), then each reviews the other, then a deterministic governor\ndecides whether a further bounded round is affordable and stops the run.\nDisagreement is preserved, never averaged away.\n\nArgs:\n    question: The question to review. Must not be empty.\n    stakes: \"high\" (default) runs the full sealed + cross-review path.\n        \"low\" runs a single provider with no cross-review and returns\n        review_depth=\"single\", status PARTIAL.\n\nReturns a governed result including governed_answer, status, dissent,\nevidence (model-asserted only), round_count, provider_calls, real token\ncounts where the provider reported them, elapsed_ms, stop_reason and a\ntrace. convergence_score is process convergence ONLY -- not confidence,\nnot correctness probability, not a truth score.\n",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "stakes": {
+            "default": "high",
+            "title": "Stakes",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question"
+        ],
+        "title": "deep_reviewArguments"
+      }
+    }
+  ]
+}

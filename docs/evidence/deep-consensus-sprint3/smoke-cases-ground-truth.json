@@ -1,0 +1,80 @@
+[
+  {
+    "case_id": "S3-1-postgres-create-index-locking",
+    "category": "database/locking",
+    "question": "In PostgreSQL, when you run a plain CREATE INDEX (without CONCURRENTLY) on a large table, does it block reads of that table, block writes, or both, while the index is being built? Name the table-level lock mode it acquires. Answer in under 120 words.",
+    "expected_answer": "A plain CREATE INDEX acquires a SHARE lock on the table. It BLOCKS WRITES (INSERT/UPDATE/DELETE) but ALLOWS concurrent READS (SELECT) for the duration of the build.",
+    "expected_claims": {
+      "lock mode": "SHARE",
+      "reads": "allowed / not blocked",
+      "writes": "blocked"
+    },
+    "source_url": "https://www.postgresql.org/docs/current/explicit-locking.html",
+    "source_quote": "SHARE -- Acquired by CREATE INDEX (without CONCURRENTLY). ... This mode protects a table against concurrent data changes. Also, from sql-createindex.html: \"a standard index build locks out writes (but not reads) on the table until it's done.\"",
+    "source_accessed": "2026-10-01",
+    "wrong_answer_to_watch_for": "ACCESS EXCLUSIVE, or any claim that reads are blocked. This is the exact error Deep Consensus itself published in Sprint 1 run dcr_361112bc329048a8, unchallenged by either reviewer.",
+    "notes": "Chosen deliberately: it is the system's own recorded failure, so it is the one case where a regression would be most embarrassing and most informative."
+  },
+  {
+    "case_id": "S3-2-spring-transactional-self-invocation",
+    "category": "java/spring transactions",
+    "question": "In a Spring application using the default proxy-based AOP, if a public method on a bean calls another method on the SAME bean that is annotated @Transactional, does a transaction start for that inner call? Explain why, and say what would make it work. Under 120 words.",
+    "expected_answer": "No. In proxy mode only external calls through the proxy are intercepted, so self-invocation does NOT start a transaction even though the inner method is annotated. AspectJ mode (byte-code weaving, no proxy) would make it work; so would routing the call through the proxy.",
+    "expected_claims": {
+      "self-invocation starts a transaction": "no",
+      "reason": "proxy only intercepts external calls",
+      "fix": "AspectJ mode / weaving"
+    },
+    "source_url": "https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/annotations.html",
+    "source_quote": "\"In proxy mode (which is the default), only external method calls coming in through the proxy are intercepted. This means that self-invocation (in effect, a method within the target object calling another method of the target object) does not lead to an actual transaction at runtime even if the invoked method is marked with @Transactional.\" ... \"Consider using AspectJ mode ... the target class is woven ... to support @Transactional runtime behavior on any kind of method.\"",
+    "source_accessed": "2026-10-01",
+    "wrong_answer_to_watch_for": "Any claim that the transaction DOES start, or that making the inner method public is sufficient.",
+    "notes": ""
+  },
+  {
+    "case_id": "S3-3-spring-boot-java-version-baseline",
+    "category": "version-specific framework claim",
+    "question": "What is the minimum Java version required by the current release of Spring Boot, and what is the highest Java version it states compatibility with? Give the Spring Boot version your answer refers to. Under 100 words.",
+    "expected_answer": "Spring Boot 4.1.1 requires at least Java 17 and is compatible with versions up to and including Java 26. It also requires Spring Framework 7.0.9 or above.",
+    "expected_claims": {
+      "minimum java version": "17",
+      "maximum compatible java version": "26",
+      "spring boot version": "4.1.1"
+    },
+    "source_url": "https://docs.spring.io/spring-boot/system-requirements.html",
+    "source_quote": "\"Spring Boot 4.1.1 requires at least Java 17 and is compatible with versions up to and including Java 26.\" Spring Framework 7.0.9 or above is also required.",
+    "source_accessed": "2026-10-01",
+    "wrong_answer_to_watch_for": "Java 8 or Java 11 as the minimum (true of Spring Boot 2.x, not of the current release) -- a stale-training-data error, and exactly the kind a second family is most likely to catch.",
+    "notes": "A version claim is the best possible smoke case for a stale-knowledge error, because the right answer CHANGES and a model's training cut-off shows up immediately. The source was read on the access date recorded above; re-read it before reusing this case."
+  },
+  {
+    "case_id": "S3-4-ai-agent-plan-review-tool-exposure",
+    "category": "AI agent plan review",
+    "question": "An engineer proposes an MCP server for a multi-model review tool that exposes six tools: answer_a, answer_b, review, synthesize, converge and stop, so the host model can drive the pipeline step by step and skip stages it judges unnecessary. Review this plan. What is the most serious design problem? Under 120 words.",
+    "expected_answer": "Exposing every stage as a separate tool removes the governance. A host that can call the stages individually can call review without obtaining both independent answers, can skip the governor and its stop rules, and can run its own loop -- so every invariant the system claims (independence, bounded termination, preserved disagreement) becomes optional. The stages should be internal, with one public entry point.",
+    "expected_claims": {
+      "most serious problem": "host can bypass the governor / invariants become optional",
+      "recommended fix": "single public tool, stages internal"
+    },
+    "source_url": "Design-judgement case; graded against this project's own documented architecture decision (docs/DEEP_CONSENSUS_SPRINT1.md, section 'WHY ONE TOOL AND NOT SEVEN') rather than against an external standard.",
+    "source_quote": "\"A host that can call the stages individually can call review without ever calling answer_b, can skip the governor, can run the loop itself without a stop rule -- and every invariant this package claims becomes a suggestion.\"",
+    "source_accessed": "2026-10-01",
+    "wrong_answer_to_watch_for": "Answers that focus only on API ergonomics, naming, or token cost and miss the bypassable-governance problem.",
+    "notes": "HONEST CAVEAT: this is the one case whose ground truth is a design judgement, not a documented fact, and the reference answer is this project's own position. It is therefore the weakest of the five and must not be scored as if it were objective. It is included because the approval asks for an agent-plan-review case."
+  },
+  {
+    "case_id": "S3-5-bcrypt-salt-storage",
+    "category": "security/authentication",
+    "question": "When using bcrypt to hash passwords, do you need to store the salt in a separate database column alongside the hash? Explain. Under 100 words.",
+    "expected_answer": "No. A bcrypt hash string already embeds the algorithm version, the cost factor and the 128-bit salt (for example $2b$12$<22-char-salt><31-char-hash>), so verification reads the salt back out of the stored string. A separate salt column is unnecessary.",
+    "expected_claims": {
+      "separate salt column needed": "no",
+      "reason": "salt is embedded in the bcrypt output string"
+    },
+    "source_url": "https://en.wikipedia.org/wiki/Bcrypt#Description",
+    "source_quote": "The bcrypt output is of the form $2<a/b/x/y>$[cost]$[22 character salt][31 character hash], i.e. the cost parameter and the base64-encoded salt are part of the stored string.",
+    "source_accessed": "2026-10-01",
+    "wrong_answer_to_watch_for": "Any instruction to add a separate salt column, or a claim that bcrypt does not salt automatically.",
+    "notes": "HONEST CAVEAT: Wikipedia is a secondary source. It is used because the bcrypt output format is uncontroversial and easily cross-checked against any bcrypt implementation; for a stronger case this should cite the original Provos and Mazieres paper or a specific library's reference docs."
+  }
+]

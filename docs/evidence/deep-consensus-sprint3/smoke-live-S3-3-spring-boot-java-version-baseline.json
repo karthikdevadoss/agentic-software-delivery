@@ -1,0 +1,565 @@
+{
+  "case": {
+    "case_id": "S3-3-spring-boot-java-version-baseline",
+    "category": "version-specific framework claim",
+    "question": "What is the minimum Java version required by the current release of Spring Boot, and what is the highest Java version it states compatibility with? Give the Spring Boot version your answer refers to. Under 100 words.",
+    "expected_answer": "Spring Boot 4.1.1 requires at least Java 17 and is compatible with versions up to and including Java 26. It also requires Spring Framework 7.0.9 or above.",
+    "expected_claims": {
+      "minimum java version": "17",
+      "maximum compatible java version": "26",
+      "spring boot version": "4.1.1"
+    },
+    "source_url": "https://docs.spring.io/spring-boot/system-requirements.html",
+    "source_quote": "\"Spring Boot 4.1.1 requires at least Java 17 and is compatible with versions up to and including Java 26.\" Spring Framework 7.0.9 or above is also required.",
+    "source_accessed": "2026-10-01",
+    "wrong_answer_to_watch_for": "Java 8 or Java 11 as the minimum (true of Spring Boot 2.x, not of the current release) -- a stale-training-data error, and exactly the kind a second family is most likely to catch.",
+    "notes": "A version claim is the best possible smoke case for a stale-knowledge error, because the right answer CHANGES and a model's training cut-off shows up immediately. The source was read on the access date recorded above; re-read it before reusing this case."
+  },
+  "same_family_only": false,
+  "cross_family_real": true,
+  "workers": {
+    "A": {
+      "account": {
+        "family": "anthropic",
+        "transport": "CLAUDE_SUBSCRIPTION_CLI",
+        "billing": "SUBSCRIPTION",
+        "terms_status": "CONSUMER_SUBSCRIPTION_TERMS",
+        "data_label": "consumer subscription transport; retention and training behaviour are governed by the provider and by the user's own account settings; confidentiality is NOT asserted by Deep Consensus",
+        "configured_model": "claude-sonnet-5",
+        "auth_verified": "VERIFIED_SUBSCRIPTION",
+        "eligible_for_p0": true
+      },
+      "requested_model": "claude-sonnet-5",
+      "role": "voter",
+      "enabled": true
+    },
+    "B": {
+      "account": {
+        "family": "xai",
+        "transport": "GROK_SUBSCRIPTION_CLI",
+        "billing": "SUBSCRIPTION",
+        "terms_status": "CONSUMER_SUBSCRIPTION_TERMS",
+        "data_label": "consumer subscription transport (grok.com OIDC login); retention and training behaviour are governed by xAI and by the account's own coding-data-retention setting; confidentiality is NOT asserted by Deep Consensus",
+        "configured_model": "grok-4.6",
+        "auth_verified": "VERIFIED_SUBSCRIPTION",
+        "eligible_for_p0": true
+      },
+      "requested_model": "grok-4.6",
+      "role": "voter",
+      "enabled": true
+    }
+  },
+  "status": "CONVERGED",
+  "stop_reason": "no_material_disagreement_early_stop",
+  "subscription_turns": 2,
+  "max_provider_calls": 4,
+  "elapsed_ms": 65862.8,
+  "governed_answer": "Spring Boot 3.5 (released May 2025, the latest version I have reliable knowledge of) requires a minimum of Java 17 and documents compatibility up through Java 24. All Spring Boot 3.x releases have kept Java 17 as the baseline since 3.0, while the maximum supported/tested Java version has increased with each minor release (3.2\u219221, 3.3\u219222, 3.4\u219223, 3.5\u219224). Given today's date (Oct 2026) is after my knowledge cutoff (Jan 2026), a newer Spring Boot release (e.g., 3.6 or 4.0) may now be current, potentially with different compatibility figures I cannot confirm.\n\nNOT ESTABLISHED (left as UNKNOWN rather than guessed):\n- spring_boot_3.x_min_java_baseline\n- current Spring Boot release",
+  "agreed_claims": [
+    {
+      "relationship": "MATCH",
+      "type": "VERSION",
+      "subject": "spring_boot_version_referenced",
+      "state": "AGREED",
+      "material": true,
+      "a": {
+        "claim_id": "c1",
+        "type": "VERSION",
+        "subject": "spring_boot_version_referenced",
+        "value": "3.5",
+        "text": "The answer refers to Spring Boot 3.5, the latest release known as of the assistant's January 2026 knowledge cutoff.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "A",
+        "material": true
+      },
+      "b": {
+        "claim_id": "c4",
+        "type": "VERSION",
+        "subject": "Spring Boot version this answer refers to",
+        "value": "3.5",
+        "text": "The Java 17\u201324 pair refers to Spring Boot 3.5, the last well-documented GA line in this answer.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "B",
+        "material": true
+      },
+      "resolution_detail": {}
+    },
+    {
+      "relationship": "MATCH",
+      "type": "NUMBER",
+      "subject": "min_java_version_spring_boot_3.5",
+      "state": "AGREED",
+      "material": true,
+      "a": {
+        "claim_id": "c2",
+        "type": "NUMBER",
+        "subject": "min_java_version_spring_boot_3.5",
+        "value": "17",
+        "text": "Spring Boot 3.5 requires a minimum Java version of 17.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "A",
+        "material": true
+      },
+      "b": {
+        "claim_id": "c2",
+        "type": "NUMBER",
+        "subject": "Spring Boot 3.5 minimum Java",
+        "value": "17",
+        "text": "Spring Boot 3.5 required Java 17 as the minimum runtime.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "B",
+        "material": true
+      },
+      "resolution_detail": {}
+    },
+    {
+      "relationship": "MATCH",
+      "type": "NUMBER",
+      "subject": "max_java_version_spring_boot_3.5",
+      "state": "AGREED",
+      "material": true,
+      "a": {
+        "claim_id": "c3",
+        "type": "NUMBER",
+        "subject": "max_java_version_spring_boot_3.5",
+        "value": "24",
+        "text": "Spring Boot 3.5 states compatibility with Java versions up to 24.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "A",
+        "material": true
+      },
+      "b": {
+        "claim_id": "c3",
+        "type": "NUMBER",
+        "subject": "Spring Boot 3.5 highest stated Java",
+        "value": "24",
+        "text": "Spring Boot 3.5 stated compatibility with Java versions up to and including Java 24.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "B",
+        "material": true
+      },
+      "resolution_detail": {}
+    }
+  ],
+  "corrected_claims": [],
+  "unresolved_claims": [],
+  "unknown_claims": [
+    {
+      "relationship": "UNKNOWN_SIDE",
+      "type": "FACT",
+      "subject": "spring_boot_3.x_min_java_baseline",
+      "state": "UNKNOWN",
+      "material": true,
+      "a": {
+        "claim_id": "c4",
+        "type": "FACT",
+        "subject": "spring_boot_3.x_min_java_baseline",
+        "value": "17 (unchanged since 3.0)",
+        "text": "All Spring Boot 3.x releases have maintained Java 17 as the minimum required version since Spring Boot 3.0.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "A",
+        "material": true
+      },
+      "b": {
+        "claim_id": "c5",
+        "type": "FACT",
+        "subject": "Spring Boot 4.0 Java baseline",
+        "value": "UNKNOWN",
+        "text": "Spring Boot 4.0 was planned for November 2025, but its final documented minimum and maximum Java versions cannot be confirmed here.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "B",
+        "material": true
+      },
+      "resolution_detail": {}
+    },
+    {
+      "relationship": "ONE_SIDED",
+      "type": "VERSION",
+      "subject": "current Spring Boot release",
+      "state": "UNKNOWN",
+      "material": true,
+      "a": null,
+      "b": {
+        "claim_id": "c1",
+        "type": "VERSION",
+        "subject": "current Spring Boot release",
+        "value": "UNKNOWN",
+        "text": "The current Spring Boot GA version as of 2026-10-01 cannot be established without checking spring.io.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "B",
+        "material": true
+      },
+      "resolution_detail": {}
+    }
+  ],
+  "one_sided_claims": [
+    {
+      "relationship": "ONE_SIDED",
+      "type": "VERSION",
+      "subject": "current Spring Boot release",
+      "state": "UNKNOWN",
+      "material": true,
+      "a": null,
+      "b": {
+        "claim_id": "c1",
+        "type": "VERSION",
+        "subject": "current Spring Boot release",
+        "value": "UNKNOWN",
+        "text": "The current Spring Boot GA version as of 2026-10-01 cannot be established without checking spring.io.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "B",
+        "material": true
+      },
+      "resolution_detail": {}
+    }
+  ],
+  "pairings": [
+    {
+      "relationship": "MATCH",
+      "type": "VERSION",
+      "subject": "spring_boot_version_referenced",
+      "state": "AGREED",
+      "material": true,
+      "a": {
+        "claim_id": "c1",
+        "type": "VERSION",
+        "subject": "spring_boot_version_referenced",
+        "value": "3.5",
+        "text": "The answer refers to Spring Boot 3.5, the latest release known as of the assistant's January 2026 knowledge cutoff.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "A",
+        "material": true
+      },
+      "b": {
+        "claim_id": "c4",
+        "type": "VERSION",
+        "subject": "Spring Boot version this answer refers to",
+        "value": "3.5",
+        "text": "The Java 17\u201324 pair refers to Spring Boot 3.5, the last well-documented GA line in this answer.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "B",
+        "material": true
+      },
+      "resolution_detail": {}
+    },
+    {
+      "relationship": "MATCH",
+      "type": "NUMBER",
+      "subject": "min_java_version_spring_boot_3.5",
+      "state": "AGREED",
+      "material": true,
+      "a": {
+        "claim_id": "c2",
+        "type": "NUMBER",
+        "subject": "min_java_version_spring_boot_3.5",
+        "value": "17",
+        "text": "Spring Boot 3.5 requires a minimum Java version of 17.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "A",
+        "material": true
+      },
+      "b": {
+        "claim_id": "c2",
+        "type": "NUMBER",
+        "subject": "Spring Boot 3.5 minimum Java",
+        "value": "17",
+        "text": "Spring Boot 3.5 required Java 17 as the minimum runtime.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "B",
+        "material": true
+      },
+      "resolution_detail": {}
+    },
+    {
+      "relationship": "MATCH",
+      "type": "NUMBER",
+      "subject": "max_java_version_spring_boot_3.5",
+      "state": "AGREED",
+      "material": true,
+      "a": {
+        "claim_id": "c3",
+        "type": "NUMBER",
+        "subject": "max_java_version_spring_boot_3.5",
+        "value": "24",
+        "text": "Spring Boot 3.5 states compatibility with Java versions up to 24.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "A",
+        "material": true
+      },
+      "b": {
+        "claim_id": "c3",
+        "type": "NUMBER",
+        "subject": "Spring Boot 3.5 highest stated Java",
+        "value": "24",
+        "text": "Spring Boot 3.5 stated compatibility with Java versions up to and including Java 24.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "B",
+        "material": true
+      },
+      "resolution_detail": {}
+    },
+    {
+      "relationship": "UNKNOWN_SIDE",
+      "type": "FACT",
+      "subject": "spring_boot_3.x_min_java_baseline",
+      "state": "UNKNOWN",
+      "material": true,
+      "a": {
+        "claim_id": "c4",
+        "type": "FACT",
+        "subject": "spring_boot_3.x_min_java_baseline",
+        "value": "17 (unchanged since 3.0)",
+        "text": "All Spring Boot 3.x releases have maintained Java 17 as the minimum required version since Spring Boot 3.0.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "A",
+        "material": true
+      },
+      "b": {
+        "claim_id": "c5",
+        "type": "FACT",
+        "subject": "Spring Boot 4.0 Java baseline",
+        "value": "UNKNOWN",
+        "text": "Spring Boot 4.0 was planned for November 2025, but its final documented minimum and maximum Java versions cannot be confirmed here.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "B",
+        "material": true
+      },
+      "resolution_detail": {}
+    },
+    {
+      "relationship": "ONE_SIDED",
+      "type": "REASONING",
+      "subject": "currency_of_answer",
+      "state": "UNKNOWN",
+      "material": false,
+      "a": {
+        "claim_id": "c5",
+        "type": "REASONING",
+        "subject": "currency_of_answer",
+        "value": "UNKNOWN",
+        "text": "Because the current date (Oct 2026) postdates the assistant's knowledge cutoff (Jan 2026), a newer Spring Boot release may now be current with different min/max Java compatibility than stated.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "A",
+        "material": false
+      },
+      "b": null,
+      "resolution_detail": {}
+    },
+    {
+      "relationship": "ONE_SIDED",
+      "type": "VERSION",
+      "subject": "current Spring Boot release",
+      "state": "UNKNOWN",
+      "material": true,
+      "a": null,
+      "b": {
+        "claim_id": "c1",
+        "type": "VERSION",
+        "subject": "current Spring Boot release",
+        "value": "UNKNOWN",
+        "text": "The current Spring Boot GA version as of 2026-10-01 cannot be established without checking spring.io.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "B",
+        "material": true
+      },
+      "resolution_detail": {}
+    }
+  ],
+  "answers": {
+    "A": {
+      "slot": "A",
+      "parse_status": "ok",
+      "verdict": "As of my last knowledge (Spring Boot 3.5, mid-2025), minimum Java is 17 and stated compatibility extends to Java 24 \u2014 but a newer release may exist by the current date (Oct 2026) that I cannot verify.",
+      "answer": "Spring Boot 3.5 (released May 2025, the latest version I have reliable knowledge of) requires a minimum of Java 17 and documents compatibility up through Java 24. All Spring Boot 3.x releases have kept Java 17 as the baseline since 3.0, while the maximum supported/tested Java version has increased with each minor release (3.2\u219221, 3.3\u219222, 3.4\u219223, 3.5\u219224). Given today's date (Oct 2026) is after my knowledge cutoff (Jan 2026), a newer Spring Boot release (e.g., 3.6 or 4.0) may now be current, potentially with different compatibility figures I cannot confirm.",
+      "claims": [
+        {
+          "claim_id": "c1",
+          "type": "VERSION",
+          "subject": "spring_boot_version_referenced",
+          "value": "3.5",
+          "text": "The answer refers to Spring Boot 3.5, the latest release known as of the assistant's January 2026 knowledge cutoff.",
+          "source_cited": null,
+          "source_verification": "UNVERIFIED",
+          "evidence_type": "MODEL_ONLY",
+          "slot": "A",
+          "material": true
+        },
+        {
+          "claim_id": "c2",
+          "type": "NUMBER",
+          "subject": "min_java_version_spring_boot_3.5",
+          "value": "17",
+          "text": "Spring Boot 3.5 requires a minimum Java version of 17.",
+          "source_cited": null,
+          "source_verification": "UNVERIFIED",
+          "evidence_type": "MODEL_ONLY",
+          "slot": "A",
+          "material": true
+        },
+        {
+          "claim_id": "c3",
+          "type": "NUMBER",
+          "subject": "max_java_version_spring_boot_3.5",
+          "value": "24",
+          "text": "Spring Boot 3.5 states compatibility with Java versions up to 24.",
+          "source_cited": null,
+          "source_verification": "UNVERIFIED",
+          "evidence_type": "MODEL_ONLY",
+          "slot": "A",
+          "material": true
+        },
+        {
+          "claim_id": "c4",
+          "type": "FACT",
+          "subject": "spring_boot_3.x_min_java_baseline",
+          "value": "17 (unchanged since 3.0)",
+          "text": "All Spring Boot 3.x releases have maintained Java 17 as the minimum required version since Spring Boot 3.0.",
+          "source_cited": null,
+          "source_verification": "UNVERIFIED",
+          "evidence_type": "MODEL_ONLY",
+          "slot": "A",
+          "material": true
+        },
+        {
+          "claim_id": "c5",
+          "type": "REASONING",
+          "subject": "currency_of_answer",
+          "value": "UNKNOWN",
+          "text": "Because the current date (Oct 2026) postdates the assistant's knowledge cutoff (Jan 2026), a newer Spring Boot release may now be current with different min/max Java compatibility than stated.",
+          "source_cited": null,
+          "source_verification": "UNVERIFIED",
+          "evidence_type": "MODEL_ONLY",
+          "slot": "A",
+          "material": false
+        }
+      ],
+      "uncertainties": [
+        "The system date is October 2026, nine months past the assistant's January 2026 knowledge cutoff, so a newer Spring Boot release (possibly 3.6.x or Spring Boot 4.0, tied to Spring Framework 7) may be the actual 'current release' with different Java compatibility figures not reflected here.",
+        "Tools were disabled, so this could not be verified against the live Spring Boot documentation or release notes."
+      ]
+    },
+    "B": {
+      "slot": "B",
+      "parse_status": "ok",
+      "verdict": "Current Oct 2026 Spring Boot GA cannot be confirmed; last well-known line is Boot 3.5 (Java 17\u201324).",
+      "answer": "I cannot confirm the current Spring Boot GA as of 1 Oct 2026. Spring Boot 3.5 required Java 17 and stated compatibility through Java 24. Spring Boot 4.0 was planned for November 2025, expected to keep a Java 17 baseline and add Java 25 support. Check the System Requirements section on spring.io for the live pair.",
+      "claims": [
+        {
+          "claim_id": "c1",
+          "type": "VERSION",
+          "subject": "current Spring Boot release",
+          "value": "UNKNOWN",
+          "text": "The current Spring Boot GA version as of 2026-10-01 cannot be established without checking spring.io.",
+          "source_cited": null,
+          "source_verification": "UNVERIFIED",
+          "evidence_type": "MODEL_ONLY",
+          "slot": "B",
+          "material": true
+        },
+        {
+          "claim_id": "c2",
+          "type": "NUMBER",
+          "subject": "Spring Boot 3.5 minimum Java",
+          "value": "17",
+          "text": "Spring Boot 3.5 required Java 17 as the minimum runtime.",
+          "source_cited": null,
+          "source_verification": "UNVERIFIED",
+          "evidence_type": "MODEL_ONLY",
+          "slot": "B",
+          "material": true
+        },
+        {
+          "claim_id": "c3",
+          "type": "NUMBER",
+          "subject": "Spring Boot 3.5 highest stated Java",
+          "value": "24",
+          "text": "Spring Boot 3.5 stated compatibility with Java versions up to and including Java 24.",
+          "source_cited": null,
+          "source_verification": "UNVERIFIED",
+          "evidence_type": "MODEL_ONLY",
+          "slot": "B",
+          "material": true
+        },
+        {
+          "claim_id": "c4",
+          "type": "VERSION",
+          "subject": "Spring Boot version this answer refers to",
+          "value": "3.5",
+          "text": "The Java 17\u201324 pair refers to Spring Boot 3.5, the last well-documented GA line in this answer.",
+          "source_cited": null,
+          "source_verification": "UNVERIFIED",
+          "evidence_type": "MODEL_ONLY",
+          "slot": "B",
+          "material": true
+        },
+        {
+          "claim_id": "c5",
+          "type": "FACT",
+          "subject": "Spring Boot 4.0 Java baseline",
+          "value": "UNKNOWN",
+          "text": "Spring Boot 4.0 was planned for November 2025, but its final documented minimum and maximum Java versions cannot be confirmed here.",
+          "source_cited": null,
+          "source_verification": "UNVERIFIED",
+          "evidence_type": "MODEL_ONLY",
+          "slot": "B",
+          "material": true
+        }
+      ],
+      "uncertainties": [
+        "Tools are disabled, so spring.io and current reference docs cannot be checked as of 2026-10-01.",
+        "By October 2026 the current GA is likely Spring Boot 4.1 or 4.2, whose System Requirements are not verified here.",
+        "Spring Boot 4.0 may have raised the baseline from Java 17 to Java 21; that is not confirmed.",
+        "Highest stated Java for a 4.x release may be 25, 26, or 27 depending on which 4.x is current."
+      ]
+    }
+  },
+  "independence_warning": "Independent model agreement is not external verification.",
+  "evidence_type": "MODEL_ONLY",
+  "metrics_deliberately_not_computed": [
+    "initial correctness per FAMILY",
+    "errors caught by the SECOND family",
+    "errors introduced by cross-family reconciliation"
+  ],
+  "cross_family_note": "Cross-family run: slot A anthropic, slot B xai, both real subscription transports. Agreement here is between two independent model families -- which is still NOT external verification.",
+  "metrics_omitted_because_same_family": false
+}

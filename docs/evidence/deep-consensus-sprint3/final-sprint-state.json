@@ -1,0 +1,62 @@
+{
+  "current_branch": "deep-consensus-sprint3",
+  "current_head": "27f80ace3d671c51f2056de14557c3ea353dd722",
+  "base_ref": "90364d6",
+  "commits_already_created": [
+    "27f80ac Sprint 2 complete: real timing evidence, verified ground truth, honest BLOCKED",
+    "78fbc7a Sprint 2: locked status semantics, concurrency proof, contradiction guard, eval harness",
+    "b48c169 Sprint 2 halt checkpoint record",
+    "3a253ea Sprint 2 CHECKPOINT (halted on Owner instruction): engine rebuilt, test migration incomplete",
+    "4dee868 Sprint 2 Phase 0: preserve Sprint 1 evidence, and name the failure it hid"
+  ],
+  "files_changed_since_base": [
+    "agent/pricing_config.py",
+    "deep_consensus/candidates.py",
+    "deep_consensus/eval_self_advocacy.py",
+    "deep_consensus/governor.py",
+    "deep_consensus/measure_parallel_speedup.py",
+    "deep_consensus/orchestrator.py",
+    "deep_consensus/providers.py",
+    "deep_consensus/schemas.py",
+    "deep_consensus/server.py",
+    "deep_consensus/spend_ledger.jsonl",
+    "deep_consensus/spend_ledger.py",
+    "deep_consensus/sprint_state.py",
+    "deep_consensus/status_engine.py",
+    "deep_consensus/test_deep_consensus.py",
+    "deep_consensus/test_sprint2.py",
+    "docs/LESSONS.md",
+    "docs/SYSTEM_AUDIT_2026-09-28.md",
+    "docs/evidence/deep-consensus-sprint1/FINDINGS.md",
+    "docs/evidence/deep-consensus-sprint1/real-run-audit-excerpts.json",
+    "docs/evidence/deep-consensus-sprint2/APPROVED_PROMPT.md",
+    "docs/evidence/deep-consensus-sprint2/APPROVED_PROMPT_v1_superseded.md",
+    "docs/evidence/deep-consensus-sprint2/HALT_CHECKPOINT.md",
+    "docs/evidence/deep-consensus-sprint2/PROMPT_PROVENANCE.json",
+    "docs/evidence/deep-consensus-sprint2/SPRINT2_RESULTS.md",
+    "docs/evidence/deep-consensus-sprint2/final-sprint-state.json",
+    "docs/evidence/deep-consensus-sprint2/inspector-invalid-call.json",
+    "docs/evidence/deep-consensus-sprint2/inspector-tools-list.json",
+    "docs/evidence/deep-consensus-sprint2/inspector-valid-call.json",
+    "docs/evidence/deep-consensus-sprint2/mutation_harness.py",
+    "docs/evidence/deep-consensus-sprint2/parallel-speedup-measurement.json",
+    "docs/evidence/deep-consensus-sprint2/raw-http-probe.json",
+    "docs/evidence/deep-consensus-sprint2/self-advocacy-mock-eval.txt"
+  ],
+  "uncommitted_tracked_changes": [
+    "M docs/evidence/deep-consensus-sprint1/FINDINGS.md"
+  ],
+  "spend": {
+    "real_calls_used": 16,
+    "reserved_calls_outstanding": 0,
+    "calls_committed": 16,
+    "max_real_provider_calls": 30,
+    "known_spend_usd": 0.113326,
+    "max_known_provider_spend_usd": 2.0,
+    "unknown_cost_calls": 0,
+    "ledger_file": "C:\\Users\\Hemapriya\\agentic-software-delivery\\deep_consensus\\spend_ledger.jsonl",
+    "ledger_exists": true,
+    "remaining_calls": 14,
+    "remaining_known_spend_usd": 1.886674
+  }
+}

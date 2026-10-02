@@ -1,0 +1,156 @@
+REAL PROVIDER SMOKE TEST: authorized
+  declared budget USD : 0.5
+  slot A              : anthropic / claude-sonnet-5
+  slot B              : anthropic / claude-haiku-4-5-20251001
+  provider call cap   : 6 (4 on the happy path)
+
+{
+  "run_id": "dcr_361112bc329048a8",
+  "provider_mode": "real_real",
+  "stakes": "high",
+  "review_depth": "deep",
+  "governed_answer": "Yes, they should use CREATE INDEX CONCURRENTLY \u2014 on a live 40M-row table during business hours, a plain CREATE INDEX takes an ACCESS EXCLUSIVE lock that blocks all reads and writes for the duration of the build, which is unacceptable in production. CONCURRENTLY avoids that by using weaker locks and scanning the table twice without blocking normal DML. The risk most teams overlook: CONCURRENTLY can fail partway through (e.g., due to a deadlock, timeout, or killed session) and leave behind an INVALID index that still consumes disk space, write overhead, and planner attention but is unusable for queries \u2014 and Postgres will NOT automatically clean it up. Teams must monitor for this, explicitly DROP the invalid index, and retry. It also can't run inside a transaction block, and takes noticeably longer and more I/O than a regular build, so timing and monitoring (pg_stat_progress_create_index) matter.",
+  "governed_answer_basis": "best_supported_candidate_dissent_preserved",
+  "status": "PARTIAL",
+  "convergence_score": 0.0,
+  "convergence_score_meaning": "process convergence between independent reviewers only -- NOT a confidence, correctness probability or truth score",
+  "dissent": [
+    {
+      "provider": "anthropic",
+      "model": "claude-sonnet-5",
+      "reviewer_slot": "A",
+      "reviewed_slot": "B",
+      "claim": "(whole answer)",
+      "reason": "{\"decision\": \"DISAGREE\", \"reason\": \"The other answer's core technical claim is off-target. CREATE INDEX CONCURRENTLY does not consume transaction IDs at an unusual rate, and a single index build is extremely unlikely to trigger wraparound (which requires ~2 billion unconsumed XIDs) unless the database was already critically mismanaged beforehand \u2014 framing this as 'the single biggest risk' for a routine index addition is misleading and not what Postgres documentation or practitioners flag. The ac",
+      "round": 1
+    },
+    {
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5-20251001",
+      "reviewer_slot": "B",
+      "reviewed_slot": "A",
+      "claim": "(whole answer)",
+      "reason": "While the other answer correctly identifies that CREATE INDEX CONCURRENTLY should be used and mentions valid concerns, it misidentifies the single biggest risk most teams overlook. The other answer focuses on invalid indexes left behind after failures\u2014a real but less common and less catastrophic risk. XID wraparound is the genuinely severe, often-overlooked risk that can render the entire database read-only. The other answer's risk is more of an operational annoyance (requiring manual cleanup and retry); XID wraparound is a production emergency. Additionally, the claim that CONCURRENTLY 'can't run inside a transaction block' is correct but tangential\u2014teams building indexes are typically aware of this. The other answer provides good operational details but identifies the wrong primary risk.",
+      "round": 1
+    },
+    {
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5-20251001",
+      "reviewer_slot": "B",
+      "reviewed_slot": "A",
+      "claim": "Invalid indexes left behind after CONCURRENTLY failure is the single biggest risk overlooked",
+      "reason": "reviewer marked this claim CONTRADICTED",
+      "round": 1
+    }
+  ],
+  "evidence": [
+    {
+      "type": "MODEL_EVIDENCE",
+      "provider": "anthropic",
+      "model": "claude-sonnet-5",
+      "slot": "A",
+      "claim": "CREATE INDEX CONCURRENTLY is the correct choice for production use to avoid blocking reads/writes.",
+      "evidence": "Postgres documentation on CREATE INDEX CONCURRENTLY"
+    },
+    {
+      "type": "MODEL_EVIDENCE",
+      "provider": "anthropic",
+      "model": "claude-sonnet-5",
+      "slot": "A",
+      "claim": "The biggest overlooked risk is a failed concurrent build leaving an INVALID index that isn't auto-removed.",
+      "evidence": "Postgres docs explicitly warn about invalid indexes after failed concurrent builds requiring manual DROP INDEX"
+    },
+    {
+      "type": "MODEL_EVIDENCE",
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5-20251001",
+      "slot": "B",
+      "claim": "CREATE INDEX CONCURRENTLY should be used to avoid write-blocking",
+      "evidence": "Postgres documentation on index creation; Common DBA practices"
+    },
+    {
+      "type": "MODEL_EVIDENCE",
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5-20251001",
+      "slot": "B",
+      "claim": "XID wraparound is the most commonly overlooked risk",
+      "evidence": "Postgres XID wraparound mechanics; Long-running transaction behavior"
+    },
+    {
+      "type": "MODEL_EVIDENCE",
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5-20251001",
+      "slot": "B",
+      "claim": "The operation can cause database read-only state if XID wraparound occurs",
+      "evidence": "Postgres wraparound documentation"
+    },
+    {
+      "type": "MODEL_EVIDENCE",
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5-20251001",
+      "slot": "B",
+      "claim": "CREATE INDEX CONCURRENTLY should be used to avoid blocking reads/writes",
+      "evidence": "ACCESS EXCLUSIVE lock from regular CREATE INDEX blocks all activity; CONCURRENTLY uses weaker locks and allows normal DML"
+    },
+    {
+      "type": "MODEL_EVIDENCE",
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5-20251001",
+      "slot": "B",
+      "claim": "Invalid indexes left behind after CONCURRENTLY failure is the single biggest risk overlooked",
+      "evidence": "Invalid index cleanup is manual but straightforward; teams can retry; XID wraparound during extended CONCURRENTLY operation can render entire database read-only\u2014a more severe, less visible, and more commonly overlooked risk; On heavily-trafficked systems, the longer duration of CONCURRENTLY increases XID consumption risk"
+    },
+    {
+      "type": "MODEL_EVIDENCE",
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5-20251001",
+      "slot": "B",
+      "claim": "CONCURRENTLY can't run inside a transaction block",
+      "evidence": "This is a known Postgres limitation"
+    },
+    {
+      "type": "MODEL_EVIDENCE",
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5-20251001",
+      "slot": "B",
+      "claim": "CONCURRENTLY scans the table twice without blocking DML",
+      "evidence": "This is accurate behavior of CREATE INDEX CONCURRENTLY"
+    }
+  ],
+  "round_count": 1,
+  "provider_calls": 4,
+  "tokens": {
+    "input": 1977,
+    "output": 2746,
+    "total": 4723
+  },
+  "elapsed_ms": 35492.8,
+  "stop_reason": "unresolved_no_second_round_budget",
+  "provider_errors": [],
+  "providers": {
+    "A": {
+      "provider_id": "anthropic",
+      "model_id": "claude-sonnet-5",
+      "is_mock": false
+    },
+    "B": {
+      "provider_id": "anthropic",
+      "model_id": "claude-haiku-4-5-20251001",
+      "is_mock": false
+    }
+  },
+  "trace": "<7 entries -- see audit log>",
+  "audit_path": "C:\\Users\\Hemapriya\\agentic-software-delivery\\deep_consensus\\audit_log.jsonl"
+}
+
+--- SMOKE TEST SUMMARY (all values real, none estimated) ---
+provider_mode     : real_real
+status            : PARTIAL
+convergence_score : 0.0
+round_count       : 1
+provider_calls    : 4
+tokens            : {"input": 1977, "output": 2746, "total": 4723}
+elapsed_ms        : 35492.8
+stop_reason       : unresolved_no_second_round_budget
+dissent entries   : 3
+audit_path        : C:\Users\Hemapriya\agentic-software-delivery\deep_consensus\audit_log.jsonl

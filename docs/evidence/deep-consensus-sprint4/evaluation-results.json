@@ -1,0 +1,798 @@
+{
+  "sprint": 4,
+  "ground_truth_fingerprint": "c51b4a39d6ec6719986c98a0d11d095c9a6bf2105a30dbffea0a1a80113a8be1",
+  "ground_truth_frozen_before_execution": true,
+  "baseline_model_frozen": "claude-sonnet-5",
+  "baseline_rationale": "The baseline is Deep Consensus's own slot A, so the measured delta is attributable to the second FAMILY plus the governor rather than to a model upgrade. A stronger single model (claude-opus-5) was NOT measured; that is a different question and is named as a limitation, not avoided.",
+  "dc_models": {
+    "A": "claude-sonnet-5",
+    "B": "grok-4.6"
+  },
+  "cases_prepared": 20,
+  "cases_run_live": 8,
+  "stop_reason": "turn_ceiling_reached",
+  "turn_ledger": {
+    "turns_used": 38,
+    "reserved_outstanding": 0,
+    "committed": 38,
+    "ceiling": 40,
+    "remaining": 2,
+    "by_family": {
+      "anthropic": 23,
+      "xai": 15
+    },
+    "provider_limit_events": []
+  },
+  "wall_clock_total_ms": 727454.9,
+  "aggregate": {
+    "total_live_cases": 8,
+    "binary_cases": 7,
+    "judgment_cases": 1,
+    "baseline_correct_rate": 0.5714,
+    "deep_consensus_correct_rate": 0.8571,
+    "baseline_partial_rate": 0.2857,
+    "deep_consensus_partial_rate": 0.0,
+    "baseline_material_errors": 1,
+    "deep_consensus_material_errors": 1,
+    "errors_caught_vs_baseline": [
+      "S4-DB-1-create-index-lock",
+      "S4-VER-1-spring-boot-java-baseline"
+    ],
+    "errors_introduced_by_governor": [],
+    "missed_disagreements_estimate": 2,
+    "cases_with_missed_pairing": [
+      "S4-SEC-1-jwt-alg-none"
+    ],
+    "false_disagreements": 5,
+    "unresolved_rate": 0.75,
+    "judgment_defect_identified_rate": 1.0,
+    "judgment_baseline_defect_identified_rate": 1.0,
+    "average_model_turns": 4.75,
+    "median_model_turns": 5.0,
+    "average_wall_clock_ms": 90918.4,
+    "percentage_stopped_at_2_dc_calls": 0.125,
+    "percentage_requiring_3_dc_calls": 0.0,
+    "percentage_requiring_4_dc_calls": 0.875,
+    "pairing": {
+      "total_pairs_formed": 20,
+      "total_material_one_sided": 29,
+      "total_missed_match_estimate": 2
+    },
+    "significance_warning": "N=8. No statistical significance is claimed or implied. These are observations, not measurements of a rate."
+  },
+  "evidence_classification": {
+    "classification": "MIXED",
+    "why": "Deep Consensus corrected 2 case(s) but introduced 0 and showed 5 false disagreement(s) plus 2 estimated missed pairing(s); the overhead is not clearly justified by the catches. Note: 2 probable same-claim pair(s) went unjoined, so some real disagreements were never surfaced -- the mechanism was not fully exercised."
+  },
+  "rows": [
+    {
+      "case_id": "S4-DB-1-create-index-lock",
+      "category": "database_migration_locking",
+      "scoring_kind": "BINARY",
+      "ground_truth": "SHARE lock. Writes are blocked; reads continue.",
+      "ground_truth_source": "https://www.postgresql.org/docs/current/explicit-locking.html",
+      "baseline_model_requested": "claude-sonnet-5",
+      "baseline_model_reported": "claude-sonnet-5",
+      "baseline_ok": true,
+      "baseline_result": "A plain `CREATE INDEX` acquires a `SHARE` lock on the table. This lock allows reads (SELECTs) to proceed normally, but it blocks all writes \u2014 INSERT, UPDATE, DELETE, and any DDL \u2014 for the duration of the index build, since `SHARE` conflicts with `ROW EXCLUSIVE` and other write-acquiring lock modes. Only `CREATE INDEX CONCURRENTLY` avoids blocking writes, by using weaker locking (ShareUpdateExclusiveLock) at the cost of a slower, two-pass build.",
+      "baseline_score": {
+        "verdict": "PARTIAL",
+        "expected_found": {
+          "lock mode": "share",
+          "writes": "block"
+        },
+        "expected_missing": {
+          "reads": [
+            "not blocked",
+            "allowed",
+            "continue",
+            "permitted",
+            "do not block",
+            "does not block"
+          ]
+        },
+        "wrong_markers_present": []
+      },
+      "baseline_correct": "PARTIAL",
+      "claude_initial_score": {
+        "verdict": "YES",
+        "expected_found": {
+          "lock mode": "share",
+          "reads": "does not block",
+          "writes": "blocked"
+        },
+        "expected_missing": {},
+        "wrong_markers_present": []
+      },
+      "grok_initial_score": {
+        "verdict": "YES",
+        "expected_found": {
+          "lock mode": "share",
+          "reads": "allowed",
+          "writes": "blocked"
+        },
+        "expected_missing": {},
+        "wrong_markers_present": []
+      },
+      "claude_initial_correct": "YES",
+      "grok_initial_correct": "YES",
+      "initial_models_agreed": true,
+      "initial_agreement_correct": "YES",
+      "material_disagreement_detected": false,
+      "material_disagreement_missed_estimate": 0,
+      "deep_consensus_status": "UNRESOLVED",
+      "deep_consensus_stop_reason": "no_material_disagreement_early_stop",
+      "deep_consensus_result": "A plain CREATE INDEX (without CONCURRENTLY) acquires a SHARE lock on the table being indexed. SHARE lock permits concurrent reads (SELECT) but blocks all writes (INSERT, UPDATE, DELETE) for the duration of the index build, since SHARE conflicts with ROW EXCLUSIVE and other write-acquiring lock modes. It does not block other SHARE-compatible readers. This is why CREATE INDEX CONCURRENTLY exists: it instead uses SHARE UPDATE EXCLUSIVE, which permits both concurrent reads and writes at the cost of a longer, non-atomic build process (building the index via multiple table passes and transactions).",
+      "deep_consensus_score": {
+        "verdict": "YES",
+        "expected_found": {
+          "lock mode": "share",
+          "reads": "allowed",
+          "writes": "blocked"
+        },
+        "expected_missing": {},
+        "wrong_markers_present": []
+      },
+      "deep_consensus_correct": "YES",
+      "error_caught_by_second_family": true,
+      "error_introduced_by_governor": false,
+      "false_disagreement": false,
+      "unresolved": true,
+      "has_unknowns": false,
+      "model_turns": 3,
+      "dc_model_turns": 2,
+      "wall_clock_ms": 24344.9,
+      "cross_family_real": true,
+      "pairing": {
+        "pairs_formed": 2,
+        "pairs_agreed": 2,
+        "pairs_conflicted": 0,
+        "material_one_sided": 4,
+        "pairing_missed_match_estimate": 0,
+        "pairing_missed_match_detail": [],
+        "note": "pairing_missed_match_estimate counts material one-sided claims from OPPOSITE slots whose values actually agree -- near-certain same-claim pairs the matcher failed to join. It is an estimate, reported separately and never folded into accuracy."
+      },
+      "provider_limit_event": [],
+      "dc_run_id": "dcr3_a5d950455bca4c2f"
+    },
+    {
+      "case_id": "S4-JV-1-self-invocation",
+      "category": "java_spring",
+      "scoring_kind": "BINARY",
+      "ground_truth": "No. In proxy mode only external calls through the proxy are intercepted, so self-invocation does not start a transaction. AspectJ weaving, or routing the call through the proxy, fixes it.",
+      "ground_truth_source": "https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/annotations.html",
+      "baseline_model_requested": "claude-sonnet-5",
+      "baseline_model_reported": "claude-sonnet-5",
+      "baseline_ok": true,
+      "baseline_result": "No \u2014 self-invocation bypasses the proxy entirely, since the call goes through the raw `this` reference, never through the CGLIB/JDK proxy that wraps the transaction interceptor. The `@Transactional` annotation is simply ignored.\n\nFixes: inject/autowire the bean's own proxy (e.g., `@Autowired` self-reference, or `AopContext.currentProxy()` with exposed proxy enabled) and call the method through it; or extract the annotated method into a separate bean/class and call it via that bean; or use AspectJ compile/load-time weaving instead of proxy-based AOP, which doesn't have this limitation.",
+      "baseline_score": {
+        "verdict": "YES",
+        "expected_found": {
+          "inner call starts transaction": "no",
+          "reason": "proxy",
+          "fix": "aspectj"
+        },
+        "expected_missing": {},
+        "wrong_markers_present": []
+      },
+      "baseline_correct": "YES",
+      "claude_initial_score": {
+        "verdict": "YES",
+        "expected_found": {
+          "inner call starts transaction": "no",
+          "reason": "proxy",
+          "fix": "aspectj"
+        },
+        "expected_missing": {},
+        "wrong_markers_present": []
+      },
+      "grok_initial_score": {
+        "verdict": "YES",
+        "expected_found": {
+          "inner call starts transaction": "no",
+          "reason": "proxy",
+          "fix": "aspectj"
+        },
+        "expected_missing": {},
+        "wrong_markers_present": []
+      },
+      "claude_initial_correct": "YES",
+      "grok_initial_correct": "YES",
+      "initial_models_agreed": false,
+      "initial_agreement_correct": null,
+      "material_disagreement_detected": true,
+      "material_disagreement_missed_estimate": 0,
+      "deep_consensus_status": "UNRESOLVED",
+      "deep_consensus_stop_reason": "unresolved_after_targeted_challenge",
+      "deep_consensus_result": "No. Spring's default proxy-based AOP wraps the bean in a proxy that intercepts calls made from outside the bean. When one method calls another method on 'this' directly, that call is a plain Java method invocation on the raw target object, never passing through the proxy, so the @Transactional advice never triggers. Fixes: move the inner method to a separate bean and inject/call it through that bean; inject the proxy itself (e.g., via ApplicationContext, @Lazy self-injection, or AopContext.currentProxy() with exposeProxy=true) and call through it; or switch to AspectJ compile-time/load-time weaving, which instruments the bytecode directly and doesn't rely on proxying.\n\nCORRECTIONS APPLIED AFTER CROSS-CHECK (the narrative above may still reflect the original wording):\n- self-invocation-transaction-proxy-aop: corrected to 'no transaction for inner call' after cross-check\n- fix-self-injection: corrected to 'proxy self-call or AspectJ' after cross-check",
+      "deep_consensus_score": {
+        "verdict": "YES",
+        "expected_found": {
+          "inner call starts transaction": "no",
+          "reason": "proxy",
+          "fix": "aspectj"
+        },
+        "expected_missing": {},
+        "wrong_markers_present": []
+      },
+      "deep_consensus_correct": "YES",
+      "error_caught_by_second_family": false,
+      "error_introduced_by_governor": false,
+      "false_disagreement": true,
+      "unresolved": true,
+      "has_unknowns": false,
+      "model_turns": 5,
+      "dc_model_turns": 4,
+      "wall_clock_ms": 88164.5,
+      "cross_family_real": true,
+      "pairing": {
+        "pairs_formed": 3,
+        "pairs_agreed": 0,
+        "pairs_conflicted": 3,
+        "material_one_sided": 3,
+        "pairing_missed_match_estimate": 0,
+        "pairing_missed_match_detail": [],
+        "note": "pairing_missed_match_estimate counts material one-sided claims from OPPOSITE slots whose values actually agree -- near-certain same-claim pairs the matcher failed to join. It is an estimate, reported separately and never folded into accuracy."
+      },
+      "provider_limit_event": [],
+      "dc_run_id": "dcr3_3c360a8c942d4c40"
+    },
+    {
+      "case_id": "S4-SEC-1-jwt-alg-none",
+      "category": "security_auth",
+      "scoring_kind": "BINARY",
+      "ground_truth": "Not safe. The verifier must not trust the token's own alg header: libraries MUST let the caller specify a supported set of algorithms and MUST NOT use any other. \"none\" must not be consumed unless explicitly requested. Each key must be used with exactly one algorithm, checked at verification.",
+      "ground_truth_source": "https://datatracker.ietf.org/doc/html/rfc8725",
+      "baseline_model_requested": "claude-sonnet-5",
+      "baseline_model_reported": "claude-sonnet-5",
+      "baseline_ok": true,
+      "baseline_result": "No, this is unsafe. It lets an attacker choose the algorithm \u2014 classically, switching \"alg\" to \"none\" to disable signature verification entirely, or switching RS256 to HS256 so the attacker can forge a signature using the server's public key as an HMAC secret (the \"algorithm confusion\" attack).\n\nRFC 8725 (JWT Best Current Practices) requires the verifier to explicitly specify and pin the expected algorithm(s) itself, never deriving it from the token header, and to explicitly reject \"none\" and any unexpected algorithms.",
+      "baseline_score": {
+        "verdict": "YES",
+        "expected_found": {
+          "is it safe": "no",
+          "requirement": "specify"
+        },
+        "expected_missing": {},
+        "wrong_markers_present": []
+      },
+      "baseline_correct": "YES",
+      "claude_initial_score": {
+        "verdict": "YES",
+        "expected_found": {
+          "is it safe": "no",
+          "requirement": "expected algorithm"
+        },
+        "expected_missing": {},
+        "wrong_markers_present": []
+      },
+      "grok_initial_score": {
+        "verdict": "YES",
+        "expected_found": {
+          "is it safe": "no",
+          "requirement": "specify"
+        },
+        "expected_missing": {},
+        "wrong_markers_present": []
+      },
+      "claude_initial_correct": "YES",
+      "grok_initial_correct": "YES",
+      "initial_models_agreed": false,
+      "initial_agreement_correct": null,
+      "material_disagreement_detected": true,
+      "material_disagreement_missed_estimate": 2,
+      "deep_consensus_status": "PARTIAL",
+      "deep_consensus_stop_reason": "unresolved_after_targeted_challenge",
+      "deep_consensus_result": "No, this is not safe. Letting the token itself dictate which algorithm to use for verification is the classic JWT vulnerability: an attacker can craft a token with \"alg\":\"none\" (no signature required) or swap an asymmetric algorithm (RS256) for a symmetric one (HS256), tricking the server into verifying the signature using the public key as an HMAC secret \u2014 effectively forging a valid signature without knowing any private key. JWT Best Current Practices (RFC 8725) requires that the verifier, not the token, determine the algorithm: applications must explicitly configure/whitelist the specific algorithm(s) they accept for a given key, reject tokens whose header algorithm doesn't match that expectation, and never honor \"none\" or attacker-controlled algorithm selection.\n\nUNRESOLVED -- the two models did not settle these:\n- rs256-hs256-confusion-attack: A='key confusion / algorithm substitution attack' vs B='none and RS256/HS256 mixup'\n- rfc8725-algorithm-requirement: A='verifier must fix/whitelist expected algorithm(s), not trust token header' vs B='preconfigured expected algorithms / allowlist'",
+      "deep_consensus_score": {
+        "verdict": "YES",
+        "expected_found": {
+          "is it safe": "no",
+          "requirement": "specify"
+        },
+        "expected_missing": {},
+        "wrong_markers_present": []
+      },
+      "deep_consensus_correct": "YES",
+      "error_caught_by_second_family": false,
+      "error_introduced_by_governor": false,
+      "false_disagreement": true,
+      "unresolved": false,
+      "has_unknowns": false,
+      "model_turns": 5,
+      "dc_model_turns": 4,
+      "wall_clock_ms": 77664.6,
+      "cross_family_real": true,
+      "pairing": {
+        "pairs_formed": 2,
+        "pairs_agreed": 0,
+        "pairs_conflicted": 2,
+        "material_one_sided": 6,
+        "pairing_missed_match_estimate": 2,
+        "pairing_missed_match_detail": [
+          {
+            "a_subject": "reading-alg-from-token-safety",
+            "b_subject": "alg-header verification safety",
+            "shared_value": "unsafe"
+          },
+          {
+            "a_subject": "rfc-number",
+            "b_subject": "JWT BCP RFC",
+            "shared_value": "RFC 8725"
+          }
+        ],
+        "note": "pairing_missed_match_estimate counts material one-sided claims from OPPOSITE slots whose values actually agree -- near-certain same-claim pairs the matcher failed to join. It is an estimate, reported separately and never folded into accuracy."
+      },
+      "provider_limit_event": [],
+      "dc_run_id": "dcr3_5214fa0500174e56"
+    },
+    {
+      "case_id": "S4-VER-1-spring-boot-java-baseline",
+      "category": "version_platform_facts",
+      "scoring_kind": "BINARY",
+      "ground_truth": "Spring Boot 4.1.1 requires at least Java 17 and is compatible up to and including Java 26 (and requires Spring Framework 7.0.9+).",
+      "ground_truth_source": "https://docs.spring.io/spring-boot/system-requirements.html",
+      "baseline_model_requested": "claude-sonnet-5",
+      "baseline_model_reported": "claude-sonnet-5",
+      "baseline_ok": true,
+      "baseline_result": "I can't verify this live, but based on my training data: **Spring Boot 3.5** (released ~May 2025, the most recent version I have reliable knowledge of) requires a **minimum of Java 17** and documents tested/stated compatibility up to **Java 24**.\n\nCaveat: given today's date (Oct 2026) and my January 2026 knowledge cutoff, there may be a newer Spring Boot release (e.g., 3.6 or 4.0) I'm not aware of, which could shift these numbers \u2014 I'd recommend checking spring.io/projects/spring-boot for the actual current release.",
+      "baseline_score": {
+        "verdict": "PARTIAL",
+        "expected_found": {
+          "minimum java": "17",
+          "maximum java": "26"
+        },
+        "expected_missing": {
+          "spring boot version": [
+            "4.1",
+            "4.1.1"
+          ]
+        },
+        "wrong_markers_present": []
+      },
+      "baseline_correct": "PARTIAL",
+      "claude_initial_score": {
+        "verdict": "PARTIAL",
+        "expected_found": {
+          "minimum java": "17"
+        },
+        "expected_missing": {
+          "maximum java": [
+            "26"
+          ],
+          "spring boot version": [
+            "4.1",
+            "4.1.1"
+          ]
+        },
+        "wrong_markers_present": []
+      },
+      "grok_initial_score": {
+        "verdict": "YES",
+        "expected_found": {
+          "minimum java": "17",
+          "maximum java": "26",
+          "spring boot version": "4.1"
+        },
+        "expected_missing": {},
+        "wrong_markers_present": []
+      },
+      "claude_initial_correct": "PARTIAL",
+      "grok_initial_correct": "YES",
+      "initial_models_agreed": false,
+      "initial_agreement_correct": null,
+      "material_disagreement_detected": true,
+      "material_disagreement_missed_estimate": 0,
+      "deep_consensus_status": "PARTIAL",
+      "deep_consensus_stop_reason": "unresolved_after_targeted_challenge",
+      "deep_consensus_result": "Spring Boot 4.0, built on Spring Framework 7.0 (GA targeted November 2025), keeps the Java baseline at Java 17 minimum. Its compatibility matrix documents support up to Java 25 (the LTS released September 2025) at the time of writing. If the still-maintained 3.x line (e.g., 3.5.x) is instead considered 'current' in your context, that line also requires Java 17 minimum and documented support up to Java 24. I cannot verify the live Spring.io documentation as of today's date, so treat the upper bound as my best recollection rather than a confirmed current figure.\n\nUNRESOLVED -- the two models did not settle these:\n- spring_boot_35_fallback: A='Spring Boot 3.5.x' vs B='4.0'\n\nNOT ESTABLISHED (left as UNKNOWN rather than guessed):\n- spring_boot_current_version\n- current release highest Java",
+      "deep_consensus_score": {
+        "verdict": "YES",
+        "expected_found": {
+          "minimum java": "17",
+          "maximum java": "26",
+          "spring boot version": "4.1"
+        },
+        "expected_missing": {},
+        "wrong_markers_present": []
+      },
+      "deep_consensus_correct": "YES",
+      "error_caught_by_second_family": true,
+      "error_introduced_by_governor": false,
+      "false_disagreement": false,
+      "unresolved": false,
+      "has_unknowns": true,
+      "model_turns": 5,
+      "dc_model_turns": 4,
+      "wall_clock_ms": 106779.8,
+      "cross_family_real": true,
+      "pairing": {
+        "pairs_formed": 2,
+        "pairs_agreed": 0,
+        "pairs_conflicted": 1,
+        "material_one_sided": 7,
+        "pairing_missed_match_estimate": 0,
+        "pairing_missed_match_detail": [],
+        "note": "pairing_missed_match_estimate counts material one-sided claims from OPPOSITE slots whose values actually agree -- near-certain same-claim pairs the matcher failed to join. It is an estimate, reported separately and never folded into accuracy."
+      },
+      "provider_limit_event": [],
+      "dc_run_id": "dcr3_e6c0a473ccf24abe"
+    },
+    {
+      "case_id": "S4-AP-2-destructive-without-guard",
+      "category": "agent_plan_review",
+      "scoring_kind": "JUDGMENT_CASE",
+      "ground_truth": "Both commands are destructive and unguarded: `git clean -xfd` deletes untracked and ignored files (including local env files and any uncommitted new work) and `git reset --hard` discards all local commits and changes, with no backup, stash, confirmation or dry run, and no way to recover afterwards.",
+      "ground_truth_source": "Pre-defined defect; graded on defect identification only.",
+      "baseline_model_requested": "claude-sonnet-5",
+      "baseline_model_reported": "claude-sonnet-5",
+      "baseline_ok": true,
+      "baseline_result": "The most serious problem: both commands are destructive and irreversible. `git clean -xfd` permanently deletes all untracked and ignored files (build artifacts, but also `.env` files, local configs, or any uncommitted new work), and `git reset --hard origin/main` discards all uncommitted changes and resets local commits to match the remote, silently destroying any local commits not yet pushed. If run without first confirming the workspace is clean/backed up, this can permanently lose the user's uncommitted or unpushed work with no recovery path.",
+      "baseline_score": {
+        "verdict": "DEFECT_IDENTIFIED",
+        "markers_hit": [
+          "destructive",
+          "lose",
+          "uncommitted",
+          "untracked",
+          "irreversible",
+          "discard"
+        ],
+        "markers_available": [
+          "destructive",
+          "data loss",
+          "lose",
+          "uncommitted",
+          "untracked",
+          "irreversible",
+          "no backup",
+          "unrecoverable",
+          "discard"
+        ],
+        "scored_as_factual_correctness": false
+      },
+      "baseline_correct": "DEFECT_IDENTIFIED",
+      "claude_initial_score": {
+        "verdict": "DEFECT_IDENTIFIED",
+        "markers_hit": [
+          "destructive",
+          "data loss",
+          "uncommitted",
+          "untracked",
+          "irreversible",
+          "discard"
+        ],
+        "markers_available": [
+          "destructive",
+          "data loss",
+          "lose",
+          "uncommitted",
+          "untracked",
+          "irreversible",
+          "no backup",
+          "unrecoverable",
+          "discard"
+        ],
+        "scored_as_factual_correctness": false
+      },
+      "grok_initial_score": {
+        "verdict": "DEFECT_IDENTIFIED",
+        "markers_hit": [
+          "data loss",
+          "uncommitted",
+          "untracked",
+          "irreversible",
+          "no backup",
+          "discard"
+        ],
+        "markers_available": [
+          "destructive",
+          "data loss",
+          "lose",
+          "uncommitted",
+          "untracked",
+          "irreversible",
+          "no backup",
+          "unrecoverable",
+          "discard"
+        ],
+        "scored_as_factual_correctness": false
+      },
+      "claude_initial_correct": "DEFECT_IDENTIFIED",
+      "grok_initial_correct": "DEFECT_IDENTIFIED",
+      "initial_models_agreed": false,
+      "initial_agreement_correct": null,
+      "material_disagreement_detected": true,
+      "material_disagreement_missed_estimate": 0,
+      "deep_consensus_status": "UNRESOLVED",
+      "deep_consensus_stop_reason": "unresolved_after_targeted_challenge",
+      "deep_consensus_result": "The most serious problem is irreversible data loss with no safeguard. `git clean -xfd` force-deletes every untracked and ignored file in the repo (e.g. local configs, .env files, uncommitted new work, build artifacts someone cared about) without prompting. `git reset --hard origin/main` then discards any uncommitted changes to tracked files and rewrites the local branch to match origin/main, which also silently discards any local commits not yet pushed/merged if the current branch differs from or is ahead of origin/main. Neither command has an undo (clean especially \u2014 reflog won't help for untracked files), and the plan includes no confirmation, backup, stash, or check for uncommitted/unpushed work before running them. For an automated agent plan, this is dangerous: it should at minimum stash or verify a clean working tree first, and ideally avoid `-x` (which also wipes .gitignored files like local env/credentials) unless that's truly intended.\n\nCORRECTIONS APPLIED AFTER CROSS-CHECK (the narrative above may still reflect the original wording):\n- git clean -xfd behavior: corrected to 'deletes untracked and ignored files/dirs with no recovery' after cross-check\n- git reset --hard origin/main behavior: corrected to 'discards uncommitted changes and can discard unpushed local commits' after cross-check",
+      "deep_consensus_score": {
+        "verdict": "DEFECT_IDENTIFIED",
+        "markers_hit": [
+          "destructive",
+          "data loss",
+          "uncommitted",
+          "untracked",
+          "irreversible",
+          "discard"
+        ],
+        "markers_available": [
+          "destructive",
+          "data loss",
+          "lose",
+          "uncommitted",
+          "untracked",
+          "irreversible",
+          "no backup",
+          "unrecoverable",
+          "discard"
+        ],
+        "scored_as_factual_correctness": false
+      },
+      "deep_consensus_correct": "DEFECT_IDENTIFIED",
+      "error_caught_by_second_family": false,
+      "error_introduced_by_governor": false,
+      "false_disagreement": true,
+      "unresolved": true,
+      "has_unknowns": false,
+      "model_turns": 5,
+      "dc_model_turns": 4,
+      "wall_clock_ms": 109281.5,
+      "cross_family_real": true,
+      "pairing": {
+        "pairs_formed": 3,
+        "pairs_agreed": 0,
+        "pairs_conflicted": 3,
+        "material_one_sided": 2,
+        "pairing_missed_match_estimate": 0,
+        "pairing_missed_match_detail": [],
+        "note": "pairing_missed_match_estimate counts material one-sided claims from OPPOSITE slots whose values actually agree -- near-certain same-claim pairs the matcher failed to join. It is an estimate, reported separately and never folded into accuracy."
+      },
+      "provider_limit_event": [],
+      "dc_run_id": "dcr3_6f8d3f9253fa4eb5"
+    },
+    {
+      "case_id": "S4-DB-3-read-uncommitted",
+      "category": "database_migration_locking",
+      "scoring_kind": "BINARY",
+      "ground_truth": "PostgreSQL does not implement READ UNCOMMITTED distinctly; it behaves as READ COMMITTED. Only three distinct levels are implemented, so dirty reads do not occur.",
+      "ground_truth_source": "https://www.postgresql.org/docs/current/transaction-iso.html",
+      "baseline_model_requested": "claude-sonnet-5",
+      "baseline_model_reported": "claude-sonnet-5",
+      "baseline_ok": true,
+      "baseline_result": "No. PostgreSQL accepts `READ UNCOMMITTED` as a syntactic setting but silently maps it to `READ COMMITTED` behavior \u2014 it never allows dirty reads. Since Postgres's MVCC design makes dirty reads impossible (transactions only ever see committed row versions via snapshots), there's no mechanism to implement true read-uncommitted semantics. So effectively Postgres only has three distinct isolation levels in practice: Read Committed, Repeatable Read, and Serializable; Read Uncommitted is just an alias for Read Committed.",
+      "baseline_score": {
+        "verdict": "NO",
+        "expected_found": {
+          "read uncommitted behaviour": "read committed",
+          "dirty reads": "no"
+        },
+        "expected_missing": {},
+        "wrong_markers_present": [
+          "allows dirty reads"
+        ]
+      },
+      "baseline_correct": "NO",
+      "claude_initial_score": {
+        "verdict": "NO",
+        "expected_found": {
+          "read uncommitted behaviour": "read committed",
+          "dirty reads": "no"
+        },
+        "expected_missing": {},
+        "wrong_markers_present": [
+          "allows dirty reads"
+        ]
+      },
+      "grok_initial_score": {
+        "verdict": "NO",
+        "expected_found": {
+          "read uncommitted behaviour": "read committed",
+          "dirty reads": "no"
+        },
+        "expected_missing": {},
+        "wrong_markers_present": [
+          "allows dirty reads"
+        ]
+      },
+      "claude_initial_correct": "NO",
+      "grok_initial_correct": "NO",
+      "initial_models_agreed": false,
+      "initial_agreement_correct": null,
+      "material_disagreement_detected": true,
+      "material_disagreement_missed_estimate": 0,
+      "deep_consensus_status": "UNRESOLVED",
+      "deep_consensus_stop_reason": "unresolved_after_targeted_challenge",
+      "deep_consensus_result": "PostgreSQL does not implement true READ UNCOMMITTED. It is accepted as a valid isolation level name for SQL standard compatibility, but internally it is treated identically to READ COMMITTED. This is because PostgreSQL's MVCC architecture never allows a transaction to see uncommitted data from another transaction's writes \u2014 rows written by uncommitted transactions are simply not visible to other sessions. So setting the isolation level to READ UNCOMMITTED has no effect; you still only see committed data, with no dirty reads possible. The other levels (READ COMMITTED, REPEATABLE READ, SERIALIZABLE) are implemented with distinct behaviors using snapshot-based MVCC and, for SERIALIZABLE, predicate locking (SSI).\n\nCORRECTIONS APPLIED AFTER CROSS-CHECK (the narrative above may still reflect the original wording):\n- dirty-reads: corrected to 'never allowed' after cross-check\n\nUNRESOLVED -- the two models did not settle these:\n- read-uncommitted-support: A='accepted but mapped to READ COMMITTED' vs B='mapped to READ COMMITTED'",
+      "deep_consensus_score": {
+        "verdict": "NO",
+        "expected_found": {
+          "read uncommitted behaviour": "read committed",
+          "dirty reads": "no"
+        },
+        "expected_missing": {},
+        "wrong_markers_present": [
+          "allows dirty reads"
+        ]
+      },
+      "deep_consensus_correct": "NO",
+      "error_caught_by_second_family": false,
+      "error_introduced_by_governor": false,
+      "false_disagreement": false,
+      "unresolved": true,
+      "has_unknowns": false,
+      "model_turns": 5,
+      "dc_model_turns": 4,
+      "wall_clock_ms": 58264.9,
+      "cross_family_real": true,
+      "pairing": {
+        "pairs_formed": 2,
+        "pairs_agreed": 0,
+        "pairs_conflicted": 2,
+        "material_one_sided": 1,
+        "pairing_missed_match_estimate": 0,
+        "pairing_missed_match_detail": [],
+        "note": "pairing_missed_match_estimate counts material one-sided claims from OPPOSITE slots whose values actually agree -- near-certain same-claim pairs the matcher failed to join. It is an estimate, reported separately and never folded into accuracy."
+      },
+      "provider_limit_event": [],
+      "dc_run_id": "dcr3_58740c6ebce6424c"
+    },
+    {
+      "case_id": "S4-JV-4-virtual-thread-pooling",
+      "category": "java_spring",
+      "scoring_kind": "BINARY",
+      "ground_truth": "Virtual threads should NEVER be pooled -- each should represent a task, using Executors.newVirtualThreadPerTaskExecutor(). They suit IO-bound work that spends most of its time blocked, not long-running CPU-intensive work.",
+      "ground_truth_source": "https://docs.oracle.com/en/java/javase/21/core/virtual-threads.html",
+      "baseline_model_requested": "claude-sonnet-5",
+      "baseline_model_reported": "claude-sonnet-5",
+      "baseline_ok": true,
+      "baseline_result": "No \u2014 don't pool virtual threads in a fixed-size (or any bounded) executor. Create a new one per task via `Executors.newVirtualThreadPerTaskExecutor()`; they're cheap, unpooled, and meant to be discarded after use. Pooling them defeats their purpose and can cause artificial throughput limits/deadlocks under blocking loads.\n\nThey're best suited for IO-bound/blocking workloads (network calls, DB queries, file IO) with high concurrency, since blocking a virtual thread unmounts it from the carrier thread cheaply. For CPU-bound work, virtual threads offer no benefit over platform threads \u2014 use a fixed-size platform thread pool sized to CPU cores instead.",
+      "baseline_score": {
+        "verdict": "YES",
+        "expected_found": {
+          "pooling": "no",
+          "workload": "io"
+        },
+        "expected_missing": {},
+        "wrong_markers_present": []
+      },
+      "baseline_correct": "YES",
+      "claude_initial_score": {
+        "verdict": "YES",
+        "expected_found": {
+          "pooling": "should not",
+          "workload": "io"
+        },
+        "expected_missing": {},
+        "wrong_markers_present": []
+      },
+      "grok_initial_score": {
+        "verdict": "YES",
+        "expected_found": {
+          "pooling": "should not",
+          "workload": "io"
+        },
+        "expected_missing": {},
+        "wrong_markers_present": []
+      },
+      "claude_initial_correct": "YES",
+      "grok_initial_correct": "YES",
+      "initial_models_agreed": false,
+      "initial_agreement_correct": null,
+      "material_disagreement_detected": true,
+      "material_disagreement_missed_estimate": 0,
+      "deep_consensus_status": "UNRESOLVED",
+      "deep_consensus_stop_reason": "unresolved_after_targeted_challenge",
+      "deep_consensus_result": "No \u2014 virtual threads should not be placed in a fixed-size pool. They're cheap, lightweight, and designed to be created in huge numbers (often one per task/request) and discarded, so pooling defeats their purpose and can reintroduce the limited-concurrency problems platform-thread pools were meant to solve. Use Executors.newVirtualThreadPerTaskExecutor() instead of a fixed pool. Virtual threads shine for IO-bound or blocking work (network calls, DB queries, file IO) because the JVM can unmount a blocked virtual thread from its carrier platform thread, freeing that carrier for other work. They offer no benefit for CPU-bound work \u2014 a blocked carrier isn't the bottleneck there, so traditional fixed-size thread pools sized to CPU cores remain the better fit for CPU-bound tasks.\n\nCORRECTIONS APPLIED AFTER CROSS-CHECK (the narrative above may still reflect the original wording):\n- virtual-threads-creation-pattern: corrected to 'newVirtualThreadPerTaskExecutor' after cross-check\n- virtual-threads-suited-workload: corrected to 'IO-bound/blocking work (network, file, database)' after cross-check\n\nUNRESOLVED -- the two models did not settle these:\n- virtual-threads-pooling: A='do not pool virtual threads in fixed-size pool' vs B='do not pool'\n- cpu-bound-workload-fit: A='virtual threads offer no benefit for CPU-bound work' vs B='platform-thread pool sized to cores'",
+      "deep_consensus_score": {
+        "verdict": "YES",
+        "expected_found": {
+          "pooling": "should not",
+          "workload": "io"
+        },
+        "expected_missing": {},
+        "wrong_markers_present": []
+      },
+      "deep_consensus_correct": "YES",
+      "error_caught_by_second_family": false,
+      "error_introduced_by_governor": false,
+      "false_disagreement": true,
+      "unresolved": true,
+      "has_unknowns": false,
+      "model_turns": 5,
+      "dc_model_turns": 4,
+      "wall_clock_ms": 196304.6,
+      "cross_family_real": true,
+      "pairing": {
+        "pairs_formed": 4,
+        "pairs_agreed": 0,
+        "pairs_conflicted": 4,
+        "material_one_sided": 2,
+        "pairing_missed_match_estimate": 0,
+        "pairing_missed_match_detail": [],
+        "note": "pairing_missed_match_estimate counts material one-sided claims from OPPOSITE slots whose values actually agree -- near-certain same-claim pairs the matcher failed to join. It is an estimate, reported separately and never folded into accuracy."
+      },
+      "provider_limit_event": [],
+      "dc_run_id": "dcr3_c403b865731b47f2"
+    },
+    {
+      "case_id": "S4-SEC-3-bcrypt-salt-column",
+      "category": "security_auth",
+      "scoring_kind": "BINARY",
+      "ground_truth": "No separate salt column: the bcrypt output string already embeds the version, cost factor and salt, so verification reads the salt back out of the stored hash. OWASP recommends a work factor as large as the server allows, with a minimum of 10.",
+      "ground_truth_source": "https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html",
+      "baseline_model_requested": "claude-sonnet-5",
+      "baseline_model_reported": "claude-sonnet-5",
+      "baseline_ok": true,
+      "baseline_result": "No, you don't need a separate salt column. Bcrypt generates a random salt and embeds it directly in the output hash string (along with the algorithm version and cost factor), so the single stored hash is self-contained and verification extracts the salt automatically.\n\nOWASP's current recommendation is a minimum work factor of 10 for bcrypt, with higher values (e.g., 12+) encouraged if performance allows, adjusted over time as hardware gets faster.",
+      "baseline_score": {
+        "verdict": "YES",
+        "expected_found": {
+          "separate salt column": "no",
+          "work factor": "10"
+        },
+        "expected_missing": {},
+        "wrong_markers_present": []
+      },
+      "baseline_correct": "YES",
+      "claude_initial_score": {
+        "verdict": "YES",
+        "expected_found": {
+          "separate salt column": "no",
+          "work factor": "10"
+        },
+        "expected_missing": {},
+        "wrong_markers_present": []
+      },
+      "grok_initial_score": {
+        "verdict": "YES",
+        "expected_found": {
+          "separate salt column": "no",
+          "work factor": "10"
+        },
+        "expected_missing": {},
+        "wrong_markers_present": []
+      },
+      "claude_initial_correct": "YES",
+      "grok_initial_correct": "YES",
+      "initial_models_agreed": false,
+      "initial_agreement_correct": null,
+      "material_disagreement_detected": true,
+      "material_disagreement_missed_estimate": 0,
+      "deep_consensus_status": "UNRESOLVED",
+      "deep_consensus_stop_reason": "unresolved_after_targeted_challenge",
+      "deep_consensus_result": "No. Bcrypt generates a random salt and encodes it directly within the output hash string itself (format: $2b$<cost>$<22-char-salt><31-char-hash>). When verifying, the bcrypt library extracts the salt from the stored hash automatically, so you only need one column to store the full hash string\u2014no separate salt column required. For the work factor, OWASP's Password Storage Cheat Sheet recommends a minimum cost/work factor of 10 for bcrypt, noting that higher values increase computation time and improve resistance to brute-force attacks, but should be balanced against acceptable login latency and server load. Many implementations today use 12 or higher as a stronger default where performance allows.\n\nUNRESOLVED -- the two models did not settle these:\n- bcrypt_salt_storage: A='embedded in hash string, no separate column needed' vs B='embedded in hash string'",
+      "deep_consensus_score": {
+        "verdict": "YES",
+        "expected_found": {
+          "separate salt column": "no",
+          "work factor": "10"
+        },
+        "expected_missing": {},
+        "wrong_markers_present": []
+      },
+      "deep_consensus_correct": "YES",
+      "error_caught_by_second_family": false,
+      "error_introduced_by_governor": false,
+      "false_disagreement": true,
+      "unresolved": true,
+      "has_unknowns": false,
+      "model_turns": 5,
+      "dc_model_turns": 4,
+      "wall_clock_ms": 66542.8,
+      "cross_family_real": true,
+      "pairing": {
+        "pairs_formed": 2,
+        "pairs_agreed": 1,
+        "pairs_conflicted": 1,
+        "material_one_sided": 4,
+        "pairing_missed_match_estimate": 0,
+        "pairing_missed_match_detail": [],
+        "note": "pairing_missed_match_estimate counts material one-sided claims from OPPOSITE slots whose values actually agree -- near-certain same-claim pairs the matcher failed to join. It is an estimate, reported separately and never folded into accuracy."
+      },
+      "provider_limit_event": [],
+      "dc_run_id": "dcr3_c4db371358e74f66"
+    }
+  ]
+}

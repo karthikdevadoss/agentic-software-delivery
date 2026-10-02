@@ -192,3 +192,45 @@ worth it.
   (`BL-030`) found and fixed a genuine bug in code adjacent to, not
   inside, its declared scope -- a hard exclusive-lock model would have
   blocked that.
+
+### Phase 4: a substantial item carries a Mission Card, and a retro ends in a continuation state (added 2026-10-02, Owner directive)
+
+Phases 1-3 made the system good at asking *how big is this and did we estimate
+it right*. They never asked *should this be done at all, and should the next one
+happen*. Phase 4 adds exactly that, and nothing else — no new tracker, no new
+agent, no new skill, no new dashboard.
+
+**On admission.** A **substantial** platform item (LARGE or XLARGE, or any item
+that opens or continues a multi-sprint programme) carries a `mission_card`
+object with the eleven fields defined in CLAUDE.md's "Mission value gate" and in
+docs/BACKLOG.json's `_mission_card`. SMALL and MEDIUM items do not need one —
+the overhead would exceed the decision's value, and that trade-off is itself the
+non-waste rule applied to this rule. An item whose honest answer to "hiring
+audience" is *none — enabling work* is legitimate; state it rather than
+inventing a recruiter story for a maintenance task.
+
+**On close-out.** Every retro already reports engineering quality, verification
+quality, estimate vs. actual, lessons and action items in the fixed three
+sections. It now also answers, explicitly and last:
+
+> **Mission value.** What did this sprint actually prove or produce, and what is
+> harvestable right now?
+>
+> **Does another sprint on this beat the next-best use of the same calendar
+> time?** Past effort is not an input to this answer.
+>
+> **Continuation state.** Exactly one of `CONTINUE` / `REDIRECT` /
+> `STOPPED_BY_RULE` / `NEEDS_OWNER_GOAL_REVIEW`.
+
+A continuation state is a **record**, not an instruction: `CONTINUE` does not
+authorize the next sprint by itself, because sizing the next task still waits on
+the Owner's approval of this retro's action items (Phase 2). The state exists so
+that the question was demonstrably asked at the boundary, in writing, before
+momentum answered it.
+
+**And preserve this finding, because it is the reason Phase 4 exists:**
+principles unattached to decision boundaries can remain correct while being
+operationally ineffective. Non-waste and non-attachment were written down,
+believed and followed as values through six sprints of a programme whose thesis
+was never going to close — and stopped nothing, because no boundary evaluated
+them. See docs/CONSTITUTION.md §19 and the governance entry in docs/DECISIONS.md.

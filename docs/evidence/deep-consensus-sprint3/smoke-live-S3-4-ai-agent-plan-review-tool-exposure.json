@@ -1,0 +1,459 @@
+{
+  "case": {
+    "case_id": "S3-4-ai-agent-plan-review-tool-exposure",
+    "category": "AI agent plan review",
+    "question": "An engineer proposes an MCP server for a multi-model review tool that exposes six tools: answer_a, answer_b, review, synthesize, converge and stop, so the host model can drive the pipeline step by step and skip stages it judges unnecessary. Review this plan. What is the most serious design problem? Under 120 words.",
+    "expected_answer": "Exposing every stage as a separate tool removes the governance. A host that can call the stages individually can call review without obtaining both independent answers, can skip the governor and its stop rules, and can run its own loop -- so every invariant the system claims (independence, bounded termination, preserved disagreement) becomes optional. The stages should be internal, with one public entry point.",
+    "expected_claims": {
+      "most serious problem": "host can bypass the governor / invariants become optional",
+      "recommended fix": "single public tool, stages internal"
+    },
+    "source_url": "Design-judgement case; graded against this project's own documented architecture decision (docs/DEEP_CONSENSUS_SPRINT1.md, section 'WHY ONE TOOL AND NOT SEVEN') rather than against an external standard.",
+    "source_quote": "\"A host that can call the stages individually can call review without ever calling answer_b, can skip the governor, can run the loop itself without a stop rule -- and every invariant this package claims becomes a suggestion.\"",
+    "source_accessed": "2026-10-01",
+    "wrong_answer_to_watch_for": "Answers that focus only on API ergonomics, naming, or token cost and miss the bypassable-governance problem.",
+    "notes": "HONEST CAVEAT: this is the one case whose ground truth is a design judgement, not a documented fact, and the reference answer is this project's own position. It is therefore the weakest of the five and must not be scored as if it were objective. It is included because the approval asks for an agent-plan-review case."
+  },
+  "same_family_only": false,
+  "cross_family_real": true,
+  "workers": {
+    "A": {
+      "account": {
+        "family": "anthropic",
+        "transport": "CLAUDE_SUBSCRIPTION_CLI",
+        "billing": "SUBSCRIPTION",
+        "terms_status": "CONSUMER_SUBSCRIPTION_TERMS",
+        "data_label": "consumer subscription transport; retention and training behaviour are governed by the provider and by the user's own account settings; confidentiality is NOT asserted by Deep Consensus",
+        "configured_model": "claude-sonnet-5",
+        "auth_verified": "VERIFIED_SUBSCRIPTION",
+        "eligible_for_p0": true
+      },
+      "requested_model": "claude-sonnet-5",
+      "role": "voter",
+      "enabled": true
+    },
+    "B": {
+      "account": {
+        "family": "xai",
+        "transport": "GROK_SUBSCRIPTION_CLI",
+        "billing": "SUBSCRIPTION",
+        "terms_status": "CONSUMER_SUBSCRIPTION_TERMS",
+        "data_label": "consumer subscription transport (grok.com OIDC login); retention and training behaviour are governed by xAI and by the account's own coding-data-retention setting; confidentiality is NOT asserted by Deep Consensus",
+        "configured_model": "grok-4.6",
+        "auth_verified": "VERIFIED_SUBSCRIPTION",
+        "eligible_for_p0": true
+      },
+      "requested_model": "grok-4.6",
+      "role": "voter",
+      "enabled": true
+    }
+  },
+  "status": "UNRESOLVED",
+  "stop_reason": "no_material_disagreement_early_stop",
+  "subscription_turns": 2,
+  "max_provider_calls": 4,
+  "elapsed_ms": 63037.6,
+  "governed_answer": "The most serious problem is that stage sequencing and 'skip if unnecessary' judgment are delegated to the host LLM itself, via six independently callable tools, rather than enforced by the server. The whole value of a multi-model review pipeline comes from mandatory independent answers, cross-review, and convergence happening before a result is trusted. If the host model (which may be biased, lazy, or wrong) can call 'synthesize' or 'stop' without having invoked 'review' or 'converge', it can short-circuit the exact checks meant to catch its own errors, with nothing enforcing ordering or completeness. The server should own orchestration (a single stateful tool or enforced state machine with mandatory transitions), not expose six independently callable, skippable steps and trust the orchestrated model's judgment about when checks are 'unnecessary'.",
+  "agreed_claims": [],
+  "corrected_claims": [],
+  "unresolved_claims": [],
+  "unknown_claims": [],
+  "one_sided_claims": [
+    {
+      "relationship": "ONE_SIDED",
+      "type": "RECOMMENDATION",
+      "subject": "fix",
+      "state": "",
+      "material": true,
+      "a": {
+        "claim_id": "c2",
+        "type": "RECOMMENDATION",
+        "subject": "fix",
+        "value": "server-enforced orchestration",
+        "text": "The server, not the host model, should enforce mandatory stage ordering (e.g. via a single orchestrating tool or a state machine), rather than exposing six freely callable, skippable tools.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "A",
+        "material": true
+      },
+      "b": null,
+      "resolution_detail": {}
+    },
+    {
+      "relationship": "ONE_SIDED",
+      "type": "FACT",
+      "subject": "proposed tool surface",
+      "state": "",
+      "material": true,
+      "a": null,
+      "b": {
+        "claim_id": "c1",
+        "type": "FACT",
+        "subject": "proposed tool surface",
+        "value": "six host-invoked stage tools",
+        "text": "The plan exposes answer_a, answer_b, review, synthesize, converge, and stop as separate MCP tools the host calls one stage at a time.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "B",
+        "material": true
+      },
+      "resolution_detail": {}
+    },
+    {
+      "relationship": "ONE_SIDED",
+      "type": "RECOMMENDATION",
+      "subject": "MCP tool design",
+      "state": "",
+      "material": true,
+      "a": null,
+      "b": {
+        "claim_id": "c6",
+        "type": "RECOMMENDATION",
+        "subject": "MCP tool design",
+        "value": "one server-orchestrated tool",
+        "text": "Collapse the pipeline into one (or few) server-run tool(s) that always fan out A/B, then review and synthesize.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "B",
+        "material": true
+      },
+      "resolution_detail": {}
+    }
+  ],
+  "pairings": [
+    {
+      "relationship": "ONE_SIDED",
+      "type": "REASONING",
+      "subject": "design-flaw",
+      "state": "",
+      "material": false,
+      "a": {
+        "claim_id": "c1",
+        "type": "REASONING",
+        "subject": "design-flaw",
+        "value": "host-controlled skip logic undermines pipeline integrity",
+        "text": "Allowing the host model to decide which of the six pipeline stages to skip removes the guarantee of independent review and convergence that gives the tool its value.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "A",
+        "material": false
+      },
+      "b": null,
+      "resolution_detail": {}
+    },
+    {
+      "relationship": "ONE_SIDED",
+      "type": "RECOMMENDATION",
+      "subject": "fix",
+      "state": "",
+      "material": true,
+      "a": {
+        "claim_id": "c2",
+        "type": "RECOMMENDATION",
+        "subject": "fix",
+        "value": "server-enforced orchestration",
+        "text": "The server, not the host model, should enforce mandatory stage ordering (e.g. via a single orchestrating tool or a state machine), rather than exposing six freely callable, skippable tools.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "A",
+        "material": true
+      },
+      "b": null,
+      "resolution_detail": {}
+    },
+    {
+      "relationship": "ONE_SIDED",
+      "type": "REASONING",
+      "subject": "conflict-of-interest",
+      "state": "",
+      "material": false,
+      "a": {
+        "claim_id": "c3",
+        "type": "REASONING",
+        "subject": "conflict-of-interest",
+        "value": "model judging its own process is a conflict of interest",
+        "text": "Letting the same model whose answers are being reviewed decide whether review/convergence steps are 'necessary' creates a conflict of interest that can be exploited to bypass scrutiny.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "A",
+        "material": false
+      },
+      "b": null,
+      "resolution_detail": {}
+    },
+    {
+      "relationship": "ONE_SIDED",
+      "type": "FACT",
+      "subject": "proposed tool surface",
+      "state": "",
+      "material": true,
+      "a": null,
+      "b": {
+        "claim_id": "c1",
+        "type": "FACT",
+        "subject": "proposed tool surface",
+        "value": "six host-invoked stage tools",
+        "text": "The plan exposes answer_a, answer_b, review, synthesize, converge, and stop as separate MCP tools the host calls one stage at a time.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "B",
+        "material": true
+      },
+      "resolution_detail": {}
+    },
+    {
+      "relationship": "ONE_SIDED",
+      "type": "REASONING",
+      "subject": "most serious design problem",
+      "state": "",
+      "material": false,
+      "a": null,
+      "b": {
+        "claim_id": "c2",
+        "type": "REASONING",
+        "subject": "most serious design problem",
+        "value": "host-controlled skippable pipeline",
+        "text": "The most serious problem is inverted control: the host can skip or reorder the stages that exist to independently check and merge answers.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "B",
+        "material": false
+      },
+      "resolution_detail": {}
+    },
+    {
+      "relationship": "ONE_SIDED",
+      "type": "REASONING",
+      "subject": "independence of review",
+      "state": "",
+      "material": false,
+      "a": null,
+      "b": {
+        "claim_id": "c3",
+        "type": "REASONING",
+        "subject": "independence of review",
+        "value": "optional review defeats the tool",
+        "text": "If the host may skip review, synthesize, or converge, independent checking becomes optional and earlier outputs can contaminate later stages.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "B",
+        "material": false
+      },
+      "resolution_detail": {}
+    },
+    {
+      "relationship": "ONE_SIDED",
+      "type": "REASONING",
+      "subject": "host as orchestrator",
+      "state": "",
+      "material": false,
+      "a": null,
+      "b": {
+        "claim_id": "c4",
+        "type": "REASONING",
+        "subject": "host as orchestrator",
+        "value": "unreliable and high-latency",
+        "text": "LLMs are unreliable workflow engines and each tool hop adds round-trip latency versus a server-owned fan-out of A and B.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "B",
+        "material": false
+      },
+      "resolution_detail": {}
+    },
+    {
+      "relationship": "ONE_SIDED",
+      "type": "REASONING",
+      "subject": "stop tool",
+      "state": "",
+      "material": false,
+      "a": null,
+      "b": {
+        "claim_id": "c5",
+        "type": "REASONING",
+        "subject": "stop tool",
+        "value": "redundant",
+        "text": "A stop tool is unnecessary in MCP because the host ends the loop by making no further tool calls.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "B",
+        "material": false
+      },
+      "resolution_detail": {}
+    },
+    {
+      "relationship": "ONE_SIDED",
+      "type": "RECOMMENDATION",
+      "subject": "MCP tool design",
+      "state": "",
+      "material": true,
+      "a": null,
+      "b": {
+        "claim_id": "c6",
+        "type": "RECOMMENDATION",
+        "subject": "MCP tool design",
+        "value": "one server-orchestrated tool",
+        "text": "Collapse the pipeline into one (or few) server-run tool(s) that always fan out A/B, then review and synthesize.",
+        "source_cited": null,
+        "source_verification": "UNVERIFIED",
+        "evidence_type": "MODEL_ONLY",
+        "slot": "B",
+        "material": true
+      },
+      "resolution_detail": {}
+    }
+  ],
+  "answers": {
+    "A": {
+      "slot": "A",
+      "parse_status": "ok",
+      "verdict": "The real flaw is handing control-flow for the pipeline's integrity checks to the very model being checked, letting it skip the steps that exist to catch its own errors.",
+      "answer": "The most serious problem is that stage sequencing and 'skip if unnecessary' judgment are delegated to the host LLM itself, via six independently callable tools, rather than enforced by the server. The whole value of a multi-model review pipeline comes from mandatory independent answers, cross-review, and convergence happening before a result is trusted. If the host model (which may be biased, lazy, or wrong) can call 'synthesize' or 'stop' without having invoked 'review' or 'converge', it can short-circuit the exact checks meant to catch its own errors, with nothing enforcing ordering or completeness. The server should own orchestration (a single stateful tool or enforced state machine with mandatory transitions), not expose six independently callable, skippable steps and trust the orchestrated model's judgment about when checks are 'unnecessary'.",
+      "claims": [
+        {
+          "claim_id": "c1",
+          "type": "REASONING",
+          "subject": "design-flaw",
+          "value": "host-controlled skip logic undermines pipeline integrity",
+          "text": "Allowing the host model to decide which of the six pipeline stages to skip removes the guarantee of independent review and convergence that gives the tool its value.",
+          "source_cited": null,
+          "source_verification": "UNVERIFIED",
+          "evidence_type": "MODEL_ONLY",
+          "slot": "A",
+          "material": false
+        },
+        {
+          "claim_id": "c2",
+          "type": "RECOMMENDATION",
+          "subject": "fix",
+          "value": "server-enforced orchestration",
+          "text": "The server, not the host model, should enforce mandatory stage ordering (e.g. via a single orchestrating tool or a state machine), rather than exposing six freely callable, skippable tools.",
+          "source_cited": null,
+          "source_verification": "UNVERIFIED",
+          "evidence_type": "MODEL_ONLY",
+          "slot": "A",
+          "material": true
+        },
+        {
+          "claim_id": "c3",
+          "type": "REASONING",
+          "subject": "conflict-of-interest",
+          "value": "model judging its own process is a conflict of interest",
+          "text": "Letting the same model whose answers are being reviewed decide whether review/convergence steps are 'necessary' creates a conflict of interest that can be exploited to bypass scrutiny.",
+          "source_cited": null,
+          "source_verification": "UNVERIFIED",
+          "evidence_type": "MODEL_ONLY",
+          "slot": "A",
+          "material": false
+        }
+      ],
+      "uncertainties": [
+        "No specifics were given about the intended use case or trust model for the host, so I inferred the core risk from general multi-agent pipeline design principles rather than from stated requirements.",
+        "I cannot verify whether the engineer intended some external enforcement (e.g., a wrapper validating call sequences) that wasn't mentioned in the prompt."
+      ]
+    },
+    "B": {
+      "slot": "B",
+      "parse_status": "ok",
+      "verdict": "Host-driven skippable stage tools invert control and make independent review optional.",
+      "answer": "The worst flaw is inverted control: six skippable tools make the host the pipeline. Multi-model review needs independent A/B work plus mandatory review/synthesize/converge. The host can skip or reorder those stages, leak earlier outputs into later calls, and drop state. Models are weak orchestrators; each hop adds latency. stop is redundant\u2014the host simply ends. Expose one server-run tool that fans out A/B, then always reviews and synthesizes.",
+      "claims": [
+        {
+          "claim_id": "c1",
+          "type": "FACT",
+          "subject": "proposed tool surface",
+          "value": "six host-invoked stage tools",
+          "text": "The plan exposes answer_a, answer_b, review, synthesize, converge, and stop as separate MCP tools the host calls one stage at a time.",
+          "source_cited": null,
+          "source_verification": "UNVERIFIED",
+          "evidence_type": "MODEL_ONLY",
+          "slot": "B",
+          "material": true
+        },
+        {
+          "claim_id": "c2",
+          "type": "REASONING",
+          "subject": "most serious design problem",
+          "value": "host-controlled skippable pipeline",
+          "text": "The most serious problem is inverted control: the host can skip or reorder the stages that exist to independently check and merge answers.",
+          "source_cited": null,
+          "source_verification": "UNVERIFIED",
+          "evidence_type": "MODEL_ONLY",
+          "slot": "B",
+          "material": false
+        },
+        {
+          "claim_id": "c3",
+          "type": "REASONING",
+          "subject": "independence of review",
+          "value": "optional review defeats the tool",
+          "text": "If the host may skip review, synthesize, or converge, independent checking becomes optional and earlier outputs can contaminate later stages.",
+          "source_cited": null,
+          "source_verification": "UNVERIFIED",
+          "evidence_type": "MODEL_ONLY",
+          "slot": "B",
+          "material": false
+        },
+        {
+          "claim_id": "c4",
+          "type": "REASONING",
+          "subject": "host as orchestrator",
+          "value": "unreliable and high-latency",
+          "text": "LLMs are unreliable workflow engines and each tool hop adds round-trip latency versus a server-owned fan-out of A and B.",
+          "source_cited": null,
+          "source_verification": "UNVERIFIED",
+          "evidence_type": "MODEL_ONLY",
+          "slot": "B",
+          "material": false
+        },
+        {
+          "claim_id": "c5",
+          "type": "REASONING",
+          "subject": "stop tool",
+          "value": "redundant",
+          "text": "A stop tool is unnecessary in MCP because the host ends the loop by making no further tool calls.",
+          "source_cited": null,
+          "source_verification": "UNVERIFIED",
+          "evidence_type": "MODEL_ONLY",
+          "slot": "B",
+          "material": false
+        },
+        {
+          "claim_id": "c6",
+          "type": "RECOMMENDATION",
+          "subject": "MCP tool design",
+          "value": "one server-orchestrated tool",
+          "text": "Collapse the pipeline into one (or few) server-run tool(s) that always fan out A/B, then review and synthesize.",
+          "source_cited": null,
+          "source_verification": "UNVERIFIED",
+          "evidence_type": "MODEL_ONLY",
+          "slot": "B",
+          "material": true
+        }
+      ],
+      "uncertainties": [
+        "No concrete codebase, MCP spec citation, or measured latency was available; this is a first-principles design review of the stated plan."
+      ]
+    }
+  },
+  "independence_warning": "Independent model agreement is not external verification.",
+  "evidence_type": "MODEL_ONLY",
+  "metrics_deliberately_not_computed": [
+    "initial correctness per FAMILY",
+    "errors caught by the SECOND family",
+    "errors introduced by cross-family reconciliation"
+  ],
+  "cross_family_note": "Cross-family run: slot A anthropic, slot B xai, both real subscription transports. Agreement here is between two independent model families -- which is still NOT external verification.",
+  "metrics_omitted_because_same_family": false
+}

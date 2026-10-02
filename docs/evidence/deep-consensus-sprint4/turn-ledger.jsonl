@@ -1,0 +1,33 @@
+{"kind": "reserve", "purpose": "case:S4-DB-1-create-index-lock", "turns": 5}
+{"family": "anthropic", "kind": "turns", "purpose": "baseline:S4-DB-1-create-index-lock", "turns": 1}
+{"family": "anthropic", "kind": "turns", "purpose": "dc-A:S4-DB-1-create-index-lock", "turns": 1}
+{"family": "xai", "kind": "turns", "purpose": "dc-B:S4-DB-1-create-index-lock", "turns": 1}
+{"kind": "release", "reason": "unused turns for S4-DB-1-create-index-lock", "turns": 2}
+{"kind": "reserve", "purpose": "case:S4-JV-1-self-invocation", "turns": 5}
+{"family": "anthropic", "kind": "turns", "purpose": "baseline:S4-JV-1-self-invocation", "turns": 1}
+{"family": "anthropic", "kind": "turns", "purpose": "dc-A:S4-JV-1-self-invocation", "turns": 2}
+{"family": "xai", "kind": "turns", "purpose": "dc-B:S4-JV-1-self-invocation", "turns": 2}
+{"kind": "reserve", "purpose": "case:S4-SEC-1-jwt-alg-none", "turns": 5}
+{"family": "anthropic", "kind": "turns", "purpose": "baseline:S4-SEC-1-jwt-alg-none", "turns": 1}
+{"family": "anthropic", "kind": "turns", "purpose": "dc-A:S4-SEC-1-jwt-alg-none", "turns": 2}
+{"family": "xai", "kind": "turns", "purpose": "dc-B:S4-SEC-1-jwt-alg-none", "turns": 2}
+{"kind": "reserve", "purpose": "case:S4-VER-1-spring-boot-java-baseline", "turns": 5}
+{"family": "anthropic", "kind": "turns", "purpose": "baseline:S4-VER-1-spring-boot-java-baseline", "turns": 1}
+{"family": "anthropic", "kind": "turns", "purpose": "dc-A:S4-VER-1-spring-boot-java-baseline", "turns": 2}
+{"family": "xai", "kind": "turns", "purpose": "dc-B:S4-VER-1-spring-boot-java-baseline", "turns": 2}
+{"kind": "reserve", "purpose": "case:S4-AP-2-destructive-without-guard", "turns": 5}
+{"family": "anthropic", "kind": "turns", "purpose": "baseline:S4-AP-2-destructive-without-guard", "turns": 1}
+{"family": "anthropic", "kind": "turns", "purpose": "dc-A:S4-AP-2-destructive-without-guard", "turns": 2}
+{"family": "xai", "kind": "turns", "purpose": "dc-B:S4-AP-2-destructive-without-guard", "turns": 2}
+{"kind": "reserve", "purpose": "case:S4-DB-3-read-uncommitted", "turns": 5}
+{"family": "anthropic", "kind": "turns", "purpose": "baseline:S4-DB-3-read-uncommitted", "turns": 1}
+{"family": "anthropic", "kind": "turns", "purpose": "dc-A:S4-DB-3-read-uncommitted", "turns": 2}
+{"family": "xai", "kind": "turns", "purpose": "dc-B:S4-DB-3-read-uncommitted", "turns": 2}
+{"kind": "reserve", "purpose": "case:S4-JV-4-virtual-thread-pooling", "turns": 5}
+{"family": "anthropic", "kind": "turns", "purpose": "baseline:S4-JV-4-virtual-thread-pooling", "turns": 1}
+{"family": "anthropic", "kind": "turns", "purpose": "dc-A:S4-JV-4-virtual-thread-pooling", "turns": 2}
+{"family": "xai", "kind": "turns", "purpose": "dc-B:S4-JV-4-virtual-thread-pooling", "turns": 2}
+{"kind": "reserve", "purpose": "case:S4-SEC-3-bcrypt-salt-column", "turns": 5}
+{"family": "anthropic", "kind": "turns", "purpose": "baseline:S4-SEC-3-bcrypt-salt-column", "turns": 1}
+{"family": "anthropic", "kind": "turns", "purpose": "dc-A:S4-SEC-3-bcrypt-salt-column", "turns": 2}
+{"family": "xai", "kind": "turns", "purpose": "dc-B:S4-SEC-3-bcrypt-salt-column", "turns": 2}

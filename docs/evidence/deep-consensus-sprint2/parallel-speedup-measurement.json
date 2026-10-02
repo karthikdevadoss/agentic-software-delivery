@@ -1,0 +1,70 @@
+{
+  "question_chars": 233,
+  "model_a": "claude-sonnet-5",
+  "model_b": "claude-haiku-4-5-20251001",
+  "cross_family_real": false,
+  "same_family_timing_only": true,
+  "arms": {
+    "sequential": {
+      "run_id": "dcr_e5609164ff264cb8",
+      "elapsed_ms": 40053.9,
+      "provider_calls": 4,
+      "status": "UNRESOLVED",
+      "stop_reason": "review_round_limit",
+      "tokens": {
+        "input": 2061,
+        "output": 3194,
+        "total": 5255
+      }
+    },
+    "parallel": {
+      "run_id": "dcr_ab9d6c5bbed341ba",
+      "elapsed_ms": 22470.3,
+      "provider_calls": 4,
+      "status": "UNRESOLVED",
+      "stop_reason": "unresolved_after_final_round",
+      "tokens": {
+        "input": 1936,
+        "output": 3116,
+        "total": 5052
+      }
+    }
+  },
+  "observed_ratio_sequential_over_parallel": 1.783,
+  "n_per_arm": 1,
+  "generalisation_warning": "N=1 per arm. Enough to show the stages were actually parallelised; NOT enough to publish a speedup figure as a property of the system.",
+  "round_2_reachability": {
+    "second_round_elapsed_ceiling_seconds": 25.0,
+    "ceiling_origin": "governor.SECOND_ROUND_ELAPSED_CEILING_SECONDS",
+    "max_elapsed_seconds": 60.0,
+    "deadline_origin": "governor.MAX_ELAPSED_SECONDS",
+    "sequential_elapsed_s": 40.054,
+    "parallel_elapsed_s": 22.47,
+    "estimated_one_more_stage_s": 11.235,
+    "reachable_sequential": false,
+    "reachable_parallel": true,
+    "calculation": "round 2 is permitted only while elapsed < 25s AND the 60s deadline can still be met. sequential=40.05s vs parallel=22.47s."
+  },
+  "spend": {
+    "ledger_before": {
+      "real_calls_used": 8,
+      "reserved_calls_outstanding": 0,
+      "calls_committed": 8,
+      "max_real_provider_calls": 30,
+      "known_spend_usd": 0.05279,
+      "max_known_provider_spend_usd": 2.0,
+      "unknown_cost_calls": 0
+    },
+    "ledger_after": {
+      "real_calls_used": 16,
+      "reserved_calls_outstanding": 0,
+      "calls_committed": 16,
+      "max_real_provider_calls": 30,
+      "known_spend_usd": 0.113326,
+      "max_known_provider_spend_usd": 2.0,
+      "unknown_cost_calls": 0
+    },
+    "calls_used_by_this_measurement": 8,
+    "known_spend_by_this_measurement_usd": 0.060536
+  }
+}

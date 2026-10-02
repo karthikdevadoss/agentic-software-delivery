@@ -1,0 +1,491 @@
+{
+  "generated_at": "2026-10-02T08:22:20.144542+00:00",
+  "what_this_answers": "Does the CURRENT governor and the CURRENT scorer treat the real Sprint-5 recorded model output the same way the Sprint-5 engine did? It does NOT answer whether the models would still say this.",
+  "source": {
+    "results": "C:\\Users\\Hemapriya\\agentic-software-delivery\\docs\\evidence\\deep-consensus-sprint5\\sprint5-rerun-results.json",
+    "transcripts": "C:\\Users\\Hemapriya\\agentic-software-delivery\\docs\\evidence\\deep-consensus-sprint5\\transcripts.jsonl",
+    "recorded_turns": 31,
+    "recorded_runs": 8
+  },
+  "engine_fingerprint": {
+    "files": {
+      "claim_review.py": "3b2b655a0a286d17",
+      "claim_engine.py": "855141238a572a39",
+      "typed_values.py": "aabb0e5a9a4e78d7",
+      "candidates.py": "cddd38e519386350",
+      "outcomes.py": "a4d801a31626c808",
+      "transcripts.py": "f0c662323c92a49d"
+    },
+    "combined": "7e0c9beb278520f1"
+  },
+  "runs_replayed": 8,
+  "runs_compared": 8,
+  "replay_diverged_count": 0,
+  "replay_diverged_runs": [],
+  "difference_count": 6,
+  "explained_count": 6,
+  "defect_count": 0,
+  "defects": [],
+  "explained": [
+    {
+      "run_id": "dcr5_f23c0db1c19b44c6",
+      "case_id": "S4-SEC-1-jwt-alg-none",
+      "dimension": "scoring_outcome",
+      "field": "expected_found",
+      "old": {
+        "is it safe": "no",
+        "requirement": "pin"
+      },
+      "new": {
+        "is it safe": "no"
+      },
+      "classification": "EXPLAINED",
+      "rule": "scorer_substring_credit_withdrawn",
+      "reason": "the Sprint-6 scorer fix withdrew credit for an accepted value that was only present INSIDE a larger word, never asserted: 'pin' for 'requirement' (credit withdrawn). Verified against the recorded text, not assumed."
+    },
+    {
+      "run_id": "dcr5_f23c0db1c19b44c6",
+      "case_id": "S4-SEC-1-jwt-alg-none",
+      "dimension": "scoring_outcome",
+      "field": "expected_missing",
+      "old": {},
+      "new": {
+        "requirement": [
+          "specify",
+          "allowlist",
+          "allow list",
+          "expected algorithm",
+          "supported set",
+          "pin"
+        ]
+      },
+      "classification": "EXPLAINED",
+      "rule": "scorer_substring_credit_withdrawn",
+      "reason": "a consequence of the withdrawn substring credit for 'pin' on this same case: once that value is no longer credited, this field necessarily moves with it"
+    },
+    {
+      "run_id": "dcr5_f23c0db1c19b44c6",
+      "case_id": "S4-SEC-1-jwt-alg-none",
+      "dimension": "scoring_outcome",
+      "field": "verdict",
+      "old": "CORRECT_COMPLETE",
+      "new": "CORRECT_INCOMPLETE",
+      "classification": "EXPLAINED",
+      "rule": "scorer_substring_credit_withdrawn",
+      "reason": "a consequence of the withdrawn substring credit for 'pin' on this same case: once that value is no longer credited, this field necessarily moves with it"
+    },
+    {
+      "run_id": "dcr5_67d154fa1bc848e0",
+      "case_id": "S4-VER-1-spring-boot-java-baseline",
+      "dimension": "scoring_outcome",
+      "field": "expected_found",
+      "old": {
+        "minimum java": "17",
+        "maximum java": "26"
+      },
+      "new": {
+        "minimum java": "17"
+      },
+      "classification": "EXPLAINED",
+      "rule": "scorer_substring_credit_withdrawn",
+      "reason": "the Sprint-6 scorer fix withdrew credit for an accepted value that was only present INSIDE a larger word, never asserted: '26' for 'maximum java' (credit withdrawn). Verified against the recorded text, not assumed."
+    },
+    {
+      "run_id": "dcr5_67d154fa1bc848e0",
+      "case_id": "S4-VER-1-spring-boot-java-baseline",
+      "dimension": "scoring_outcome",
+      "field": "expected_missing",
+      "old": {
+        "spring boot version": [
+          "4.1",
+          "4.1.1"
+        ]
+      },
+      "new": {
+        "maximum java": [
+          "26"
+        ],
+        "spring boot version": [
+          "4.1",
+          "4.1.1"
+        ]
+      },
+      "classification": "EXPLAINED",
+      "rule": "scorer_substring_credit_withdrawn",
+      "reason": "a consequence of the withdrawn substring credit for '26' on this same case: once that value is no longer credited, this field necessarily moves with it"
+    },
+    {
+      "run_id": "dcr5_f937d6237a8c4e39",
+      "case_id": "S4-DB-3-read-uncommitted",
+      "dimension": "scoring_outcome",
+      "field": "expected_found",
+      "old": {
+        "read uncommitted behaviour": "read committed",
+        "dirty reads": "no"
+      },
+      "new": {
+        "read uncommitted behaviour": "read committed",
+        "dirty reads": "never"
+      },
+      "classification": "EXPLAINED",
+      "rule": "scorer_substring_credit_withdrawn",
+      "reason": "the Sprint-6 scorer fix withdrew credit for an accepted value that was only present INSIDE a larger word, never asserted: 'no' for 'dirty reads' (now satisfied by 'never'). Verified against the recorded text, not assumed."
+    }
+  ],
+  "compared_dimensions": [
+    "paired_claims",
+    "typed_comparison_verdict",
+    "one_sided_routing",
+    "claim_state",
+    "convergence_state",
+    "cross_check_ledger",
+    "scoring_outcome",
+    "call_pattern",
+    "governed_answer"
+  ],
+  "classification_rules": [
+    "scorer_negation_fix",
+    "scorer_substring_credit_withdrawn",
+    "identity_key_fix"
+  ],
+  "corpus_coverage": {
+    "pairings_total": 50,
+    "runs_with_identity_key_collisions": 0,
+    "identity_key_collisions": {},
+    "note": "A colliding normalised subject is the ONLY condition the identity-key fix acts on. Where the count above is zero, this replay provides NO evidence about that fix on this corpus -- it shows the fix changed nothing here because it could not apply, which is a different statement from the fix being correct. Fresh cases that actually collide are needed for that, and this report must not be cited as covering it."
+  },
+  "classification_policy": "FAILS CLOSED. A difference is EXPLAINED only when a named rule inspected the real values and returned a reason; everything else is a DEFECT. There is no rule of last resort.",
+  "model_calls": 0,
+  "model_calls_assertion": "0, asserted not claimed: every provider was a transcripts.ReplaySource, and cli_transport.run_cli -- the only function in this package through which a live subscription turn can leave the process -- was replaced for the duration of the replay by a counter that raises. The value above is that real counter. Honest limit: it proves nothing left via run_cli, which is the only exit this package has today.",
+  "live_call_attempts": 0,
+  "verdict": "EXPLAINED_ONLY",
+  "runs": [
+    {
+      "run_id": "dcr5_500d1cc3986d40e7",
+      "case_id": "S4-DB-1-create-index-lock",
+      "recorded_turns": 3,
+      "recorded_turns_by_slot": {
+        "A": 2,
+        "B": 1
+      },
+      "replay_status": "REPLAY_COMPLETED",
+      "question": "In PostgreSQL, what table-level lock mode does a plain CREATE INDEX (without CONCURRENTLY) acquire, and does it block reads, writes, or both while the index is built? Answer in under 120 words.",
+      "status_old": "CONVERGED",
+      "status_new": "CONVERGED",
+      "stop_reason_old": "resolved_after_cross_check",
+      "stop_reason_new": "resolved_after_cross_check",
+      "provider_calls_old": 3,
+      "provider_calls_new": 3,
+      "differences": [],
+      "explained_count": 0,
+      "defect_count": 0,
+      "replayed_turns_by_slot": {
+        "A": 2,
+        "B": 1
+      },
+      "score_verdict_old": "CORRECT_COMPLETE",
+      "score_verdict_new": "CORRECT_COMPLETE",
+      "governance_diverged": false,
+      "identity_key_collisions": [],
+      "pairing_count": 5
+    },
+    {
+      "run_id": "dcr5_671e793f292e40e8",
+      "case_id": "S4-JV-1-self-invocation",
+      "recorded_turns": 4,
+      "recorded_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "replay_status": "REPLAY_COMPLETED",
+      "question": "In Spring with default proxy-based AOP, if a public method on a bean calls another method on the SAME bean annotated @Transactional, does a transaction start for that inner call? What would make it work? Answer in under 120 words.",
+      "status_old": "UNRESOLVED",
+      "status_new": "UNRESOLVED",
+      "stop_reason_old": "unresolved_after_targeted_challenge",
+      "stop_reason_new": "unresolved_after_targeted_challenge",
+      "provider_calls_old": 4,
+      "provider_calls_new": 4,
+      "differences": [],
+      "explained_count": 0,
+      "defect_count": 0,
+      "replayed_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "score_verdict_old": "CORRECT_COMPLETE",
+      "score_verdict_new": "CORRECT_COMPLETE",
+      "governance_diverged": false,
+      "identity_key_collisions": [],
+      "pairing_count": 8
+    },
+    {
+      "run_id": "dcr5_f23c0db1c19b44c6",
+      "case_id": "S4-SEC-1-jwt-alg-none",
+      "recorded_turns": 4,
+      "recorded_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "replay_status": "REPLAY_COMPLETED",
+      "question": "A service verifies JWTs by reading the \"alg\" header from the token and using that algorithm. Is this safe? What does the JWT Best Current Practices RFC require instead? Answer in under 120 words.",
+      "status_old": "PARTIAL",
+      "status_new": "PARTIAL",
+      "stop_reason_old": "uncompared_material_claims_remain",
+      "stop_reason_new": "uncompared_material_claims_remain",
+      "provider_calls_old": 4,
+      "provider_calls_new": 4,
+      "differences": [
+        {
+          "dimension": "scoring_outcome",
+          "field": "expected_found",
+          "old": {
+            "is it safe": "no",
+            "requirement": "pin"
+          },
+          "new": {
+            "is it safe": "no"
+          },
+          "classification": "EXPLAINED",
+          "rule": "scorer_substring_credit_withdrawn",
+          "reason": "the Sprint-6 scorer fix withdrew credit for an accepted value that was only present INSIDE a larger word, never asserted: 'pin' for 'requirement' (credit withdrawn). Verified against the recorded text, not assumed."
+        },
+        {
+          "dimension": "scoring_outcome",
+          "field": "expected_missing",
+          "old": {},
+          "new": {
+            "requirement": [
+              "specify",
+              "allowlist",
+              "allow list",
+              "expected algorithm",
+              "supported set",
+              "pin"
+            ]
+          },
+          "classification": "EXPLAINED",
+          "rule": "scorer_substring_credit_withdrawn",
+          "reason": "a consequence of the withdrawn substring credit for 'pin' on this same case: once that value is no longer credited, this field necessarily moves with it"
+        },
+        {
+          "dimension": "scoring_outcome",
+          "field": "verdict",
+          "old": "CORRECT_COMPLETE",
+          "new": "CORRECT_INCOMPLETE",
+          "classification": "EXPLAINED",
+          "rule": "scorer_substring_credit_withdrawn",
+          "reason": "a consequence of the withdrawn substring credit for 'pin' on this same case: once that value is no longer credited, this field necessarily moves with it"
+        }
+      ],
+      "explained_count": 3,
+      "defect_count": 0,
+      "replayed_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "score_verdict_old": "CORRECT_COMPLETE",
+      "score_verdict_new": "CORRECT_INCOMPLETE",
+      "governance_diverged": false,
+      "identity_key_collisions": [],
+      "pairing_count": 7
+    },
+    {
+      "run_id": "dcr5_67d154fa1bc848e0",
+      "case_id": "S4-VER-1-spring-boot-java-baseline",
+      "recorded_turns": 4,
+      "recorded_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "replay_status": "REPLAY_COMPLETED",
+      "question": "What is the minimum Java version required by the CURRENT release of Spring Boot, and the highest Java version it states compatibility with? Name the Spring Boot version you are describing. Answer in under 120 words.",
+      "status_old": "UNRESOLVED",
+      "status_new": "UNRESOLVED",
+      "stop_reason_old": "uncompared_material_claims_remain",
+      "stop_reason_new": "uncompared_material_claims_remain",
+      "provider_calls_old": 4,
+      "provider_calls_new": 4,
+      "differences": [
+        {
+          "dimension": "scoring_outcome",
+          "field": "expected_found",
+          "old": {
+            "minimum java": "17",
+            "maximum java": "26"
+          },
+          "new": {
+            "minimum java": "17"
+          },
+          "classification": "EXPLAINED",
+          "rule": "scorer_substring_credit_withdrawn",
+          "reason": "the Sprint-6 scorer fix withdrew credit for an accepted value that was only present INSIDE a larger word, never asserted: '26' for 'maximum java' (credit withdrawn). Verified against the recorded text, not assumed."
+        },
+        {
+          "dimension": "scoring_outcome",
+          "field": "expected_missing",
+          "old": {
+            "spring boot version": [
+              "4.1",
+              "4.1.1"
+            ]
+          },
+          "new": {
+            "maximum java": [
+              "26"
+            ],
+            "spring boot version": [
+              "4.1",
+              "4.1.1"
+            ]
+          },
+          "classification": "EXPLAINED",
+          "rule": "scorer_substring_credit_withdrawn",
+          "reason": "a consequence of the withdrawn substring credit for '26' on this same case: once that value is no longer credited, this field necessarily moves with it"
+        }
+      ],
+      "explained_count": 2,
+      "defect_count": 0,
+      "replayed_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "score_verdict_old": "CORRECT_INCOMPLETE",
+      "score_verdict_new": "CORRECT_INCOMPLETE",
+      "governance_diverged": false,
+      "identity_key_collisions": [],
+      "pairing_count": 7
+    },
+    {
+      "run_id": "dcr5_6afab0a74d2e44ca",
+      "case_id": "S4-AP-2-destructive-without-guard",
+      "recorded_turns": 4,
+      "recorded_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "replay_status": "REPLAY_COMPLETED",
+      "question": "An agent plan says: \"To clean up the workspace before the build, run `git clean -xfd` and `git reset --hard origin/main` in the repository root, then run the test suite.\" Review this plan. What is the most serious problem? Answer in under 120 words.",
+      "status_old": "UNRESOLVED",
+      "status_new": "UNRESOLVED",
+      "stop_reason_old": "unresolved_after_targeted_challenge",
+      "stop_reason_new": "unresolved_after_targeted_challenge",
+      "provider_calls_old": 4,
+      "provider_calls_new": 4,
+      "differences": [],
+      "explained_count": 0,
+      "defect_count": 0,
+      "replayed_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "score_verdict_old": "CORRECT_COMPLETE",
+      "score_verdict_new": "CORRECT_COMPLETE",
+      "governance_diverged": false,
+      "identity_key_collisions": [],
+      "pairing_count": 7
+    },
+    {
+      "run_id": "dcr5_f937d6237a8c4e39",
+      "case_id": "S4-DB-3-read-uncommitted",
+      "recorded_turns": 4,
+      "recorded_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "replay_status": "REPLAY_COMPLETED",
+      "question": "Does PostgreSQL implement READ UNCOMMITTED as a distinct isolation level with dirty reads, or does it behave as something else? Answer in under 120 words.",
+      "status_old": "CONVERGED",
+      "status_new": "CONVERGED",
+      "stop_reason_old": "resolved_after_cross_check",
+      "stop_reason_new": "resolved_after_cross_check",
+      "provider_calls_old": 4,
+      "provider_calls_new": 4,
+      "differences": [
+        {
+          "dimension": "scoring_outcome",
+          "field": "expected_found",
+          "old": {
+            "read uncommitted behaviour": "read committed",
+            "dirty reads": "no"
+          },
+          "new": {
+            "read uncommitted behaviour": "read committed",
+            "dirty reads": "never"
+          },
+          "classification": "EXPLAINED",
+          "rule": "scorer_substring_credit_withdrawn",
+          "reason": "the Sprint-6 scorer fix withdrew credit for an accepted value that was only present INSIDE a larger word, never asserted: 'no' for 'dirty reads' (now satisfied by 'never'). Verified against the recorded text, not assumed."
+        }
+      ],
+      "explained_count": 1,
+      "defect_count": 0,
+      "replayed_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "score_verdict_old": "CORRECT_COMPLETE",
+      "score_verdict_new": "CORRECT_COMPLETE",
+      "governance_diverged": false,
+      "identity_key_collisions": [],
+      "pairing_count": 6
+    },
+    {
+      "run_id": "dcr5_7d13e4aadadf4193",
+      "case_id": "S4-JV-4-virtual-thread-pooling",
+      "recorded_turns": 4,
+      "recorded_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "replay_status": "REPLAY_COMPLETED",
+      "question": "Should Java virtual threads be pooled in a fixed-size thread pool, and are they suited to CPU-bound or IO-bound work? Answer in under 120 words.",
+      "status_old": "CONVERGED",
+      "status_new": "CONVERGED",
+      "stop_reason_old": "resolved_after_targeted_challenge",
+      "stop_reason_new": "resolved_after_targeted_challenge",
+      "provider_calls_old": 4,
+      "provider_calls_new": 4,
+      "differences": [],
+      "explained_count": 0,
+      "defect_count": 0,
+      "replayed_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "score_verdict_old": "CORRECT_COMPLETE",
+      "score_verdict_new": "CORRECT_COMPLETE",
+      "governance_diverged": false,
+      "identity_key_collisions": [],
+      "pairing_count": 6
+    },
+    {
+      "run_id": "dcr5_99803c91a38a48b4",
+      "case_id": "S4-SEC-3-bcrypt-salt-column",
+      "recorded_turns": 4,
+      "recorded_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "replay_status": "REPLAY_COMPLETED",
+      "question": "When storing bcrypt password hashes, do you need a separate database column for the salt? And what minimum work factor does OWASP recommend? Answer in under 120 words.",
+      "status_old": "CONVERGED",
+      "status_new": "CONVERGED",
+      "stop_reason_old": "resolved_after_cross_check",
+      "stop_reason_new": "resolved_after_cross_check",
+      "provider_calls_old": 4,
+      "provider_calls_new": 4,
+      "differences": [],
+      "explained_count": 0,
+      "defect_count": 0,
+      "replayed_turns_by_slot": {
+        "A": 2,
+        "B": 2
+      },
+      "score_verdict_old": "CORRECT_COMPLETE",
+      "score_verdict_new": "CORRECT_COMPLETE",
+      "governance_diverged": false,
+      "identity_key_collisions": [],
+      "pairing_count": 4
+    }
+  ]
+}

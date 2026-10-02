@@ -1,0 +1,1078 @@
+{
+  "sprint": 6,
+  "frozen_at_utc": "2026-10-02T07:40:50.855909+00:00",
+  "frozen_at_git_head": "a66f9d88a8c52faad9bebedfd068c97ba3cf0beb",
+  "blind_n": 8,
+  "challenge_n": 12,
+  "total_n": 20,
+  "blind_hash": "50e94aef19e56b5ec17d62708934a55c34e96cf8d6d0cc300c00304b565736cb",
+  "challenge_hash": "5cd28db988a720f7dccf8c137b16a169eee76bf93bc15d6ec717b1036adb20b4",
+  "sources_scoring_hash": "bceedd51113d0fa7fa0142b2807d0aced64767a44f1a160d7b9c6162a8164796",
+  "decision_rule_hash": "1bd284c96815d8867475a726531b4f2bac5df7741ad87ec0fef546e5d63977a5",
+  "package_hash": "a4d7e1c7c70e2da1adca72ffa923b2459022f53e48e8d5c0224fa7044711dd5f",
+  "rules": {
+    "baseline_selection_rule": "Exactly ONE entitlement invocation of the strongest intended Opus model through the already-verified Claude subscription CLI transport. If that single invocation answers successfully, its exact requested_model and reported_model are frozen as the baseline. If it does not succeed, the already-verified Sonnet identity (requested claude-sonnet-5) is frozen instead. No retry loop. No alias sweep. No API key. No switching after results are seen.",
+    "product_decision_rule": "Verdict vocabulary is ONLY {PAUSE, ONE_MORE_LOOK}.\n1. Empty challenge set -> PAUSE.\n2. Deep Consensus introduced >= 1 material false claim -> PAUSE (outranks any catch).\n3. Baseline material false claims == 0 -> PAUSE. This is NOT inconclusive, NOT a reason to rerun, NOT a reason to collect harder cases.\n4. Zero catches (zero corrected AND zero specifically exposed) -> PAUSE.\n5. >= 1 baseline material false claim corrected OR specifically exposed, AND zero material false claims introduced by Deep Consensus -> ONE_MORE_LOOK.\nA catch requiring more than 4 Deep Consensus model calls DOES NOT COUNT and is excluded before the rule is applied.\nONE_MORE_LOOK does NOT mean proven, validated, or ready to ship.",
+    "materiality_rule": "A claim is MATERIAL when a reader acting on the answer would be misled by it being wrong. Only material claims enter the decision inputs. A material fact expressible as BOOLEAN, ENUM, NUMBER or VERSION is scored deterministically by code. A material fact that exists only as free text becomes NEEDS_OWNER: it is preserved in full with its source and the reason adjudication is required, it is never judged by a model, and it counts as NEITHER a catch NOR an introduced error until the Owner adjudicates it.",
+    "scoring_rule": "Typed golden claims (BOOLEAN/ENUM/NUMBER/VERSION) are scored by deterministic code only. No lexical heuristic decides final product truth. Free-text material claims are NEEDS_OWNER and are not scored. Negation polarity is respected: a marker appearing only under an explicit negation is NOT published. Deep Consensus turns are counted per slot from the governor, never inferred by dividing a total."
+  },
+  "blind_cases": [
+    {
+      "case_id": "S6-BLIND-AP-1-text-claim-comparator-threshold",
+      "set_type": "BLIND",
+      "category": "agent_plan_review",
+      "question": "Review this proposed change to our claim comparator. A teammate wants to compare two models' free-text claim values with embedding cosine similarity, returning AGREE above 0.9 and CONFLICT below it, to cut the number of cross-check calls. What verdict does the comparator in typed_values.py return today for two values typed TEXT, and is the proposed similarity threshold consistent with that module's stated rules? Answer in under 150 words.",
+      "context": "The repository is the Deep Consensus package. The relevant module is deep_consensus/typed_values.py, whose module docstring and compare() docstring state the comparison rules. Assume the model can read that file.",
+      "primary_source": "deep_consensus/typed_values.py",
+      "source_locator": "deep_consensus/typed_values.py:23-31 (module docstring, \"WHAT IS FORBIDDEN HERE, PERMANENTLY\"), :599-602 (compare() rule 7), :732-741 (the rule-7 return) -- branch deep-consensus-sprint5-typed-claims",
+      "source_fact": "typed_values.py:24-31 -- \"This module must NEVER use word overlap, containment, Jaccard, substring matching or embeddings to decide that two free-text values mean the same thing. Not behind a threshold, not \\\"only when the strings are very close\\\", not as a fast path. TEXT comparison therefore has exactly one outcome, NEEDS_CROSS_CHECK, and that is the central prohibition of the file\". typed_values.py:599-601 -- \"7. TEXT: ALWAYS NEEDS_CROSS_CHECK. Never AGREE, never CONFLICT, no threshold, no exceptions -- not even for byte-identical strings\".",
+      "typed_golden_claims": [
+        {
+          "subject": "text_comparison_verdict",
+          "value_type": "ENUM",
+          "value": "NEEDS_CROSS_CHECK",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "embedding_similarity_permitted_to_decide_agreement",
+          "value_type": "BOOLEAN",
+          "value": "false",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "threshold_permitted_for_text_comparison",
+          "value_type": "BOOLEAN",
+          "value": "false",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "proposed_change_consistent_with_module_rules",
+          "value_type": "BOOLEAN",
+          "value": "false",
+          "unit": null,
+          "material": true
+        }
+      ],
+      "materiality": "All four are MATERIAL. The verdict and the two prohibitions are the property the module exists to hold: an answer that reports any TEXT verdict other than NEEDS_CROSS_CHECK, or that endorses a similarity threshold, would authorise reintroducing the exact defect the module was written to remove (a claim agreeing with its own negation). The fourth claim is the review's actual deliverable -- a correct recital of the rules that then approves the change is still a failed review.",
+      "scoring_rule": "TYPED_DETERMINISTIC. Each MATERIAL non-TEXT golden claim is scored by structural comparison against the model's own typed claim of the same subject: ENUM by token equality after case/separator normalisation, BOOLEAN by equality, NUMBER by equality within the same unit, VERSION by component-tuple equality. A material claim asserted with a value that contradicts the golden value is an INTRODUCED_ERROR for the answer that asserts it. A material claim the answer never asserts at all is an OMISSION, scored separately and never as correct. The case counts as CORRECT only when every material non-TEXT claim is asserted and matches. MATERIAL claims typed TEXT are NEEDS_OWNER: the Owner adjudicates them and they count as neither a catch nor an introduced error. Non-material claims are recorded for diagnosis and never enter the case verdict."
+    },
+    {
+      "case_id": "S6-BLIND-AP-2-convergence-score-and-stop-authority",
+      "set_type": "BLIND",
+      "category": "agent_plan_review",
+      "question": "Review this proposal for our review loop. The plan is to surface convergence_score to end users as a confidence score, and to replace the fixed round cap with a judge model that decides each round whether the run has converged enough to stop. Against governor.py as it stands: is convergence_score a correctness or confidence figure, does any model take part in the stop decision today, and what is the maximum number of review rounds? Answer in under 150 words.",
+      "context": "The repository is the Deep Consensus package. The relevant module is deep_consensus/governor.py, whose module docstring, constants and convergence_score() docstring define the behaviour. Assume the model can read that file.",
+      "primary_source": "deep_consensus/governor.py",
+      "source_locator": "deep_consensus/governor.py:3-4 and :12-19 (module docstring), :46 (MAX_REVIEW_ROUNDS), :143-150 (convergence_score docstring) -- branch deep-consensus-sprint5-typed-claims",
+      "source_fact": "governor.py:3-4 -- \"ENTIRELY DETERMINISTIC AND MODEL-FREE, ON PURPOSE. No judge model is consulted to decide whether a run converged or must stop.\" governor.py:13-16 -- \"It measures PROCESS CONVERGENCE: how far two independent reviewers moved toward a single candidate answer. It is NOT a confidence, NOT a correctness probability, and NOT a truth score.\" governor.py:46 -- \"MAX_REVIEW_ROUNDS = 2\". governor.py:144 -- \"Process-convergence score in [0.0, 1.0]. Never a correctness claim.\"",
+      "typed_golden_claims": [
+        {
+          "subject": "convergence_score_is_confidence_or_correctness_probability",
+          "value_type": "BOOLEAN",
+          "value": "false",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "model_consulted_in_stop_decision_today",
+          "value_type": "BOOLEAN",
+          "value": "false",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "max_review_rounds",
+          "value_type": "NUMBER",
+          "value": "2",
+          "unit": "rounds",
+          "material": true
+        },
+        {
+          "subject": "convergence_score_upper_bound",
+          "value_type": "NUMBER",
+          "value": "1.0",
+          "unit": "score",
+          "material": false
+        }
+      ],
+      "materiality": "The first three are MATERIAL. Mislabelling convergence_score as confidence is the error that would be printed in front of a user and believed; claiming a model already participates in the stop decision misstates the one property that guarantees termination; the round cap is a committed number and the project's rule is that a stated number is read from code, not recalled. The upper bound is non-material -- it is true and in the docstring, but getting it wrong misleads nobody about the design.",
+      "scoring_rule": "TYPED_DETERMINISTIC. Each MATERIAL non-TEXT golden claim is scored by structural comparison against the model's own typed claim of the same subject: ENUM by token equality after case/separator normalisation, BOOLEAN by equality, NUMBER by equality within the same unit, VERSION by component-tuple equality. A material claim asserted with a value that contradicts the golden value is an INTRODUCED_ERROR for the answer that asserts it. A material claim the answer never asserts at all is an OMISSION, scored separately and never as correct. The case counts as CORRECT only when every material non-TEXT claim is asserted and matches. MATERIAL claims typed TEXT are NEEDS_OWNER: the Owner adjudicates them and they count as neither a catch nor an introduced error. Non-material claims are recorded for diagnosis and never enter the case verdict."
+    },
+    {
+      "case_id": "S6-BLIND-DB-1-add-column-constant-default-rewrite",
+      "set_type": "BLIND",
+      "category": "production_database_migration",
+      "question": "I need to run ALTER TABLE orders ADD COLUMN status text NOT NULL DEFAULT 'pending' on a 400 million row table in production PostgreSQL 16. Does this rewrite the whole table, what table-level lock does the ALTER TABLE take, and would changing the default to clock_timestamp() change the rewrite behaviour? Answer in under 150 words.",
+      "context": "",
+      "primary_source": "https://www.postgresql.org/docs/current/sql-altertable.html",
+      "source_locator": "ALTER TABLE -- Notes (ADD COLUMN default evaluation), and Description, opening paragraph (lock level)",
+      "source_fact": "Notes -- \"When a column is added with ADD COLUMN and a non-volatile DEFAULT is specified, the default value is evaluated at the time of the statement and the result stored in the table's metadata, where it will be returned when any existing rows are accessed. The value will be only applied when the table is rewritten, making the ALTER TABLE very fast even on large tables. ... In neither case is a rewrite of the table required.\" and \"Adding a column with a volatile DEFAULT (e.g., clock_timestamp()), a stored generated column, an identity column, or a column with a domain data type that has constraints will cause the entire table and its indexes to be rewritten.\" Description -- \"An ACCESS EXCLUSIVE lock is acquired unless explicitly noted.\"",
+      "typed_golden_claims": [
+        {
+          "subject": "table_rewrite_required_for_constant_default",
+          "value_type": "BOOLEAN",
+          "value": "false",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "alter_table_lock_mode",
+          "value_type": "ENUM",
+          "value": "ACCESS EXCLUSIVE",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "table_rewrite_required_for_volatile_default",
+          "value_type": "BOOLEAN",
+          "value": "true",
+          "unit": null,
+          "material": true
+        }
+      ],
+      "materiality": "All three are MATERIAL and all three decide the operator's action. 'No rewrite' is why the statement is runnable at all at 400M rows; the ACCESS EXCLUSIVE lock is why it still needs a short maintenance window and a lock timeout rather than being free; and the volatile-default contrast is the trap the engineer walks into next week. An answer that gets the rewrite right and the lock wrong gives dangerous advice, which is why the lock mode is not treated as a detail.",
+      "scoring_rule": "TYPED_DETERMINISTIC. Each MATERIAL non-TEXT golden claim is scored by structural comparison against the model's own typed claim of the same subject: ENUM by token equality after case/separator normalisation, BOOLEAN by equality, NUMBER by equality within the same unit, VERSION by component-tuple equality. A material claim asserted with a value that contradicts the golden value is an INTRODUCED_ERROR for the answer that asserts it. A material claim the answer never asserts at all is an OMISSION, scored separately and never as correct. The case counts as CORRECT only when every material non-TEXT claim is asserted and matches. MATERIAL claims typed TEXT are NEEDS_OWNER: the Owner adjudicates them and they count as neither a catch nor an introduced error. Non-material claims are recorded for diagnosis and never enter the case verdict."
+    },
+    {
+      "case_id": "S6-BLIND-DB-2-lock-timeout-default",
+      "set_type": "BLIND",
+      "category": "production_database_migration",
+      "question": "When a migration statement in PostgreSQL has to wait for a lock held by a long-running query, does the server give up after some default period on its own? What is the default value of lock_timeout, and what does that value mean? Answer in under 150 words.",
+      "context": "",
+      "primary_source": "https://www.postgresql.org/docs/current/runtime-config-client.html",
+      "source_locator": "Client Connection Defaults -- Statement Behavior -- lock_timeout",
+      "source_fact": "lock_timeout -- \"Abort any statement that waits longer than the specified amount of time while attempting to acquire a lock on a table, index, row, or other database object. The time limit applies separately to each lock acquisition attempt. ... If this value is specified without units, it is taken as milliseconds. A value of zero (the default) disables the timeout.\"",
+      "typed_golden_claims": [
+        {
+          "subject": "default_lock_timeout",
+          "value_type": "NUMBER",
+          "value": "0",
+          "unit": "milliseconds",
+          "material": true
+        },
+        {
+          "subject": "lock_wait_aborts_automatically_by_default",
+          "value_type": "BOOLEAN",
+          "value": "false",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "lock_timeout_unitless_value_unit",
+          "value_type": "ENUM",
+          "value": "milliseconds",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "timeout_applies_per_lock_acquisition_attempt",
+          "value_type": "BOOLEAN",
+          "value": "true",
+          "unit": null,
+          "material": false
+        }
+      ],
+      "materiality": "The first three are MATERIAL. 'Zero, which disables it' is the whole safety point: an engineer who believes a default timeout protects them will queue every subsequent query behind their own blocked ALTER. The unit matters because 'set lock_timeout = 5' means 5 milliseconds, not 5 seconds, and that mistake makes the migration appear impossible. The per-attempt scope is non-material: useful, but it does not change the decision.",
+      "scoring_rule": "TYPED_DETERMINISTIC. Each MATERIAL non-TEXT golden claim is scored by structural comparison against the model's own typed claim of the same subject: ENUM by token equality after case/separator normalisation, BOOLEAN by equality, NUMBER by equality within the same unit, VERSION by component-tuple equality. A material claim asserted with a value that contradicts the golden value is an INTRODUCED_ERROR for the answer that asserts it. A material claim the answer never asserts at all is an OMISSION, scored separately and never as correct. The case counts as CORRECT only when every material non-TEXT claim is asserted and matches. MATERIAL claims typed TEXT are NEEDS_OWNER: the Owner adjudicates them and they count as neither a catch nor an introduced error. Non-material claims are recorded for diagnosis and never enter the case verdict."
+    },
+    {
+      "case_id": "S6-BLIND-JV-1-bare-transactional-defaults",
+      "set_type": "BLIND",
+      "category": "java_spring",
+      "question": "A service method is annotated with a bare @Transactional and no attributes. According to the Spring Framework reference, which propagation setting, which isolation level, which read-write mode and which timeout does that method get? Answer in under 150 words.",
+      "context": "",
+      "primary_source": "https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/annotations.html",
+      "source_locator": "Using @Transactional -- the \"@Transactional Settings\" list of default settings",
+      "source_fact": "\"The propagation setting is PROPAGATION_REQUIRED. The isolation level is ISOLATION_DEFAULT. The transaction is read-write. The transaction timeout defaults to the default timeout of the underlying transaction system, or to none if timeouts are not supported. Any RuntimeException or Error triggers rollback, and any checked Exception does not.\"",
+      "typed_golden_claims": [
+        {
+          "subject": "default_propagation",
+          "value_type": "ENUM",
+          "value": "REQUIRED",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "default_isolation_level",
+          "value_type": "ENUM",
+          "value": "DEFAULT",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "read_only_by_default",
+          "value_type": "BOOLEAN",
+          "value": "false",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "default_transaction_timeout",
+          "value_type": "TEXT",
+          "value": "the default timeout of the underlying transaction system, or none if that system does not support timeouts",
+          "material": true,
+          "needs_owner": true,
+          "reason_adjudication_required": "The source states no number and no enum token. The correct answer is a conditional deferral to another system, and any attempt to type it -- as NUMBER -1, as ENUM NONE, as 'infinite' -- would invent a fact the reference does not state and would then mark a correct answer wrong. Spring's TransactionDefinition sentinel value is a separate API fact from this prose, and this case is pinned to the prose. The Owner reads the two statements and decides equivalence."
+        }
+      ],
+      "materiality": "All four are MATERIAL: each is a runtime property of every method carrying the annotation. Propagation and isolation are typed ENUM and read-only is typed BOOLEAN, so three of the four are deterministically scorable. The timeout is deliberately left TEXT/NEEDS_OWNER rather than forced into a fake NUMBER -- see its reason_adjudication_required. It counts as neither a catch nor an introduced error at scoring time.",
+      "scoring_rule": "TYPED_DETERMINISTIC. Each MATERIAL non-TEXT golden claim is scored by structural comparison against the model's own typed claim of the same subject: ENUM by token equality after case/separator normalisation, BOOLEAN by equality, NUMBER by equality within the same unit, VERSION by component-tuple equality. A material claim asserted with a value that contradicts the golden value is an INTRODUCED_ERROR for the answer that asserts it. A material claim the answer never asserts at all is an OMISSION, scored separately and never as correct. The case counts as CORRECT only when every material non-TEXT claim is asserted and matches. MATERIAL claims typed TEXT are NEEDS_OWNER: the Owner adjudicates them and they count as neither a catch nor an introduced error. Non-material claims are recorded for diagnosis and never enter the case verdict."
+    },
+    {
+      "case_id": "S6-BLIND-CC-1-repeatable-read-concurrent-update",
+      "set_type": "BLIND",
+      "category": "concurrency_transactions",
+      "question": "In PostgreSQL at REPEATABLE READ, transaction A runs UPDATE on a row that concurrent transaction B has already updated and committed after A began. What happens to transaction A, what SQLSTATE does it get, and what must the application do about it? Answer in under 150 words.",
+      "context": "",
+      "primary_source": "https://www.postgresql.org/docs/current/transaction-iso.html and https://www.postgresql.org/docs/current/errcodes-appendix.html",
+      "source_locator": "transaction-iso.html section 13.2.2 \"Repeatable Read Isolation Level\"; errcodes-appendix.html Table A.1 \"PostgreSQL Error Codes\", Class 40 Transaction Rollback",
+      "source_fact": "13.2.2 -- \"But if the first updater commits (and actually updated or deleted the row, not just locked it) then the repeatable read transaction will be rolled back with the message ERROR:  could not serialize access due to concurrent update because a repeatable read transaction cannot modify or lock rows changed by other transactions after the repeatable read transaction began.\" and \"When an application receives this error message, it should abort the current transaction and retry the whole transaction from the beginning.\" Table A.1, Class 40 -- \"40001  serialization_failure\".",
+      "typed_golden_claims": [
+        {
+          "subject": "transaction_a_rolled_back",
+          "value_type": "BOOLEAN",
+          "value": "true",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "sqlstate",
+          "value_type": "ENUM",
+          "value": "40001",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "application_must_retry_whole_transaction",
+          "value_type": "BOOLEAN",
+          "value": "true",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "a_waits_for_b_to_finish_before_the_error",
+          "value_type": "BOOLEAN",
+          "value": "true",
+          "unit": null,
+          "material": false
+        }
+      ],
+      "materiality": "The first three are MATERIAL. Rollback-versus-silent-overwrite decides whether data is lost; the SQLSTATE is what the retry code actually matches on, and 40001 versus 40P01 (deadlock_detected) is a real and consequential distinction; and 'retry the whole transaction from the beginning' is the manual's own instruction, which an answer saying 'retry the statement' contradicts. Whether A blocks first is non-material -- correct and explanatory, but it changes no code.",
+      "scoring_rule": "TYPED_DETERMINISTIC. Each MATERIAL non-TEXT golden claim is scored by structural comparison against the model's own typed claim of the same subject: ENUM by token equality after case/separator normalisation, BOOLEAN by equality, NUMBER by equality within the same unit, VERSION by component-tuple equality. A material claim asserted with a value that contradicts the golden value is an INTRODUCED_ERROR for the answer that asserts it. A material claim the answer never asserts at all is an OMISSION, scored separately and never as correct. The case counts as CORRECT only when every material non-TEXT claim is asserted and matches. MATERIAL claims typed TEXT are NEEDS_OWNER: the Owner adjudicates them and they count as neither a catch nor an introduced error. Non-material claims are recorded for diagnosis and never enter the case verdict."
+    },
+    {
+      "case_id": "S6-BLIND-SEC-1-oauth-public-client-grant-choice",
+      "set_type": "BLIND",
+      "category": "security_auth",
+      "question": "We are adding OAuth 2.0 login to a mobile app, which is a public client with no client secret. Per the current IETF Best Current Practice for OAuth 2.0 security (RFC 9700): is PKCE required for public clients using the authorization code grant, and may we use the resource owner password credentials grant to let users type their password into our app? Answer in under 150 words.",
+      "context": "",
+      "primary_source": "https://www.rfc-editor.org/rfc/rfc9700.html",
+      "source_locator": "RFC 9700, Best Current Practice for OAuth 2.0 Security (January 2025), section 2.1.1 \"Authorization Code Grant\" and section 2.4 \"Resource Owner Password Credentials Grant\"",
+      "source_fact": "Section 2.1.1 -- \"Public clients MUST use PKCE [RFC7636] to this end, as motivated in Section 4.5.3.1.\" and \"For confidential clients, the use of PKCE [RFC7636] is RECOMMENDED, as it provides strong protection against misuse and injection of authorization codes as described in Section 4.5.3.1.\" Section 2.4 -- \"The resource owner password credentials grant [RFC6749] MUST NOT be used. This grant type insecurely exposes the credentials of the resource owner to the client.\"",
+      "typed_golden_claims": [
+        {
+          "subject": "pkce_required_for_public_clients",
+          "value_type": "BOOLEAN",
+          "value": "true",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "pkce_normative_keyword_for_public_clients",
+          "value_type": "ENUM",
+          "value": "MUST",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "resource_owner_password_credentials_grant_permitted",
+          "value_type": "BOOLEAN",
+          "value": "false",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "ropc_normative_keyword",
+          "value_type": "ENUM",
+          "value": "MUST NOT",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "pkce_normative_keyword_for_confidential_clients",
+          "value_type": "ENUM",
+          "value": "RECOMMENDED",
+          "unit": null,
+          "material": false
+        }
+      ],
+      "materiality": "The first four are MATERIAL. The strength of the keyword is the substance of a security answer, not decoration: 'PKCE is a good idea' and 'public clients MUST use PKCE' lead to different shipped code, and 'ROPC is discouraged' versus 'MUST NOT be used' is the difference between a deprecation note and a prohibition. Both the boolean and the keyword are scored so that an answer cannot get credit for the right direction at the wrong strength. The confidential-client keyword is non-material here because the client in the question is public.",
+      "scoring_rule": "TYPED_DETERMINISTIC. Each MATERIAL non-TEXT golden claim is scored by structural comparison against the model's own typed claim of the same subject: ENUM by token equality after case/separator normalisation, BOOLEAN by equality, NUMBER by equality within the same unit, VERSION by component-tuple equality. A material claim asserted with a value that contradicts the golden value is an INTRODUCED_ERROR for the answer that asserts it. A material claim the answer never asserts at all is an OMISSION, scored separately and never as correct. The case counts as CORRECT only when every material non-TEXT claim is asserted and matches. MATERIAL claims typed TEXT are NEEDS_OWNER: the Owner adjudicates them and they count as neither a catch nor an introduced error. Non-material claims are recorded for diagnosis and never enter the case verdict."
+    },
+    {
+      "case_id": "S6-BLIND-VER-1-default-charset-utf8",
+      "set_type": "BLIND",
+      "category": "version_platform_behaviour",
+      "question": "We are upgrading a service from JDK 17 to JDK 21. It has code using new FileReader(path) and String.getBytes() with no charset argument, previously run on a Windows host with a non-UTF-8 system locale. Does the default charset of the standard Java APIs change, from which JDK release, and what is the default afterwards? Answer in under 150 words.",
+      "context": "",
+      "primary_source": "https://openjdk.org/jeps/400",
+      "source_locator": "JEP 400: UTF-8 by Default -- Release field; Summary; Description",
+      "source_fact": "JEP 400: UTF-8 by Default, Status: Closed/Delivered, Release: 18. Summary -- \"Specify UTF-8 as the default charset of the standard Java APIs. With this change, APIs that depend upon the default charset will behave consistently across all implementations, operating systems, locales, and configurations.\" Description -- \"We propose to change the specification of Charset.defaultCharset() to say that the default charset is UTF-8 unless configured otherwise by an implementation-specific means.\" and \"If file.encoding is set to \\\"COMPAT\\\" (i.e., java -Dfile.encoding=COMPAT), then the default charset will be the charset chosen by the algorithm in JDK 17 and earlier, based on the user's operating system, locale, and other factors.\"",
+      "typed_golden_claims": [
+        {
+          "subject": "default_charset_after_upgrade",
+          "value_type": "ENUM",
+          "value": "UTF-8",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "jdk_release_that_changed_the_default",
+          "value_type": "VERSION",
+          "value": "18",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "behaviour_of_charset_less_apis_changes_on_this_upgrade",
+          "value_type": "BOOLEAN",
+          "value": "true",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "file_encoding_COMPAT_restores_pre_18_algorithm",
+          "value_type": "BOOLEAN",
+          "value": "true",
+          "unit": null,
+          "material": false
+        }
+      ],
+      "materiality": "The first three are MATERIAL. The release number is the fact that makes the answer actionable -- 17 to 21 crosses 18, so the change applies; an answer naming 17 or 21 as the changing release gets the migration risk wrong in opposite directions. 'Yes, behaviour changes' is the operator's actual question, and a service reading files written in the platform charset is where it bites. The COMPAT escape hatch is non-material: a useful mitigation, but the upgrade decision does not turn on it.",
+      "scoring_rule": "TYPED_DETERMINISTIC. Each MATERIAL non-TEXT golden claim is scored by structural comparison against the model's own typed claim of the same subject: ENUM by token equality after case/separator normalisation, BOOLEAN by equality, NUMBER by equality within the same unit, VERSION by component-tuple equality. A material claim asserted with a value that contradicts the golden value is an INTRODUCED_ERROR for the answer that asserts it. A material claim the answer never asserts at all is an OMISSION, scored separately and never as correct. The case counts as CORRECT only when every material non-TEXT claim is asserted and matches. MATERIAL claims typed TEXT are NEEDS_OWNER: the Owner adjudicates them and they count as neither a catch nor an introduced error. Non-material claims are recorded for diagnosis and never enter the case verdict."
+    }
+  ],
+  "challenge_cases": [
+    {
+      "case_id": "S6-CHAL-DB-1-refresh-matview-lock",
+      "set_type": "CHALLENGE",
+      "category": "database_locking",
+      "question": "In PostgreSQL, what table-level lock mode does REFRESH MATERIALIZED VIEW (without CONCURRENTLY) acquire on the materialized view, and can a plain SELECT against that materialized view run while the refresh is in progress? Answer in under 150 words.",
+      "context": "A nightly job refreshes a reporting materialized view while a read-only dashboard queries it. The operator wants to know whether the dashboard will stall.",
+      "primary_source": "https://www.postgresql.org/docs/current/explicit-locking.html",
+      "source_locator": "PostgreSQL 18 documentation, section 13.3.1 Table-Level Locks -- the ACCESS EXCLUSIVE (AccessExclusiveLock) entry, and the Tip that immediately follows the lock-mode list",
+      "source_fact": "\"Acquired by the DROP TABLE, TRUNCATE, REINDEX, CLUSTER, VACUUM FULL, and REFRESH MATERIALIZED VIEW (without CONCURRENTLY) commands.\" and \"Only an ACCESS EXCLUSIVE lock blocks a SELECT (without FOR UPDATE/SHARE) statement.\"",
+      "typed_golden_claims": [
+        {
+          "subject": "lock_mode",
+          "value_type": "ENUM",
+          "value": "ACCESS EXCLUSIVE",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "plain_select_blocked",
+          "value_type": "BOOLEAN",
+          "value": "true",
+          "unit": null,
+          "material": true
+        }
+      ],
+      "materiality": "Decides whether a refresh can be scheduled during serving hours. An answer of 'reads continue' turns a routine nightly job into a read outage for the whole refresh duration.",
+      "scoring_rule": "Decisive on lock_mode (ENUM) and plain_select_blocked (BOOLEAN). Naming any mode other than ACCESS EXCLUSIVE, or asserting that reads proceed, is a material falsehood. Mentioning CONCURRENTLY as a remedy is correct but neither earns nor forfeits credit -- the question is about the non-CONCURRENTLY form.",
+      "predeclared_failure_category": "subtle database lock semantics",
+      "why_category_is_failure_prone": "Lock modes are a conflict MATRIX, not a severity scale, and the mode names are historical rather than descriptive -- the docs say so themselves. Which statements a lock blocks is therefore not recoverable from the lock's name, so any answer not read off the matrix is a guess that happens to sound structural.",
+      "common_misconception": "That a materialized-view refresh is 'just a write' and so behaves like CREATE INDEX -- blocking writers while readers continue. ACCESS EXCLUSIVE is the one mode that does block a plain SELECT, so the read path goes down with the refresh.",
+      "likely_false_proposition": [
+        {
+          "subject": "plain_select_blocked",
+          "value_type": "BOOLEAN",
+          "value": "false",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "lock_mode",
+          "value_type": "ENUM",
+          "value": "EXCLUSIVE",
+          "unit": null,
+          "material": true
+        }
+      ]
+    },
+    {
+      "case_id": "S6-CHAL-DB-2-concurrently-lock-asymmetry",
+      "set_type": "CHALLENGE",
+      "category": "database_locking",
+      "question": "The keyword CONCURRENTLY appears in both CREATE INDEX CONCURRENTLY and REFRESH MATERIALIZED VIEW CONCURRENTLY. For each command, name the table-level lock mode PostgreSQL acquires, and state whether concurrent INSERT/UPDATE/DELETE on the target relation can proceed while it runs. Answer in under 150 words.",
+      "context": "A migration review. The author has used CONCURRENTLY on both statements and written 'non-blocking' in the change ticket for both of them.",
+      "primary_source": "https://www.postgresql.org/docs/current/explicit-locking.html",
+      "source_locator": "PostgreSQL 18 documentation, section 13.3.1 Table-Level Locks -- the SHARE UPDATE EXCLUSIVE and EXCLUSIVE entries",
+      "source_fact": "SHARE UPDATE EXCLUSIVE: \"Acquired by VACUUM (without FULL), ANALYZE, CREATE INDEX CONCURRENTLY, CREATE STATISTICS, COMMENT ON, REINDEX CONCURRENTLY, and certain ALTER INDEX and ALTER TABLE variants\". EXCLUSIVE: \"This mode allows only concurrent ACCESS SHARE locks, i.e., only reads from the table can proceed in parallel with a transaction holding this lock mode.\" / \"Acquired by REFRESH MATERIALIZED VIEW CONCURRENTLY.\"",
+      "typed_golden_claims": [
+        {
+          "subject": "create_index_concurrently_lock_mode",
+          "value_type": "ENUM",
+          "value": "SHARE UPDATE EXCLUSIVE",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "refresh_matview_concurrently_lock_mode",
+          "value_type": "ENUM",
+          "value": "EXCLUSIVE",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "writes_blocked_by_create_index_concurrently",
+          "value_type": "BOOLEAN",
+          "value": "false",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "writes_blocked_by_refresh_matview_concurrently",
+          "value_type": "BOOLEAN",
+          "value": "true",
+          "unit": null,
+          "material": true
+        }
+      ],
+      "materiality": "A ticket that says 'non-blocking' for both statements will be approved for a peak-traffic window, and the matview refresh will then block every writer touching the view for its whole duration.",
+      "scoring_rule": "Four decisive claims, scored independently; getting the CREATE INDEX half right does not offset getting the REFRESH half wrong, because the asymmetry IS the question. writes_blocked_by_refresh_matview_concurrently = false is the material falsehood this case exists to expose.",
+      "predeclared_failure_category": "misleadingly similar APIs",
+      "why_category_is_failure_prone": "A shared keyword invites a shared mental model. When two commands spell an option identically, the option's meaning is assumed to generalise, and the assumption is never tested because nothing in the syntax signals that it differs.",
+      "common_misconception": "That CONCURRENTLY uniformly means 'does not block anything'. For CREATE INDEX it does keep writes running; for REFRESH MATERIALIZED VIEW it only keeps READS running -- the refresh page's own wording is \"without locking out concurrent selects\", which says nothing about writers.",
+      "likely_false_proposition": [
+        {
+          "subject": "writes_blocked_by_refresh_matview_concurrently",
+          "value_type": "BOOLEAN",
+          "value": "false",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "refresh_matview_concurrently_lock_mode",
+          "value_type": "ENUM",
+          "value": "SHARE UPDATE EXCLUSIVE",
+          "unit": null,
+          "material": true
+        }
+      ]
+    },
+    {
+      "case_id": "S6-CHAL-DB-3-truncate-rollback-and-mvcc",
+      "set_type": "CHALLENGE",
+      "category": "database_transactional_ddl",
+      "question": "In PostgreSQL: (a) if TRUNCATE runs inside a transaction that then rolls back, is the truncation undone? (b) is TRUNCATE MVCC-safe with respect to concurrent transactions holding a snapshot taken before it? (c) what table lock does it take? Answer in under 150 words.",
+      "context": "A data-reload script wraps TRUNCATE plus COPY in a single transaction and relies on rollback to leave the table intact if the load fails.",
+      "primary_source": "https://www.postgresql.org/docs/current/sql-truncate.html",
+      "source_locator": "PostgreSQL 18 documentation, TRUNCATE -- Notes",
+      "source_fact": "\"TRUNCATE is not MVCC-safe. After truncation, the table will appear empty to concurrent transactions, if they are using a snapshot taken before the truncation occurred.\" and \"TRUNCATE is transaction-safe with respect to the data in the tables: the truncation will be safely rolled back if the surrounding transaction does not commit.\" and \"TRUNCATE acquires an ACCESS EXCLUSIVE lock on each table it operates on, which blocks all other concurrent operations on the table.\"",
+      "typed_golden_claims": [
+        {
+          "subject": "truncate_rollback_undoes_truncation",
+          "value_type": "BOOLEAN",
+          "value": "true",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "truncate_is_mvcc_safe",
+          "value_type": "BOOLEAN",
+          "value": "false",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "lock_mode",
+          "value_type": "ENUM",
+          "value": "ACCESS EXCLUSIVE",
+          "unit": null,
+          "material": true
+        }
+      ],
+      "materiality": "Two opposite production failures hang on these two booleans. Believing TRUNCATE auto-commits leads to writing a manual restore path that is not needed. Believing it is MVCC-safe leads to concurrent readers seeing an empty table and computing reports from nothing.",
+      "scoring_rule": "Both booleans are decisive and point in OPPOSITE directions, which is the design of the case: an answer that is internally consistent in the intuitive way ('non-transactional, therefore the snapshot problem does not arise', or 'transactional, therefore MVCC-safe') must get exactly one of them wrong. Either wrong boolean is a material falsehood on its own.",
+      "predeclared_failure_category": "official docs contradict common secondary claims",
+      "why_category_is_failure_prone": "Folklore about a widely-used command is repeated across far more text than the one paragraph of official documentation that contradicts it, and the folklore is usually TRUE of some other product in the same category -- so it reads as experience rather than as a mix-up.",
+      "common_misconception": "That TRUNCATE is DDL that implicitly commits and therefore cannot be rolled back. True of Oracle and of MySQL/InnoDB; false in PostgreSQL. The mirror-image error also circulates: that because it IS transactional in PostgreSQL it must be MVCC-safe, which the same paragraph denies.",
+      "likely_false_proposition": [
+        {
+          "subject": "truncate_rollback_undoes_truncation",
+          "value_type": "BOOLEAN",
+          "value": "false",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "truncate_is_mvcc_safe",
+          "value_type": "BOOLEAN",
+          "value": "true",
+          "unit": null,
+          "material": true
+        }
+      ]
+    },
+    {
+      "case_id": "S6-CHAL-DB-4-read-committed-update-recheck",
+      "set_type": "CHALLENGE",
+      "category": "database_transaction_isolation",
+      "question": "PostgreSQL, default READ COMMITTED. T1 runs UPDATE t SET n = n + 1 WHERE status = 'open' and blocks on a row locked by T2. T2 then commits, having set that row's status to 'closed'. Does T1 apply its update to that row? Explain what PostgreSQL does with the WHERE clause when T1 unblocks. Answer in under 150 words.",
+      "context": "A reviewer is deciding whether a conditional counter update needs SELECT ... FOR UPDATE or a higher isolation level.",
+      "primary_source": "https://www.postgresql.org/docs/current/transaction-iso.html",
+      "source_locator": "PostgreSQL 18 documentation, section 13.2.1 Read Committed Isolation Level",
+      "source_fact": "\"If the first updater commits, the second updater will ignore the row if the first updater deleted it, otherwise it will attempt to apply its operation to the updated version of the row. The search condition of the command (the WHERE clause) is re-evaluated to see if the updated version of the row still matches the search condition. If so, the second updater proceeds with its operation using the updated version of the row.\" and \"it is possible for an updating command to see an inconsistent snapshot: it can see the effects of concurrent updating commands on the same rows it is trying to update, but it does not see effects of those commands on other rows in the database.\"",
+      "typed_golden_claims": [
+        {
+          "subject": "where_clause_reevaluated_on_updated_row",
+          "value_type": "BOOLEAN",
+          "value": "true",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "row_updated_although_it_no_longer_matches",
+          "value_type": "BOOLEAN",
+          "value": "false",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "why_this_can_still_be_unsafe",
+          "value_type": "TEXT",
+          "value": "An updating command under READ COMMITTED can observe an inconsistent snapshot: the effects of concurrent updates on the rows it is updating, but not their effects on other rows -- so a multi-row conditional update is not made safe by the re-evaluation.",
+          "unit": null,
+          "material": true,
+          "needs_owner": true,
+          "reason_adjudication_required": "The claim is an explanation of a consequence, not a value. There is no boolean or enum whose equality decides whether a given wording conveys it, and scoring it lexically is exactly the substring matching that produced a false headline in Sprint 5 (SPRINT5_RESULTS.md \u00a76)."
+        }
+      ],
+      "materiality": "Determines whether a conditional UPDATE needs explicit locking. The wrong answer ships a guard that silently does not guard -- a double-decrement of stock or balance under contention, with no error raised.",
+      "scoring_rule": "Decisive on the two booleans. row_updated_although_it_no_longer_matches = true is the material falsehood. The TEXT claim is NEEDS_OWNER and counts as NEITHER a catch nor an introduced error; it is recorded so the Owner can see whether the right boolean was reached with the right mechanism or by luck.",
+      "predeclared_failure_category": "transaction semantics",
+      "why_category_is_failure_prone": "Isolation levels are taught as a table of permitted anomalies, and that table says nothing about what a WRITING statement does when it unblocks. The documented behaviour is a re-evaluation step that the anomaly table cannot express, so a correct recitation of the table still yields the wrong answer.",
+      "common_misconception": "That a statement under READ COMMITTED works entirely from the snapshot it took at statement start, so the row it originally matched is the row it updates. The documented behaviour is a re-read of the NEW row version and a re-test of the WHERE clause against it.",
+      "likely_false_proposition": [
+        {
+          "subject": "row_updated_although_it_no_longer_matches",
+          "value_type": "BOOLEAN",
+          "value": "true",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "where_clause_reevaluated_on_updated_row",
+          "value_type": "BOOLEAN",
+          "value": "false",
+          "unit": null,
+          "material": true
+        }
+      ]
+    },
+    {
+      "case_id": "S6-CHAL-SPR-1-required-unexpected-rollback",
+      "set_type": "CHALLENGE",
+      "category": "spring_transactions",
+      "question": "A Spring bean method annotated @Transactional (default propagation REQUIRED) calls a method on ANOTHER bean, also @Transactional with default propagation. The inner call throws a RuntimeException. The outer method catches it, logs it, and returns normally. Does the outer transaction commit? Name any exception the caller of the outer method sees, and say how many physical transactions were involved. Answer in under 150 words.",
+      "context": "An audit-logging refactor added a try/catch around a best-effort inner call so that a failure there would not fail the request.",
+      "primary_source": "https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/tx-propagation.html",
+      "source_locator": "Spring Framework reference, Transaction Propagation -- Understanding PROPAGATION_REQUIRED",
+      "source_fact": "\"In the case of standard PROPAGATION_REQUIRED behavior, all these scopes are mapped to the same physical transaction. So a rollback-only marker set in the inner transaction scope does affect the outer transaction's chance to actually commit.\" and \"However, in the case where an inner transaction scope sets the rollback-only marker, the outer transaction has not decided on the rollback itself, so the rollback (silently triggered by the inner transaction scope) is unexpected. A corresponding UnexpectedRollbackException is thrown at that point. This is expected behavior so that the caller of a transaction can never be misled to assume that a commit was performed when it really was not.\"",
+      "typed_golden_claims": [
+        {
+          "subject": "outer_transaction_commits",
+          "value_type": "BOOLEAN",
+          "value": "false",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "exception_seen_by_outer_caller",
+          "value_type": "ENUM",
+          "value": "UnexpectedRollbackException",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "physical_transaction_count",
+          "value_type": "NUMBER",
+          "value": "1",
+          "unit": "transactions",
+          "material": true
+        }
+      ],
+      "materiality": "This is the canonical 'swallowed exception' production incident: the request appears to succeed in the logs, the caller gets a 500 from a commit that failed afterwards, and the written data is absent. REQUIRES_NEW on the inner method is the fix, and choosing it requires knowing this answer.",
+      "scoring_rule": "Decisive on outer_transaction_commits (BOOLEAN) and exception_seen_by_outer_caller (ENUM). outer_transaction_commits = true is the material falsehood. physical_transaction_count = 1 is scored separately: naming 2 indicates the REQUIRES_NEW model was applied to REQUIRED, which is the underlying error even when the headline boolean is guessed correctly.",
+      "predeclared_failure_category": "transaction semantics",
+      "why_category_is_failure_prone": "A framework that maps several LOGICAL transaction scopes onto one PHYSICAL transaction makes ordinary language ambiguous: 'the inner transaction rolled back' can be read as an independent event. Code written on that reading compiles, passes single-path tests, and fails only on the error path.",
+      "common_misconception": "That catching the inner exception in the outer method contains the failure, so the outer transaction commits the rest of its work. The rollback-only marker is already set on the shared physical transaction and the commit attempt fails.",
+      "likely_false_proposition": [
+        {
+          "subject": "outer_transaction_commits",
+          "value_type": "BOOLEAN",
+          "value": "true",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "physical_transaction_count",
+          "value_type": "NUMBER",
+          "value": "2",
+          "unit": "transactions",
+          "material": true
+        }
+      ]
+    },
+    {
+      "case_id": "S6-CHAL-SPR-2-configuration-proxy-bean-methods",
+      "set_type": "CHALLENGE",
+      "category": "spring_lifecycle_proxy",
+      "question": "Inside a @Configuration class, one @Bean method calls another @Bean method of the same class directly, as a plain Java call. With Spring's defaults, does the caller receive the shared singleton instance or a newly constructed one? State the default value of @Configuration's proxyBeanMethods attribute, the mechanism that implements it, and what changes when it is false. Answer in under 150 words.",
+      "context": "A reviewer has been told to add proxyBeanMethods = false to every @Configuration class for startup performance, and wants to know what that gives up.",
+      "primary_source": "https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/context/annotation/Configuration.html",
+      "source_locator": "Spring Framework javadoc, org.springframework.context.annotation.Configuration -- proxyBeanMethods attribute (Since 5.2, Default: true)",
+      "source_fact": "\"Specify whether @Bean methods should get proxied in order to enforce bean lifecycle behavior, for example, to return shared singleton bean instances even in case of direct @Bean method calls in user code. This feature requires method interception, implemented through a runtime-generated CGLIB subclass which comes with limitations such as the configuration class and its methods not being allowed to declare final.\" / \"The default is true, allowing for 'inter-bean references' via direct method calls within the configuration class\" / \"Turning off bean method interception effectively processes @Bean methods individually like when declared on non-@Configuration classes, a.k.a. \\\"@Bean Lite Mode\\\" ... It is therefore behaviorally equivalent to removing the @Configuration stereotype.\"",
+      "typed_golden_claims": [
+        {
+          "subject": "proxy_bean_methods_default",
+          "value_type": "BOOLEAN",
+          "value": "true",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "direct_call_returns_shared_singleton_by_default",
+          "value_type": "BOOLEAN",
+          "value": "true",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "direct_call_returns_shared_singleton_when_flag_false",
+          "value_type": "BOOLEAN",
+          "value": "false",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "interception_mechanism",
+          "value_type": "ENUM",
+          "value": "CGLIB",
+          "unit": null,
+          "material": true
+        }
+      ],
+      "materiality": "Flipping the flag for startup time silently converts every inter-bean reference into a fresh instance. Two DataSource/cache/registry objects where the application assumes one is a defect that no compile step and no unit test of the configuration class detects.",
+      "scoring_rule": "Decisive on all four. The pair of singleton booleans must be scored TOGETHER as well as separately: an answer that gets the default right but claims the behaviour is unchanged when the flag is false has published the more dangerous falsehood, because that is the claim a reviewer acts on.",
+      "predeclared_failure_category": "lifecycle/proxy behaviour",
+      "why_category_is_failure_prone": "Proxy-mediated behaviour makes a plain language construct lie: the source reads as a direct method call and the runtime is a container lookup. Reasoning about the code as written gives the wrong answer, and reasoning about the proxy requires knowing a default that is invisible at the call site.",
+      "common_misconception": "That a direct Java call to a @Bean method always bypasses the container and constructs a second instance -- correct for @Bean methods in lite mode and under proxyBeanMethods = false, and wrong under the default. The same proposition is true or false depending on a default most call sites never mention.",
+      "likely_false_proposition": [
+        {
+          "subject": "direct_call_returns_shared_singleton_by_default",
+          "value_type": "BOOLEAN",
+          "value": "false",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "direct_call_returns_shared_singleton_when_flag_false",
+          "value_type": "BOOLEAN",
+          "value": "true",
+          "unit": null,
+          "material": true
+        }
+      ]
+    },
+    {
+      "case_id": "S6-CHAL-JV-1-jep491-synchronized-pinning",
+      "set_type": "CHALLENGE",
+      "category": "java_virtual_threads",
+      "question": "In the current JDK, does a virtual thread that blocks inside a synchronized method or statement pin its carrier platform thread? Name the JDK release in which this changed, state whether code already migrated from synchronized to ReentrantLock must now be reverted, and say whether pinning has been eliminated entirely. Answer in under 150 words.",
+      "context": "A service on a current JDK shows carrier-thread starvation. An engineer is about to start a large migration of synchronized blocks to ReentrantLock on the strength of a 2023 article.",
+      "primary_source": "https://openjdk.org/jeps/491",
+      "source_locator": "JEP 491: Synchronize Virtual Threads without Pinning -- Status: Closed/Delivered, Release: 24; Summary, Description and Alternatives sections",
+      "source_fact": "\"Improve the scalability of Java code that uses synchronized methods and statements by arranging for virtual threads that block in such constructs to release their underlying platform threads for use by other virtual threads. This will eliminate nearly all cases of virtual threads being pinned to platform threads\" and \"We previously recommended solving frequent and long-lived pinning problems by migrating code from using synchronized to using ReentrantLock. Once the synchronized keyword no longer pins virtual threads, such migration will no longer be necessary. You need not revert code that has been migrated to use ReentrantLock back to using synchronized.\" and \"if a virtual thread calls native code, either through a native method or the Foreign Function & Memory API, and that native code calls back to Java code that performs a blocking operation or blocks on a monitor, then the virtual thread will be pinned.\"",
+      "typed_golden_claims": [
+        {
+          "subject": "synchronized_pins_carrier_in_current_jdk",
+          "value_type": "BOOLEAN",
+          "value": "false",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "jdk_release_of_change",
+          "value_type": "VERSION",
+          "value": "24",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "reentrantlock_migration_must_be_reverted",
+          "value_type": "BOOLEAN",
+          "value": "false",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "all_pinning_eliminated",
+          "value_type": "BOOLEAN",
+          "value": "false",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "remaining_pinning_situations",
+          "value_type": "TEXT",
+          "value": "Pinning still occurs when a virtual thread is executing native code (a native method or the Foreign Function & Memory API) that calls back into blocking Java code, and in class-loading/class-initialization cases where a native frame is on the stack or the thread waits for another thread to finish initializing a class.",
+          "unit": null,
+          "material": true,
+          "needs_owner": true,
+          "reason_adjudication_required": "An open-ended enumeration. Credit depends on whether the cases named are among the documented ones and whether the list is presented as exhaustive, which no equality test over a value can decide."
+        }
+      ],
+      "materiality": "The wrong answer authorises a large, risky, zero-benefit refactor of synchronization primitives in production code, and simultaneously hides the real remaining pinning causes, so the starvation is not fixed.",
+      "scoring_rule": "Decisive on synchronized_pins_carrier_in_current_jdk (BOOLEAN) and jdk_release_of_change (VERSION). synchronized_pins_carrier_in_current_jdk = true, or a recommendation to migrate to ReentrantLock FOR THIS REASON, is a material falsehood. all_pinning_eliminated = true is a separate, opposite material falsehood -- over-correction is not a safe error. The TEXT claim is NEEDS_OWNER.",
+      "predeclared_failure_category": "behaviour that CHANGED between versions",
+      "why_category_is_failure_prone": "A reversed behaviour leaves the old answer correct, well-explained and abundant in every source written before the change -- including this project's own frozen ground truth. Nothing about the question signals that its answer has an expiry date, so confidence is inherited from the volume of obsolete-but-coherent material.",
+      "common_misconception": "That synchronized pins virtual threads and the fix is to replace it with ReentrantLock. This was accurate for JDK 21 through 23 and is the answer the entire Loom-era literature gives; from JDK 24 it is wrong, and acting on it means a large refactor that buys nothing.",
+      "likely_false_proposition": [
+        {
+          "subject": "synchronized_pins_carrier_in_current_jdk",
+          "value_type": "BOOLEAN",
+          "value": "true",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "recommended_mitigation",
+          "value_type": "ENUM",
+          "value": "ReentrantLock",
+          "unit": null,
+          "material": true
+        }
+      ]
+    },
+    {
+      "case_id": "S6-CHAL-JV-2-jep400-default-charset",
+      "set_type": "CHALLENGE",
+      "category": "java_platform_defaults",
+      "question": "On a JDK 18 or later runtime on Windows whose system codepage is windows-1252, what does Charset.defaultCharset() return? Name the JDK release that made this the specification, and say whether passing -Dfile.encoding on the java command line is a SUPPORTED way to configure the default charset, and what value restores the previous locale-dependent behaviour. Answer in under 150 words.",
+      "context": "A Windows build writes a file with new FileWriter(path) and reads it elsewhere. The team is deciding whether to set -Dfile.encoding or to pass explicit charsets.",
+      "primary_source": "https://openjdk.org/jeps/400",
+      "source_locator": "JEP 400: UTF-8 by Default -- Status: Closed/Delivered, Release: 18; Summary, Motivation, and 'The file.encoding and native.encoding system properties' sections",
+      "source_fact": "\"Specify UTF-8 as the default charset of the standard Java APIs.\" and \"We propose to change the specification of Charset.defaultCharset() to say that the default charset is UTF-8 unless configured otherwise by an implementation-specific means.\" and \"We will revise the treatment of the system property file.encoding so that setting it on the command line is the supported means of configuring the default charset.\" and \"If file.encoding is set to \\\"COMPAT\\\" (i.e., java -Dfile.encoding=COMPAT), then the default charset will be the charset chosen by the algorithm in JDK 17 and earlier, based on the user's operating system, locale, and other factors.\"",
+      "typed_golden_claims": [
+        {
+          "subject": "default_charset",
+          "value_type": "ENUM",
+          "value": "UTF-8",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "first_jdk_release_with_utf8_default",
+          "value_type": "VERSION",
+          "value": "18",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "file_encoding_command_line_supported",
+          "value_type": "BOOLEAN",
+          "value": "true",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "value_restoring_legacy_behaviour",
+          "value_type": "ENUM",
+          "value": "COMPAT",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "system_out_uses_default_charset",
+          "value_type": "BOOLEAN",
+          "value": "false",
+          "unit": null,
+          "material": false
+        }
+      ],
+      "materiality": "Decides whether cross-platform text I/O is already safe or needs explicit charsets everywhere. The stale answer produces a real, silent data defect: files written as UTF-8 and believed to be windows-1252, or an entire remediation project for a hazard that the platform removed.",
+      "scoring_rule": "Decisive on default_charset (ENUM) and first_jdk_release_with_utf8_default (VERSION). Naming the platform/locale codepage is the material falsehood. file_encoding_command_line_supported = false is scored as a SEPARATE material falsehood, because it is the half of the change most likely to be remembered backwards and it directly contradicts the recommended fix. system_out_uses_default_charset is recorded as NON-material -- see notes.",
+      "predeclared_failure_category": "configuration defaults that changed",
+      "why_category_is_failure_prone": "A changed default is invisible in source code -- the same program means something different -- and the surrounding advice about how to OVERRIDE the default usually changes at the same time and in the opposite direction. Remembering half of the change is worse than remembering none of it.",
+      "common_misconception": "Two propositions that were BOTH true before JDK 18 and are BOTH false after it: that the default charset follows the operating system's locale/codepage, and that -Dfile.encoding is unsupported and does not reliably work. The JEP states the second explicitly about the past -- \"Developers sometimes attempt to configure the default charset by setting the system property file.encoding on the command line ... but this has never been supported\" -- and then changes it.",
+      "likely_false_proposition": [
+        {
+          "subject": "default_charset",
+          "value_type": "ENUM",
+          "value": "windows-1252",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "file_encoding_command_line_supported",
+          "value_type": "BOOLEAN",
+          "value": "false",
+          "unit": null,
+          "material": true
+        }
+      ]
+    },
+    {
+      "case_id": "S6-CHAL-JV-3-chm-iterator-and-size",
+      "set_type": "CHALLENGE",
+      "category": "java_concurrency",
+      "question": "Can iterating a java.util.concurrent.ConcurrentHashMap while another thread puts and removes entries throw ConcurrentModificationException? Is it safe to share one iterator across threads? And can size() be relied on for program control while the map is being updated concurrently? Answer in under 150 words.",
+      "context": "A code review of a shared registry iterated by a background sweeper thread, with a batch trigger written as if (map.size() >= BATCH).",
+      "primary_source": "https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/concurrent/ConcurrentHashMap.html",
+      "source_locator": "Java SE 25 API documentation, java.util.concurrent.ConcurrentHashMap -- class description, paragraphs 2 and 3",
+      "source_fact": "\"Iterators, Spliterators and Enumerations return elements reflecting the state of the hash table at some point at or since the creation of the iterator/enumeration. They do not throw ConcurrentModificationException. However, iterators are designed to be used by only one thread at a time.\" and \"Bear in mind that the results of aggregate status methods including size, isEmpty, and containsValue are typically useful only when a map is not undergoing concurrent updates in other threads. Otherwise the results of these methods reflect transient states that may be adequate for monitoring or estimation purposes, but not for program control.\" and \"retrieval operations do not entail locking\"",
+      "typed_golden_claims": [
+        {
+          "subject": "iterator_throws_concurrentmodificationexception",
+          "value_type": "BOOLEAN",
+          "value": "false",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "iterator_safe_for_concurrent_use_by_multiple_threads",
+          "value_type": "BOOLEAN",
+          "value": "false",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "size_reliable_for_program_control_under_concurrent_updates",
+          "value_type": "BOOLEAN",
+          "value": "false",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "retrieval_operations_acquire_locks",
+          "value_type": "BOOLEAN",
+          "value": "false",
+          "unit": null,
+          "material": true
+        }
+      ],
+      "materiality": "Each boolean maps to a distinct real defect: a try/catch(ConcurrentModificationException) retry loop that can never fire; an iterator handed to a thread pool; and a batch trigger that fires early, late or twice under load. All three pass tests on an idle map.",
+      "scoring_rule": "Four decisive booleans. The first and the third are the material pair and point in opposite intuitive directions: the HashMap mental model gets the first wrong, the 'thread-safe-means-authoritative' model gets the third wrong. Either is a material falsehood on its own.",
+      "predeclared_failure_category": "concurrent behaviour",
+      "why_category_is_failure_prone": "A thread-safe collection is widely read as 'the same type with the races removed', so the non-concurrent sibling's contract is carried over wholesale. The differences that matter are ones the API surface does not express -- what an iterator guarantees, and whether an aggregate reading is a fact or an estimate.",
+      "common_misconception": "Carrying HashMap's fail-fast iterator contract across to ConcurrentHashMap, so that a concurrent write during iteration is expected to raise ConcurrentModificationException. The opposite over-correction is just as common: reading 'thread-safe' as making size() an authoritative count and the iterator shareable between threads.",
+      "likely_false_proposition": [
+        {
+          "subject": "iterator_throws_concurrentmodificationexception",
+          "value_type": "BOOLEAN",
+          "value": "true",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "size_reliable_for_program_control_under_concurrent_updates",
+          "value_type": "BOOLEAN",
+          "value": "true",
+          "unit": null,
+          "material": true
+        }
+      ]
+    },
+    {
+      "case_id": "S6-CHAL-HTTP-1-no-cache-vs-no-store",
+      "set_type": "CHALLENGE",
+      "category": "http_caching",
+      "question": "Per RFC 9111, does Cache-Control: no-cache on a response forbid a cache from STORING that response? Which response directive forbids storage? And may a cache reuse a no-cache response to satisfy a later request without contacting the origin server? Answer in under 150 words.",
+      "context": "A reviewer is choosing headers for an authenticated page containing personal data and has written Cache-Control: no-cache on the grounds that the data must not be retained.",
+      "primary_source": "https://www.rfc-editor.org/rfc/rfc9111.html",
+      "source_locator": "RFC 9111 (HTTP Caching), sections 5.2.2.4 no-cache and 5.2.2.5 no-store",
+      "source_fact": "\"The no-cache response directive, in its unqualified form (without an argument), indicates that the response MUST NOT be used to satisfy any other request without forwarding it for validation and receiving a successful response\" and \"The no-store response directive indicates that a cache MUST NOT store any part of either the immediate request or the response and MUST NOT use the response to satisfy any other request.\"",
+      "typed_golden_claims": [
+        {
+          "subject": "no_cache_forbids_storage",
+          "value_type": "BOOLEAN",
+          "value": "false",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "directive_forbidding_storage",
+          "value_type": "ENUM",
+          "value": "no-store",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "no_cache_response_reusable_without_revalidation",
+          "value_type": "BOOLEAN",
+          "value": "false",
+          "unit": null,
+          "material": true
+        }
+      ],
+      "materiality": "Directly decides whether personal data is written to shared cache storage. An answer of 'no-cache prevents storage' approves a header that does not do what the reviewer was trying to achieve, and the gap is invisible in testing because revalidation makes the responses look correct.",
+      "scoring_rule": "Decisive on no_cache_forbids_storage (BOOLEAN) and directive_forbidding_storage (ENUM). no_cache_forbids_storage = true is the material falsehood. Naming both directives without distinguishing storage from reuse does not satisfy the first claim: the distinction IS the question.",
+      "predeclared_failure_category": "official docs contradict common secondary claims",
+      "why_category_is_failure_prone": "When a directive's NAME reads as a plain-English summary of a different behaviour than the one specified, the name wins in every informal source. The specification then has to be read against a decade of code comments and configuration snippets that are confidently wrong in the same direction.",
+      "common_misconception": "That no-cache means 'do not cache'. It permits storage and requires revalidation before reuse; no-store is the directive that forbids storage. The specification itself adds that no-store \"is not a reliable or sufficient mechanism for ensuring\" privacy, so neither directive is a data-protection control.",
+      "likely_false_proposition": [
+        {
+          "subject": "no_cache_forbids_storage",
+          "value_type": "BOOLEAN",
+          "value": "true",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "directive_forbidding_storage",
+          "value_type": "ENUM",
+          "value": "no-cache",
+          "unit": null,
+          "material": true
+        }
+      ]
+    },
+    {
+      "case_id": "S6-CHAL-HTTP-2-401-vs-403-and-www-authenticate",
+      "set_type": "CHALLENGE",
+      "category": "http_semantics_auth",
+      "question": "Per RFC 9110, which status code applies when a request lacks valid authentication credentials, and which when the server understood the request but refuses to fulfil it? Is any response header field MANDATORY on either of those responses? Answer in under 150 words.",
+      "context": "An API gateway returns 403 for missing bearer tokens and 401 for insufficient scope. A reviewer asks whether that is backwards.",
+      "primary_source": "https://www.rfc-editor.org/rfc/rfc9110.html",
+      "source_locator": "RFC 9110 (HTTP Semantics), sections 15.5.2 401 Unauthorized and 15.5.4 403 Forbidden",
+      "source_fact": "\"The 401 (Unauthorized) status code indicates that the request has not been applied because it lacks valid authentication credentials for the target resource. The server generating a 401 response MUST send a WWW-Authenticate header field (Section 11.6.1) containing at least one challenge applicable to the target resource.\" and \"The 403 (Forbidden) status code indicates that the server understood the request but refuses to fulfill it. ... If authentication credentials were provided in the request, the server considers them insufficient to grant access.\"",
+      "typed_golden_claims": [
+        {
+          "subject": "status_for_missing_or_invalid_credentials",
+          "value_type": "ENUM",
+          "value": "401",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "status_for_understood_but_refused",
+          "value_type": "ENUM",
+          "value": "403",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "www_authenticate_mandatory_on_401",
+          "value_type": "BOOLEAN",
+          "value": "true",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "www_authenticate_mandatory_on_403",
+          "value_type": "BOOLEAN",
+          "value": "false",
+          "unit": null,
+          "material": false
+        }
+      ],
+      "materiality": "A standards-conformant client cannot begin an authentication exchange without the 401 challenge, so the reversed mapping breaks interoperability rather than merely offending taste, and it leaks the difference between 'unknown caller' and 'known caller, denied'.",
+      "scoring_rule": "Decisive on the two ENUM mappings and on www_authenticate_mandatory_on_401 (BOOLEAN). Reversing the codes is a material falsehood; so is asserting that the WWW-Authenticate header is optional on a 401, because the specification says MUST. www_authenticate_mandatory_on_403 is NON-material -- see notes.",
+      "predeclared_failure_category": "documented widespread technical misconception",
+      "why_category_is_failure_prone": "A misconception becomes self-sustaining once real deployed systems implement it: the wrong answer is then confirmed by observation. Here the status code's NAME ('Unauthorized') describes authorization while the specification assigns it to authentication, so the mix-up is encoded in the vocabulary itself.",
+      "common_misconception": "The reversed mapping -- 401 read as 'authenticated but lacking permission' because of the word Unauthorized, and 403 as 'not logged in'. The mandatory WWW-Authenticate challenge on 401 is the half most often omitted entirely, which is what makes the reversal invisible to clients.",
+      "likely_false_proposition": [
+        {
+          "subject": "status_for_missing_or_invalid_credentials",
+          "value_type": "ENUM",
+          "value": "403",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "www_authenticate_mandatory_on_401",
+          "value_type": "BOOLEAN",
+          "value": "false",
+          "unit": null,
+          "material": true
+        }
+      ]
+    },
+    {
+      "case_id": "S6-CHAL-SEC-1-ropc-vs-implicit-normative-strength",
+      "set_type": "CHALLENGE",
+      "category": "oauth_security",
+      "question": "In RFC 9700 (BCP 240, Best Current Practice for OAuth 2.0 Security), what normative requirement level is placed on the resource owner password credentials grant, and what level on the implicit grant? Are the two the same? Quote the normative keyword used for each. Answer in under 150 words.",
+      "context": "A security review of two legacy integrations: a mobile app using the password grant, and an SPA using the implicit flow. The question is which must be removed and which may be argued for with compensating controls.",
+      "primary_source": "https://www.rfc-editor.org/rfc/rfc9700.html",
+      "source_locator": "RFC 9700 / BCP 240 (January 2025), sections 2.1.2 Implicit Grant and 2.4 Resource Owner Password Credentials Grant",
+      "source_fact": "Section 2.4: \"The resource owner password credentials grant [RFC6749] MUST NOT be used. This grant type insecurely exposes the credentials of the resource owner to the client.\" Section 2.1.2: \"In order to avoid these issues, clients SHOULD NOT use the implicit grant (response type token) or other response types issuing access tokens in the authorization response, unless access token injection in the authorization response is prevented and the aforementioned token leakage vectors are mitigated.\"",
+      "typed_golden_claims": [
+        {
+          "subject": "ropc_requirement_level",
+          "value_type": "ENUM",
+          "value": "MUST NOT",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "implicit_grant_requirement_level",
+          "value_type": "ENUM",
+          "value": "SHOULD NOT",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "both_grants_have_the_same_requirement_level",
+          "value_type": "BOOLEAN",
+          "value": "false",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "bcp_number",
+          "value_type": "ENUM",
+          "value": "BCP 240",
+          "unit": null,
+          "material": false
+        },
+        {
+          "subject": "condition_attached_to_the_implicit_prohibition",
+          "value_type": "TEXT",
+          "value": "The SHOULD NOT on the implicit grant is qualified: it applies unless access token injection in the authorization response is prevented and the token leakage vectors of sections 4.1, 4.2, 4.3 and 4.6 are mitigated; clients SHOULD instead use response type code.",
+          "unit": null,
+          "material": true,
+          "needs_owner": true,
+          "reason_adjudication_required": "Whether a given paraphrase of the escape clause is faithful is a reading of normative prose, not a value equality. Scoring it automatically would require deciding whether an answer's conditions are equivalent to the RFC's, which is the adjudication being avoided."
+        }
+      ],
+      "materiality": "Decides remediation priority and whether an exception can be granted. Flattening SHOULD NOT to MUST NOT produces a finding that cannot be waived and will be overruled; inflating MUST NOT to 'discouraged' leaves resource-owner credentials flowing through a client indefinitely.",
+      "scoring_rule": "Decisive on the two ENUM requirement levels, scored as the RFC 2119 keyword and nothing else. implicit_grant_requirement_level = MUST NOT is the material falsehood this case exists to expose. An answer that says the implicit grant is 'effectively unusable in practice' is NOT a falsehood -- the material claim is the normative keyword, not a judgment about practice -- and the TEXT claim is where any such reasoning is recorded, as NEEDS_OWNER.",
+      "predeclared_failure_category": "security/auth distinctions",
+      "why_category_is_failure_prone": "Security guidance is compressed as it is retold, and compression flattens normative strength: 'discouraged', 'deprecated' and 'prohibited' collapse into 'bad'. The flattened version is directionally right and useless for the decision it is consulted for, which is whether an existing integration must be removed or may be justified.",
+      "common_misconception": "That the BCP prohibits both flows equally -- commonly stated as 'the implicit flow is forbidden' or 'both are deprecated'. The document uses MUST NOT for the password grant and a CONDITIONAL SHOULD NOT for the implicit grant, and the condition is spelled out.",
+      "likely_false_proposition": [
+        {
+          "subject": "implicit_grant_requirement_level",
+          "value_type": "ENUM",
+          "value": "MUST NOT",
+          "unit": null,
+          "material": true
+        },
+        {
+          "subject": "both_grants_have_the_same_requirement_level",
+          "value_type": "BOOLEAN",
+          "value": "true",
+          "unit": null,
+          "material": true
+        }
+      ]
+    }
+  ],
+  "integrity_note": "Nothing in this manifest may change after the first evaluated answer. No case may be replaced because the baseline succeeded or because Deep Consensus failed. No difficulty escalation after seeing results. The hashes exist to make a breach detectable, not to make it impossible."
+}

@@ -68,6 +68,7 @@ HERMETIC_MODULES = [
     "test_demo_execution",
     "test_dev_check",
     "test_estimation",
+    "test_governance_clauses",   # Sprint 18 Phase 0: required governing clauses still present
     "test_eval_runner",
     "test_execution_tools",
     "test_interview_walkthrough_data",
