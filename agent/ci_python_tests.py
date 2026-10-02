@@ -69,6 +69,10 @@ HERMETIC_MODULES = [
     "test_dev_check",
     "test_estimation",
     "test_governance_clauses",   # Sprint 18 Phase 0: required governing clauses still present
+    # Block B: the governance rules FIRING, not merely existing. 22 Owner-
+    # specified cases plus mutations that break each protection. Pure data in,
+    # pure decision out -- no network, no model, no filesystem.
+    "test_governance_decision",
     "test_eval_runner",
     "test_execution_tools",
     "test_interview_walkthrough_data",

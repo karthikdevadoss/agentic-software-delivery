@@ -234,3 +234,30 @@ operationally ineffective. Non-waste and non-attachment were written down,
 believed and followed as values through six sprints of a programme whose thesis
 was never going to close — and stopped nothing, because no boundary evaluated
 them. See docs/CONSTITUTION.md §19 and the governance entry in docs/DECISIONS.md.
+
+### Phase 5: every retro lesson carries a disposition (added 2026-10-02, Owner directive)
+
+Phase 2 already requires action items in three fixed sections with a reason each,
+and explicit Owner approval before acting on them. Phase 5 narrows one thing that
+approval requirement was quietly doing damage to.
+
+**Every material lesson gets exactly one disposition:** `FIX_NOW`,
+`ADD_GUARD_OR_TEST`, `UPDATE_CANONICAL_KNOWLEDGE`, `NEEDS_OWNER`, or
+`NO_ACTION_WITH_REASON`. Defined in CLAUDE.md, "A retro lesson is not an
+improvement".
+
+**The correction this makes to Phase 2.** "Explicit Owner approval required
+before acting on action items" was written for action items that change how the
+project *works* -- the rubric, the process, the direction. Applied to every
+lesson without distinction, it turned objective in-scope defects into permanent
+residents of a queue: a wrong path, a broken regex, a test depending on global
+state. Those are `FIX_NOW`, they are fixed in the sprint that found them, and
+the retro records that they were.
+
+Owner approval stays mandatory for strategy, governance authority, scope
+expansion, publication, spending, frozen evidence, and subjective preference.
+Nothing about that is weakened; what changed is that it no longer applies to a
+deterministic bug found on the way past.
+
+**A retro that records a lesson and changes nothing has not learned anything.**
+It has documented that it could have.

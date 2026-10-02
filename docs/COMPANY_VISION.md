@@ -1,7 +1,23 @@
-# Company Vision (durable north star)
+# Product Vision — Agentic Software Delivery (durable north star)
 
-This file is the durable "why" and "what structure" — it should change
-rarely. Ordered execution steps belong in docs/ROADMAP.md; specific
+> **THIS IS A PRODUCT VISION, NOT A COMPANY VISION.** Marked 2026-10-02.
+>
+> The filename `COMPANY_VISION.md` is now misleading and is kept only because
+> renaming it is a 14-file change with no test asserting that doc-to-doc
+> references resolve — so the rename is not yet *verifiable*, and an unverified
+> rename of the document every other document points at is a poor trade. The
+> rename is recorded as a bounded follow-up (docs/ACTION_QUEUE.json ACT-028),
+> together with the guard that would make it testable.
+>
+> What this file is: the durable purpose and structure of **the Agentic
+> Software Delivery product**, which is one product and not the organisation
+> that owns it. Nothing here describes an incorporated company, a legal entity,
+> an employer or an established business, and nothing here should be read as
+> company strategy. A product roadmap is not strategy and does not authorise
+> itself — see CLAUDE.md's "Mission value gate".
+
+This file is the durable "why" and "what structure" for the product — it should
+change rarely. Ordered execution steps belong in docs/ROADMAP.md; specific
 accepted decisions and their rationale belong in docs/DECISIONS.md;
 unresolved possibilities belong in docs/IDEAS.md. Do not mix these.
 

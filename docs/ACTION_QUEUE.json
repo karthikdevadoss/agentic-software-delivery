@@ -629,6 +629,20 @@
       "verification_required": "Both test_proof_registry and test_showcase_data green after the move.",
       "created_at_commit": "9ba8d49",
       "resolved_at_commit": null
+    },
+    {
+      "id": "ACT-028",
+      "source": "Sprint 18 Block B, governance execution audit, 2026-10-02",
+      "title": "Rename docs/COMPANY_VISION.md to a product-specific name, once doc references are testable",
+      "priority": "low",
+      "status": "open",
+      "scope": "docs/COMPANY_VISION.md and its 14 tracked references (CLAUDE.md, START_HERE.md, agent/web_server.py comments, claude-project-context/CONTEXT_SNAPSHOT.md, docs/ARCHITECTURE_V2_KNOWLEDGE_MAP.md, docs/IDEAS.md, docs/PROJECT_STATE.json, docs/PROJECT_STATUS.md, docs/RESOURCE_REGISTRY.md, docs/ROADMAP.md, docs/context/PROJECT_CONTEXT_INDEX.md, docs/context/PROJECT_PURPOSE_AND_GOALS.md, showcases/senior-java-ai-transformation/showcase.yaml)",
+      "reason": "The public repository is a PRODUCT repository; the actual company framework is private. A file called COMPANY_VISION.md in a public product repo now reads as a claim about an organisation that is explicitly not incorporated and not an employer. The content is genuinely about the product. The Owner authorised the rename ONLY IF it is low-risk and fully testable; it is not yet fully testable, because no guard asserts that a docs/*.md path referenced from a tracked file actually exists, so correctness would rest on grep alone. The document was therefore MARKED as a product vision in place (zero risk, achieves the clarity goal) and the rename deferred rather than done unverified.",
+      "evidence": "14 tracked references found via git grep. All three references inside agent/web_server.py and showcase.yaml are COMMENTS, not functional code, so a rename cannot break runtime -- the risk is dangling prose references, which is exactly what no test currently catches. PRECONDITION for doing this: add the deterministic reference guard (every docs/*.md path mentioned in a tracked file resolves), then the rename becomes verifiable in one run.",
+      "safe_to_auto_execute": false,
+      "verification_required": "The reference guard exists and passes, then zero dangling references after the rename, then the full blocking suite and link-integrity green.",
+      "created_at_commit": "3be326e",
+      "resolved_at_commit": null
     }
   ]
 }

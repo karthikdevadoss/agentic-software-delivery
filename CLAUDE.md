@@ -98,6 +98,70 @@ to stop is not a reason to continue.
 
 A stop condition firing on one workstream is never a reason to stop the others.
 
+### Sprint duration is per-mission, and the drift trigger
+
+**There is no universal sprint length here, and one was deliberately rejected.**
+A fixed "N sprints or N calendar weeks, whichever is longer" was considered and
+turned down: it would make the boundary arrive on a calendar rather than when
+the work's purpose had actually been served, which is the opposite of what the
+continuation test is for. **Each mission declares its own
+`calendar_time_box`** (see docs/BACKLOG.json's `_mission_card`), and
+continuation is re-earned at every substantial boundary.
+
+**Drift trigger.** If **two consecutive substantial platform sprints** produce
+neither new recruiter-visible value **nor** meaningful technical proof that
+directly strengthens the current hiring argument, raise
+`NEEDS_OWNER_GOAL_REVIEW`.
+
+This is a **forced review trigger, not an automatic termination rule.** It does
+not stop anything by itself and it is not a judgement about quality — two
+excellent sprints can fire it. It exists because the characteristic drift here
+is not a bad sprint, it is a good sprint pointed slightly away from the
+objective, repeated. One such sprint is noise; two in a row is a pattern worth
+the Owner's attention, and noticing it is not something to leave to whoever
+happens to be paying attention.
+
+### Employer and client confidentiality
+
+Public material must not expose confidential or proprietary information from
+current employers, past employers, clients, customer systems, or private
+repositories. This applies **now**, to past as well as current engagements.
+
+Every employment or client claim follows the claim-boundary authority for that
+claim. Employer *names* already on the Owner's public CV are legitimately public
+and are required on the home page; **internal system names, client names,
+architecture detail, incident specifics and anything learned under an
+engagement are not.**
+
+**If the boundary is uncertain, omit or generalise. Never infer permission.** The
+asymmetry is the reason: an omitted true claim costs a little credibility, and a
+disclosed confidential detail cannot be withdrawn.
+
+### A retro lesson is not an improvement
+
+Every material retro lesson carries **exactly one** disposition:
+
+| Disposition | When |
+|---|---|
+| `FIX_NOW` | Objective, in scope, safely correctable now. Do it now. |
+| `ADD_GUARD_OR_TEST` | The defect class should be unable to recur silently. |
+| `UPDATE_CANONICAL_KNOWLEDGE` | A future session needs to know this. |
+| `NEEDS_OWNER` | See the reserved list below. |
+| `NO_ACTION_WITH_REASON` | Deliberately not acted on, with the reason recorded. |
+
+**A lesson with no disposition is an incomplete retro**, and a retro is not
+finished by having written the lesson down.
+
+**Do not accumulate a queue of obvious in-scope defects just because they were
+found during a retro.** If it is objective, inside the already-approved scope,
+and deterministically verifiable, it is `FIX_NOW` — routing it to "awaiting
+Owner approval" is how a known defect becomes a permanent resident.
+
+Owner approval remains mandatory, and `NEEDS_OWNER` is correct, for: strategy;
+governance authority changes; mission scope expansion; publication; significant
+spending; changes to protected or frozen evidence; and any subjective
+preference, visual or otherwise.
+
 ### Deep Consensus: hard guard
 
 The Deep Consensus experimental programme is **PAUSED**, its **product thesis is
