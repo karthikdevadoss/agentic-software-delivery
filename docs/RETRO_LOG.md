@@ -3705,3 +3705,102 @@ and both get AEQ entries.**
 
 **`NEEDS_OWNER_GOAL_REVIEW`** — recorded, not acted on. No next sprint is
 proposed or authorized, and this state does not authorize one.
+
+## Sprint 18 addendum (2026-10-02, later the same day) — a reporting defect about the screenshot pack
+
+Recorded on Owner instruction after he found `visual-audit-sprint18-after/` missing from
+the repository root. Kept in the Sprint 18 section because it is a defect in how Sprint 18
+was REPORTED, not in what it built.
+
+### What the Owner asked to be recorded, and the one correction to it
+
+He asked that the final report's claim — "20 PNGs + manifest.json" — be recorded as
+**false**. On the evidence, that specific wording would itself be inaccurate, so it is
+recorded here as what it actually was. The claim was **TRUE when made and is TRUE now**;
+what failed was its **durability and the path it named**.
+
+Evidence, all from real file metadata rather than recollection:
+
+- The 21 files (20 PNG + `manifest.json`) exist and are byte-complete, at
+  `visual-audit-sprint17-before/visual-audit-sprint18-after/` — 36 MB, including
+  `desktop-1920-proof.png` (915,238 bytes), `desktop-1920-home.png` (456,818 bytes),
+  `mobile-390-proof.png` (993,682 bytes), `manifest.json` (31,448 bytes).
+- Their mtimes are 14:06:36 to 14:09:15, which is the capture run itself; `manifest.json`
+  at 14:09:15 is the run completing.
+- The containing folder's mtime is **16:14:58**, roughly two hours after this session's
+  last write (the Sprint 18 commit, ~14:20), alongside two `.zip` files this session never
+  created (`visual-audit-sprint18-before.zip` 16:15:04, `visual-audit-sprint17-after.zip`
+  16:22:35).
+
+So the pack was produced, was complete, and was relocated afterwards by something outside
+this session. **Who or what moved it is not established and is not claimed here** — only
+the timing is, because only the timing is evidenced.
+
+### The defect that IS real, and it is mine
+
+**I reported an UNTRACKED directory as a deliverable location without saying it was
+untracked.** The final report and `docs/SPRINT18_REVIEW_PACKAGE.md` §F both name
+`visual-audit-sprint18-after/` as where the Owner should look. Neither said that the folder
+is outside Git, and therefore that nothing protects it — not the commit, not the branch, not
+the remote.
+
+This project already has the governing rule and I applied it to the wrong artifact. CLAUDE.md
+says a local commit is not durably saved and must not be described as "saved" or "backed up".
+An **untracked folder is strictly weaker than a local commit**: a commit at least survives
+a move, a reorganisation and an unrelated `rm`. I correctly refused to call the commit
+durable, then pointed the Owner's whole visual review at something with less protection than
+the thing I had just called insufficient — and did not notice the inconsistency.
+
+The reason given at the time was precedent: Sprint 17 left its packs untracked. That is a
+real precedent and it is not a justification. Precedent explains a choice; it does not make
+the choice right, and "the last sprint did it too" is the shape of an argument that stops
+anyone re-examining a weak default.
+
+### Root cause, classified
+
+**Observability/reporting gap, not an implementation bug.** The pack was built correctly and
+verified correctly — `ls` really did list 21 files, and that verification was sound at the
+moment it ran. What was missing was any check that a reported artifact is reachable by
+anything other than a path typed into a sentence. A verification that confirms a file exists
+*now* says nothing about whether the reader will find it later, and I did not distinguish
+those two things.
+
+### Correction applied
+
+Re-captured into the repository root from the real local server at 16:26-16:28, and verified
+against the before-pack contract rather than assumed equivalent: **page set identical (10),
+viewports identical (3), 30 of 30 records at HTTP 200, zero console errors, zero model
+calls**, 21 files, 38 MB, no zero-byte files. `/proof` reports `scrollWidth == clientWidth`
+at all three widths, so the 390px overflow fix from the sprint still holds. The only
+horizontal overflow in the whole pack is `showcase` and `usage` at mobile-390, both
+pre-existing and both already recorded. The nested copy
+at `visual-audit-sprint17-before/visual-audit-sprint18-after/` was left untouched rather than
+moved or deleted — it is the Owner's file organisation, it postdates this session's work, and
+destroying a second copy of a review artifact to tidy a path is not a trade worth making.
+
+### Lessons
+
+- **L1.** When reporting where an artifact is, state whether it is tracked. If it is not
+  tracked, say so in the same sentence as the path, and say what that means — that a move,
+  a reorganisation or a clean checkout loses it.
+- **L2.** "Verified it exists" and "the reader will be able to find it" are different claims.
+  The first was made; only the second was what the Owner needed.
+- **L3.** Durability reasoning must be applied to *every* artifact a report depends on, not
+  just to source. Getting it right about the commit and wrong about the screenshots in the
+  same report is the specific failure, and it came from treating durability as a property of
+  code rather than of evidence.
+
+### Open question, deliberately not answered here
+
+Should review packs be committed? They are large binaries (36 MB for this one, 11 MB for the
+before pack) and this is the third sprint to produce one, so committing them has a real
+cumulative cost in a repository that is already public. The alternatives — commit them, zip
+and commit the zip, publish them as a deploy artifact, or keep them untracked but assert
+their presence in a test — have genuinely different trade-offs and this is an Owner decision
+about repository policy, not something to settle inside a retro addendum.
+
+**No ACTION_QUEUE item was created for it**, because this pass was authorised as inspection
+and recapture only and that authorisation did not extend to opening tracked items. It is
+therefore recorded HERE and nowhere else, which is itself a weak place for it -- flagged to
+the Owner in the session report so it does not quietly become a thing only this file
+remembers.
