@@ -3804,3 +3804,186 @@ and recapture only and that authorisation did not extend to opening tracked item
 therefore recorded HERE and nowhere else, which is itself a weak place for it -- flagged to
 the Owner in the session report so it does not quietly become a thing only this file
 remembers.
+
+---
+
+# Sprint 18 release closure + governance execution audit (2026-10-02, second work block)
+
+An authorized ~7-hour autonomous block with the Owner away. Five blocks: release
+closure, governance execution audit, one article, a private story bank, and a
+mandatory verification/preservation reserve.
+
+## 1. Useful value produced
+
+| Block | Produced |
+|---|---|
+| A | Sprint 17's first-screen action row recovered; positioning leads with AI/agentic; `/proof` compressed to collapsed cards with a one-line limitation always visible; shell 1200 -> 1400 with prose measure untouched; mobile overflow eliminated on all ten public pages; `test_rag_index` corpus isolation |
+| B | A governance **decision engine** over typed facts, 22 acceptance cases, mutation tests; drift trigger, confidentiality rule, retro dispositions; `COMPANY_CORE.md` canonical in private Git |
+| C | The Deep Consensus write-up as a local publication-ready page at `/article/evaluating-the-evaluator` |
+| D | Eight evidence-traceable interview stories, private |
+| E | 916 blocking tests, two verified bundles, a 22-screenshot review pack and ZIP |
+
+## 2. What was objectively verified
+
+- **916 blocking Python tests**, 4 skipped. Final state: **0 blocking failures**
+  (the one that remained mid-block was my own regression and was fixed).
+- **22 of 22 governance cases** resolve as specified, with mutation tests that
+  break each protection and show the guarded case flip.
+- **Zero horizontal overflow** across 33 capture records on 11 surfaces at three
+  viewports. Previously Showcase 435px and Usage 433px against a 390 viewport.
+- **Home's primary action is measurable again at y=601**; it was `y=-` (not
+  detectable) for the whole of the first Sprint 18 block.
+- **`test_rag_index`: 13/13 with twelve incidental indexable files deliberately
+  present in the repository**, and 99/99 grouped. Runtime 77s -> 14s.
+- Link integrity green; 130 browser assertions passing; both git bundles
+  `git bundle verify` complete.
+
+## 3. Assumptions falsified during this block
+
+1. **"Sprint 18 lost nothing objective from Sprint 17."** It lost the
+   first-screen action row, and the capture pack had been quietly reporting
+   `y=-` for it.
+2. **"The mobile overflow is a layout problem."** No element's right edge
+   exceeded the viewport. It was unbreakable tokens inside narrow elements, the
+   same cause as `/proof`'s own overflow earlier — and two of the project's own
+   stylesheets already carried the fix elsewhere.
+3. **"`test_rag_index`'s index is isolated."** The index *path* was. The
+   *corpus* was the live working tree.
+4. **"Case 15 is held by the reserved-decision list."** A mutation test proved
+   it is held by two independent guards. My belief about my own code was wrong
+   and the test corrected it.
+5. **"The years-of-experience gate would catch an invented figure."** Only if
+   the numeral is a digit.
+
+## 4. Mistakes made in this block
+
+| Mistake | How found | Disposition |
+|---|---|---|
+| Drafted "Fifteen years of enterprise backend work" — a figure in no claim authority | reading the claim boundary before writing | `FIX_NOW` (removed) + `ADD_GUARD_OR_TEST` (spelled-out-numeral pattern, proven against the exact evading string) |
+| Wrote "and Kafka eventing" into a LIVE claim while the registry records it NOT_PRODUCTION_PROVISIONED | the pre-existing Sprint 14 claim gate | `FIX_NOW` (claim corrected, Kafka named honestly in the limitation) |
+| Five literal `--` inside HTML comments, two of them emitted by the generator | `agent/static_gate.py` went RED | `FIX_NOW` (generator fixed and pages regenerated, not output patched) |
+| Mutation test written on a false premise about my own code | the mutation failed | `FIX_NOW` (test now asserts the real two-guard structure) |
+| Three scripted edits asserted and exited before writing, costing rework | own output | `NO_ACTION_WITH_REASON` — a workflow annoyance, not a defect in the product |
+
+## 5. Which old mistakes tried to recur, and did governance catch them
+
+- **An overclaim on a public surface.** Yes — caught, by a gate built in an
+  earlier sprint, **before** the claim could be published. Prevention, not
+  post-hoc.
+- **Prose-matching inside control logic** (unapproved lesson A17). The pressure
+  to build a lexical governance checker was real and explicit in the brief's own
+  case list. Resolved by making the decision engine consume **typed facts only**,
+  with `Request` carrying no free-text field and a test asserting that shape — so
+  crossing the line later is a visible, deliberate act.
+- **The same root cause patched instance-by-instance.** Partially caught: the
+  overflow cause was named only on its third appearance, and the remedy already
+  existed in the codebase.
+- **A detector that cannot detect.** Caught, twice, by seeded mutations.
+
+## 6. Did detection happen before or after damage
+
+| Case | When |
+|---|---|
+| Kafka overclaim | **before** — never published |
+| Years-of-experience figure | **before** — never written to a file |
+| XML comment violations | **after** commit, before push. Within the blocking gate, nothing shipped |
+| Overflow, drifted evidence paths, RAG corpus | **after** the defect existed, on the first run of a gate that had not existed before |
+
+Honest summary: two caught before damage by controls that already existed; the
+rest found by new controls, which is the second-best outcome and the reason to
+build them.
+
+## 7. Which written rules actually fired
+
+| Rule | Fired? |
+|---|---|
+| Forbidden-claims gate | **yes**, twice (one caught, one evaded and now closed) |
+| Showcase freshness guard | **yes** — forced a real re-verification, not a date bump |
+| TIA drift ratchet | **yes** — refused my three new specs until mapped |
+| `test_verify_change` vacuity guard | **yes** — refused to pass once its fixture stopped being uncovered |
+| Static XML-comment gate | **yes** — blocked my own regression |
+| Proof-surface gate | **yes** — eight drift findings, then every later claim |
+| Mission value gate / four states | **yes** — this block ends in `NEEDS_OWNER_GOAL_REVIEW` by the rule, not by preference |
+
+## 8. Rules that still have no real decision boundary
+
+Stated plainly, because this is the project's own central failure mode:
+
+1. **The drift trigger is not mechanised.** `consecutive_sprints_without_either`
+   is an input nothing computes. Nothing counts sprints and nothing raises it
+   automatically; today a human must notice. The engine can *decide* correctly
+   once told, which is half a control.
+2. **The Mission Card is not enforced.** `agent/backlog.py` still does not
+   refuse a LARGE/XLARGE item lacking one. Recorded in the schema as unmechanised
+   rather than implied.
+3. **The judgement inputs are all human.** "Is this claim supported?", "is this
+   genuinely required for system integrity?" — the engine consumes answers it
+   cannot produce. Deliberate, and a real limit on how much of governance is
+   mechanised.
+4. **`retraction_scan.py` currently FAILS and has probably been failing
+   invisibly.** It crashes under the default Windows locale codec, so on this
+   machine it produced no verdict at all until run with `PYTHONIOENCODING=utf-8`
+   — and then reports a disputed claim on a private artifact dated 2026-09-22.
+   Not fixed here: both the encoding fix and the claim judgement belong outside
+   this block's scope. **`NEEDS_OWNER`.**
+
+## 9. Dispositions
+
+- **`FIX_NOW`** — the Kafka overclaim; the years figure; five XML comment
+  violations; the false-premise mutation test; the showcase re-verification; the
+  TIA map completion; the `test_verify_change` re-point; mobile overflow on two
+  pages; `test_rag_index` corpus isolation.
+- **`ADD_GUARD_OR_TEST`** — spelled-out-numeral claim pattern; `limitation_short`
+  bounds with six mutations; 22 governance cases with mutations; the
+  corpus-narrowing self-assertion; the typed-input shape test.
+- **`UPDATE_CANONICAL_KNOWLEDGE`** — `COMPANY_CORE.md`; `CLAUDE.md` drift
+  trigger / confidentiality / dispositions; `CONSTITUTION.md` §19;
+  sprint-process Phase 5; `COMPANY_VISION.md` marked as product vision.
+- **`NEEDS_OWNER`** — ACT-025 fonts; ACT-026 third test bucket; ACT-028 rename;
+  publication; the `retraction_scan` finding; the Owner's visual judgement.
+- **`NO_ACTION_WITH_REASON`** — the `COMPANY_VISION` rename itself (deferred
+  because not yet verifiable, with the precondition recorded); three omitted
+  interview stories (unverifiable); the scripted-edit friction.
+
+## 10. Estimate vs actual by block
+
+No hour estimates were given; the brief set calendar guides and explicitly said
+they were not kill timers. Recorded for calibration, with the honest note that a
+calendar-box block still produces no ratio data (retro action A-18.1 from the
+previous block, still open).
+
+| Block | Planning guide | Actual |
+|---|---|---|
+| A | ~2.5 h | ~2.3 h |
+| B | ~1 h | ~1.3 h |
+| C | ~1.25 h | ~0.6 h |
+| D | ~45–60 min | ~0.4 h |
+| E | ~75–90 min reserve | ~0.9 h incl. an unplanned regression fix |
+
+B overran because the decision engine was built as real code rather than as a
+checklist; C came in well under because the factual authority was already
+written and the work was editorial, not investigative.
+
+## 11. Was the programme worth the resources
+
+**Yes, and the strongest evidence is what the gates found rather than what was
+built.** Eight drifted evidence paths, two overclaims, one test that any
+contributor could break by adding a file, one unreachable spec, and five of my
+own comment violations — all surfaced by controls that fire. One article and
+eight interview stories came out of material that already existed. Zero paid API
+calls.
+
+The weakest part is §8: four rules still lack a boundary, and the drift trigger
+in particular is a rule about noticing that nothing yet notices.
+
+## 12. What should be preserved if work stops today
+
+Both repositories are committed and bundled to `D:\AI\agentic-backup-2026-10-02\`,
+both bundles `git bundle verify` complete. The review pack and ZIP are beside
+them. Nothing is pushed, so a disk failure still loses everything — that remains
+the single largest risk and it is the Owner's decision to resolve.
+
+## 13. Continuation state
+
+**`NEEDS_OWNER_GOAL_REVIEW`** — publication and any next substantial mission
+require Owner review. No Sprint 19 is proposed or started.
