@@ -7,13 +7,13 @@
 <meta name="description" content="Enterprise Java/Spring backend engineer building and operating a production-deployed Agentic AI platform with human control, durable workflows and measurable quality.">
 <!-- Sprint 18: the Google Fonts stylesheet and its two preconnects were removed.
      Verified before removing, not assumed: this page does not load /style.css
-     (which is where the Sprint 16 --font-body/--font-display identity lives) and
+     (which is where the Sprint 16 font-family custom properties live) and
      carries no font-family or font: shorthand naming any of the nine families it
-     requested -- every rule here resolves to a system stack. So the sheet was
+     requested. Every rule here resolves to a system stack, so the sheet was
      downloaded, blocked rendering, and sent the visitor IP to a third party while
      changing nothing on screen. Removal is visually neutral BY CONSTRUCTION.
      The disputed per-page identity in style.css is untouched and still needs an
-     Owner decision -- see docs/OWNER_DECISIONS_PENDING.md. -->
+     Owner decision; see docs/OWNER_DECISIONS_PENDING.md. -->
 <style>
   /* Sprint 14: this page deliberately does NOT load /style.css. That sheet is
      the dark engineering-console theme shared by Workbench, Triage and Usage;
@@ -214,7 +214,7 @@
     <p class="meta"><b>Berlin</b> · English · Open to full-time Senior / Lead IC roles in Germany</p>
     <p class="sep">Current client engagement: NRG Energy. The AI platform shown here is my own system, not an NRG product.</p>
     <!-- Nothing invented here: no CV route is surfaced because none is public
-         (/profile is deliberately private -- e2e/profile.spec.js proves it), and
+         (/profile is deliberately private; e2e/profile.spec.js proves it), and
          no email address is shown because this repository publishes none. Both
          were offered conditionally by the Sprint 17 brief and the condition is
          still not met. -->
@@ -284,7 +284,7 @@
        statuses with a link you can check, and the line below says so. -->
   <h2 class="sec">What is running, and how to check it</h2>
   <p class="evnote">Everything below runs on this platform &mdash; my own system, which I build and operate myself, not an employer's. Each row links to the running thing or to the source, so you can check it rather than take my word for it, and each one states its own limitation. The seven below are the strongest; the <a href="/proof">full evidence index</a> lists every public claim with its status, evidence and boundary.</p>
-<!-- GENERATED:proof-rows:start -- do not hand-edit; run agent/build_proof_surface.py -->
+<!-- GENERATED:proof-rows:start (do not hand-edit; run agent/build_proof_surface.py) -->
   <div class="ev">
 
     <div class="erow">

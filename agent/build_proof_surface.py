@@ -45,11 +45,16 @@ WEB_DIR = REPO_ROOT / "agent" / "web"
 HOME_PATH = WEB_DIR / "home.html"
 PROOF_PATH = WEB_DIR / "proof.html"
 
-START = "<!-- GENERATED:proof-rows:start -- do not hand-edit; run agent/build_proof_surface.py -->"
+# No literal double hyphen may appear inside any HTML comment this module
+# emits. A "--" inside an XML/HTML comment is invalid, agent/static_gate.py
+# blocks it, and it blocked output THIS generator produced -- so the markers and
+# the banner use plain punctuation. (This line is Python, not HTML, so it is
+# fine here; the constraint applies only to the emitted strings below.)
+START = "<!-- GENERATED:proof-rows:start (do not hand-edit; run agent/build_proof_surface.py) -->"
 END = "<!-- GENERATED:proof-rows:end -->"
 
 GENERATED_BANNER = (
-    "<!-- GENERATED FILE -- do not hand-edit.\n"
+    "<!-- GENERATED FILE. Do not hand-edit.\n"
     "     Rendered from docs/PUBLIC_PROOF_SURFACE.yaml and\n"
     "     docs/PORTFOLIO_CAPABILITIES.yaml by agent/build_proof_surface.py.\n"
     "     Every claim below is refused by agent/proof_registry.py unless it has a\n"

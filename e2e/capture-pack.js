@@ -46,6 +46,7 @@ const PAGES = [
   // the deepest page a technical interviewer reaches, so it is captured at
   // both widths rather than reviewed by description.
   ["proof", "/proof"],
+  ["article", "/article/evaluating-the-evaluator"],
   // Not primary recruiter navigation, and captured anyway: it is cheap, it is
   // reachable by URL, and the generic overflow/console data is worth having.
   ["dashboard", "/dashboard"],
