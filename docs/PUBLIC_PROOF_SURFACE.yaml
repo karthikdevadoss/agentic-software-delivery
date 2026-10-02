@@ -315,6 +315,8 @@ capabilities:
     frozen evidence differed, and both are preserved rather than reconciled.
   audiences: [ai_hiring_manager, backend_interviewer]
   destinations:
+  - label: Read the write-up
+    href: /article/evaluating-the-evaluator
   - label: The one-page case study
     href: https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/DEEP_CONSENSUS_CASE_STUDY.md
   - label: The full closing record

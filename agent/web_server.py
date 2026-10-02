@@ -1503,6 +1503,17 @@ async def proof_page(request: Request):
     return FileResponse(str(WEB_DIR / "proof.html"))
 
 
+async def article_evaluating_the_evaluator(request: Request):
+    """Block C (2026-10-02): the Deep Consensus write-up, as a local
+    publication-ready page. KNOWLEDGE HARVEST from a stopped experiment, not a
+    continuation of it -- every factual claim traces to the frozen evidence and
+    the closing record, and the page states its own status (experimental,
+    paused, thesis unproven) above the fold.
+
+    Not published. Local route only until the Owner reviews it."""
+    return FileResponse(str(WEB_DIR / "article-evaluating-the-evaluator.html"))
+
+
 async def workbench_page(request: Request):
     return FileResponse(str(WEB_DIR / "workbench.html"))
 
@@ -2377,6 +2388,7 @@ routes = [
     Route("/", home_page, methods=["GET"]),
     Route("/case-study/durable-agent", case_study_durable_agent_page, methods=["GET"]),
     Route("/proof", proof_page, methods=["GET"]),
+    Route("/article/evaluating-the-evaluator", article_evaluating_the_evaluator, methods=["GET"]),
     Route("/workbench", workbench_page, methods=["GET"]),
     Route("/dashboard", dashboard_page, methods=["GET"]),
     Route("/usage", usage_page, methods=["GET"]),

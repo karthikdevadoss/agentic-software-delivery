@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My AI evaluation system was less reliable than the AI it evaluated — Karthikeyan Devadoss</title>
+<meta name="description" content="A multi-model verification experiment, its decisive result, and why the product thesis did not survive the evidence. The scorer carried nine defects; the engine under test carried two.">
+<!-- No third-party resources. No fonts, no analytics, no trackers: every rule
+     below resolves to a system font stack. Asserted by
+     e2e/third-party-network.spec.js. -->
+<style>
+  :root {
+    --prose: 62ch;
+    --ink: #14161a;
+    --soft: #545a62;
+    --line: #dcdfe3;
+    --paper: #fbfaf8;
+    --card: #ffffff;
+    --accent: #1f4d3d;
+    --accent-ink: #123026;
+    --warn-bg: #f8f1e3;
+    --warn-line: #e3d0ab;
+    --warn-ink: #6b4a12;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font: 17px/1.66 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 0 32px; }
+  .col { max-width: var(--prose); }
+  p, li, dd, blockquote { max-width: var(--prose); overflow-wrap: anywhere; }
+  table, table *, .kpi, .kpi * { max-width: none; }
+  a { color: var(--accent); }
+  a:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+
+  .top-nav { display: flex; flex-wrap: wrap; row-gap: .5rem; gap: 1.2rem; align-items: center;
+    padding: 18px 32px; max-width: 1400px; margin: 0 auto; }
+  .top-nav a { color: var(--soft); text-decoration: none; font-size: .88rem; font-weight: 600;
+    padding-bottom: .15rem; border-bottom: 2px solid transparent; }
+  .top-nav a:hover { color: var(--ink); }
+  .top-nav a strong { color: var(--accent); border-bottom: 2px solid var(--accent);
+    padding-bottom: .15rem; font-weight: 700; }
+  .navwrap { border-bottom: 1px solid var(--line); }
+
+  header { padding: 52px 0 10px; }
+  h1 { font-size: clamp(28px, 4.6vw, 40px); line-height: 1.14; letter-spacing: -.025em;
+    margin: 0 0 14px; font-weight: 660; max-width: 24ch; }
+  .standfirst { font-size: 1.12rem; color: var(--soft); margin: 0 0 16px; }
+  .byline { font-size: .88rem; color: var(--soft); margin: 0 0 6px; }
+  h2 { font-size: 1.32rem; margin: 46px 0 12px; letter-spacing: -.015em; font-weight: 650; }
+  h3 { font-size: 1.05rem; margin: 30px 0 8px; font-weight: 650; }
+  p { margin: 0 0 16px; }
+  ul, ol { margin: 0 0 16px; padding-left: 1.3rem; }
+  li { margin-bottom: 8px; }
+  code { font-size: .86em; background: #f1efec; padding: 1px 5px; border-radius: 4px;
+    overflow-wrap: anywhere; }
+
+  .status { background: var(--warn-bg); border: 1px solid var(--warn-line);
+    border-left: 4px solid var(--warn-ink); border-radius: 8px; padding: 16px 18px;
+    margin: 0 0 28px; }
+  .status p { margin: 0; color: var(--warn-ink); font-weight: 600; }
+  .status .sub { margin-top: 6px; font-weight: 400; color: #5c4a2a; font-size: .95rem; }
+
+  blockquote { margin: 0 0 20px; padding: 2px 0 2px 18px; border-left: 3px solid var(--accent);
+    color: var(--ink); font-size: 1.06rem; }
+
+  .kpi { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 12px; margin: 0 0 24px; }
+  .kpi div { background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+    padding: 14px 16px; }
+  .kpi b { display: block; font-size: 1.7rem; font-weight: 680; letter-spacing: -.02em;
+    color: var(--accent-ink); }
+  .kpi span { display: block; font-size: .84rem; color: var(--soft); margin-top: 3px; }
+
+  .tablewrap { overflow-x: auto; margin: 0 0 24px; }
+  table { border-collapse: collapse; font-size: .95rem; }
+  th, td { text-align: left; padding: 9px 14px 9px 0; border-bottom: 1px solid var(--line);
+    vertical-align: top; }
+  th { font-size: .76rem; text-transform: uppercase; letter-spacing: .07em; color: var(--soft); }
+
+  .never { background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+    padding: 18px 20px; margin: 0 0 24px; }
+  .never p:last-child { margin: 0; }
+
+  footer { margin: 56px 0 48px; padding-top: 20px; border-top: 1px solid var(--line);
+    color: var(--soft); font-size: .88rem; }
+  .btn { display: inline-block; background: var(--accent); color: #fff; text-decoration: none;
+    font-weight: 650; padding: 11px 18px; border-radius: 8px; font-size: .95rem; }
+
+  @media (max-width: 560px) {
+    .wrap { padding: 0 20px; }
+    header { padding-top: 34px; }
+  }
+</style>
+</head>
+<body data-surface="article">
+
+<div class="navwrap"><nav class="top-nav" id="top-nav" aria-label="Main"></nav></div>
+
+<div class="wrap">
+<div class="col">
+
+  <header>
+    <p class="byline">Karthikeyan Devadoss &middot; 2 October 2026</p>
+    <h1>My AI evaluation system was less reliable than the AI it was evaluating</h1>
+    <p class="standfirst">I built a multi-model verification engine to catch expensive
+    wrong answers. In its final sprint the scorer carried nine defects and the engine
+    under test carried two. Then the decisive result turned out to be an artifact of my
+    own benchmark &mdash; so I stopped the project.</p>
+  </header>
+
+  <div class="status">
+    <p>Status: experimental, paused. Product thesis: unproven.</p>
+    <p class="sub">This is an engineering and experiment-design case study, not a
+    product announcement. It demonstrated zero genuine corrections of a wrong answer.
+    Nothing here should be read as evidence that multiple models improve correctness.</p>
+  </div>
+
+  <h2>The hypothesis, and why it was worth testing</h2>
+
+  <p>Some wrong answers cost more than others. If a model tells you a PostgreSQL
+  <code>CREATE INDEX</code> takes a <code>SHARE</code> lock when it takes
+  <code>ACCESS EXCLUSIVE</code>, or that a Spring <code>@Transactional</code> self-invocation
+  goes through the proxy when it doesn't, you don't find out from the answer. You find
+  out from the incident.</p>
+
+  <p>The hypothesis was ordinary enough to be worth a real test: <em>if two independent
+  frontier model families answer the same question without seeing each other, their
+  disagreements will concentrate where one of them is materially wrong.</em> Catch the
+  disagreement, challenge it, and you reduce published falsehood.</p>
+
+  <p>That is a measurement claim. It can be tested, and it can fail. Both of those
+  turned out to matter more than the engine.</p>
+
+  <h2>What I built</h2>
+
+  <p>A bounded multi-model review behind a single tool interface. Two real
+  subscription-backed model families answer <strong>sealed</strong> &mdash; neither sees
+  the other, and the seal is proven against the real request text rather than inferred
+  from call ordering. Zero paid API fallback, enforced in three independent layers and
+  verified at zero paid calls across the entire programme.</p>
+
+  <p>Answers are decomposed into <strong>typed claims</strong>. Local code compares
+  <code>BOOLEAN</code>, <code>ENUM</code>, <code>NUMBER</code> and <code>VERSION</code>
+  deterministically, and <strong>never adjudicates free text</strong> &mdash; prose goes
+  back to the models or is explicitly marked uncompared. Disagreement triggers one
+  batched cross-family challenge under a hard four-call ceiling: no fifth call, and no
+  synthesis model to paper over the gap.</p>
+
+  <p>Nothing is averaged, which was the design decision I'd defend hardest.
+  <code>UNRESOLVED</code>, <code>CONTRADICTED</code>, <code>UNCOMPARED</code> and
+  <code>UNKNOWN</code> are first-class outcomes. A system that always returns an answer
+  cannot tell you when it doesn't have one, and that silence is the failure mode you
+  can't audit.</p>
+
+  <h2>How the evidence was frozen</h2>
+
+  <p>This part is why the negative result is worth anything.</p>
+
+  <p>Ground truth and the decision rule were registered and hashed <em>before any
+  evaluated answer existed</em>, behind a freeze that refuses re-registration. Every run
+  retained its untruncated raw answers. Requested and reported model identity were
+  recorded separately &mdash; and they genuinely differed twice, which is exactly the
+  kind of thing you only notice if you store both. The final verdict replays offline from
+  recorded turns with zero differences and zero model calls.</p>
+
+  <p>Freezing the decision rule in advance is what converts "we looked at the numbers and
+  decided" into "the rule we committed to produced this". Without it, every result is
+  negotiable after the fact, and the negotiation always finds a way to continue.</p>
+
+  <h2>What the evaluator got wrong</h2>
+
+  <p>As the controls got stronger, they kept finding defects &mdash; and increasingly the
+  defects were in the <em>measurement machinery</em>, not in the thing being measured.
+  Each was fixed with a test written and observed failing first.</p>
+
+  <div class="kpi">
+    <div><b>9</b><span>defects in the scorer, final sprint</span></div>
+    <div><b>2</b><span>defects in the engine under test</span></div>
+    <div><b>13</b><span>total defects found, final sprint</span></div>
+    <div><b>0</b><span>paid API calls, whole programme</span></div>
+  </div>
+
+  <p>Most of them could only create <strong>false disagreement</strong>, which is
+  recoverable: it costs model turns, and the challenge round sorts it out. Two were worse.
+  Two claims sharing a normalised subject collapsed into one routing entry, so a claim
+  whose own two models both held their positions could be recorded as
+  corrected-and-agreed while carrying a value copied from a <em>different claim</em>.</p>
+
+  <p>That is a <strong>silent false agreement</strong>. Nothing downstream would have
+  questioned it. An assurance system whose failure mode is confident agreement is worse
+  than no assurance system, because it manufactures exactly the signal you built it to
+  trust.</p>
+
+  <h2>The decisive result</h2>
+
+  <p>The final sprint ran 20 pre-registered cases once each. The frozen pipeline
+  mechanically emitted <code>ONE MORE LOOK</code> &mdash; the rule's way of saying the
+  baseline had published material falsehoods the system caught.</p>
+
+  <p>That verdict rested entirely on two supposed baseline errors in a single case:</p>
+
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>Baseline answered</th><th>Frozen golden claim</th><th>Reality</th></tr></thead>
+    <tbody>
+      <tr><td><code>PROPAGATION_REQUIRED</code></td><td><code>REQUIRED</code></td><td>the same value, two documented spellings</td></tr>
+      <tr><td><code>ISOLATION_DEFAULT</code></td><td><code>DEFAULT</code></td><td>the same value, two documented spellings</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>The baseline was right. My benchmark had pinned one spelling of a two-spelling value,
+  and the <code>ENUM</code> comparator &mdash; correctly doing exact matching and never
+  similarity &mdash; called it a conflict.</p>
+
+  <p>The comparator was not the bug and must not be loosened: exact <code>ENUM</code>
+  equality is precisely what makes <code>SHARE</code> versus <code>ACCESS EXCLUSIVE</code>
+  a real conflict rather than a near-miss. <strong>The defect was in the benchmark.</strong></p>
+
+  <p>With the frozen evidence read correctly:</p>
+
+  <div class="tablewrap">
+  <table>
+    <tbody>
+      <tr><td>Genuine baseline material false claims</td><td><strong>0</strong></td></tr>
+      <tr><td>Demonstrated FALSE &rarr; TRUE corrections</td><td><strong>0</strong></td></tr>
+      <tr><td>Material false claims introduced by the system</td><td><strong>0</strong></td></tr>
+      <tr><td>Challenge-set baseline falsehoods</td><td><strong>0 of 12</strong></td></tr>
+      <tr><td>Cases ending in unresolved noise</td><td><strong>10 of 20</strong></td></tr>
+      <tr><td>Average turns versus baseline</td><td><strong>3.85 vs 1</strong></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>Nearly four times the cost, and not one demonstrated correction. The thesis didn't
+  survive its own test.</p>
+
+  <h2>Why I stopped, and the four things I didn't do</h2>
+
+  <p>The decision was <strong>pause</strong>. What makes that a real decision rather than
+  a mood is the list of available moves I declined, because each one would have destroyed
+  the result:</p>
+
+  <ul>
+    <li><strong>No next sprint.</strong> Starting one after a pre-registered pause converts
+    the rule into a formality.</li>
+    <li><strong>No ablation.</strong> A new experiment run in the shadow of a thesis that
+    just failed is not a clean experiment.</li>
+    <li><strong>No rerun.</strong> Re-running a clean completed experiment is the
+    canonical way to manufacture a different outcome.</li>
+    <li><strong>No replacement benchmark.</strong> The challenge set was selected by
+    predeclared category before any model answered, and the baseline answered all twelve
+    correctly. Building a harder set <em>after seeing that</em> is difficulty escalation,
+    and it is how negative results quietly disappear from projects.</li>
+  </ul>
+
+  <p>Both verdicts are preserved. The mechanical <code>ONE MORE LOOK</code> was never
+  rewritten, because it is the only evidence the pipeline was followed mechanically rather
+  than steered toward a conclusion. The human adjudication of that same frozen evidence
+  sits beside it, labelled. Where the two disagree, the disagreement is itself the
+  evidence &mdash; erasing it would remove the only proof the process was honest.</p>
+
+  <h2>What was actually worth building</h2>
+
+  <p>The engineering stands even though the product doesn't. Sealed independent answers
+  proven against real request text. Typed claims with deterministic comparison strictly
+  bounded to types where exactness means something. Explicit unresolved states with no
+  forced convergence. A hard call ceiling honoured on every case. Offline replay that
+  reproduces a verdict with zero model calls. Untruncated answer retention &mdash; which
+  made one scoring correction free instead of requiring a second paid run. Mutation
+  testing that killed 19 of 19. Evidence freezing that refuses re-registration. And
+  provenance that recorded requested versus reported model identity separately, which
+  caught a real discrepancy twice.</p>
+
+  <p>None of that validates the thesis. All of it is reusable.</p>
+
+  <h2>What I'd do differently</h2>
+
+  <ol>
+    <li><strong>Score the frozen golden claims against a deliberately correct synthetic
+    answer before freezing anything.</strong> One zero-cost control, no inference, no model
+    calls &mdash; and it would have caught this project's decisive artifact before the
+    freeze rather than after the run.</li>
+    <li><strong>Treat every assertion over prose inside control logic as suspect by
+    default</strong> &mdash; in scorers, guards, routing and identity alike. That single
+    pattern produced false conclusions five times across two sprints, in both directions.</li>
+    <li><strong>Budget evaluator hardening as a first-class workstream</strong>, not as
+    overhead on top of the product. On the real numbers it was the larger risk.</li>
+    <li><strong>Choose cases where a strong model actually fails, without choosing them by
+    watching it fail.</strong> My benchmark's baseline answered nearly everything correctly,
+    so the experiment never gave the system a chance to demonstrate anything. That is a
+    harder design problem than it sounds, and I underestimated it.</li>
+  </ol>
+
+  <h2>Reusable lessons</h2>
+
+  <ol>
+    <li><strong>Validate your evaluators as aggressively as you validate your models.</strong>
+    Nine defects to two is not a close call. An assurance system that trusts its own scorer
+    will publish the scorer's defects as product findings.</li>
+    <li><strong>Agreement between independent models is not external verification.</strong>
+    Two models can be confidently wrong together, and your status vocabulary must not imply
+    otherwise.</li>
+    <li><strong>Typed schemas reduce ambiguity; they do not eliminate semantic failure.</strong>
+    An exact enum match cannot know that two spellings name one value.</li>
+    <li><strong>Measurement defects manufacture success and failure alike.</strong> One sprint
+    produced a false regression, the next a false catch. Opposite directions &mdash; which
+    rules out bias and leaves only "the instrument was unreliable".</li>
+    <li><strong>A negative result is only useful if the experiment is allowed to stop.</strong>
+    The rule was frozen before any answer, and it was obeyed. That is the whole difference
+    between a result and a story.</li>
+  </ol>
+
+  <div class="never">
+    <p><strong>What this work does not show</strong>, stated plainly because a case study
+    this detailed invites generous reading:</p>
+    <p>It does not show that this system beats any frontier model. It does not show that
+    multiple models improve correctness. It demonstrated no FALSE &rarr; TRUE correction. It
+    did not reduce hallucination. Consensus is not verification. It is not safer than a
+    single model. And <code>PAUSE</code> must not be reinterpreted as "promising" or
+    "partial success" &mdash; engineering quality and product validation are separate
+    things, and only one of them survived here.</p>
+  </div>
+
+  <h2>The part I keep coming back to</h2>
+
+  <blockquote>The harness found its own false positives in both directions, and the product
+  stopped.</blockquote>
+
+  <p>I spent six sprints building something to check whether models were telling the truth,
+  and the hardest truth it surfaced was about my own measuring instrument. The instinct when
+  a result goes against you is to question the result. The discipline is to have already
+  written down what would count as an answer, and then to believe it.</p>
+
+  <p>That is the part I'd want to be judged on &mdash; not the engine.</p>
+
+  <p><a class="btn" href="/proof">See the evidence index</a></p>
+
+  <footer>
+    This article's factual claims come from the project's frozen evidence and its closing
+    record, both committed in the repository. This platform is my own system, which I build
+    and operate myself; it is not an employer's product.
+    This page sets no cookies, loads nothing from a third party, and uses no analytics or
+    trackers.
+  </footer>
+
+</div>
+</div>
+
+<script src="/nav.js"></script>
+</body>
+</html>

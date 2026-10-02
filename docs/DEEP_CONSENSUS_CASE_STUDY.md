@@ -3,6 +3,10 @@
 *2026-10-02 · outcome: paused, product thesis unproven · full record:
 [DEEP_CONSENSUS_FINAL_CLOSURE_2026-10-02.md](DEEP_CONSENSUS_FINAL_CLOSURE_2026-10-02.md)*
 
+*Narrative write-up of the same material, written for a general engineering
+reader: `/article/evaluating-the-evaluator` on the running platform
+(agent/web/article-evaluating-the-evaluator.html). Local only -- not published.*
+
 ## Problem
 
 I wanted to test whether independent frontier-model families could reduce
