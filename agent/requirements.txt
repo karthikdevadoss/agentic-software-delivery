@@ -1,6 +1,6 @@
 anthropic
 # Sprint 13 / BL-093: durable software-change workflow (agent/durable_workflow.py)
-langgraph>=1.2,<2
+langgraph>=1.2.12,<2
 python-dotenv
 mcp
 fastembed
