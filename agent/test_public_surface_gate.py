@@ -950,5 +950,122 @@ class WorkbenchAndTriageAndDashboardStayTestCase(unittest.TestCase):
         self.assertNotIn("</details>", script[opened_at:link_at],
                          "the Dashboard link sits outside the collapsed block")
 
+
+# ---------------------------------------------------------------------------
+# Night queue (2026-10-05), items 207, 208, 209.
+# ---------------------------------------------------------------------------
+
+class OnePagerOperationsTestCase(unittest.TestCase):
+    """Item 207: the one-pager names exactly three public operations, and they
+    are the same three the first screen names. A page a visitor only reads is
+    not an operation, so it does not belong in that list."""
+
+    PAGE = WEB_DIR / "one-pager.html"
+    OPERATIONS = ("Workbench", "Ask the Codebase", "Triage")
+
+    def _ops_list(self):
+        html = _strip_comments(self.PAGE.read_text(encoding="utf-8"))
+        found = re.search(r'<ul class="op-ops">(.*?)</ul>', html, re.S)
+        self.assertIsNotNone(found, "the one-pager has no operations list")
+        return found.group(1)
+
+    def test_it_names_exactly_three_operations(self):
+        self.assertEqual(3, len(re.findall(r"<li\b", self._ops_list())))
+
+    def test_the_three_are_the_three_the_first_screen_names(self):
+        text = _visible_text(self._ops_list())
+        for name in self.OPERATIONS:
+            with self.subTest(operation=name):
+                self.assertIn(name, text)
+        home = (WEB_DIR / "home.html").read_text(encoding="utf-8")
+        header = _visible_text(re.search(r'<p class="ops">(.*?)</p>', home, re.S).group(0))
+        for name in self.OPERATIONS:
+            self.assertIn(name, header, "the two pages name different operations")
+
+    def test_a_page_a_visitor_only_reads_is_not_called_an_operation(self):
+        block = self._ops_list()
+        for route in ("/proof", "/usage", "/standing-interview", "/showcase", "/learn",
+                      "/dashboard", "/one-pager"):
+            with self.subTest(route=route):
+                self.assertNotIn('href="' + route + '"', block)
+
+    def test_each_named_operation_links_to_a_route_the_server_serves(self):
+        import web_server as ws
+        from starlette.testclient import TestClient
+
+        hrefs = re.findall(r'href="([^"]+)"', self._ops_list())
+        self.assertEqual(3, len(hrefs), hrefs)
+        client = TestClient(ws.app)
+        for href in hrefs:
+            with self.subTest(route=href):
+                self.assertEqual(200, client.get(href).status_code)
+
+
+class OnePagerCatalogueDeployTestCase(unittest.TestCase):
+    """Item 208: the path that deploys with no person matches a requirement
+    against a fixed catalogue of pre-declared operations. Read without that
+    sentence, the no-person claim sounds like an agent that can change
+    anything. The sentence must sit in the same block as the claim."""
+
+    PAGE = WEB_DIR / "one-pager.html"
+
+    def _auto_path_block(self):
+        html = _strip_comments(self.PAGE.read_text(encoding="utf-8"))
+        blocks = re.findall(r'<div class="op-block">(.*?)</div>', html, re.S)
+        owning = [b for b in blocks if re.search(r"(?i)without a person", _visible_text(b))]
+        self.assertTrue(owning, "no block on the one-pager states the no-person path")
+        return _visible_text(owning[0])
+
+    def test_the_deploying_path_is_named_as_a_fixed_catalogue(self):
+        self.assertRegex(self._auto_path_block(), r"(?i)catalogue|catalog")
+
+    def test_the_same_block_says_it_is_not_a_general_agent(self):
+        self.assertRegex(self._auto_path_block(),
+                         r"(?i)not a general[- ](purpose )?agent")
+
+    def test_the_catalogue_it_points_at_is_really_a_fixed_list(self):
+        """The claim has to be true of the code, not only written on the page."""
+        source = (REPO_ROOT / "agent" / "demo_catalogue.py").read_text(encoding="utf-8")
+        self.assertNotRegex(source, r"\bcompletion\(|\bchat\(|openai\.|anthropic\.")
+
+    def test_it_makes_no_forbidden_claim(self):
+        surface = _visible_text(_strip_comments(self.PAGE.read_text(encoding="utf-8")))
+        for name, pattern in FORBIDDEN_CLAIMS:
+            with self.subTest(claim=name):
+                self.assertIsNone(re.search(pattern, surface, re.I))
+
+
+class StandingInterviewBooksNotInRepoTestCase(unittest.TestCase):
+    """Item 209: the records behind the answers are career books kept outside
+    this repository. "private" alone leaves a reader wondering whether they
+    are in the repo and simply unlinked, so the page says where they are not,
+    and the repository really does not carry them."""
+
+    PAGE = WEB_DIR / "standing-interview.html"
+
+    def test_the_page_says_the_records_are_not_in_this_repository(self):
+        body = _visible_text(_strip_comments(self.PAGE.read_text(encoding="utf-8")))
+        self.assertRegex(body, r"(?i)(not in|outside|not kept in)[^.]{0,70}"
+                               r"(this |the |my )?(public )?(repo|repository)[ .,;]")
+
+    def test_the_repository_really_does_not_carry_the_books_or_the_corpus(self):
+        import subprocess
+
+        tracked = subprocess.run(["git", "ls-files"], cwd=str(REPO_ROOT),
+                                 capture_output=True, text=True, check=True).stdout.splitlines()
+        for path in tracked:
+            low = path.lower()
+            with self.subTest(path=path):
+                self.assertNotIn("si_corpus/", low)
+                self.assertNotIn("corpus.json", low)
+                self.assertFalse(low.startswith("books/"))
+
+    def test_it_still_does_not_offer_the_records_for_download_or_browsing(self):
+        html = self.PAGE.read_text(encoding="utf-8").lower()
+        for forbidden in ("download", "browse the corpus", "view the corpus"):
+            with self.subTest(word=forbidden):
+                self.assertNotIn(forbidden, html)
+
+
 if __name__ == "__main__":
     unittest.main()

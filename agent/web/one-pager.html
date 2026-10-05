@@ -44,7 +44,10 @@
     <ul>
       <li>A request inside a narrow, pre-declared band is implemented, verified and
           deployed to the demo application <b>without a person</b>. There is no
-          approval event on that path, and no model call on it either.</li>
+          approval event on that path, and no model call on it either. That band is a
+          fixed catalogue of operations written in advance, matched by exact text:
+          <b>it is not a general-purpose agent</b> and it cannot make a change the
+          catalogue does not already name.</li>
       <li>Anything outside that band <b>waits for a person</b>. The approval is bound
           by hash to the exact file and content approved, and the approve step is not
           something the model can call.</li>
@@ -75,12 +78,25 @@
   </div>
 
   <div class="op-block">
+    <h2>Three things you can run here</h2>
+    <!-- Item 207: an operation is a page with a backend action behind it. The
+         first screen names these same three; a page you only read is not an
+         operation and is linked under "where to check" instead. -->
+    <ul class="op-ops">
+      <li><a href="/workbench">Workbench</a> — submit a written requirement and watch
+          it change, verify and deploy the demo application.</li>
+      <li><a href="/ask-codebase">Ask the Codebase</a> — ask a question and get the
+          answer out of the real repository, with the files it read.</li>
+      <li><a href="/triage">Triage</a> — work a contained defect to the human approval
+          step, which is where it stops.</li>
+    </ul>
+  </div>
+
+  <div class="op-block">
     <h2>Where to check every claim</h2>
     <ul>
       <li><a href="/proof">Evidence index</a> — each public claim with its status,
           its evidence and its stated limitation.</li>
-      <li><a href="/workbench">Workbench</a> — submit a requirement and watch it run.</li>
-      <li><a href="/triage">Triage</a> — a contained defect worked to a human approval.</li>
       <li><a href="/usage">Usage</a> — what this platform's own runs cost. Not any
           employer's telemetry.</li>
     </ul>
