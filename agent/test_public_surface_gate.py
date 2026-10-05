@@ -612,5 +612,109 @@ class MainLandmarkTestCase(unittest.TestCase):
             self.assertEqual(count, 1, f"{name}: expected exactly one <main>, found {count}")
 
 
+
+# ---------------------------------------------------------------------------
+# Sprint 20 (2026-10-05): the guard covers every recruiter-visible page (BL-163),
+# and three copy promises a hiring manager reads (BL-167, BL-157, BL-101).
+# ---------------------------------------------------------------------------
+
+#: Every recruiter-visible HTML page under agent/web. The shells (usage,
+#: dashboard, showcase, ask-codebase) render their claims from JS; their static
+#: text is scanned here and the rendered text is covered by the Playwright
+#: copy contract. Standing Interview's sample questions are prompts a visitor
+#: may ask, not claims the platform makes, so that block is excluded by class.
+PUBLIC_PAGES = {
+    "home": (WEB_DIR / "home.html", ("scope",)),
+    "case-study": (WEB_DIR / "case-study-durable-agent.html", ("caveat",)),
+    # proof.html states each limitation in <p class="lim1"> and in a
+    # <div class="disclose"> block: the same category as home's scope block.
+    "proof": (WEB_DIR / "proof.html", ("scope", "caveat", "p:lim1", "dd:Limitation in full")),
+    "workbench": (WEB_DIR / "workbench.html", ("caveat",)),
+    "triage-a": (WEB_DIR / "triage.html", ("caveat",)),
+    "triage-b": (WEB_DIR / "triage-b.html", ("caveat",)),
+    "triage-c": (WEB_DIR / "triage-c.html", ("caveat",)),
+    "usage": (WEB_DIR / "usage.html", ("caveat",)),
+    "standing-interview": (WEB_DIR / "standing-interview.html", ("caveat", "si-samples")),
+    "showcase": (WEB_DIR / "showcase.html", ("caveat",)),
+    "ask-codebase": (WEB_DIR / "ask-codebase.html", ("caveat",)),
+    "dashboard": (WEB_DIR / "dashboard.html", ("caveat",)),
+}
+
+
+class WholeSurfaceForbiddenClaimTestCase(ForbiddenClaimTestCase):
+    """BL-163: the forbidden-claim scan covered two pages. Now every page."""
+
+    def test_every_recruiter_visible_page_makes_no_forbidden_positive_claim(self):
+        for name, (path, excluded) in PUBLIC_PAGES.items():
+            self.assertTrue(path.is_file(), f"{name}: {path} is missing")
+            html = path.read_text(encoding="utf-8")
+            html = _drop_paras(html, "elimit")
+            for cls in excluded:
+                if cls.startswith("p:"):
+                    html = _drop_paras(html, cls[2:])
+                elif cls.startswith("dd:"):
+                    # <dt>Limitation in full</dt><dd>...</dd>: a limitation by name.
+                    html = re.sub(r"<dt>" + re.escape(cls[3:]) + r"</dt>\s*<dd>.*?</dd>",
+                                  " ", html, flags=re.DOTALL)
+                else:
+                    html = _drop_block(html, cls)
+            surface = _visible_text(html).lower()
+            for claim, pattern in FORBIDDEN_CLAIMS:
+                with self.subTest(page=name, claim=claim):
+                    m = re.search(pattern, surface, re.I)
+                    detail = repr(m.group(0)) if m else ""
+                    self.assertIsNone(
+                        m, f"{path.name} positively claims {claim}: {detail}")
+
+    def test_no_public_page_carries_a_dead_link_marker(self):
+        for name, (path, _excluded) in PUBLIC_PAGES.items():
+            html = _strip_comments(path.read_text(encoding="utf-8"))
+            # A hidden anchor whose href is filled in client-side (the Workbench
+            # verified-run link) is not a dead link a visitor can click.
+            html = re.sub(r"<a\b[^>]*\bhidden\b[^>]*>.*?</a>", " ", html, flags=re.DOTALL)
+            for pattern, what in DEAD_LINK_MARKERS:
+                with self.subTest(page=name, marker=what):
+                    self.assertIsNone(re.search(pattern, html), f"{path.name} carries {what}")
+
+
+class HiringManagerCopyTestCase(unittest.TestCase):
+    """Three copy promises, checked on the static files (hermetic twins of the
+    Playwright assertions in e2e/public-copy-sprint20.spec.js)."""
+
+    def _text(self, path):
+        return _visible_text(_strip_comments(path.read_text(encoding="utf-8")))
+
+    def test_home_explains_the_standing_interview_before_the_click(self):
+        text = self._text(WEB_DIR / "home.html")
+        self.assertIn("Standing Interview", text)
+        self.assertRegex(text, r"(?i)written record|recorded engineering knowledge")
+        self.assertIn('href="/standing-interview"', (WEB_DIR / "home.html").read_text(encoding="utf-8"))
+
+    def test_dashboard_is_scoped_as_the_full_inventory_for_engineers(self):
+        text = self._text(WEB_DIR / "dashboard.html")
+        self.assertRegex(text, r"(?i)full (evidence )?inventory")
+        self.assertRegex(text, r"(?i)written for engineers")
+
+    def test_workbench_says_which_stages_code_decides(self):
+        text = self._text(WEB_DIR / "workbench.html")
+        self.assertRegex(text, r"(?i)decided by (deterministic )?code")
+        self.assertRegex(text, r"(?i)proposed by (a|the) model")
+        script = (WEB_DIR / "workbench.js").read_text(encoding="utf-8")
+        self.assertNotRegex(script, r"(?i)preview tier",
+                            "the tier wording the Owner removed from the page must not survive in a stage detail")
+
+    def test_every_triage_page_tells_the_one_story(self):
+        for name in ("triage.html", "triage-b.html", "triage-c.html"):
+            with self.subTest(page=name):
+                text = self._text(WEB_DIR / name)
+                self.assertRegex(text, r"(?i)why three scenarios")
+                self.assertRegex(text, r"(?i)never reads a ticket")
+                self.assertIn("Human Approval Required", text, "the approval gate is not to be touched")
+
+    def test_standing_interview_thread_is_a_live_region(self):
+        html = (WEB_DIR / "standing-interview.html").read_text(encoding="utf-8")
+        self.assertRegex(html, r'id="si-thread"[^>]*aria-live="polite"|aria-live="polite"[^>]*id="si-thread"')
+        self.assertEqual(1, html.count("<main"), "one main landmark")
+
 if __name__ == "__main__":
     unittest.main()

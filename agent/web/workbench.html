@@ -16,6 +16,7 @@
 <header>
   <h1>Agentic Software Delivery <span class="sub">— Workbench</span></h1>
   <p class="tagline">Enter a real requirement. A <strong>deterministic policy — not the model</strong> decides whether it may run: a three-operation request contract plus a keyword denylist, in plain Python, before anything starts. Requests inside that narrow band are implemented, verified and deployed automatically, with no model call anywhere on this path. Everything else is refused with the reason, and safe alternatives are offered.</p>
+  <p class="hint milestone-legend">Each stage is tagged. <strong>CODE</strong> means the stage is decided by deterministic code on this public path. <strong>MODEL</strong> means the stage is proposed by a model; here that is only AI QA, which is not wired into this public path yet.</p>
   <nav class="top-nav" id="top-nav"></nav>
 </header>
 
@@ -62,6 +63,7 @@
       <div class="kv"><span class="k">Last backend activity</span><span class="v" id="rs-last-activity">—</span></div>
     </div>
     <p class="hint milestone-hint">Click a stage for its evidence.</p>
+    <p class="hint" id="run-summary" hidden></p>
     <div id="milestone-bar" class="milestone-bar"></div>
     <div id="milestone-detail" class="milestone-detail" hidden></div>
   </section>

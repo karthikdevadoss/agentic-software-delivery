@@ -4108,3 +4108,60 @@ and the visual and font decisions it is waiting behind.
   `/usage` unbounded length, ACT-022 (it touches the auto path's catalogue).
 - Production still serves the pre-Sprint-18 pages; the live failures listed in
   the estimate remain live until the Owner publishes.
+
+# Sprint 20 (2026-10-05) — Copy a hiring manager reads: nine open items, no behaviour change
+
+Owner-authorized from a written estimate across two repositories: 345 minutes in
+total, of which the site items were sized at 15 minutes each. Forbidden: deploy,
+publish, remove Google Fonts, change the Workbench auto behaviour, change Triage
+approval, invent a fact. Four site items were skipped by instruction because
+they need ledger data or a contact channel (BL-104, BL-160, BL-162, BL-166).
+Branch `sprint18-evidence-first-proof`, the commit that carries this section.
+
+**Site part start 13:17 · end 14:01 (local, UTC+2) · 43 minutes of
+work · nine slices · estimate 135 minutes.** The DEVADOSS half of the same
+sprint ran first, in its own repository, with its own closeout.
+
+## 1. What was done, with the test written first
+
+| Item | Change | Test (written before the change; pre-implementation result) |
+|---|---|---|
+| Usage bounded | The six long-form sections, the live event ledger and the dev-session controls sit behind one `<details>` control; the figures behind the efficiency tiles sit behind a second. The point (what the runs cost, what building the platform cost, the session history) stays open. 5260px measured on 2026-09-29; now under three screens at 1920x940 | `e2e/usage-bound.spec.js` (4 tests; 4 failed before) |
+| BL-168 overflow | Not reproducible on this branch locally: `responsive-invariants.spec.js` passes for /dashboard and /usage at 390, 768, 1280. The 2026-09-29 measurement was against production. Left open, noted | existing spec, green |
+| BL-163 guard | `test_public_surface_gate.py` now scans every recruiter-visible HTML page for the forbidden claims and the dead-link markers, with the proof page's limitation paragraphs and definitions excluded by name, and hidden client-side-filled anchors excluded | `WholeSurfaceForbiddenClaimTestCase` (2 tests; 12 failures + 84 errors before, the errors my own loop bug) |
+| BL-167 explainer | One sentence on the home page says what the Standing Interview is and links to it; still exactly three proof cards | `public-copy-sprint20.spec.js` Home block; python twin |
+| BL-146 surface | First `e2e/standing-interview.spec.js`; `/standing-interview` in `nav-consistency` PAGES and CANONICAL_LABELS; `#si-thread` is `aria-live="polite"`; the wrapper is a `<main>`. The candidate was already named (Sprint 19) | 4 new tests + nav spec |
+| BL-101 labels | Every milestone node carries CODE or MODEL; a legend under the Workbench tagline says what the tags mean; a plain-English run summary line is written from the same stage states. The stage detail that still said "preview tier" now says "public path". Auto behaviour untouched; the copy-contract wording for it is re-asserted | `public-copy-sprint20.spec.js` Workbench block (3 tests) |
+| BL-103 story | Each Triage page says why there are three scenarios and what the model reads: the reproduction result as structured data, never a ticket written by a person (verified in `triage_execution.py`, `diagnose()`). The approval panel is untouched and re-asserted | Triage block (6 tests) |
+| BL-106 labels | The interview grid labels read "Why it mattered", "What was built", "How it works", "The trade-off", "Failure handled", "How it was verified" instead of bare tokens | Showcase block (1 test) |
+| BL-157 scope | The Dashboard says on its first screen that it is the full evidence inventory, written for engineers, and sends a hiring reader to Home | Dashboard block (1 test); python twin |
+
+Not done inside BL-106: the Sprint 13 verified work and the two honest
+per-requirement showcases. Those need facts the Owner supplies, not wording.
+Not done inside BL-103: consolidating the three variants; they are explained,
+not merged.
+
+## 2. Suites
+
+- Python: 939 blocking tests ran and passed, 4 skipped; the quality monitors report the known red SI-19 (not this sprint)
+- Playwright against a fresh local server: every spec that touches a changed file was run after the change against a fresh server on another port (usage-bound, standing-interview, public-copy-sprint20, nav-consistency, usage, copy-contract, home, link-integrity, ui-standards, responsive-invariants, design-standards, workbench-catalogue, interview-walkthrough, golden-journey, ask-codebase; one worker where memory forced it): all green except the pre-existing usage.spec ledger pair (BL-160) and the home fold at 953px (Owner). A single full-suite run was killed twice by the machine running low on memory and could not be completed; the untouched specs (customer app, profile, third-party fonts, jd-match, learn, pdf, visual-regression, real-acceptance) were not rerun. The remaining red
+  assertions are the ones the Sprint 19 retro named: Google Fonts (ACT-025,
+  Owner), the home fold at 953px (Owner, visual), the two Customer App specs
+  (need the Java app on :8080), and the ledger-data specs (BL-160, skipped by
+  instruction).
+
+## 3. One thing worth knowing
+
+The browser suite's `reuseExistingServer: true` picked up a `web_server.py`
+process on :8420 that had been running since 2026-10-02 17:33, before Sprints
+18 and 19 landed. Against it the environment-label test fails although the code
+is right. Every run in this sprint used a fresh server on another port
+(`PORT=8423`, `PLAYWRIGHT_BASE_URL`). That process was not stopped; it is not
+mine to stop. Restart it before trusting a local run.
+
+## 4. What was not done
+
+- By instruction: deploy, publish, Google Fonts, the Workbench auto path, the
+  Triage approval, BL-104, BL-160, BL-162, BL-166.
+- Owner-blocked, unchanged: the home fold at 953px; ACT-025; publication.
+- Out of scope: BL-168 could not be reproduced locally on this branch.

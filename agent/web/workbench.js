@@ -423,7 +423,7 @@ function computeMilestoneStates(r) {
     detail: "Accepted by the deterministic public-demo request contract before this run started." });
 
   m.push({ key: "CONTEXT", label: "Context", state: "NOT_APPLICABLE",
-    detail: "This preview tier matches the requirement against a fixed, deterministic catalogue — no RAG/context retrieval call is made." });
+    detail: "This public path matches the requirement against a fixed, deterministic catalogue — no RAG/context retrieval call is made." });
 
   m.push({ key: "PLANNING", label: "Planning", state: "NOT_APPLICABLE",
     detail: "No LLM planning call — the exact source edit is derived deterministically from the matched catalogue operation, never generated." });
@@ -529,15 +529,37 @@ function renderMilestoneBar() {
       html += `<div class="milestone-connector ${prevDecided ? "filled" : ""}"></div>`;
     }
     const meta = STATE_META[s.state] || STATE_META.PENDING;
-    const titleText = `${s.label} — ${s.state.replace("_", " ")}${s.detail ? ": " + s.detail : ""}`;
+    const by = s.key === "AI_QA" ? "MODEL" : "CODE";
+    const titleText = `${s.label} — ${s.state.replace("_", " ")} — decided by ${by === "CODE" ? "code" : "a model"}${s.detail ? ": " + s.detail : ""}`;
     html += `<button type="button" class="milestone-node ${meta.cls}" data-key="${s.key}" title="${esc(titleText)}">` +
-      `<span class="milestone-circle">${meta.mark}</span><span class="milestone-label">${esc(s.label)}</span></button>`;
+      `<span class="milestone-circle">${meta.mark}</span><span class="milestone-label">${esc(s.label)}</span>` +
+      `<span class="milestone-by milestone-by-${by.toLowerCase()}">${by}</span></button>`;
   });
   milestoneBar.innerHTML = html;
+  renderRunSummary(states);
   milestoneBar.querySelectorAll(".milestone-node").forEach(btn => {
     btn.addEventListener("click", () => showMilestoneDetail(btn.dataset.key));
   });
   if (milestoneDetail.dataset.openKey) showMilestoneDetail(milestoneDetail.dataset.openKey);
+}
+
+// Plain-English summary of the run, from the same states the bar shows.
+// Counts only; it claims nothing the stage states do not already say.
+function renderRunSummary(states) {
+  const el = document.getElementById("run-summary");
+  if (!el) return;
+  const count = (st) => states.filter((s) => s.state === st).length;
+  const passed = count("PASSED"), failed = count("FAILED"), blocked = count("BLOCKED");
+  const pending = count("PENDING") + count("RUNNING");
+  const notRun = count("SKIPPED") + count("NOT_APPLICABLE");
+  const parts = [`${passed} of ${states.length} stages passed`];
+  if (failed) parts.push(`${failed} failed`);
+  if (blocked) parts.push(`${blocked} blocked`);
+  if (pending) parts.push(`${pending} still to run`);
+  if (notRun) parts.push(`${notRun} not applicable on this path`);
+  el.textContent = "In plain English: " + parts.join(", ") +
+    ". Every decision on this path was made by deterministic code; the one model-proposed stage (AI QA) is not on this public path.";
+  el.hidden = false;
 }
 
 // ---- Applying one backend event (shared by SSE and polling) --------------

@@ -14,7 +14,12 @@
 
 const { test, expect } = require("@playwright/test");
 
-const CANONICAL_LABELS = ["Home", "Workbench", "Triage", "Ask Codebase", "Showcase", "Usage"];
+// Sprint 20 (BL-146): Standing Interview joins the canonical set. nav.js renders
+// it gated (hidden until its corpus endpoint answers), and allTextContents()
+// reads hidden anchors too, so the label is asserted whether or not the
+// corpus loaded on the machine running the suite.
+const CANONICAL_LABELS = ["Home", "Workbench", "Triage", "Ask Codebase", "Showcase", "Usage",
+  "Standing Interview"];
 
 // Sprint 14: Learn left public navigation entirely (Owner decision), so the
 // per-page hiding rule no longer applies to any destination. The set is kept
@@ -31,6 +36,7 @@ const PAGES = [
   "/ask-codebase",
   "/case-study/durable-agent",
   "/showcase/senior-java-ai-transformation",
+  "/standing-interview",
 ];
 
 async function visibleNavLabels(page) {

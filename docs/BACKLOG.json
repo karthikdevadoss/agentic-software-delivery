@@ -1470,7 +1470,7 @@
       "confidence": "LOW",
       "pattern_type": "first_of_kind",
       "title": "[BCBSA] HL7 FHIR R4 facade with HAPI FHIR: Patient + Coverage read API over the customer domain (closes ACT-017)",
-      "description": "Small healthcare-integration module or endpoint in customer-service exposing FHIR R4 Patient (from Customer) and Coverage (from ContractPlan) resources via hapi-fhir-structures-r4 + a RestfulServer or plain JSON parser; capability statement; validation test with HAPI's validator. Honest framing: same fa\u00e7ade-over-legacy pattern the Owner built at BCBSA, applied to the energy domain for demonstration.",
+      "description": "Small healthcare-integration module or endpoint in customer-service exposing FHIR R4 Patient (from Customer) and Coverage (from ContractPlan) resources via hapi-fhir-structures-r4 + a RestfulServer or plain JSON parser; capability statement; validation test with HAPI's validator. Honest framing: same façade-over-legacy pattern the Owner built at BCBSA, applied to the energy domain for demonstration.",
       "size_rationale": "ACT-017; first FHIR code; HAPI versions resolved against Maven Central. suggest_estimate(LARGE,LOW,first_of_kind,'2-3 h') -> INSUFFICIENT_HISTORY n=0",
       "parent_id": "BL-042",
       "status": "planned",
@@ -1645,7 +1645,7 @@
       "pattern_type": "apply_known_pattern",
       "parent_id": null,
       "title": "[Trainer] Instrument real usage share: Workbench pipeline runs vs direct Claude Code sessions, from the event ledger, and reframe the showcase text accordingly",
-      "description": "Add a ledger query + a line on the Dashboard/Usage: count of delivery runs that went through the Workbench propose->approve->apply path vs work done in direct sessions over the last 30 days; update the showcase/\u00a702 wording to whatever the number says (CLI primary, Workbench demo surface, or the reverse).",
+      "description": "Add a ledger query + a line on the Dashboard/Usage: count of delivery runs that went through the Workbench propose->approve->apply path vs work done in direct sessions over the last 30 days; update the showcase/§02 wording to whatever the number says (CLI primary, Workbench demo surface, or the reverse).",
       "size_rationale": "Query + one UI line + text edit. suggest_estimate(SMALL,MEDIUM,apply_known_pattern,'30-45 min') -> COMPUTED n=3 | RE-ESTIMATED 2026-09-23: suggest_estimate COMPUTED n=4 median_ratio=0.16 suggested_mid=6.0 -- ADOPTED 2026-09-23 (Sprint 7 re-estimation, post Sprint-6 correction), not overridden",
       "status": "done",
       "category": "delivery",
@@ -1654,7 +1654,7 @@
       "created_at": "2026-09-22T19:51:42+00:00",
       "started_at": "2026-09-23T11:35:00+00:00",
       "completed_at": "2026-09-23T11:29:32.829155+00:00",
-      "actual_note": "DONE, with a genuinely surprising real result. event_ledger.get_delivery_path_share() counts DISTINCT run_id (Workbench, run_usage_summary) vs DISTINCT session_id (direct Claude Code, model_usage/source=claude_code) over a real trailing 30-day window. REAL MEASURED RESULT: 440 Workbench runs vs 4 direct sessions (99.1% vs 0.9%) -- the OPPOSITE of ACT-018 finding (3)'s prior impression (\"the pipeline is likely vestigial, most delivery happens via direct sessions\"). Corrected ACT-018 with the real number (retracted, not reframed) and updated the trainer showcase \u00a710 honest-gaps entry to match. Published live on the Usage page. New test verified against the real remote ledger with proper insert/cleanup discipline. Full agent/test_event_ledger.py suite: 42/42 pass.",
+      "actual_note": "DONE, with a genuinely surprising real result. event_ledger.get_delivery_path_share() counts DISTINCT run_id (Workbench, run_usage_summary) vs DISTINCT session_id (direct Claude Code, model_usage/source=claude_code) over a real trailing 30-day window. REAL MEASURED RESULT: 440 Workbench runs vs 4 direct sessions (99.1% vs 0.9%) -- the OPPOSITE of ACT-018 finding (3)'s prior impression (\"the pipeline is likely vestigial, most delivery happens via direct sessions\"). Corrected ACT-018 with the real number (retracted, not reframed) and updated the trainer showcase §10 honest-gaps entry to match. Published live on the Usage page. New test verified against the real remote ledger with proper insert/cleanup discipline. Full agent/test_event_ledger.py suite: 42/42 pass.",
       "actual_ratio": null,
       "contaminated": false
     },
@@ -2621,7 +2621,7 @@
       "size_rationale": "The backend already distinguishes deterministic from advisory authority (reasoning_gateway returns authority=ADVISORY on every result); the work is surfacing it in workbench.js/html plus a summary line. suggest-estimate MEDIUM/MEDIUM/apply_known_pattern -> COMPUTED n=9, median_ratio 0.39, suggested midpoint 27 min against a raw 85; recorded but NOT adopted, because none of the nine reference items touched this page's UI.",
       "deviated_from_suggestion": false,
       "category": "delivery",
-      "status": "backlog",
+      "status": "done",
       "sprint": "PROPOSED (SI audit 2026-09-29, APPENDIX B) -- not yet approved into a sprint",
       "owner_approval": "PENDING -- proposed by the Standing Interview truth audit (docs/audits/SI_AUDIT_2026-09-29.md, APPENDIX B item BK-03). Not approved into any sprint.",
       "source_audit_id": "BK-03",
@@ -2629,9 +2629,10 @@
       "created_at_commit": "647b9ea",
       "commit_shas": [],
       "session_ids": [],
-      "completed_at": null,
+      "completed_at": "2026-10-05T11:45:00+00:00",
       "actual_minutes": null,
-      "actual_ratio": null
+      "actual_ratio": null,
+      "retro": "Sprint 20 (2026-10-05), docs/RETRO_LOG.md: stage tags CODE/MODEL, legend, plain-English summary line; auto behaviour untouched."
     },
     {
       "id": "BL-102",
@@ -2679,7 +2680,8 @@
       "session_ids": [],
       "completed_at": null,
       "actual_minutes": null,
-      "actual_ratio": null
+      "actual_ratio": null,
+      "retro": "Sprint 20 (2026-10-05), docs/RETRO_LOG.md: explained as one story on all three pages, with what the model reads stated; NOT consolidated."
     },
     {
       "id": "BL-104",
@@ -2751,7 +2753,8 @@
       "session_ids": [],
       "completed_at": null,
       "actual_minutes": null,
-      "actual_ratio": null
+      "actual_ratio": null,
+      "retro": "Sprint 20 (2026-10-05), docs/RETRO_LOG.md: readable grid labels; the Sprint 13 work and the two per-requirement showcases need Owner facts and are NOT done."
     },
     {
       "id": "BL-107",
@@ -3701,7 +3704,7 @@
       "size_rationale": "Playwright against production is an established pattern here (jd-match.spec.js, nav-consistency.spec.js); the audit's own scratchpad script is the working draft. suggest-estimate MEDIUM/MEDIUM/apply_known_pattern -> COMPUTED n=9 -> 31.2 min. ADOPTED.",
       "deviated_from_suggestion": false,
       "category": "delivery",
-      "status": "backlog",
+      "status": "done",
       "sprint": "Sprint 14 PROPOSED (Standing Interview truth fix) -- awaiting Owner approval",
       "owner_approval": "PENDING -- proposed Sprint 14, sized by the Standing Interview truth audit (docs/audits/SI_AUDIT_2026-09-29.md). Not started. Sprint 14 must not begin until the Owner approves it AND the Sprint 13 retro action items, per docs/BACKLOG.json _calibration_process steps 6-8.",
       "source_audit_id": "SI-FIX-5",
@@ -3709,9 +3712,10 @@
       "created_at_commit": "647b9ea",
       "commit_shas": [],
       "session_ids": [],
-      "completed_at": null,
+      "completed_at": "2026-10-05T11:45:00+00:00",
       "actual_minutes": null,
-      "actual_ratio": null
+      "actual_ratio": null,
+      "retro": "Sprint 20 (2026-10-05), docs/RETRO_LOG.md: first browser spec, nav entry, aria-live region, main landmark; name was already present."
     },
     {
       "id": "BL-147",
@@ -3958,16 +3962,17 @@
       "size_rationale": "De-emphasized rather than fixed this sprint, to keep the change bounded.",
       "deviated_from_suggestion": false,
       "category": "delivery",
-      "status": "backlog",
+      "status": "done",
       "sprint": "PROPOSED (Sprint 14 write-back) -- not yet approved into a sprint",
       "owner_approval": "PENDING -- written back by Sprint 14 (2026-09-29). Not approved into any sprint.",
       "created_at": "2026-09-29",
       "created_at_commit": "9d24949",
       "commit_shas": [],
       "session_ids": [],
-      "completed_at": null,
+      "completed_at": "2026-10-05T11:45:00+00:00",
       "actual_minutes": null,
-      "actual_ratio": null
+      "actual_ratio": null,
+      "retro": "Sprint 20 (2026-10-05), docs/RETRO_LOG.md: scoped as the full evidence inventory for engineers on its first screen; not rewritten."
     },
     {
       "id": "BL-158",
@@ -4096,16 +4101,17 @@
       "size_rationale": "Scoped to the two pages this sprint created. The other pages were truth-smoke-reviewed by hand, which does not recur automatically.",
       "deviated_from_suggestion": false,
       "category": "scrum_process",
-      "status": "backlog",
+      "status": "done",
       "sprint": "PROPOSED (Sprint 14 write-back) -- not yet approved into a sprint",
       "owner_approval": "PENDING -- written back by Sprint 14 (2026-09-29). Not approved into any sprint.",
       "created_at": "2026-09-29",
       "created_at_commit": "9d24949",
       "commit_shas": [],
       "session_ids": [],
-      "completed_at": null,
+      "completed_at": "2026-10-05T11:45:00+00:00",
       "actual_minutes": null,
-      "actual_ratio": null
+      "actual_ratio": null,
+      "retro": "Sprint 20 (2026-10-05), docs/RETRO_LOG.md: the guard scans every recruiter-visible page."
     },
     {
       "id": "BL-164",
@@ -4188,16 +4194,17 @@
       "size_rationale": "Deliberately left alone this sprint: the Owner ruled Standing Interview out of scope entirely.",
       "deviated_from_suggestion": false,
       "category": "delivery",
-      "status": "backlog",
+      "status": "done",
       "sprint": "PROPOSED (Sprint 14 write-back) -- not yet approved into a sprint",
       "owner_approval": "PENDING -- written back by Sprint 14 (2026-09-29). Not approved into any sprint.",
       "created_at": "2026-09-29",
       "created_at_commit": "b942967",
       "commit_shas": [],
       "session_ids": [],
-      "completed_at": null,
+      "completed_at": "2026-10-05T11:45:00+00:00",
       "actual_minutes": null,
-      "actual_ratio": null
+      "actual_ratio": null,
+      "retro": "Sprint 20 (2026-10-05), docs/RETRO_LOG.md: one explaining sentence on the home page with the link."
     },
     {
       "id": "BL-168",
@@ -4220,7 +4227,8 @@
       "session_ids": [],
       "completed_at": null,
       "actual_minutes": null,
-      "actual_ratio": null
+      "actual_ratio": null,
+      "retro": "Sprint 20 (2026-10-05), docs/RETRO_LOG.md: not reproducible locally on this branch (responsive-invariants green at 390/768/1280); measured against production; left open."
     },
     {
       "id": "BL-169",
@@ -5501,6 +5509,43 @@
       },
       "actual_minutes": 40,
       "retro": "docs/RETRO_LOG.md, Sprint 19 (2026-10-05): ESTIMATION WRONG, ratio 0.13 against [0.7, 1.3]; reuse not checked before pricing; two slices already done."
+    },
+    {
+      "id": "BL-212",
+      "title": "Sprint 20: copy a hiring manager reads, nine open items, no behaviour change",
+      "description": "Owner-authorized 2026-10-05 from a written estimate (345 min across two repositories; site items 15 min each). Usage bounded; guard over every page; Standing Interview explained, specced and made a live region; Workbench stage tags and summary; Triage one story; Showcase labels; Dashboard scoped. Four items skipped by instruction (ledger data or a contact channel).",
+      "size": "LARGE",
+      "size_rationale": "LARGE by count: nine distinct items, each a wording or structure change with a test written first.",
+      "estimate_range": "135 min",
+      "estimate_midpoint_min": "135",
+      "status": "done",
+      "parent_id": null,
+      "session_ids": [],
+      "commit_shas": [],
+      "created_at": "2026-10-05T10:54:43+00:00",
+      "started_at": "2026-10-05T11:17:44+00:00",
+      "completed_at": "2026-10-05T11:45:00+00:00",
+      "category": "delivery",
+      "origin": "Owner authorization 2026-10-05, after two estimate-only passes from the DEVADOSS seat",
+      "actual_ratio": "0.32",
+      "pattern_type": "over_estimate",
+      "contaminated": false,
+      "confidence": "HIGH",
+      "mission_card": {
+        "hiring_audience": "AI hiring manager and backend interviewer",
+        "primary_hiring_value": "the public pages can be read without a false claim and without an endless scroll",
+        "inspectable_proof_artifact": "e2e/public-copy-sprint20.spec.js, e2e/usage-bound.spec.js, e2e/standing-interview.spec.js, agent/test_public_surface_gate.py",
+        "smallest_useful_version": "the Usage bound and the whole-surface guard",
+        "opportunity_cost": "the same time on DEVADOSS job-list slices, which ran first in the same sprint",
+        "calendar_time_box": "135 minutes for the site part",
+        "success_condition": "every new test green against a fresh local server; no auto or approval wording changed",
+        "stop_failure_condition": "a slice that needs a fact the Owner has not supplied stops; it did, twice, and is recorded",
+        "harvest_plan": "this backlog entry, the retro section, PROJECT_STATE.next_action",
+        "intended_hiring_signal": "a hiring manager reads Usage, Workbench, Triage and the Showcase without asking what a label means",
+        "fast_moving_knowledge": "NO"
+      },
+      "actual_minutes": "43",
+      "retro": "docs/RETRO_LOG.md, Sprint 20 (2026-10-05)"
     }
   ],
   "_calibration_process": {

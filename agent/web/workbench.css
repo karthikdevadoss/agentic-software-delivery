@@ -86,7 +86,15 @@
   padding: 0.2rem 0.1rem;
   font-family: inherit;
 }
-.milestone-node:hover .milestone-label { color: var(--accent); }
+.milestone-node:hover .milestone-by {
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  opacity: 0.75;
+}
+.milestone-by-model { color: var(--accent, #5b93ff); }
+.milestone-label { color: var(--accent); }
 .milestone-node:focus-visible { outline: 2px solid var(--accent); border-radius: 8px; }
 .milestone-circle {
   width: 1.9rem;

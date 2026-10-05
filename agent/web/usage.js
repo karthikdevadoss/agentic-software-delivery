@@ -89,11 +89,13 @@ function renderEfficiencySummary(d) {
     <p class="hint" style="margin-top:0;">What the delivery runs cost: real, ledger-backed ratios for Workbench pipeline runs — never estimated, never fabricated. A failed run, or one that turned out to need no change, still costs real money and is still counted here. This figure does NOT include Claude Code development cost; the sessions that built the platform itself are counted separately, further down this page.</p>
     ${provenance(e.canonical_source)}
     ${tilesHtml}
+    <details class="usage-figures"><summary class="usage-more">Figures behind these tiles: recent windows, the chart, cost by outcome, delivery path share</summary>
     <p class="hint" style="margin-top:1.2rem;">Recent windows:</p>
     ${windowsHtml}
     ${renderEfficiencyChart(e)}
     ${renderCostByOutcomeClass(e)}
     ${renderDeliveryPathShare(d)}
+    </details>
     <p class="hint" style="margin-top:0.9rem;">Full per-window consumption breakdown (this hour/last 24h/this month, tokens by category, pricing versions): see <a href="/dashboard">Dashboard</a>'s Economics / Consumption section.</p>
   `);
 }
@@ -893,18 +895,24 @@ async function load() {
     return;
   }
 
+  // Sprint 20: the point of the page (what the runs cost, what building the
+  // platform cost, the ledger it comes from, the session history) stays open.
+  // The six long-form sections sit behind one control, still on the page and
+  // still rendered, so nothing is hidden from a reader who asks for it.
   main.innerHTML = [
     renderEfficiencySummary(data),
     renderDevSessionCostSummary(data),
+    renderSessionHistoryPanel(),
+    `<details class="panel usage-breakdown"><summary class="usage-more">Full breakdown: the live event ledger, development session controls, today, coverage, value ledger, improvement, all sessions, consumption categories (eight more sections)</summary>`,
     renderEventLedger(data),
     renderDevSessionControls(),
-    renderSessionHistoryPanel(),
     renderToday(data),
     renderCoverageExplainer(),
     renderValueLedger(data),
     renderImprovement(data),
     renderAllSessions(data),
     renderConsumptionCategories(data),
+    `</details>`,
   ].join("");
 
   wireDevSessionControls();

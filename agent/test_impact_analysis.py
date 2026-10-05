@@ -165,21 +165,27 @@ _COPY_CONTRACT = "e2e/copy-contract.spec.js"
 _VISUAL_REGRESSION = "e2e/visual-regression.spec.js"
 _WHOLE_SURFACE = [_UI_STANDARDS, _DESIGN_STANDARDS, _LINK_INTEGRITY, _GOLDEN_JOURNEY,
                   _RESPONSIVE, _THIRD_PARTY, _COPY_CONTRACT, _VISUAL_REGRESSION]
+# Sprint 20 (2026-10-05): copy a hiring manager reads, the Usage bound, and the
+# Standing Interview's first spec. Mapped on arrival, which is what the drift
+# ratchet in test_test_impact_analysis.py is for.
+_PUBLIC_COPY = "e2e/public-copy-sprint20.spec.js"
+_USAGE_BOUND = "e2e/usage-bound.spec.js"
+_STANDING_INTERVIEW = "e2e/standing-interview.spec.js"
 
 FRONTEND_PATH_TO_SPECS = {
     # Sprint 14: the recruiter-facing home page and the durable-agent case
     # study. nav.js is mapped here too -- it renders the canonical navigation
     # that home.spec.js asserts, so a nav change must be able to trigger it.
-    "agent/web/home.html": ["e2e/home.spec.js"] + _WHOLE_SURFACE,
+    "agent/web/home.html": [_PUBLIC_COPY] + (["e2e/home.spec.js"] + _WHOLE_SURFACE),
     "agent/web/case-study-durable-agent.html": ["e2e/home.spec.js"] + _WHOLE_SURFACE,
-    "agent/web/nav.js": ["e2e/home.spec.js", "e2e/nav-consistency.spec.js"] + _WHOLE_SURFACE,
+    "agent/web/nav.js": [_STANDING_INTERVIEW] + (["e2e/home.spec.js", "e2e/nav-consistency.spec.js"] + _WHOLE_SURFACE),
     # The shared shell and type scale. A one-line change in either of these
     # moves every page at once -- which is exactly what happened in Sprint 15.
     "agent/web/style.css": [_UI_STANDARDS, _DESIGN_STANDARDS, _RESPONSIVE, _THIRD_PARTY,
                             _VISUAL_REGRESSION, "e2e/nav-consistency.spec.js"],
     "agent/web/dashboard.css": [_UI_STANDARDS, _DESIGN_STANDARDS, _RESPONSIVE, _VISUAL_REGRESSION],
     "agent/web/showcase.css": [_UI_STANDARDS, _DESIGN_STANDARDS, _RESPONSIVE, _VISUAL_REGRESSION],
-    "agent/web/showcase.js": [_UI_STANDARDS, _DESIGN_STANDARDS, "e2e/interview-walkthrough.spec.js", _LINK_INTEGRITY],
+    "agent/web/showcase.js": [_PUBLIC_COPY] + ([_UI_STANDARDS, _DESIGN_STANDARDS, "e2e/interview-walkthrough.spec.js", _LINK_INTEGRITY]),
     # Sprint 17: showcase.html had no entry at all, so the page that carries the
     # densest technical evidence on the public site could be edited without
     # selecting a single browser spec.
@@ -187,23 +193,23 @@ FRONTEND_PATH_TO_SPECS = {
     # The Interview Walkthrough section renders this file's real contents, and
     # a link in it that 404s is exactly the AEQ-022 defect class.
     "docs/INTERVIEW_WALKTHROUGH.yaml": ["e2e/interview-walkthrough.spec.js", _LINK_INTEGRITY],
-    "agent/web/dashboard.html": [_UI_STANDARDS, _DESIGN_STANDARDS, _LINK_INTEGRITY],
-    "agent/web/standing-interview.html": _WHOLE_SURFACE,
-    "agent/web/workbench.html": ["e2e/workbench-catalogue.spec.js"] + _WHOLE_SURFACE,
-    "agent/web/workbench.js": ["e2e/workbench-catalogue.spec.js"],
-    "agent/web/workbench.css": ["e2e/workbench-catalogue.spec.js", _UI_STANDARDS,
-                                _DESIGN_STANDARDS, _RESPONSIVE],
-    "agent/web/usage.html": ["e2e/usage.spec.js"] + _WHOLE_SURFACE,
-    "agent/web/usage.js": ["e2e/usage.spec.js", _UI_STANDARDS, _DESIGN_STANDARDS],
-    "agent/web/usage.css": [_UI_STANDARDS, _DESIGN_STANDARDS, _RESPONSIVE, _VISUAL_REGRESSION],
+    "agent/web/dashboard.html": [_PUBLIC_COPY] + ([_UI_STANDARDS, _DESIGN_STANDARDS, _LINK_INTEGRITY]),
+    "agent/web/standing-interview.html": [_STANDING_INTERVIEW, "e2e/nav-consistency.spec.js"] + (_WHOLE_SURFACE),
+    "agent/web/workbench.html": [_PUBLIC_COPY] + (["e2e/workbench-catalogue.spec.js"] + _WHOLE_SURFACE),
+    "agent/web/workbench.js": [_PUBLIC_COPY] + (["e2e/workbench-catalogue.spec.js"]),
+    "agent/web/workbench.css": [_PUBLIC_COPY] + (["e2e/workbench-catalogue.spec.js", _UI_STANDARDS,
+                                _DESIGN_STANDARDS, _RESPONSIVE]),
+    "agent/web/usage.html": [_USAGE_BOUND] + (["e2e/usage.spec.js"] + _WHOLE_SURFACE),
+    "agent/web/usage.js": [_USAGE_BOUND] + (["e2e/usage.spec.js", _UI_STANDARDS, _DESIGN_STANDARDS]),
+    "agent/web/usage.css": [_USAGE_BOUND] + ([_UI_STANDARDS, _DESIGN_STANDARDS, _RESPONSIVE, _VISUAL_REGRESSION]),
     # Sprint 17: Triage and Ask the Codebase were both entirely absent from this
     # map. Triage is one of the three pages the Owner sends recruiters to.
-    "agent/web/triage.html": _WHOLE_SURFACE,
+    "agent/web/triage.html": [_PUBLIC_COPY] + (_WHOLE_SURFACE),
     "agent/web/triage.js": [_GOLDEN_JOURNEY, _LINK_INTEGRITY],
     "agent/web/triage.css": [_UI_STANDARDS, _DESIGN_STANDARDS, _RESPONSIVE, _VISUAL_REGRESSION],
-    "agent/web/triage-b.html": [_GOLDEN_JOURNEY, _LINK_INTEGRITY],
+    "agent/web/triage-b.html": [_PUBLIC_COPY] + ([_GOLDEN_JOURNEY, _LINK_INTEGRITY]),
     "agent/web/triage-b.js": [_GOLDEN_JOURNEY],
-    "agent/web/triage-c.html": [_GOLDEN_JOURNEY, _LINK_INTEGRITY],
+    "agent/web/triage-c.html": [_PUBLIC_COPY] + ([_GOLDEN_JOURNEY, _LINK_INTEGRITY]),
     "agent/web/triage-c.js": [_GOLDEN_JOURNEY],
     "agent/web/ask-codebase.html": ["e2e/ask-codebase.spec.js"] + _WHOLE_SURFACE,
     "agent/web/ask-codebase.js": ["e2e/ask-codebase.spec.js", _LINK_INTEGRITY],

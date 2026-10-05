@@ -48,7 +48,9 @@ test.describe("Interview Walkthrough (Role Showcase)", () => {
     // legitimately appears as a Title Case field label ("Verification")
     // elsewhere in the same story, and getByText matches case-insensitively.
     const howToTerms = story.locator(".sc-how-to-grid dt");
-    await expect(howToTerms).toContainText(["WHY", "WHAT", "HOW", "TRADEOFF", "FAILURE", "VERIFICATION"]);
+    // Sprint 20 (BL-106): the labels read as phrases, in the same order.
+    await expect(howToTerms).toContainText(["Why it mattered", "What was built", "How it works",
+      "The trade-off", "Failure handled", "How it was verified"]);
   });
 
   test("a featured story shows real 'At 10x scale' system-design content", async ({ page }) => {

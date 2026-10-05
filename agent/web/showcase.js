@@ -141,12 +141,17 @@ function evidenceLine(item) {
 function renderHowToExplain(container, howTo) {
   if (!howTo) return;
   const order = ["why", "what", "how", "tradeoff", "failure", "verification"];
+  // Sprint 20 (BL-106): readable labels instead of bare uppercase tokens.
+  const LABELS = {
+    why: "Why it mattered", what: "What was built", how: "How it works",
+    tradeoff: "The trade-off", failure: "Failure handled", verification: "How it was verified",
+  };
   const box = el("div", "sc-how-to-explain");
   box.appendChild(el("div", "sc-how-to-title", "How to explain this in an interview"));
   const dl = el("dl", "sc-how-to-grid");
   order.forEach((key) => {
     if (!howTo[key]) return;
-    dl.appendChild(el("dt", null, key.toUpperCase()));
+    dl.appendChild(el("dt", null, LABELS[key] || key));
     dl.appendChild(el("dd", null, howTo[key]));
   });
   box.appendChild(dl);

@@ -52,6 +52,12 @@ main#sessions-main { max-width: var(--shell); }
 .tag-type.development { background: #124a35; color: var(--green); }
 .tag-type.trainer_demo { background: #4a3a12; color: var(--amber); }
 
+.usage-breakdown > summary.usage-more {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0.4rem 0;
+}
+.usage-breakdown > .panel { margin-top: 1rem; }
 .value-ledger { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
 .value-ledger .vl-item { border: 1px solid var(--border); border-radius: 6px; padding: 0.6rem 0.8rem; }
 .value-ledger .vl-level { font-weight: 700; font-size: 0.8rem; }
