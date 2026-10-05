@@ -55,6 +55,7 @@ the model approves itself. Both claims are forbidden by the tests above.
 |---|---|
 | `/` | Home: who I am, three proof points, and the evidence rows. |
 | `/proof` | The evidence index: every public claim with its status, evidence and limitation. |
+| `/one-pager` | One page for a recruiter: who I am, what runs, what it will not do, and where to check it. |
 | `/workbench` | Submit a real requirement and watch the pipeline run. |
 | `/triage` | The Incident Triage Lab, with its human approval step. |
 | `/ask-codebase` | Grounded questions against the real repository. |

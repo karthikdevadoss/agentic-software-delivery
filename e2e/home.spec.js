@@ -215,8 +215,15 @@ test.describe("Home page — navigation and links", () => {
     // loaded, so the assertion has to wait for render rather than read the
     // initial DOM -- the first version of this test read too early and failed
     // against a page that was actually correct.
-    await page.goto("/usage");
+    // Sprint 20/21 moved that deep link inside a collapsed block, because item 129
+    // keeps it off the first screen. Reachable and off the first screen are both
+    // true: it is one click away, so the test opens the block rather than
+    // demanding the link be visible on load.
+    await page.goto("/usage", { waitUntil: "networkidle" });
     await expect(page.locator('#top-nav a[href="/dashboard"]')).toHaveCount(0);
+    await expect(page.locator('a[href="/dashboard"]').first()).toHaveCount(1, { timeout: 30_000 });
+    const holder = page.locator('details:has(a[href="/dashboard"])').first();
+    await holder.locator("summary").click();
     await expect(page.locator('a[href="/dashboard"]').first()).toBeVisible({ timeout: 30_000 });
   });
 

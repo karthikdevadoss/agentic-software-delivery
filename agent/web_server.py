@@ -1517,6 +1517,14 @@ async def article_evaluating_the_evaluator(request: Request):
     return FileResponse(str(WEB_DIR / "article-evaluating-the-evaluator.html"))
 
 
+async def one_pager_page(request: Request):
+    """The recruiter one-pager: who I am, what runs, what it will not do, and where
+    to check each claim. It tells the same single approval story the other pages do.
+
+    Local route. Not published until the Owner says deploy."""
+    return FileResponse(str(WEB_DIR / "one-pager.html"))
+
+
 async def workbench_page(request: Request):
     return FileResponse(str(WEB_DIR / "workbench.html"))
 
@@ -2391,6 +2399,7 @@ routes = [
     Route("/", home_page, methods=["GET"]),
     Route("/case-study/durable-agent", case_study_durable_agent_page, methods=["GET"]),
     Route("/proof", proof_page, methods=["GET"]),
+    Route("/one-pager", one_pager_page, methods=["GET"]),
     Route("/article/evaluating-the-evaluator", article_evaluating_the_evaluator, methods=["GET"]),
     Route("/workbench", workbench_page, methods=["GET"]),
     Route("/dashboard", dashboard_page, methods=["GET"]),

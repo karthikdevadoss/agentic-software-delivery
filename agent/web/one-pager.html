@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Karthikeyan Devadoss — one page for a recruiter</title>
+<meta name="description" content="One page: who I am, what runs here, what it will not do, and where to check each claim.">
+<link rel="stylesheet" href="/style.css">
+<style>
+  .op-wrap { max-width: 900px; margin: 0 auto; padding: 0 2rem 4rem; }
+  .op-wrap h1 { margin-bottom: 0.2rem; }
+  .op-wrap .role { font-size: 1.05rem; opacity: 0.9; margin: 0 0 0.2rem; }
+  .op-wrap .meta { opacity: 0.75; margin: 0 0 1.2rem; }
+  .op-block { border: 1px solid rgba(255,255,255,0.12); border-radius: 10px;
+              padding: 1rem 1.2rem; margin: 1rem 0; }
+  .op-block h2 { margin-top: 0; font-size: 1.05rem; letter-spacing: 0.02em; }
+  .op-wrap ul { margin: 0.4rem 0 0; padding-left: 1.2rem; }
+  .op-wrap li { margin: 0.35rem 0; }
+  .op-foot { opacity: 0.7; font-size: 0.92rem; margin-top: 1.5rem; }
+</style>
+</head>
+<body data-surface="one-pager">
+<div class="si-navwrap"><nav class="top-nav" id="top-nav" aria-label="Main"></nav></div>
+
+<main class="op-wrap">
+  <h1>Karthikeyan Devadoss</h1>
+  <p class="role">Senior Backend / Software Engineer — Java, Spring &amp; Agentic AI</p>
+  <p class="meta"><b>Berlin</b> · English · Open to full-time Senior / Lead IC roles in Germany</p>
+  <p>Current client engagement: NRG Energy. The platform described below is my own
+     system, not an NRG product.</p>
+
+  <div class="op-block">
+    <h2>What this platform is</h2>
+    <p>An agentic delivery platform I built and operate. It takes a written
+       requirement, changes a real Java 21 / Spring Boot application, verifies the
+       change and records what it cost. You can run it yourself from the pages in
+       the navigation above.</p>
+  </div>
+
+  <div class="op-block">
+    <h2>Who decides what runs</h2>
+    <p>A deterministic policy decides, not the model. That gives two paths, and both
+       are true at once:</p>
+    <ul>
+      <li>A request inside a narrow, pre-declared band is implemented, verified and
+          deployed to the demo application <b>without a person</b>. There is no
+          approval event on that path, and no model call on it either.</li>
+      <li>Anything outside that band <b>waits for a person</b>. The approval is bound
+          by hash to the exact file and content approved, and the approve step is not
+          something the model can call.</li>
+    </ul>
+    <p>The Incident Triage Lab always stops at a human approval, whatever the fix
+       looks like.</p>
+  </div>
+
+  <div class="op-block">
+    <h2>Enterprise engineering background</h2>
+    <p>NRG Energy · Blue Cross Blue Shield Association · Marsh — backend engineering
+       across energy, healthcare and insurance systems where integration
+       correctness, security and production reliability matter.</p>
+    <p class="skills">Hands-on in those roles: Java, Spring Boot, REST, GraphQL, SOAP,
+       Apache Camel, FHIR, AWS Lambda and SAM, API Gateway and OpenAPI, FusionAuth and
+       JWT, Dynatrace, ServiceNow, SonarQube.</p>
+  </div>
+
+  <div class="op-block">
+    <h2>What it will not do</h2>
+    <ul>
+      <li>It does not approve its own writes, and no path lets it.</li>
+      <li>It does not route between model providers, and it holds no managed vector
+          search; those remain future work.</li>
+      <li>It does not send anything on my behalf. Where a job application is
+          involved, the drafting stops before sending and I apply myself.</li>
+    </ul>
+  </div>
+
+  <div class="op-block">
+    <h2>Where to check every claim</h2>
+    <ul>
+      <li><a href="/proof">Evidence index</a> — each public claim with its status,
+          its evidence and its stated limitation.</li>
+      <li><a href="/workbench">Workbench</a> — submit a requirement and watch it run.</li>
+      <li><a href="/triage">Triage</a> — a contained defect worked to a human approval.</li>
+      <li><a href="/usage">Usage</a> — what this platform's own runs cost. Not any
+          employer's telemetry.</li>
+    </ul>
+  </div>
+
+  <p class="op-foot">This page states no figure that is not published on the pages it
+     links to. If something here cannot be checked from one of those links, treat it
+     as unproven and ask me.</p>
+</main>
+
+<footer>
+  This site sets no cookies and uses no analytics or third-party trackers.
+</footer>
+<script src="/nav.js"></script>
+</body>
+</html>

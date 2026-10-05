@@ -832,5 +832,123 @@ class WorkbenchSaysItDeploysTestCase(unittest.TestCase):
         self.assertRegex(text, r"(?i)no further (click|approval)")
         self.assertIn('id="submit-btn"', panel)
 
+
+# ---------------------------------------------------------------------------
+# Night queue (2026-10-05), items 40, 51, 52, 93, 127, 128, 129.
+# ---------------------------------------------------------------------------
+
+class SkillLinesTestCase(unittest.TestCase):
+    """Item 40: the enterprise line names the hands-on tools the Owner's own
+    records already show, and none the records mark NOT USED."""
+
+    def _skills(self):
+        html = (WEB_DIR / "home.html").read_text(encoding="utf-8")
+        match = re.search(r'<p class="skills">(.*?)</p>', html, re.S)
+        self.assertIsNotNone(match, "no skills line on the home page")
+        return _visible_text(match.group(1))
+
+    def test_the_confirmed_tools_are_named(self):
+        text = self._skills()
+        for tool in ("Java", "Spring Boot", "REST", "GraphQL", "SOAP", "Apache Camel",
+                     "FHIR", "AWS Lambda", "JWT", "Dynatrace"):
+            with self.subTest(tool=tool):
+                self.assertIn(tool, text)
+
+    def test_nothing_the_records_mark_not_used_appears(self):
+        text = self._skills()
+        for absent in ("Kubernetes", "Terraform", "Resilience4j", "Hystrix", "JMS", "Redis",
+                       "Kafka"):
+            with self.subTest(absent=absent):
+                self.assertNotIn(absent, text)
+
+    def test_the_line_claims_no_years_and_no_metric(self):
+        text = self._skills()
+        self.assertIsNone(re.search(r"\b\d+\+?\s*years\b", text, re.I))
+        self.assertIsNone(re.search(r"\b\d{2,}\b", text))
+
+
+class OnePagerTestCase(unittest.TestCase):
+    """Item 51: a recruiter one-pager that tells the one approval story."""
+
+    PAGE = WEB_DIR / "one-pager.html"
+
+    def test_the_page_exists_and_is_served(self):
+        self.assertTrue(self.PAGE.is_file())
+        import web_server as ws
+        from starlette.testclient import TestClient
+        self.assertEqual(200, TestClient(ws.app).get("/one-pager").status_code)
+
+    def test_it_does_not_say_every_change_needs_a_person(self):
+        body = _visible_text(_strip_comments(self.PAGE.read_text(encoding="utf-8")))
+        self.assertIsNone(re.search(r"every (change|write|requirement) requires (a )?human", body, re.I))
+        self.assertIsNone(re.search(r"every change needs (a )?(person|human)", body, re.I))
+
+    def test_it_tells_both_halves_of_the_approval_story(self):
+        body = _visible_text(_strip_comments(self.PAGE.read_text(encoding="utf-8")))
+        self.assertRegex(body, r"(?i)deterministic")
+        self.assertRegex(body, r"(?i)without a person|with no further click|no approval event")
+        self.assertRegex(body, r"(?i)waits for|needs a person|human approval")
+        self.assertNotRegex(body, r"(?i)self-approv")
+
+    def test_it_makes_no_forbidden_claim(self):
+        surface = _visible_text(_strip_comments(self.PAGE.read_text(encoding="utf-8"))).lower()
+        for name, pattern in FORBIDDEN_CLAIMS:
+            with self.subTest(claim=name):
+                self.assertIsNone(re.search(pattern, surface, re.I))
+
+    def test_it_is_in_the_readme_page_table(self):
+        text = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn("`/one-pager`", text)
+
+
+class StandingInterviewCorpusClaimTestCase(unittest.TestCase):
+    """Item 93: the page must not suggest the private records are public."""
+
+    PAGE = WEB_DIR / "standing-interview.html"
+
+    def test_the_page_says_the_records_are_not_public(self):
+        body = _visible_text(_strip_comments(self.PAGE.read_text(encoding="utf-8")))
+        self.assertRegex(body, r"(?i)not public|private")
+        self.assertRegex(body, r"(?i)(records|notes|knowledge).{0,80}(not public|private)")
+
+    def test_it_does_not_offer_the_records_for_download_or_browsing(self):
+        html = self.PAGE.read_text(encoding="utf-8")
+        for forbidden in ("download", "browse the corpus", "view the corpus", "the full corpus is"):
+            self.assertNotIn(forbidden, html.lower())
+
+
+class WorkbenchAndTriageAndDashboardStayTestCase(unittest.TestCase):
+    """Items 127, 128, 129: three things that must not drift back."""
+
+    def test_the_workbench_still_warns_before_a_deploying_click(self):
+        html = (WEB_DIR / "workbench.html").read_text(encoding="utf-8")
+        panel = html[html.index('id="requirement-panel"'):]
+        panel = panel[:panel.index("</section>")]
+        text = _visible_text(panel)
+        self.assertRegex(text, r"(?i)deploy\w* to the (live )?demo app")
+        self.assertRegex(text, r"(?i)no further (click|approval)")
+
+    def test_promote_is_the_only_promote_step_on_each_triage_page(self):
+        for name in ("triage.html", "triage-b.html", "triage-c.html"):
+            with self.subTest(page=name):
+                html = (WEB_DIR / name).read_text(encoding="utf-8")
+                self.assertEqual(1, html.count('id="step-promote"'))
+                self.assertEqual(1, html.count('id="promote-btn"'))
+                self.assertEqual(1, html.count("PROMOTE TO PRODUCTION"))
+
+    def test_the_dashboard_link_is_not_a_first_screen_action_on_usage(self):
+        html = (WEB_DIR / "usage.html").read_text(encoding="utf-8")
+        fold = re.search(r'<p class="fold-actions">.*?</p>', html, re.DOTALL)
+        self.assertIsNotNone(fold)
+        self.assertNotIn('href="/dashboard"', fold.group(0))
+        script = (WEB_DIR / "usage.js").read_text(encoding="utf-8")
+        link_at = script.index('href="/dashboard"')
+        # It must sit inside a collapsed <details>, whichever one: the nearest
+        # preceding <details> must not have been closed before the link.
+        opened_at = script.rfind("<details", 0, link_at)
+        self.assertGreater(opened_at, -1, "the Dashboard link is not inside any details block")
+        self.assertNotIn("</details>", script[opened_at:link_at],
+                         "the Dashboard link sits outside the collapsed block")
+
 if __name__ == "__main__":
     unittest.main()
