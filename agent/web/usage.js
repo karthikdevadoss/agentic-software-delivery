@@ -78,8 +78,15 @@ function renderEfficiencySummary(d) {
   // caps across the widest line on the page. The distinction it was making is
   // real and worth keeping, so it moved into the sentence below it, where a
   // sentence belongs.
-  return section("What the delivery runs cost", `
-    <p class="hint" style="margin-top:0;">Real, ledger-backed ratios for Workbench pipeline runs — never estimated, never fabricated. A failed run, or one that turned out to need no change, still costs real money and is still counted here. These are the Workbench pipeline runs only. The cost of the Claude Code sessions used to build the platform itself is tracked separately, further down this page.</p>
+  //
+  // Sprint 19 (2026-10-05): that move also dropped the word "Workbench" out of
+  // the heading and the literal phrase "does NOT include Claude Code" out of
+  // the body, which is exactly what agent/test_usage_frontend.js had asserted
+  // since the 2026-09-18 cost incident -- so the harness was red. The Sprint 15
+  // reason is kept: the parenthetical cross-reference stays out of the heading.
+  // What comes back is the SCOPE WORD and the explicit exclusion sentence.
+  return section("Workbench Delivery Efficiency", `
+    <p class="hint" style="margin-top:0;">What the delivery runs cost: real, ledger-backed ratios for Workbench pipeline runs — never estimated, never fabricated. A failed run, or one that turned out to need no change, still costs real money and is still counted here. This figure does NOT include Claude Code development cost; the sessions that built the platform itself are counted separately, further down this page.</p>
     ${provenance(e.canonical_source)}
     ${tilesHtml}
     <p class="hint" style="margin-top:1.2rem;">Recent windows:</p>

@@ -1,111 +1,111 @@
-# Agentic Software Delivery System — Week 1 Baseline
+# Agentic Software Delivery System
 
-This is the smallest possible baseline for an agentic software delivery
-system built around a real Spring Boot application. It contains:
+A production-deployed agentic AI delivery platform that I build and operate
+myself, running against a real Java 21 / Spring Boot application. It is my
+own system, not an employer's product.
 
-- `app/` — a minimal Spring Boot Customer application.
-- `agent/` — a Python script that turns a natural-language requirement
-  into an implementation plan using the Anthropic API.
-- `requirements/` — sample requirement text used to exercise the agent.
-- `docs/` — architecture and engineering rules for the application
-  (not yet consumed by the agent — reserved for a future RAG stage).
+The platform takes a natural-language change request, investigates the real
+repository, proposes a change, verifies it with real compile and test runs,
+deploys it, and checks production afterwards. Every step and every model
+call is written to a durable event ledger with real token counts and cost.
 
-At this stage the agent only produces a plan. It does not read the
-repository, does not modify files, and does not open pull requests.
+Public site: <https://agentic-platform-backend-production.up.railway.app>
 
-## Running the Spring Boot application
+## One approval story
 
-Prerequisites: Java 17. Maven itself is not required — the project ships
-with the Maven Wrapper, which downloads the correct Maven version on
-first use.
+The public pages, this file and the code tell the same story, and tests hold
+them to it (`agent/test_public_surface_gate.py`, `e2e/copy-contract.spec.js`).
+
+- **A deterministic policy, not the model, decides what may run.**
+  `agent/risk_policy.py` classifies the raw requirement text before any model
+  is called: a keyword denylist plus a size heuristic, in plain Python. The
+  model never decides its own authority.
+- **Inside a narrow pre-declared band, the Workbench applies a small change
+  with no approval.** A short, low-risk request is implemented, verified and
+  deployed automatically. There is no approval event on that path, and no
+  model call anywhere on it either; the change comes from a fixed catalogue.
+- **Outside that band, nothing is applied until a person approves.** The
+  approval is bound by hash to the exact file and content that was approved
+  (`agent/write_tools.py`), re-checked at apply time, and the approve step is
+  not a tool the model can call.
+- **Triage always stops at a human approval.** The Incident Triage Lab
+  reproduces a contained defect, has the model diagnose and patch it, runs
+  the real tests, and then waits for an admin-authenticated approval that is
+  checked server-side (`agent/triage_execution.py`).
+
+So it is false to say every change needs a person, and equally false to say
+the model approves itself. Both claims are forbidden by the tests above.
+
+## What is in the repository
+
+| Path | What it is |
+|---|---|
+| `agent/` | The Python platform: web server, Workbench pipeline, risk policy, write boundary, durable LangGraph workflow, RAG index, MCP server, event ledger, and the test suites next to each module. |
+| `agent/web/` | The public pages. `home.html` and `proof.html` are generated from the registry below and must not be hand-edited. |
+| `app/` | The Customer application the platform operates against: Java 21, Spring Boot, REST and GraphQL, PostgreSQL with versioned migrations. |
+| `services/` | A six-service decomposition of the same domain, with a real multi-service test tier. |
+| `docs/PORTFOLIO_CAPABILITIES.yaml` | The registry that is the authority for what is true about each capability. |
+| `docs/PUBLIC_PROOF_SURFACE.yaml` | The registry that is the authority for what is shown in public, mechanically unable to claim above the verification level recorded for it. |
+| `e2e/` | Playwright specs against the real rendered pages. |
+| `docs/` | Decisions, lessons, state, backlog, retros, evidence packs. Start at `START_HERE.md`. |
+
+## Public pages
+
+| Route | Purpose |
+|---|---|
+| `/` | Home: who I am, three proof points, and the evidence rows. |
+| `/proof` | The evidence index: every public claim with its status, evidence and limitation. |
+| `/workbench` | Submit a real requirement and watch the pipeline run. |
+| `/triage` | The Incident Triage Lab, with its human approval step. |
+| `/ask-codebase` | Grounded questions against the real repository. |
+| `/standing-interview` | Interview questions answered from my own recorded engineering knowledge. |
+| `/showcase/senior-java-ai-transformation` | How the work maps to a Senior Backend / Agentic AI role. |
+| `/usage` | This platform's own metered spend. Not any employer's telemetry. |
+| `/case-study/durable-agent` | The crash-recovery case study. |
+
+## Running it locally
+
+Prerequisites: Java 21 (the Maven Wrapper fetches Maven itself), Python
+3.10+, Node for the browser tests, and an Anthropic API key in `agent/.env`
+as `ANTHROPIC_API_KEY`. That file is ignored by git and must never be
+committed.
+
+The Customer application:
 
 ```bash
 cd app
-./mvnw spring-boot:run
+./mvnw spring-boot:run        # Windows: .\mvnw.cmd spring-boot:run
 ```
 
-On Windows (Command Prompt or PowerShell):
+It starts on `http://localhost:8080`.
 
-```powershell
-cd app
-.\mvnw.cmd spring-boot:run
-```
-
-The application starts on `http://localhost:8080` with an in-memory H2
-database seeded with one sample customer.
-
-Try it out:
-
-```bash
-# Fetch the seeded customer (id 1)
-curl http://localhost:8080/customers/1
-
-# Create a new customer
-curl -X POST http://localhost:8080/customers \
-  -H "Content-Type: application/json" \
-  -d '{"name": "Grace Hopper", "email": "grace@example.com"}'
-```
-
-The H2 console is available at `http://localhost:8080/h2-console`
-(JDBC URL: `jdbc:h2:mem:customerdb`, user: `sa`, no password).
-
-## Running the Python planning agent
-
-Prerequisites: Python 3.10+, an Anthropic API key.
+The platform:
 
 ```bash
 cd agent
 python -m venv venv
-source venv/bin/activate   # on Windows: venv\Scripts\activate
+source venv/bin/activate      # Windows: venv\Scripts\activate
 pip install -r requirements.txt
+cd ..
+python agent/web_server.py    # http://127.0.0.1:8420
 ```
 
-### Configuring the API key (.env)
-
-The agent loads environment variables from a `.env` file in `agent/`
-(via `python-dotenv`). Create one:
+## Verifying it
 
 ```bash
-# agent/.env
-ANTHROPIC_API_KEY=your-key-here
+python agent/ci_python_tests.py        # release health: the blocking Python suites
+python agent/proof_registry.py         # the registry's structural checks
+python agent/build_proof_surface.py --check   # generated pages match the registry
+npx playwright test                    # browser specs against a local server
 ```
 
-`.env` is listed in `.gitignore` and must never be committed. As an
-alternative to `.env`, you can export the variable directly in your
-shell instead:
+Release health prints pass, fail and skip counts separately. A skipped
+mandatory gate is reported as unverified, never as passed.
 
-```bash
-export ANTHROPIC_API_KEY=your-key-here   # on Windows: set ANTHROPIC_API_KEY=your-key-here
-```
+## What this does not claim
 
-If `ANTHROPIC_API_KEY` is missing from both `.env` and the environment,
-the agent prints a clear error and exits instead of failing with a raw
-stack trace.
-
-### Optional: overriding the model
-
-By default the agent uses `claude-sonnet-5`. To use a different model,
-set `CLAUDE_MODEL` (in `.env` or the shell environment):
-
-```bash
-# agent/.env
-CLAUDE_MODEL=claude-opus-4-8
-```
-
-### Running it
-
-```bash
-python main.py ../requirements/sample_requirement.txt
-```
-
-The agent reads the requirement file, sends it to Claude, and prints a
-numbered implementation plan to the terminal. It does not touch the
-`app/` source code.
-
-## What's next (not in Week 1)
-
-- Give the agent read access to the repository and `docs/` via RAG.
-- Add MCP-controlled tools for the agent to inspect and modify code.
-- Add implementation, testing, and review agents with self-correction.
-- Add Git/GitHub integration to open pull requests automatically.
-- Add a human approval step before deployment.
+One model provider. Local cosine retrieval over small corpora, not a managed
+vector database. Deployment is scripted but triggered by hand. The
+multi-model cross-review experiment is paused with its product thesis
+unproven, and is presented only as a negative result. The full list of
+limitations, one per capability, is on `/proof`.

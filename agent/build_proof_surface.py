@@ -336,6 +336,10 @@ def render_proof_page(surface: dict, capabilities: dict) -> str:
       "limitation that goes with it.</p>")
     a("  </header>")
     a("")
+    # OWNER_DECISIONS_PENDING.md item 6: a <main> landmark so a screen-reader
+    # user can skip to content. Exactly one per page.
+    a("  <main>")
+    a("")
     # A4. One sentence first. The mechanics of HOW verification works are
     # genuinely interesting and are the wrong thing to put in front of a
     # recruiter's first five seconds, so they sit behind a disclosure.
@@ -450,6 +454,8 @@ def render_proof_page(surface: dict, capabilities: dict) -> str:
         a("")
 
     a('  <p><a class="btn" href="/">&larr; Back to the home page</a></p>')
+    a("")
+    a("  </main>")
     a("")
     a("  <footer>")
     a("    This page sets no cookies, loads nothing from a third party, and uses no "

@@ -209,7 +209,7 @@
 
   <header>
     <h1>Karthikeyan Devadoss</h1>
-    <p class="role">AI / Agentic AI Engineer — with senior Java &amp; Spring backend depth</p>
+    <p class="role">Senior Backend / Software Engineer — Java, Spring &amp; Agentic AI</p>
     <p class="lede">I build agentic AI systems on top of real backend engineering, and I operate them. The platform below is mine: a production-deployed delivery agent with a human approval boundary it cannot cross, workflows that survive a crash, and quality that is measured rather than asserted &mdash; running against a real Java 21 / Spring Boot application. The backend depth is what makes the agentic side hold up: enterprise Java and Spring is where I came from, and it is what the AI work is built on rather than bolted to.</p>
     <p class="meta"><b>Berlin</b> · English · Open to full-time Senior / Lead IC roles in Germany</p>
     <p class="sep">Current client engagement: NRG Energy. The AI platform shown here is my own system, not an NRG product.</p>
@@ -226,10 +226,12 @@
     </p>
   </header>
 
+  <main>
+
   <section class="proof" aria-label="Three proof points">
     <article class="pcard">
       <h2>An AI agent that cannot approve its own writes</h2>
-      <p>The model can investigate and propose changes, but deterministic code controls the write boundary. Human approval is bound to the exact approved change.</p>
+      <p>Deterministic code, not the model, decides what runs: a narrow band applies without a person; everything else waits for a human approval bound to the exact change.</p>
       <!-- #verified-run-panel is a real element id in workbench.html; the link
            inside it is resolved client-side from /api/workbench/verified-run.
            An earlier draft used #verified-run, which does not exist. -->
@@ -291,7 +293,7 @@
       <div>
         <p class="estat st-live-verified">Live</p>
         <h3>An AI agent that cannot approve its own writes</h3>
-        <p>A change proposed by the model is applied only after a person approves it, and the approval is tied to the exact file and content that was approved. The approve step is not something the model can call.</p>
+        <p>A deterministic policy, not the model, decides whether a requested change is inside a narrow pre-declared band. Inside it, the Workbench applies the change without a person. Outside it, nothing is applied until a person approves, and that approval is tied to the exact file and content that was approved. The approve step is not something the model can call.</p>
         <p class="elimit"><b>Limitation:</b> The boundary governs writes made through this platform&#x27;s own tools, scoped to three path prefixes and two file extensions. It is not a general-purpose policy engine, and it does not govern anything changed outside the platform.</p>
       </div>
       <div class="side">
@@ -419,6 +421,8 @@
     <a class="lnk" href="https://www.linkedin.com/in/karthikeyan-devdoss/">LinkedIn</a>
     <a class="lnk" href="/showcase/senior-java-ai-transformation">Role Showcase</a>
   </div>
+
+  </main>
 
   <footer>
     This site sets no cookies and uses no analytics or third-party trackers.

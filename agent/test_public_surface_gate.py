@@ -493,5 +493,124 @@ class CustomerAppReturnPathTestCase(unittest.TestCase):
                          "the return link must point at the portfolio home page")
 
 
+
+class OneApprovalStoryTestCase(unittest.TestCase):
+    """Sprint 19 (2026-10-05, Owner-authorized): the public pages tell ONE
+    approval story, and it is the true one.
+
+    The truth, read out of agent/risk_policy.py, agent/write_tools.py and
+    agent/web_server.py: a DETERMINISTIC policy -- not the model, not a person
+    -- decides whether a requirement is inside a narrow pre-declared band.
+    Inside it, the Workbench applies the change with no approval event at all.
+    Outside it, nothing is applied without a person, and that approval is bound
+    by hash to the exact content approved. Triage is a third surface and is
+    always gated by an admin approval.
+
+    Two opposite false claims are therefore both forbidden: "every change
+    needs a person" (the home page's generated evidence row said exactly this
+    before Sprint 19) and "the model approves itself" (the Workbench tagline
+    implied this before Sprint 17). These checks are hermetic twins of
+    e2e/copy-contract.spec.js, so release health catches the regression
+    without a browser.
+    """
+
+    PROOF = WEB_DIR / "proof.html"
+    WORKBENCH = WEB_DIR / "workbench.html"
+    USAGE = WEB_DIR / "usage.html"
+    STANDING_INTERVIEW = WEB_DIR / "standing-interview.html"
+
+    EVERY_CHANGE_NEEDS_A_PERSON = [
+        r"applied only after a person approves",
+        r"every (change|write|requirement) (requires|needs) (a )?(human|person)",
+        r"nothing (is|gets) applied without (a )?(human|person)",
+    ]
+
+    def _text(self, path):
+        return _visible_text(path.read_text(encoding="utf-8"))
+
+    def test_home_and_proof_do_not_claim_every_change_needs_a_person(self):
+        for path in (HOME, self.PROOF):
+            body = self._text(path)
+            for pattern in self.EVERY_CHANGE_NEEDS_A_PERSON:
+                self.assertIsNone(
+                    re.search(pattern, body, re.I),
+                    f"{path.name} says every change needs a person ({pattern!r}); "
+                    "the Workbench auto path applies small changes with no "
+                    "approval event, so this is a false claim",
+                )
+
+    def test_home_states_what_decides_and_that_the_auto_path_is_real(self):
+        body = self._text(HOME)
+        self.assertRegex(body, r"deterministic",
+                         "say WHAT decides, not only that the model does not")
+        self.assertRegex(
+            body, r"(without|with no) (a )?(person|human)",
+            "the bounded auto path is real and the home page must say so, or "
+            "a technical interviewer catches the false modesty in one question",
+        )
+
+    def test_home_headline_is_senior_backend_and_agentic_ai(self):
+        """Owner decision 2026-10-05: the headline stays Senior Backend /
+        Agentic AI. Sprint 18 had changed it; this pins the decision."""
+        html = HOME.read_text(encoding="utf-8")
+        role = re.search(r'<p class="role">(.*?)</p>', html, re.DOTALL)
+        self.assertIsNotNone(role, "the home page must carry a <p class=\"role\"> headline")
+        self.assertIn("Senior Backend / Software Engineer", role.group(1))
+        self.assertIn("Agentic AI", role.group(1))
+
+    def test_workbench_tells_the_same_story(self):
+        body = self._text(self.WORKBENCH)
+        for forbidden in (r"no human approval needed", r"preview tier", r"self-approv",
+                          r"the (model|agent|AI|LLM) approves"):
+            self.assertIsNone(re.search(forbidden, body, re.I),
+                              f"Workbench copy matched {forbidden!r}")
+        self.assertRegex(body, r"deterministic", "the truthful claim must be present")
+        self.assertRegex(body, r"automatic", "the auto path is real and should be stated")
+        self.assertIsNone(re.search(r"every (change|write|requirement) requires (a )?human", body, re.I))
+
+    def test_target_app_environment_label_is_truthful(self):
+        import web_server as ws
+        self.assertRegex(ws.TARGET_APPLICATION["environment"], r"Live demo app \(not NRG\)",
+                         '"Production Demo" is two words that contradict each other')
+
+    def test_standing_interview_names_the_candidate(self):
+        self.assertIn("Karthikeyan Devadoss", self._text(self.STANDING_INTERVIEW))
+
+    def test_usage_names_its_own_spend_and_keeps_dashboard_below_the_fold(self):
+        html = self.USAGE.read_text(encoding="utf-8")
+        body = _visible_text(html)
+        self.assertRegex(body, r"this platform's own metered spend")
+        self.assertRegex(body, r"not NRG|not any employer")
+        fold = re.search(r'<p class="fold-actions">.*?</p>', html, re.DOTALL)
+        self.assertIsNotNone(fold)
+        self.assertNotIn('href="/dashboard"', fold.group(0),
+                         "Dashboard is deliberately not a first-screen action; it stays "
+                         "linked further down the page (usage.js)")
+
+
+class MainLandmarkTestCase(unittest.TestCase):
+    """OWNER_DECISIONS_PENDING.md item 6: three public pages had no <main>
+    landmark, so a screen-reader user could not skip to content. Exactly one
+    per page, because two landmarks of the same kind need distinguishing labels
+    and none of these pages has a reason for two."""
+
+    PAGES = {
+        "home": HOME,
+        "case-study": CASE_STUDY,
+        "proof": WEB_DIR / "proof.html",
+    }
+
+    def test_each_public_page_has_exactly_one_main_landmark(self):
+        for name, path in self.PAGES.items():
+            html = _strip_comments(path.read_text(encoding="utf-8"))
+            # Markup only: a <style> or <script> block may legitimately mention
+            # the landmark in a CSS comment (case-study does), and that is not
+            # a landmark.
+            html = re.sub(r"<style.*?</style>", " ", html, flags=re.DOTALL | re.I)
+            html = re.sub(r"<script.*?</script>", " ", html, flags=re.DOTALL | re.I)
+            count = len(re.findall(r"<main\b", html))
+            self.assertEqual(count, 1, f"{name}: expected exactly one <main>, found {count}")
+
+
 if __name__ == "__main__":
     unittest.main()

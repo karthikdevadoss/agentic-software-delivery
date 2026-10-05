@@ -58,8 +58,10 @@
      step with the home page, so the layout jumped on navigation. The shell
      matches every other page; the prose measure stays narrow for reading. */
   .wrap { max-width: 1200px; margin: 0 auto; padding: 0 32px 80px; }
-  .wrap > header, .wrap > h2, .wrap > p, .wrap > .pull, .wrap > .kv, .wrap > .links,
-  .wrap > .caveat { max-width: var(--prose); }
+  /* Sprint 19: the prose now sits inside a <main> landmark, so the measure
+     rule names both parents. Caught by e2e/design-standards.spec.js. */
+  .wrap > header, main > h2, main > p, main > .pull, main > .kv, main > .links,
+  main > .caveat { max-width: var(--prose); }
   a { color: var(--accent); }
   a:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 
@@ -131,6 +133,8 @@
     <p class="standfirst">That question is most of what separates an agent demo from an agent you can put in a delivery pipeline. Here is how I answered it, and how I proved the answer.</p>
   </header>
 
+  <main>
+
   <dl class="banner">
     <div>
       <dt>Crash drill</dt>
@@ -190,6 +194,8 @@
   <div class="back">
     <a class="btn" href="/">← Back to the home page</a>
   </div>
+
+  </main>
 </div>
 
 <script src="/nav.js"></script>

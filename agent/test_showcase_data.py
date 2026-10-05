@@ -35,9 +35,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import yaml
 
+import proof_registry as pr
 import showcase_data
 import web_server as ws
-from starlette.routing import Match, Route
+from starlette.routing import Route
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 REAL_SHOWCASE_SLUG = "senior-java-ai-transformation"
@@ -45,18 +46,6 @@ REAL_SHOWCASE_SLUG = "senior-java-ai-transformation"
 
 def _registered_get_routes():
     return [r for r in ws.routes if isinstance(r, Route) and "GET" in (r.methods or set())]
-
-
-def _internal_path_is_routable(path: str) -> bool:
-    """True if `path` matches a real registered GET route, using
-    Starlette's own Route.matches() -- the same mechanism that decides a
-    real incoming request, not a hand-rolled string comparison."""
-    scope = {"type": "http", "method": "GET", "path": path}
-    for route in _registered_get_routes():
-        match, _ = route.matches(scope)
-        if match == Match.FULL:
-            return True
-    return False
 
 
 def classify_link(url: str) -> str:
@@ -67,7 +56,7 @@ def classify_link(url: str) -> str:
     if parsed.scheme in ("http", "https") and parsed.netloc:
         return "ABSOLUTE_EXTERNAL"
     if url.startswith("/"):
-        return "VALID_INTERNAL_ROUTE" if _internal_path_is_routable(parsed.path) else "BROKEN_INTERNAL_ROUTE"
+        return "VALID_INTERNAL_ROUTE" if pr.internal_path_is_routable(parsed.path, _registered_get_routes()) else "BROKEN_INTERNAL_ROUTE"
     return "BARE_RELATIVE_PATH"
 
 

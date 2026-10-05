@@ -103,7 +103,10 @@ RAILWAY_SERVICE_NAME = "agentic-delivery-customer-app"
 TARGET_APPLICATION = {
     "name": "Customer App",
     "url": PUBLIC_CUSTOMER_APP_URL,
-    "environment": "Production Demo",
+    # Sprint 19: was "Production Demo", two words that contradict each other.
+    # It is neither a sandbox nor a system anybody depends on: a real deployed
+    # Spring Boot app, owned by this platform, not by any employer.
+    "environment": "Live demo app (not NRG)",
     "description": "This is the live demo application your requirement will modify.",
 }
 

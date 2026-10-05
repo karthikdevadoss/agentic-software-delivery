@@ -128,9 +128,11 @@ capabilities:
   public_status: LIVE_VERIFIED
   headline: An AI agent that cannot approve its own writes
   public_claim: >-
-    A change proposed by the model is applied only after a person approves it,
-    and the approval is tied to the exact file and content that was approved.
-    The approve step is not something the model can call.
+    A deterministic policy, not the model, decides whether a requested change
+    is inside a narrow pre-declared band. Inside it, the Workbench applies the
+    change without a person. Outside it, nothing is applied until a person
+    approves, and that approval is tied to the exact file and content that was
+    approved. The approve step is not something the model can call.
   limitation_short: "Covers writes through this platform only; not a general policy engine."
   public_limitation: >-
     The boundary governs writes made through this platform's own tools, scoped

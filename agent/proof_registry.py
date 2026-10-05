@@ -131,10 +131,8 @@ def internal_path_is_routable(path: str, routes=None) -> bool:
     router on exactly the parameterised routes (/showcase/{slug}) where being
     wrong matters.
 
-    NOTE: agent/test_showcase_data.py carries an identical helper, written
-    first. The duplication is deliberate for now -- consolidating it means
-    editing a passing test module that this mission has no other reason to
-    touch. Recorded rather than silently left: see docs/ACTION_QUEUE.json.
+    agent/test_showcase_data.py once carried an identical copy (ACT-027); it
+    now calls this one, passing its own route list.
     """
     from starlette.routing import Match
 
