@@ -104,6 +104,12 @@ defended.
 
 **Status:** the phrase is removed. Low stakes, recorded for completeness.
 
+*2026-10-05, Sprint 19:* the removal was on the Sprint 17 branch only; the
+Sprint 18 branch still carried the phrase. Sprint 19 applied the Sprint 17
+tagline wording to `agent/web/workbench.html` (copy only; the auto behaviour is
+unchanged by Owner instruction), and `agent/test_public_surface_gate.py` now
+forbids "preview tier" hermetically.
+
 The Workbench tagline described the auto-approved path as *"this preview tier"*,
 which implies other tiers with different rules. Nothing in the code defines one:
 there is one public path with one deterministic gate.
@@ -137,6 +143,10 @@ do them.
 ## 6. Two real defects found this sprint that are not in scope to fix
 
 Recorded as backlog, stated here because both are recruiter-visible.
+
+*2026-10-05, Sprint 19:* the first is fixed -- `/`, `/proof` and
+`/case-study/durable-agent` each carry exactly one `<main>` landmark, held by
+`MainLandmarkTestCase`. The second (unbounded `/usage` length) is still open.
 
 - **Three public pages have no `<main>` landmark**: `/`, `/case-study/durable-agent`,
   and `/standing-interview` before this sprint added one. That is a real

@@ -3987,3 +3987,124 @@ the single largest risk and it is the Owner's decision to resolve.
 
 **`NEEDS_OWNER_GOAL_REVIEW`** — publication and any next substantial mission
 require Owner review. No Sprint 19 is proposed or started.
+
+# Sprint 19 (2026-10-05) — One approval story on every public page
+
+Owner-authorized from a written estimate: 300 minutes, 20 slices of 15 minutes,
+hard stop at 240 minutes of work. Forbidden: deploy, publish, remove Google
+Fonts, change the Workbench auto behaviour, change Triage approval. Branch
+`sprint18-evidence-first-proof`, commit 40a3e33 (code) plus this close-out.
+
+**Start 05:25 · End 06:08 (local) · 43 minutes of work · estimate 300 minutes.**
+
+## 1. Size given / actual / verdict / evidence
+
+Actuals are measured from the session's own timestamps per block, not per
+slice: the slices were done in batches and timing each one separately would
+be invented precision.
+
+| Slice (size given) | Actual | Verdict | Evidence |
+|---|---|---|---|
+| 1. Home must not say every change needs approval (45 min) | in the 05:27–05:34 block | ESTIMATION WRONG, over | registry claim rewritten, regenerated; `OneApprovalStoryTestCase` 2 tests red → green; build `--check` PASS |
+| Headline stays Senior Backend / Agentic AI (0, Owner decision) | same block | — | `.role` line reverted; `home.spec.js` pinned; gate test red → green |
+| 4. README matches the home page (75 min) | 05:34–05:36 | ESTIMATION WRONG, over | README rewritten (111 lines); every command in it was run this session |
+| 6a. Workbench tagline, copy only (15) | 05:30–05:34 block | ESTIMATION WRONG, over | Sprint 17 wording reused; 3 copy-contract tests + gate test green |
+| 6b. Environment label (15) | same block | over | `/api/target-app` returns "Live demo app (not NRG)" |
+| 6c. Standing Interview names the candidate (15) | same block | over | gate test + copy-contract green |
+| 6d. Usage own-spend, cost-scope, Dashboard off first screen (30) | same block + usage.js at 05:36 | over | node harness 71/2 → 73/0; copy-contract green |
+| 6e. `<main>` landmark on three pages with a test (30) | same block, plus one regression fix at 05:58 | IMPLEMENTATION ISSUE (small) | `MainLandmarkTestCase`; `design-standards` 17/19 → 19/19 after the prose-measure selector fix |
+| 6f. Showcase phone-width overflow (30) | 0 — **already done** | skipped | `responsive-invariants` 81/81 on this branch before the sprint; fixed in 3be326e |
+| 6g. ACT-024 test isolation (30) | 0 — **already done** | skipped | baseline `ci_python_tests.py` 916/0 before any edit; fixed in cc36e4e and 3be326e; the queue entry was stale, now closed |
+| 6h. ACT-027 duplicated helper (15) | same block | over | `test_showcase_data` calls `proof_registry.internal_path_is_routable`; 94 tests OK |
+| Verification and triage of 16 browser failures (not sized) | 05:36–05:59 | — | see section 2 |
+| **Sprint** (300) | **43** | **ESTIMATION WRONG, ratio 0.14, outside [0.7, 1.3]** | timestamps above |
+
+**Diagnosis of the estimate.** One cause, stated once: the 15-minute slice was
+priced as if each fix had to be designed. Nine of the twelve already had their
+wording written on the Sprint 17 branch or their assertion written in an
+existing spec, so each was a lookup and a paste, not a design. Two were
+already done and nobody had re-measured. The estimate did not check reuse
+before pricing. Past effort played no part in the verdict.
+
+## 2. What was objectively verified
+
+- Python release health: **924 blocking tests, 0 failures, 4 skipped** (916 + 8
+  new). Quality monitor: 1 known RED (SI-19), unchanged.
+- Node usage harness: 73/0 (was 71/2, red since Sprint 15's heading change).
+- `proof_registry.py` PASS; `build_proof_surface.py --check` PASS;
+  `governance_clauses.py` 18/18; static gate PASS.
+- Full Playwright against the branch server: **437 specs, 16 failed**, each
+  classified rather than averaged: 7 `third-party-network` font assertions
+  (ACT-025, Owner-blocked); 2 Customer App specs (need :8080 locally); 2
+  `usage.spec` and 1 `profile.spec` (local data; `profile.spec` passes against
+  production); 1 `home.spec` first-screen (spec updated after the run started;
+  green on rerun); 2 `design-standards` on the case study — **my regression**,
+  fixed, 19/19; 1 `ui-standards` home fold at 953px vs 940 — **proven
+  pre-existing** by serving the HEAD file and measuring the same 953px.
+- The eight new gate tests were observed failing for the intended reason before
+  any fix.
+
+## 3. Mistakes made in this sprint
+
+| Mistake | How found | Disposition |
+|---|---|---|
+| Wrapped the case-study content in `<main>` after checking only the home page for direct-child selectors; the case study's `.wrap > p` measure rule silently stopped applying | `e2e/design-standards.spec.js`, before commit | `FIX_NOW` (the rule names the landmark) |
+| Counted `<main` in the whole file, so a CSS comment mentioning the landmark counted as one | the new test itself, on the fixed page | `FIX_NOW` (count markup only) |
+| Ran two Playwright processes concurrently in one project; they corrupted each other's artifacts | ENOENT noise in the output | `NO_ACTION_WITH_REASON` — reran sequentially; a local workflow slip, not a product defect |
+| A shell heredoc for this very retro failed to parse and appended nothing | the file's tail | `NO_ACTION_WITH_REASON` — written through a file instead |
+
+**Did this sprint find a defect caused by how an AI agent works?** No. The one
+regression was an ordinary partial check (one file inspected, three changed),
+caught by an existing test before commit. No AEQ entry.
+
+## 4. Action items (never sized; Owner approval required before acting)
+
+1. **Estimation-mistake improvements.** Before pricing a fix list, grep the
+   other branches and the existing specs for already-written wording and
+   already-passing assertions, and re-measure anything marked "failing" in a
+   document older than the last commit. Two of twelve slices here were already
+   done and had stale queue entries.
+2. **Implementation-mistake improvements.** When a change wraps content in a
+   new element, grep every touched page for direct-child selectors, not just
+   the first one.
+3. **Neither, still needed.** (a) The home fold assertion fails at 953px against
+   HEAD and against this sprint's output alike; it is a visual-direction matter
+   and belongs with the Owner's pending visual decisions, not with a wording
+   sprint. (b) For the sprint as a whole: the 15-minute slice unit priced
+   lookups as designs; price after a reuse check, which is item 1.
+
+## 5. Dispositions
+
+- `FIX_NOW` — the registry claim; the headline; the copy and landmark fixes;
+  the case-study selector regression; the landmark test's own counting.
+- `ADD_GUARD_OR_TEST` — `OneApprovalStoryTestCase` (7 tests) and
+  `MainLandmarkTestCase`, hermetic, in release health.
+- `UPDATE_CANONICAL_KNOWLEDGE` — ACT-024 and ACT-027 closed; OWNER_DECISIONS
+  items 4 and 6 annotated; PROJECT_STATE next_action; README.
+- `NEEDS_OWNER` — ACT-025 fonts; the home fold (visual); publication and
+  deploy; the `/usage` unbounded length.
+- `NO_ACTION_WITH_REASON` — the two local workflow slips above.
+
+## 6. Mission value and continuation
+
+**What this sprint proved or produced.** The one false sentence a technical
+interviewer would catch is gone from every public surface, the opposite false
+claim is forbidden by the same test, and the README finally describes the
+running platform. Harvestable now: the branch, pushed.
+
+**Does another sprint on this beat the next-best use of the same calendar
+time?** No. The remaining red assertions are Owner decisions (fonts, visual
+direction, publication), not engineering. Past effort is not an input.
+
+**Continuation state: `NEEDS_OWNER_GOAL_REVIEW`** — publication of this branch
+and the visual and font decisions it is waiting behind.
+
+## 7. What was not done
+
+- Nothing in scope was left undone. Two slices were already done and skipped.
+- Not done by instruction: deploy, publish, Google Fonts removal, any change to
+  the Workbench auto behaviour or Triage approval.
+- Not done because out of scope: the home fold (pre-existing, visual), the
+  `/usage` unbounded length, ACT-022 (it touches the auto path's catalogue).
+- Production still serves the pre-Sprint-18 pages; the live failures listed in
+  the estimate remain live until the Owner publishes.

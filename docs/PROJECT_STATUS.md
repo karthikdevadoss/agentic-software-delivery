@@ -272,6 +272,11 @@ As of 2026-09-26: Architecture V1 rework Phases 0-3 are complete and verified.
 Phase 4A (plan freeze and knowledge governance) is complete. No engineering
 mission is authorised; the next step needs explicit Owner approval.
 
+As of 2026-10-05: Sprint 19 (BL-211, Owner-authorized) made the public pages
+tell one approval story and rewrote the README to match. It is on the branch
+`sprint18-evidence-first-proof`, pushed, NOT merged, NOT deployed. Production
+still serves the pre-Sprint-18 pages. No further sprint is authorised.
+
 Strategy, priorities and the employment goal are NOT recorded in this public
 repository. They live in the private context repository, which this repo
 deliberately does not restate.

@@ -579,14 +579,15 @@
       "source": "Sprint 18 full-suite run, 2026-10-02",
       "title": "test_rag_index depends on the REAL repository, so adding files to the repo makes it fail",
       "priority": "medium",
-      "status": "open",
+      "status": "resolved",
       "scope": "agent/test_rag_index.py (test isolation only -- no product code)",
       "reason": "test_new_file_triggers_only_that_files_embedding asserts files_added == 1 after calling rag_index.build_index() against the REAL repository, so \"exactly one new file\" is sensitive to how many new indexable files the repo has gained since the machine-local index was last written. Sprint 18 added about ten and it reported files_added == 10. A real test-isolation defect, EXPOSED rather than introduced. Not fixed inside Sprint 18 because the fix is a fixture corpus, which is its own change with its own risk and sits outside that mission scope. Retro action item A-18.4.",
       "evidence": "Full suite: 886 blocking tests, 1 failure, and it is this one. Module alone: 13/13 OK (`cd agent && python -m unittest test_rag_index`). Release health is therefore reported as 886/1, NOT as green.",
       "safe_to_auto_execute": false,
       "verification_required": "The module must pass BOTH alone and inside the full suite, run twice.",
       "created_at_commit": "9ba8d49",
-      "resolved_at_commit": null
+      "resolved_at_commit": "3be326e",
+      "resolution": "ALREADY FIXED before Sprint 19 and verified 2026-10-05: the corpus isolation (_isolated_corpus in agent/test_rag_index.py, commits cc36e4e and 3be326e) narrows the enumeration to the fixture corpus. Sprint 19 baseline run of agent/ci_python_tests.py: 916 blocking tests, 0 failures, 4 skipped, with this module inside the full suite. Module alone 13/13. This queue entry was stale, not the test."
     },
     {
       "id": "ACT-025",
@@ -621,14 +622,15 @@
       "source": "Sprint 18, 2026-10-02",
       "title": "Duplicated internal_path_is_routable helper in proof_registry.py and test_showcase_data.py",
       "priority": "low",
-      "status": "open",
+      "status": "resolved",
       "scope": "agent/proof_registry.py, agent/test_showcase_data.py",
       "reason": "Both now carry an identical Starlette Route.matches()-based route matcher. Consolidating it means editing a passing test module that Sprint 18 had no other reason to touch, so the duplication was recorded in proof_registry.py own docstring rather than silently left. Low priority: duplicated, not wrong. Retro action item A-18.5.",
       "evidence": "Both helpers use the real in-process router, so they cannot disagree today; the risk is future divergence.",
       "safe_to_auto_execute": true,
       "verification_required": "Both test_proof_registry and test_showcase_data green after the move.",
       "created_at_commit": "9ba8d49",
-      "resolved_at_commit": null
+      "resolved_at_commit": "SPRINT19",
+      "resolution": "Sprint 19 (2026-10-05): agent/test_showcase_data.py now calls proof_registry.internal_path_is_routable(path, routes) with its own route list; the local copy and the Match import are gone. test_proof_registry + test_showcase_data + test_public_surface_gate: 94 tests OK."
     },
     {
       "id": "ACT-028",

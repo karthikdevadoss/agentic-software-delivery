@@ -1470,7 +1470,7 @@
       "confidence": "LOW",
       "pattern_type": "first_of_kind",
       "title": "[BCBSA] HL7 FHIR R4 facade with HAPI FHIR: Patient + Coverage read API over the customer domain (closes ACT-017)",
-      "description": "Small healthcare-integration module or endpoint in customer-service exposing FHIR R4 Patient (from Customer) and Coverage (from ContractPlan) resources via hapi-fhir-structures-r4 + a RestfulServer or plain JSON parser; capability statement; validation test with HAPI's validator. Honest framing: same façade-over-legacy pattern the Owner built at BCBSA, applied to the energy domain for demonstration.",
+      "description": "Small healthcare-integration module or endpoint in customer-service exposing FHIR R4 Patient (from Customer) and Coverage (from ContractPlan) resources via hapi-fhir-structures-r4 + a RestfulServer or plain JSON parser; capability statement; validation test with HAPI's validator. Honest framing: same fa\u00e7ade-over-legacy pattern the Owner built at BCBSA, applied to the energy domain for demonstration.",
       "size_rationale": "ACT-017; first FHIR code; HAPI versions resolved against Maven Central. suggest_estimate(LARGE,LOW,first_of_kind,'2-3 h') -> INSUFFICIENT_HISTORY n=0",
       "parent_id": "BL-042",
       "status": "planned",
@@ -1645,7 +1645,7 @@
       "pattern_type": "apply_known_pattern",
       "parent_id": null,
       "title": "[Trainer] Instrument real usage share: Workbench pipeline runs vs direct Claude Code sessions, from the event ledger, and reframe the showcase text accordingly",
-      "description": "Add a ledger query + a line on the Dashboard/Usage: count of delivery runs that went through the Workbench propose->approve->apply path vs work done in direct sessions over the last 30 days; update the showcase/§02 wording to whatever the number says (CLI primary, Workbench demo surface, or the reverse).",
+      "description": "Add a ledger query + a line on the Dashboard/Usage: count of delivery runs that went through the Workbench propose->approve->apply path vs work done in direct sessions over the last 30 days; update the showcase/\u00a702 wording to whatever the number says (CLI primary, Workbench demo surface, or the reverse).",
       "size_rationale": "Query + one UI line + text edit. suggest_estimate(SMALL,MEDIUM,apply_known_pattern,'30-45 min') -> COMPUTED n=3 | RE-ESTIMATED 2026-09-23: suggest_estimate COMPUTED n=4 median_ratio=0.16 suggested_mid=6.0 -- ADOPTED 2026-09-23 (Sprint 7 re-estimation, post Sprint-6 correction), not overridden",
       "status": "done",
       "category": "delivery",
@@ -1654,7 +1654,7 @@
       "created_at": "2026-09-22T19:51:42+00:00",
       "started_at": "2026-09-23T11:35:00+00:00",
       "completed_at": "2026-09-23T11:29:32.829155+00:00",
-      "actual_note": "DONE, with a genuinely surprising real result. event_ledger.get_delivery_path_share() counts DISTINCT run_id (Workbench, run_usage_summary) vs DISTINCT session_id (direct Claude Code, model_usage/source=claude_code) over a real trailing 30-day window. REAL MEASURED RESULT: 440 Workbench runs vs 4 direct sessions (99.1% vs 0.9%) -- the OPPOSITE of ACT-018 finding (3)'s prior impression (\"the pipeline is likely vestigial, most delivery happens via direct sessions\"). Corrected ACT-018 with the real number (retracted, not reframed) and updated the trainer showcase §10 honest-gaps entry to match. Published live on the Usage page. New test verified against the real remote ledger with proper insert/cleanup discipline. Full agent/test_event_ledger.py suite: 42/42 pass.",
+      "actual_note": "DONE, with a genuinely surprising real result. event_ledger.get_delivery_path_share() counts DISTINCT run_id (Workbench, run_usage_summary) vs DISTINCT session_id (direct Claude Code, model_usage/source=claude_code) over a real trailing 30-day window. REAL MEASURED RESULT: 440 Workbench runs vs 4 direct sessions (99.1% vs 0.9%) -- the OPPOSITE of ACT-018 finding (3)'s prior impression (\"the pipeline is likely vestigial, most delivery happens via direct sessions\"). Corrected ACT-018 with the real number (retracted, not reframed) and updated the trainer showcase \u00a710 honest-gaps entry to match. Published live on the Usage page. New test verified against the real remote ledger with proper insert/cleanup discipline. Full agent/test_event_ledger.py suite: 42/42 pass.",
       "actual_ratio": null,
       "contaminated": false
     },
@@ -5462,6 +5462,45 @@
       "contaminated": null,
       "actual_duration_minutes": 97,
       "actual_notes": "97 min wall-clock from the first Sprint-6 commit through the completed 20-case run and all offline Phase-4 work. Ratio 0.295 against midpoint 330, outside the [0.7, 1.3] band -- ESTIMATION WRONG, over-estimate. A7 and A8 were applied for the first time (CONCURRENT stated, 6 agents named, 40 min reconciliation priced) and were both correct and insufficient: the estimate was still 3.4x. The missing term is not parallelism -- the live run I feared took ~50 min while the audits I under-priced were absorbed by agents running concurrently with each other and with my own work. Summed agent effort was far higher than wall-clock (~1.14M subagent tokens across 6 agents); the two figures answer different questions. See docs/RETRO_LOG.md Sprint 6."
+    },
+    {
+      "id": "BL-211",
+      "title": "Sprint 19: one approval story across the public pages, a README that matches, and the twelve unbuilt fixes from the 2026-10-05 estimate",
+      "description": "Owner-authorized 2026-10-05 from a written estimate (300 min, 20 slices of 15 min, hard stop at 240 min of work). Sprint goal: the public pages tell one approval story -- Home must not say every change needs approval; the Workbench may apply a small change with no approval; Triage stays on approval; the headline stays Senior Backend / Agentic AI. Scope: (1) the home page's generated evidence row said 'applied only after a person approves it', which is false for the Workbench auto path -- corrected in docs/PUBLIC_PROOF_SURFACE.yaml and regenerated; (4) README rewritten from the 'Week 1 Baseline' text; (6) the twelve fixes: Workbench tagline (Sprint 17 wording, copy only), target-app environment label, Standing Interview names the candidate, Usage own-spend sentence + cost-scope sentence + Dashboard off the first screen, a <main> landmark on Home/Evidence/case study with a test, Showcase phone-width overflow, ACT-024 test isolation, ACT-027 duplicated helper. Forbidden: deploy, publish, Google Fonts removal, any change to the Workbench auto behaviour or to Triage approval. Tests first: every copy fix has a hermetic Python twin in agent/test_public_surface_gate.py observed failing before the fix.",
+      "size": "LARGE",
+      "size_rationale": "LARGE by count, not by difficulty: fourteen distinct sub-asks across HTML, a YAML registry with a generator, the server, two test modules and the README, each individually SMALL and following an existing pattern (most wording was already written on the Sprint 17 branch). No first-of-its-kind integration. Sized as 20 slices of 15 minutes, which is how the Owner asked for it.",
+      "estimate_range": "240-300 min",
+      "estimate_midpoint_min": 300,
+      "status": "done",
+      "parent_id": null,
+      "session_ids": [],
+      "commit_shas": [
+        "40a3e33"
+      ],
+      "created_at": "2026-10-05T03:25:00+00:00",
+      "started_at": "2026-10-05T03:25:26+00:00",
+      "completed_at": "2026-10-05T04:05:00+00:00",
+      "category": "delivery",
+      "origin": "Owner authorization 2026-10-05, after an estimate-only pass that counted six items, found two already done, and named twelve more unbuilt fixes until the 240-minute sprint threshold was crossed.",
+      "actual_ratio": 0.13,
+      "pattern_type": "over_estimate",
+      "contaminated": false,
+      "confidence": "HIGH",
+      "mission_card": {
+        "hiring_audience": "AI hiring manager and backend interviewer; recruiter/HR for the README",
+        "primary_hiring_value": "That the public claims about human control are exactly true: a deterministic policy decides, a narrow auto path exists and is stated, everything else is hash-bound human approval. One story on every page, held by tests.",
+        "inspectable_proof_artifact": "agent/test_public_surface_gate.py (OneApprovalStoryTestCase, MainLandmarkTestCase) and e2e/copy-contract.spec.js, both green on the branch; the regenerated home.html and proof.html; README.md.",
+        "smallest_useful_version": "Item 1 alone: the registry claim corrected and regenerated, with its test. That removes the one false sentence a technical interviewer would catch.",
+        "opportunity_cost": "300 minutes. The next-best use was BL-195 (canonical career-claim registry) or BL-197 (stale-fact sweep); this sprint is a narrower, already-estimated slice of BL-197's purpose.",
+        "calendar_time_box": "240 minutes of work, hard stop, then write what is not done. Started 2026-10-05 05:25 local.",
+        "success_condition": "Release health has 0 blocking failures; the copy-contract and home browser specs pass on the branch except assertions tied to Owner-blocked decisions (fonts, publication); build_proof_surface.py --check passes; README describes the running platform and its approval story; the sprint branch is pushed.",
+        "stop_failure_condition": "240 minutes of work elapsed; or any fix would require changing the Workbench auto behaviour, Triage approval, deploying, publishing or removing fonts.",
+        "harvest_plan": "Retro in docs/RETRO_LOG.md with the size/actual/verdict/evidence table; ACT-024 and ACT-027 closed in docs/ACTION_QUEUE.json; OWNER_DECISIONS_PENDING.md items 4 and 6 updated; PROJECT_STATE.json next_action rewritten.",
+        "intended_hiring_signal": "An interviewer reads the Workbench tagline, the home evidence row and the README, asks 'so does every change need a human?', and gets the same precise answer from all three.",
+        "fast_moving_knowledge": "NO -- wording and tests over this repository's own code; nothing depends on current external platform behaviour."
+      },
+      "actual_minutes": 40,
+      "retro": "docs/RETRO_LOG.md, Sprint 19 (2026-10-05): ESTIMATION WRONG, ratio 0.13 against [0.7, 1.3]; reuse not checked before pricing; two slices already done."
     }
   ],
   "_calibration_process": {
