@@ -296,12 +296,26 @@ document.getElementById("approve-btn").addEventListener("click", async () => {
     await postJson("/api/triage/scenario-a/approve", { username, password });
     resultEl.innerHTML = `<p class="hint">Approved. Re-running the exact same reproduction…</p>`;
     const rerun = await postJson("/api/triage/scenario-a/reproduce");
+    // Step 6 reports the real switch: the reproduction result carries the
+    // scenario's fixApplied flag. The verdict is earned by that switch AND the
+    // re-run outcome; an approval that changed nothing is reported as such.
+    const switchOn = rerun.fixApplied === true;
+    const outcomeFixed = (rerun.plans.length - lastReproduction.plans.length) === 0;
+    const fixed = switchOn && outcomeFixed;
+    const verdictText = !switchOn
+      ? "APPROVED, BUT THE FIX SWITCH OFF: NOT APPLIED"
+      : (outcomeFixed ? "INCIDENT RESOLVED" : "FIX APPLIED, BUT THE DEFECT STILL REPRODUCES");
     show("step-resolved");
     document.getElementById("resolved-body").innerHTML = `
-      <div class="verdict fixed">INCIDENT RESOLVED</div>
+      <div class="verdict ${fixed ? "fixed" : "defect"}">${verdictText}</div>
+      <p><strong>Fix switch after approval:</strong> ${switchOn ? "ON" : "OFF"}</p>
       <p><strong>Before:</strong> duplicate submission created ${lastReproduction.plans.length} plan rows for one action.</p>
       <p><strong>After:</strong> the identical duplicate submission now creates ${rerun.plans.length - lastReproduction.plans.length} new row(s) — idempotent no-op confirmed live against the isolated triage customer.</p>`;
-    resultEl.innerHTML = `<p class="hint">Fix applied and re-verified.</p>`;
+    resultEl.innerHTML = `<p class="hint">${fixed
+      ? "Fix applied and re-verified."
+      : (switchOn
+        ? "Fix applied to the scenario, but the re-run still shows the defect. Not resolved."
+        : "Approval recorded, but the fix switch is still off. Nothing was applied.")}</p>`;
   } catch (err) {
     if (err.status === 401) {
       resultEl.innerHTML = `<p class="hint">AWAITING OWNER APPROVAL — ${esc(err.message)}</p>`;

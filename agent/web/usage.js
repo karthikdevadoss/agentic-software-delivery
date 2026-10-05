@@ -95,8 +95,8 @@ function renderEfficiencySummary(d) {
     ${renderEfficiencyChart(e)}
     ${renderCostByOutcomeClass(e)}
     ${renderDeliveryPathShare(d)}
-    </details>
     <p class="hint" style="margin-top:0.9rem;">Full per-window consumption breakdown (this hour/last 24h/this month, tokens by category, pricing versions): see <a href="/dashboard">Dashboard</a>'s Economics / Consumption section.</p>
+    </details>
   `);
 }
 

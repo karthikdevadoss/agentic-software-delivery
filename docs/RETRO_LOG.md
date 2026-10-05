@@ -4165,3 +4165,29 @@ mine to stop. Restart it before trusting a local run.
   Triage approval, BL-104, BL-160, BL-162, BL-166.
 - Owner-blocked, unchanged: the home fold at 953px; ACT-025; publication.
 - Out of scope: BL-168 could not be reproduced locally on this branch.
+
+# Sprint 21 (2026-10-05) — Portfolio truth and the first screen, on a site branch
+
+Owner-authorized as flows 4 and 5 of a seven-flow run sized in the DEVADOSS
+repository (9 slices, 345 minutes, stop at 240). Branch `sprint21-portfolio-truth`
+from `sprint18-evidence-first-proof`. No deploy. Nothing sent.
+
+Done, tests first (`agent/test_public_surface_gate.py`, four new cases):
+- Home does not say every change needs approval: already true and pinned; nothing changed.
+- Triage step 6 reads the real `fixApplied` switch from the post-approval re-run on all
+  three pages and earns its verdict from the switch and the outcome together.
+- README: every route in its table is served, every nav destination is listed, and the
+  generated-block sentence now describes the proof-rows block only.
+- The home header names the three public operations (Workbench, Ask the Codebase,
+  Triage), linking to the existing tiles. The Workbench says before the click that a
+  request inside the band deploys to the live demo app with no further click.
+- Regression caught by the copy contract: Sprint 20 had pulled the Dashboard link into
+  Usage's first screen; it is back below the fold.
+
+Suites: Python 947 ran, pass, with the known red SI-19 monitor. Browser specs touching
+changed files, fresh server on another port, one worker: home, copy-contract,
+public-copy-sprint20, workbench-catalogue, nav-consistency, link-integrity, usage-bound:
+all green. Not rerun: the untouched specs.
+
+Not done: skill lines (a backup flow, not needed); the home fold at 953px (Owner, visual);
+fonts (Owner); publication (Owner).

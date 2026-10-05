@@ -716,5 +716,121 @@ class HiringManagerCopyTestCase(unittest.TestCase):
         self.assertRegex(html, r'id="si-thread"[^>]*aria-live="polite"|aria-live="polite"[^>]*id="si-thread"')
         self.assertEqual(1, html.count("<main"), "one main landmark")
 
+
+# ---------------------------------------------------------------------------
+# Flow 4 (2026-10-05): triage step 6 reports the real fixApplied switch, and the
+# README matches the served site.
+# ---------------------------------------------------------------------------
+
+class TriageStepSixMatchesTheSwitchTestCase(unittest.TestCase):
+    """After approval each triage page re-runs the reproduction, and the
+    reproduction result carries the scenario's real `fixApplied` switch. Step 6
+    must report that switch, and may call the incident resolved only when the
+    switch is on AND the re-run shows the defect gone. Source-level check on the
+    three handlers, because the real backend is not reachable from a unit test."""
+
+    PAGES = ("triage.js", "triage-b.js", "triage-c.js")
+
+    def test_the_verdict_reads_the_switch_and_the_outcome(self):
+        for name in self.PAGES:
+            with self.subTest(page=name):
+                src = (WEB_DIR / name).read_text(encoding="utf-8")
+                handler = src[src.index('"/api/triage/scenario-'):]
+                handler = handler[handler.index("approve"):]
+                self.assertIn("rerun.fixApplied", handler,
+                              name + ": step 6 does not read the real fixApplied switch after approval")
+                self.assertIn("STILL REPRODUCES", src,
+                              name + ": no branch for a re-run that still shows the defect")
+                self.assertIn("SWITCH OFF", src,
+                              name + ": no branch for an approval that did not turn the switch on")
+                self.assertNotRegex(
+                    src, r"innerHTML = `<p class=\"hint\">Fix applied and re-verified\.</p>`;",
+                    name + ": prints 'Fix applied and re-verified' unconditionally")
+                self.assertRegex(src, r"verdict \$\{", name + ": the verdict class must be chosen at run time")
+
+
+class ReadmeMatchesTheSiteTestCase(unittest.TestCase):
+    """Every route in the README's public-pages table is served, every
+    navigation destination appears in that table, and the README describes the
+    generated block the way the files are actually built."""
+
+    def _readme(self):
+        return (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+
+    def _readme_routes(self):
+        return set(re.findall(r"^\| `(/[^`]*)` \|", self._readme(), re.M))
+
+    def test_every_readme_route_is_served(self):
+        import web_server as ws
+        from starlette.testclient import TestClient
+        client = TestClient(ws.app)
+        for route in sorted(self._readme_routes()):
+            with self.subTest(route=route):
+                self.assertEqual(200, client.get(route).status_code, route)
+
+    def test_every_nav_destination_is_in_the_readme(self):
+        nav = (WEB_DIR / "nav.js").read_text(encoding="utf-8")
+        destinations = set(re.findall(r'href: "(/[^"]*)"', nav))
+        self.assertEqual(set(), destinations - self._readme_routes(),
+                         "nav destinations the README does not list")
+
+    def test_readme_describes_the_generated_block_as_it_is(self):
+        """Only the proof-rows block is generated; the rest of home.html is copy
+        that Sprints 19 and 20 edited by hand. The README must not say the whole
+        file is generated."""
+        home = (WEB_DIR / "home.html").read_text(encoding="utf-8")
+        self.assertIn("GENERATED:proof-rows:start", home)
+        text = self._readme()
+        self.assertIn("proof-rows", text)
+        self.assertNotIn("`home.html` and `proof.html` are generated from the registry below and must not be hand-edited",
+                         text)
+
+    def test_readme_carries_no_retired_wording(self):
+        text = self._readme()
+        for stale in ("Week 1 Baseline", "agent only plans", "Production Demo", "preview tier"):
+            self.assertNotIn(stale, text)
+
+
+# ---------------------------------------------------------------------------
+# Flow 5 (2026-10-05): the first screen names the three public operations, and
+# the Workbench says before the click that a submission can deploy to the demo.
+# ---------------------------------------------------------------------------
+
+class FirstScreenOperationsTestCase(unittest.TestCase):
+    """The three public operations are the tiles with a backend action behind
+    them: the Workbench, Ask the Codebase, and Triage. Nothing new is added; the
+    header names what the tiles below already offer."""
+
+    def test_the_header_names_the_three_operations(self):
+        html = (WEB_DIR / "home.html").read_text(encoding="utf-8")
+        header = html[html.index("<header>"):html.index("</header>")]
+        ops = re.search(r'<p class="ops">(.*?)</p>', header, re.S)
+        self.assertIsNotNone(ops, "no operations line in the header")
+        text = _visible_text(ops.group(0))
+        for name in ("Workbench", "Ask the Codebase", "Triage"):
+            self.assertIn(name, text)
+        self.assertNotIn("Standing Interview", text, "not an operation on the first screen")
+
+    def test_the_operations_line_links_only_to_existing_tiles(self):
+        html = (WEB_DIR / "home.html").read_text(encoding="utf-8")
+        ops = re.search(r'<p class="ops">(.*?)</p>', html, re.S).group(1)
+        tiles = html[html.index('<div class="tiles">'):]
+        for href in re.findall(r'href="([^"]+)"', ops):
+            self.assertIn('href="' + href + '"', tiles, href + " is not one of the tiles")
+
+
+class WorkbenchSaysItDeploysTestCase(unittest.TestCase):
+    """A submission inside the deterministic band is applied and deployed to the
+    demo app with no further click. The page says so next to the submit control,
+    before the click, in the words the auto path already uses."""
+
+    def test_the_requirement_panel_says_so_before_the_click(self):
+        html = (WEB_DIR / "workbench.html").read_text(encoding="utf-8")
+        panel = html[html.index('id="requirement-panel"'):html.index("</section>", html.index('id="requirement-panel"'))]
+        text = _visible_text(panel)
+        self.assertRegex(text, r"(?i)deploy\w* to the (live )?demo app")
+        self.assertRegex(text, r"(?i)no further (click|approval)")
+        self.assertIn('id="submit-btn"', panel)
+
 if __name__ == "__main__":
     unittest.main()

@@ -41,7 +41,7 @@ the model approves itself. Both claims are forbidden by the tests above.
 | Path | What it is |
 |---|---|
 | `agent/` | The Python platform: web server, Workbench pipeline, risk policy, write boundary, durable LangGraph workflow, RAG index, MCP server, event ledger, and the test suites next to each module. |
-| `agent/web/` | The public pages. `home.html` and `proof.html` are generated from the registry below and must not be hand-edited. |
+| `agent/web/` | The public pages. The proof-rows block inside `home.html` and `proof.html` is generated from the registry below (`agent/build_proof_surface.py`) and must not be hand-edited; the rest of each page is ordinary copy. |
 | `app/` | The Customer application the platform operates against: Java 21, Spring Boot, REST and GraphQL, PostgreSQL with versioned migrations. |
 | `services/` | A six-service decomposition of the same domain, with a real multi-service test tier. |
 | `docs/PORTFOLIO_CAPABILITIES.yaml` | The registry that is the authority for what is true about each capability. |

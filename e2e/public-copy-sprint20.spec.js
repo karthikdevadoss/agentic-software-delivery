@@ -107,3 +107,23 @@ test.describe("Dashboard is scoped (BL-157)", () => {
     expect(body).toMatch(/start (at|on|with) (the )?Home|Home page/i);
   });
 });
+
+// Flow 5 (2026-10-05): the first screen names the three public operations, and
+// the Workbench says before any click that a submission can deploy to the demo.
+test.describe("First screen operations and the deploy warning", () => {
+  test("the home header names the Workbench, Ask the Codebase and Triage", async ({ page }) => {
+    await page.goto("/");
+    const ops = page.locator("header p.ops");
+    await expect(ops).toBeVisible();
+    for (const name of ["Workbench", "Ask the Codebase", "Triage"]) {
+      await expect(ops).toContainText(name);
+    }
+  });
+
+  test("the Workbench says a submission can deploy to the demo app before the click", async ({ page }) => {
+    await page.goto("/workbench");
+    const panel = page.locator("#requirement-panel");
+    await expect(panel).toContainText(/deploy\w* to the (live )?demo app/i);
+    await expect(panel).toContainText(/no further (click|approval)/i);
+  });
+});
