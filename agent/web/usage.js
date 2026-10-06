@@ -78,8 +78,8 @@ function renderEfficiencySummary(d) {
   // caps across the widest line on the page. The distinction it was making is
   // real and worth keeping, so it moved into the sentence below it, where a
   // sentence belongs.
-  return section("What the delivery runs cost", `
-    <p class="hint" style="margin-top:0;">Real, ledger-backed ratios for Workbench pipeline runs — never estimated, never fabricated. A failed run, or one that turned out to need no change, still costs real money and is still counted here. These are the Workbench pipeline runs only. The cost of the Claude Code sessions used to build the platform itself is tracked separately, further down this page.</p>
+  return section("Workbench Delivery Efficiency", `
+    <p class="hint" style="margin-top:0;">Real, ledger-backed ratios for Workbench pipeline runs — never estimated, never fabricated. A failed run, or one that turned out to need no change, still costs real money and is still counted here. These are the Workbench pipeline runs only — does NOT include Claude Code development-session cost (tracked separately further down this page).</p>
     ${provenance(e.canonical_source)}
     ${tilesHtml}
     <p class="hint" style="margin-top:1.2rem;">Recent windows:</p>
