@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "_comment": "BL-119 (Sprint 27, SI audit BK-13). A durable, manually-maintained registry of which tests have a REAL recorded observation of failing before their fix/feature existed -- the project's 'a new test is not trusted until observed failing' rule, made mechanical instead of living only in commit messages. Entries are added by a human/agent at the moment the fail-first observation actually happens (same discipline as docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml), never backfilled from a guess about what probably happened. Test ids use the same 'file::class::test' identifier scheme as agent/test_oracle_manifest.json (BL-116) so the two can be cross-referenced.",
+  "entries": {
+    "test_session_history_mojibake_hermetic.py::WorkbenchEngineeringEvidenceMojibakeTestCase::test_testing_state_and_reason_are_repaired": {
+      "observed_failing_at": "2026-10-06",
+      "how": "git stash of the real fix in agent/session_history.py, test run against the unfixed code (AssertionError: 'TESTING — NOT APPLICABLE' != 'TESTING � NOT APPLICABLE'), git stash pop to restore the fix, re-run green",
+      "context": "Sprint 27 T10 (BL-104), a real mojibake bug found live in production run trainer-4e68fe81"
+    },
+    "test_session_history_mojibake_hermetic.py::WorkbenchEngineeringEvidenceMojibakeTestCase::test_requested_value_and_diff_lines_are_repaired": {
+      "observed_failing_at": "2026-10-06",
+      "how": "same git-stash observation as the entry above (both tests in this file were exercised together)",
+      "context": "Sprint 27 T10 (BL-104)"
+    },
+    "test_ask_codebase_quality.py::AskCodebaseQualityWiringTestCase::test_script_does_not_hardcode_a_retrieval_score": {
+      "observed_failing_at": "2026-10-06",
+      "how": "a real hardcoded score literal ('0.833') was deliberately injected into agent/web/ask-codebase.js, the test was re-run and failed with the exact literal named in the assertion error, then the injected literal was reverted",
+      "context": "Sprint 27 T6 (BL-105)"
+    }
+  }
+}

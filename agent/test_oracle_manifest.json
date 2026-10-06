@@ -5,11 +5,11 @@
   "counts": {
     "UNCLASSIFIED": 99,
     "PLUMBING": 285,
-    "CORRECTNESS_LABELLED": 463,
-    "SAFETY_INVARIANT": 389,
+    "CORRECTNESS_LABELLED": 464,
+    "SAFETY_INVARIANT": 391,
     "HUMAN_REVIEWED": 1
   },
-  "total_tests": 1237,
+  "total_tests": 1240,
   "tests": [
     {
       "file": "test_acceptance_contract.py",
@@ -8107,6 +8107,38 @@
       "assert_methods": [
         "assertEqual",
         "assertIsNotNone"
+      ]
+    },
+    {
+      "file": "test_session_history_mojibake_hermetic.py",
+      "class": "WorkbenchEngineeringEvidenceMojibakeTestCase",
+      "test": "test_testing_state_and_reason_are_repaired",
+      "category": "SAFETY_INVARIANT",
+      "reason": "an exclusionary assertion (assertNotIn/assertRaises/assertFalse/assertIsNone) guards against a forbidden outcome",
+      "assert_methods": [
+        "assertEqual",
+        "assertIn",
+        "assertNotIn"
+      ]
+    },
+    {
+      "file": "test_session_history_mojibake_hermetic.py",
+      "class": "WorkbenchEngineeringEvidenceMojibakeTestCase",
+      "test": "test_requested_value_and_diff_lines_are_repaired",
+      "category": "SAFETY_INVARIANT",
+      "reason": "an exclusionary assertion (assertNotIn/assertRaises/assertFalse/assertIsNone) guards against a forbidden outcome",
+      "assert_methods": [
+        "assertNotIn"
+      ]
+    },
+    {
+      "file": "test_session_history_mojibake_hermetic.py",
+      "class": "WorkbenchEngineeringEvidenceMojibakeTestCase",
+      "test": "test_clean_ascii_testing_state_is_unaffected",
+      "category": "CORRECTNESS_LABELLED",
+      "reason": "compares actual output to a specific non-trivial expected value (a known right answer)",
+      "assert_methods": [
+        "assertEqual"
       ]
     },
     {
