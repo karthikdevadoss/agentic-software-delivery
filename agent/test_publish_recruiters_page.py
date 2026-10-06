@@ -124,6 +124,18 @@ def _non_quote_strings(node, path=""):
         yield path, node
 
 
+# Owner-confirmed date phrases (2026-10-06) that may carry a calendar year.
+# Everything else is scanned with them removed, so a degree year, a career
+# start year or any other year still fails.
+OWNER_CONFIRMED_DATE_PHRASES = ("since early 2026",)
+
+
+def _without_confirmed_dates(text):
+    for phrase in OWNER_CONFIRMED_DATE_PHRASES:
+        text = re.sub(re.escape(phrase), "", text, flags=re.I)
+    return text
+
+
 EXTRA_FORBIDDEN = [
     ("a money amount", r"[€$£]\s?\d|\d\s?k?\s?(€|£|\$|eur\b|usd\b|gbp\b)|\bper (hour|year|annum)\b|/hour\b"),
     ("salary", r"\bsalar(y|ies)\b"),
@@ -206,7 +218,8 @@ class PublishedRecruitersDataTestCase(unittest.TestCase):
         for name, pattern in surface.FORBIDDEN_CLAIMS + EXTRA_FORBIDDEN:
             for where, text in surfaces:
                 with self.subTest(claim=name, where=where):
-                    self.assertNotRegex(text.lower(), pattern, f"{where} makes a forbidden claim: {name}")
+                    self.assertNotRegex(_without_confirmed_dates(text).lower(), pattern,
+                                        f"{where} makes a forbidden claim: {name}")
 
     def test_quote_exemption_is_needed_and_scoped_to_quotes(self):
         quotes = [q for _, _, q in prp.iter_quotes(SOURCE)]
@@ -220,9 +233,12 @@ class PublishedRecruitersDataTestCase(unittest.TestCase):
         p = DATA["profile"]
         for field in ("name", "headline", "location", "work_mode", "languages", "education", "nrg"):
             with self.subTest(field=field):
-                self.assertNotRegex(p[field].lower(), r"\barchitect\b")
-                self.assertNotRegex(p[field], r"\b(19|20)\d{2}\b")
-        self.assertEqual(p["headline"], "AI Engineer")
+                self.assertNotRegex(p[field].lower(), r"\barchitects?\b")
+                self.assertNotRegex(_without_confirmed_dates(p[field]), r"\b(19|20)\d{2}\b")
+        self.assertEqual(p["headline"], "AI solution architecture and engineering")
+        self.assertIn("since early 2026", p["nrg"].lower())
+        self.assertIn("initial core AI team", p["nrg"])
+        self.assertNotRegex(p["education"], r"\d")
         self.assertEqual(p["education"], "B.E. Computer Science, Madras University")
         self.assertIn("German A1–A2", p["languages"])
         self.assertIn("not an NRG product", p["nrg"])

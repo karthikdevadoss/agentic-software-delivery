@@ -259,11 +259,11 @@
 
     <div class="erow">
       <div>
-        <p class="estat">Measured on every build</p>
+        <p class="estat">Checked in CI</p>
         <h3>Retrieval with labelled evaluation</h3>
-        <p>Search quality is scored against a hand-labelled set of questions and expected answers. The build fails if the scores drop below the recorded thresholds.</p>
+        <p>Search quality is scored against a hand-labelled set of questions and expected answers. In CI the evaluation runs after the Python tests on every push and pull request to master, and fails the build if a score drops below its recorded threshold. If an earlier step fails, the evaluation does not run; the eval page shows when it last passed.</p>
       </div>
-      <div class="side"><a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/eval_runner.py">See the evaluation gate →</a></div>
+      <div class="side"><a href="/eval">See the scores and CI status →</a></div>
     </div>
 
     <div class="erow">
@@ -297,7 +297,7 @@
 
   <h2 class="sec">Current scope boundaries</h2>
   <div class="scope">
-    <p>This platform does not claim capabilities it has not implemented. It currently uses one model provider, local cosine retrieval over small corpora rather than a managed vector database, and manually triggered deployment scripts.</p>
+    <p>This platform does not claim capabilities it has not implemented. It currently uses one model provider, local cosine retrieval over small corpora rather than a managed vector database, and script-based deployment: the platform itself is deployed by a manually triggered Railway CLI command, while a Workbench run deploys the small Customer App change it made by running the same CLI step itself.</p>
     <p>Multi-provider routing, managed vector search and hybrid retrieval remain future work.</p>
   </div>
 
