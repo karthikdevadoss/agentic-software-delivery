@@ -1767,10 +1767,10 @@ async def recruiters_page(request: Request):
 
 
 async def interviewer_page(request: Request):
-    """Interviewer Brief: one page for the technical interviewer (post-HR).
+    """Interviewer Brief: showcase for the technical interviewer before the interview.
     Live proof cards (Workbench, Triage, evals, Ask Codebase, honest gaps,
-    live platform). Not the HR posting map (/recruiters) and not Standing
-    Interview Q&A. Automation Sprint 14 (Owner decision)."""
+    live platform). Not the HR posting map (/recruiters); Standing Interview
+    is a quiet later link only. Automation Sprint 14 + Owner rewrite 2026-10-06."""
     return FileResponse(str(WEB_DIR / "interviewer.html"))
 
 async def applications_page(request: Request):

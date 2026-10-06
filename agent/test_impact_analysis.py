@@ -165,7 +165,7 @@ FRONTEND_PATH_TO_SPECS = {
     "agent/web/recruiters.html": [_UI_STANDARDS, "e2e/design-standards.spec.js", "e2e/link-integrity.spec.js"],
     "agent/web/recruiters.js": [_UI_STANDARDS, "e2e/design-standards.spec.js", "e2e/link-integrity.spec.js"],
     "agent/web/recruiters.css": [_UI_STANDARDS, "e2e/design-standards.spec.js"],
-    # Automation Sprint 14: Interviewer Brief (technical interviewer, post-HR).
+    # Automation Sprint 14: Interviewer Brief (technical interviewer showcase before interview).
     "agent/web/interviewer.html": [_UI_STANDARDS, "e2e/design-standards.spec.js", "e2e/link-integrity.spec.js"],
     "agent/web/interviewer.css": [_UI_STANDARDS, "e2e/design-standards.spec.js"],
     # Automation Sprint 4: self-hosted fonts move every page's type metrics.

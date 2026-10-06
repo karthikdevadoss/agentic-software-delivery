@@ -49,9 +49,10 @@ const CANONICAL_NAV_DESTINATIONS = [
   // "For Recruiters" joined it -- the one page built from what real job
   // postings ask for, with links to where each thing can be checked.
   { href: "/recruiters", label: "For Recruiters" },
-  // Automation Sprint 14 (Owner decision, 2026-10-06): Interviewer Brief
-  // for the technical interviewer (post-HR). /recruiters stays HR-facing;
-  // Standing Interview stays deeper Q&A.
+  // Automation Sprint 14 (Owner decision, 2026-10-06; rewrite same day):
+  // Interviewer Brief showcase for the technical interviewer before the
+  // interview. /recruiters stays HR-facing; Standing Interview is a quiet
+  // later link on that page, not a featured section.
   { href: "/interviewer", label: "Interviewer Brief" },
   // BL-079: gated, not unconditional. The Owner's condition was that Standing
   // Interview may appear in the live nav ONLY if the production page can
