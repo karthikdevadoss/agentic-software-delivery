@@ -1,0 +1,226 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-10-06T10:04:29Z",
+  "commit_sha": "80c3a94ac25bb182996f7840cbd146e2e71da710",
+  "working_tree_dirty": false,
+  "scoring": null,
+  "environment": {
+    "java": "openjdk version \"21.0.12.1\" 2026-08-18 LTS",
+    "docker_available": false,
+    "anthropic_key_configured": false,
+    "network_used_by_tests": "none to Railway: offline unit tests mock HTTP; Java tests run in-process"
+  },
+  "scenarios": [
+    {
+      "letter": "A",
+      "id": "TRIAGE-A-PLAN-ENROLLMENT-IDEMPOTENCY",
+      "title": "Duplicate Plan Enrollment Creates a Phantom Churn Event",
+      "engineering_area": "Transactions / idempotency / Spring Data JPA",
+      "risk": "MEDIUM",
+      "blast_radius": "LOCAL",
+      "in_catalogue": true,
+      "catalogue_status": "REAL DEFECT, ALREADY FOUND AND FIXED (commit 2155a8a) -- interactive re-demo NOT yet wired",
+      "evidence_links": [
+        "docs/interview-scenarios/04-plan-enrollment-idempotency.md",
+        "commit 2155a8a"
+      ],
+      "walkthrough_page": "/triage",
+      "java_integration_tests": [
+        {
+          "class": "TriageScenarioAIntegrationTest",
+          "file": "app/src/test/java/com/example/customer/triage/TriageScenarioAIntegrationTest.java",
+          "declared_tests": 5,
+          "needs_docker": false,
+          "result": {
+            "tests": 5,
+            "failures": 0,
+            "errors": 0,
+            "skipped": 0,
+            "report_time_utc": "2026-10-06T10:02:43Z"
+          }
+        }
+      ]
+    },
+    {
+      "letter": "B",
+      "id": "TRIAGE-B-APPOINTMENT-DOWNSTREAM-RESILIENCE",
+      "title": "Downstream Appointment Provider Timeout / Error Classification",
+      "engineering_area": "HTTP integration / Resilience4j (retry, circuit breaker) / error mapping",
+      "risk": "LOW",
+      "blast_radius": "LOCAL",
+      "in_catalogue": true,
+      "catalogue_status": "LIVE at /triage/scenario-b (2026-09-15, flagship-completion session). A deliberately-seeded, isolated defect (TriageScenarioBService's buggyRetry -- retryOnException(ex -> true), never wired into real production AppointmentAvailabilityService) genuinely retries a real downstream HTTP 400 three times before this scenario's own admin-gated approve() switches it to delegate to the REAL production appointmentRetry bean. Reuses the exact same reproduce->diagnose->AI-candidate-patch->verify->approve->rerun engine as Scenario A (agent/triage_execution.py's shared _call_model_text/_isolated_compile_java_candidate/_run_focused_maven_tests helpers, extracted from Scenario A without changing its behavior). Real, non-mocked evidence: TriageScenarioBIntegrationTest (4/4 passing) proves the buggy path makes exactly 3 real HTTP attempts against a genuine 400 and the fixed path makes exactly 1.",
+      "evidence_links": [
+        "app/src/main/java/com/example/customer/triage/TriageScenarioBService.java",
+        "app/src/test/java/com/example/customer/triage/TriageScenarioBIntegrationTest.java",
+        "app/src/main/java/com/example/customer/integration/appointment/demo/DemoAppointmentProviderController.java"
+      ],
+      "walkthrough_page": "/triage/scenario-b",
+      "java_integration_tests": [
+        {
+          "class": "TriageScenarioBIntegrationTest",
+          "file": "app/src/test/java/com/example/customer/triage/TriageScenarioBIntegrationTest.java",
+          "declared_tests": 4,
+          "needs_docker": false,
+          "result": {
+            "tests": 4,
+            "failures": 0,
+            "errors": 0,
+            "skipped": 0,
+            "report_time_utc": "2026-10-06T10:02:43Z"
+          }
+        }
+      ]
+    },
+    {
+      "letter": "C",
+      "id": "TRIAGE-C-ADMIN-SEARCH-POSTGRES-TYPE-INFERENCE",
+      "title": "Admin Customer Search: lower(bytea) Postgres 500",
+      "engineering_area": "JPQL / Postgres bind-parameter type inference / production-only defect class",
+      "risk": "LOW (historical, fixed)",
+      "blast_radius": "MODULE",
+      "in_catalogue": true,
+      "catalogue_status": "LIVE at /triage/scenario-c (2026-09-15, flagship-completion session), reusing the same engine as Scenarios A/B. HONEST FINDING: the historical bytea type-inference failure does not currently reproduce -- both this exact query shape and a 3-parameter variant matching the real original query byte-for-byte were empirically tested against the real deployed production PostgreSQL database and both succeeded, most likely because pgjdbc/Hibernate's type inference for this pattern has genuinely improved since the original incident. reproduce() honestly reports this (querySucceeded=true/defectReproduced=false for the 'buggy' path) rather than force a crash that no longer happens -- see TriageScenarioCService.java's Javadoc for the full investigation. The historical incident, root cause, and fix remain fully real and documented (commit 9f35f27, AEQ-012).",
+      "evidence_links": [
+        "docs/interview-scenarios/02-postgres-search-pagination.md",
+        "docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml (AEQ-012)",
+        "commit 9f35f27"
+      ],
+      "walkthrough_page": "/triage/scenario-c",
+      "java_integration_tests": [
+        {
+          "class": "TriageScenarioCIntegrationTest",
+          "file": "app/src/test/java/com/example/customer/triage/TriageScenarioCIntegrationTest.java",
+          "declared_tests": 4,
+          "needs_docker": false,
+          "result": {
+            "tests": 4,
+            "failures": 0,
+            "errors": 0,
+            "skipped": 0,
+            "report_time_utc": "2026-10-06T10:02:42Z"
+          }
+        },
+        {
+          "class": "TriageScenarioCPostgresIntegrationTest",
+          "file": "app/src/test/java/com/example/customer/triage/TriageScenarioCPostgresIntegrationTest.java",
+          "declared_tests": 2,
+          "needs_docker": true,
+          "result": {
+            "tests": 2,
+            "failures": 0,
+            "errors": 0,
+            "skipped": 2,
+            "report_time_utc": "2026-10-06T10:02:29Z"
+          }
+        }
+      ]
+    },
+    {
+      "letter": "D",
+      "id": "TRIAGE-D (not in catalogue)",
+      "title": "Scenario D: fan-out idempotency: the real ProcessedEvent global-by-eventId bug found and fixed while building BL-003",
+      "engineering_area": null,
+      "risk": null,
+      "blast_radius": null,
+      "in_catalogue": false,
+      "catalogue_status": "Exists only in the Customer App (TriageScenarioDService + integration test); not listed in triage/scenarios.yaml and not wired to an agent walkthrough page.",
+      "evidence_links": [],
+      "walkthrough_page": null,
+      "java_integration_tests": [
+        {
+          "class": "TriageScenarioDIntegrationTest",
+          "file": "app/src/test/java/com/example/customer/triage/TriageScenarioDIntegrationTest.java",
+          "declared_tests": 5,
+          "needs_docker": false,
+          "result": {
+            "tests": 5,
+            "failures": 0,
+            "errors": 0,
+            "skipped": 0,
+            "report_time_utc": "2026-10-06T10:02:44Z"
+          }
+        }
+      ]
+    }
+  ],
+  "python_tests": {
+    "test_triage_execution": {
+      "tests": 60,
+      "passed": 60,
+      "ok": true,
+      "failing": [],
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "test_triage_promotion": {
+      "tests": 10,
+      "passed": 10,
+      "ok": true,
+      "failing": [],
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "not_run": [
+    {
+      "what": "Live reproduce / reset / approve against the deployed Customer App",
+      "why": "Deliberately not called: these mutate the production app's synthetic triage data. Evidence here comes from tests only."
+    },
+    {
+      "what": "Diagnosis accuracy score",
+      "why": "There is no labelled set of expected diagnoses for the triage scenarios, so no accuracy can be measured. None is shown."
+    },
+    {
+      "what": "AI diagnosis and AI candidate-patch generation (real model calls)",
+      "why": "No ANTHROPIC_API_KEY in this environment; the unit tests exercise this code with an injected fake model instead."
+    },
+    {
+      "what": "Java TriageScenarioCPostgresIntegrationTest (2 tests skipped)",
+      "why": "Testcontainers real-Postgres test; skipped automatically because no Docker is available where this was published. It runs in CI on GitHub's Docker-enabled runners."
+    }
+  ],
+  "inputs": {
+    "files": {
+      "triage/scenarios.yaml": "3f2979208e6494353cd9c947bbf5c40d94bfb13a8d15393caef03f3ddad0843b",
+      "agent/triage_execution.py": "ff0fdf121c3306565d492304826769c1d70759639672972fd600d3921593d410",
+      "agent/triage_promotion.py": "82270c8201358081eb23a027a5aca9ee4cef23ea50e890cdeaaad6e06e6f9086",
+      "agent/test_triage_execution.py": "bddaa34ba81eacef3c1602813c7b43f674b064e2b90893272b30a256b90f12a4",
+      "agent/test_triage_promotion.py": "2077f9a51e66ce418fbfe04f253e948450ec23523fadcb04dcb80805ab99afc9",
+      "app/src/main/java/com/example/customer/triage/TriageBReproductionResult.java": "bcad501e85b0502f83e34c353166846fb524a4ec00bbc5b7b535c3b372d1dffc",
+      "app/src/main/java/com/example/customer/triage/TriageBState.java": "75d1e1dcfc23a469dabaa8e0a304ab0c81adac61ca9ed1e4719b8f66fad0468f",
+      "app/src/main/java/com/example/customer/triage/TriageCReproductionResult.java": "b965552f8550443684e51d5f984d57539df18681ee5cd398a65185631b27566e",
+      "app/src/main/java/com/example/customer/triage/TriageCState.java": "133963833ccb1f11bbe2844988963fb9960dd5594aab885bf2a04aab6cbe1e29",
+      "app/src/main/java/com/example/customer/triage/TriageReproductionResult.java": "802ec0cc7fafb620e3f0272608de2ac4dd878d4f6a067c2cb8606941cd6aa589",
+      "app/src/main/java/com/example/customer/triage/TriageScenarioAController.java": "951e3ee1102558385443fdab6a773e76302f21b00751c09ffb69a5634d633531",
+      "app/src/main/java/com/example/customer/triage/TriageScenarioAService.java": "276f37b34d7c0dc510da261ebb3ae1106b414d8b69f536e8f2da1ca0e31be4b1",
+      "app/src/main/java/com/example/customer/triage/TriageScenarioBController.java": "9d44f18ba8b51143f80eade211bc5320733baeceb6e29f4e54dfb9e8050d1ddc",
+      "app/src/main/java/com/example/customer/triage/TriageScenarioBService.java": "bffad9179cfa4b89e09b334a1a73d5b5f119553d80cddbaff412c4e1396ded65",
+      "app/src/main/java/com/example/customer/triage/TriageScenarioCController.java": "38b21c41fe4680a1b710db515935f836f1f8fd89e8f024de8cc5b1c568760850",
+      "app/src/main/java/com/example/customer/triage/TriageScenarioCService.java": "0b541423dd0bf02357caee0da966dc735e88f7589a7570402ba7729415e169c6",
+      "app/src/main/java/com/example/customer/triage/TriageScenarioDController.java": "8d48bf922df7f54e0e6b9d5dcd1af7eca6eadf3b89e5b398df2a93ab556ae9a2",
+      "app/src/main/java/com/example/customer/triage/TriageScenarioDReproductionResult.java": "3f8ccfb50a9838d5ec9a6ec7c7ba7511005e694159905937a93d558e119cfa2d",
+      "app/src/main/java/com/example/customer/triage/TriageScenarioDService.java": "0c4c6d636e637aa802e53e2ac39ae740694bd2a0569926399c11879c49938ee5",
+      "app/src/main/java/com/example/customer/triage/TriageScenarioDState.java": "13ec1516e799043032265a8d99cabc885f400b54638317cd9f76152488adfb82",
+      "app/src/main/java/com/example/customer/triage/TriageState.java": "920039f1e7bd44644d7dc4267319cd4c5467a25c86803902cbc4f1ac08bbfe35",
+      "app/src/test/java/com/example/customer/triage/TriageScenarioAIntegrationTest.java": "f86e744b8a13eeab1e3607540402b2e8f59d272c9e2b0e5d3a7b8befdc141cf9",
+      "app/src/test/java/com/example/customer/triage/TriageScenarioBIntegrationTest.java": "c80b595b5130046b09925f7595449bb93b3edb55edbc6115f79d18b14d054abd",
+      "app/src/test/java/com/example/customer/triage/TriageScenarioCIntegrationTest.java": "5a0326e349a16d6d464825df4bc1af9bbae89aa922ac5d9d2bff6dc62f834b4b",
+      "app/src/test/java/com/example/customer/triage/TriageScenarioCPostgresIntegrationTest.java": "0932a80d9c6a654ab75657febfb6c3a37e6140d92730e9da0afdc78f239f394e",
+      "app/src/test/java/com/example/customer/triage/TriageScenarioDIntegrationTest.java": "e7c2a47b1c837e5ad929d6c329f911355cd48eb6cb10f3b92c3a49c1f85f6bc5"
+    },
+    "not_covered": [
+      "Customer App code outside the triage package that the scenarios exercise",
+      "the deployed Railway environment (never called by this publisher)"
+    ]
+  },
+  "sources": {
+    "catalogue": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/triage/scenarios.yaml",
+    "engine": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/triage_execution.py",
+    "java_tests": "https://github.com/karthikdevadoss/agentic-software-delivery/tree/master/app/src/test/java/com/example/customer/triage",
+    "design": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/TRIAGE_LAB_DESIGN.md",
+    "publisher": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/publish_triage_results.py"
+  }
+}

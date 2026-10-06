@@ -1697,11 +1697,25 @@ async def eval_page(request: Request):
     return FileResponse(str(WEB_DIR / "eval.html"))
 
 
+async def triage_evidence_page(request: Request):
+    """Public triage evidence page: renders agent/web/triage-evidence.json
+    (agent/publish_triage_results.py). Static file only -- never calls the
+    triage reproduce/reset endpoints."""
+    return FileResponse(str(WEB_DIR / "triage-evidence.html"))
+
+
 async def ask_codebase_page(request: Request):
     """Public, read-only 'Ask the Codebase' page. See agent/ask_codebase.py
     for the full design rationale (zero LLM calls, fixed curated corpus,
     structural security boundary)."""
     return FileResponse(str(WEB_DIR / "ask-codebase.html"))
+
+
+async def ask_codebase_examples_page(request: Request):
+    """Recorded answers to Ask the Codebase's example questions:
+    agent/web/ask-codebase-examples.json from
+    agent/publish_ask_codebase_examples.py. Static; no query runs here."""
+    return FileResponse(str(WEB_DIR / "ask-codebase-examples.html"))
 
 
 async def standing_interview_page(request: Request):
@@ -2376,11 +2390,13 @@ routes = [
     Route("/usage/session/{session_id}", usage_page, methods=["GET"]),
     Route("/showcase/{slug}", showcase_page, methods=["GET"]),
     Route("/ask-codebase", ask_codebase_page, methods=["GET"]),
+    Route("/ask-codebase/examples", ask_codebase_examples_page, methods=["GET"]),
     Route("/eval", eval_page, methods=["GET"]),
     Route("/standing-interview", standing_interview_page, methods=["GET"]),
     Route("/triage", triage_page, methods=["GET"]),
     Route("/triage/scenario-b", triage_page_b, methods=["GET"]),
     Route("/triage/scenario-c", triage_page_c, methods=["GET"]),
+    Route("/triage/evidence", triage_evidence_page, methods=["GET"]),
     # Learn and JD Match: PUBLIC routes removed in Sprint 14 (Owner decision).
     # They are personal/internal tools, not part of the recruiter-facing
     # deployment. Nothing was deleted -- the implementations, datasets and

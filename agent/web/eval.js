@@ -103,8 +103,27 @@ function renderCases(d) {
   </section>`;
 }
 
+// Agent-decision eval: shown exactly as RECORDED (committed results file);
+// nothing is re-run or re-scored in the browser or by the publisher.
+function renderAgentDecision(d) {
+  const a = d.agent_decision;
+  if (!a) return "";
+  const allPass = a.summary.PASS === a.cases_total;
+  const rows = a.cases.map((c) => `<tr>
+      <td>${esc(c.id)}</td><td>${esc(c.name || "")}<div class="hint" style="margin-top:0.3rem">${c.ticket ? esc(c.ticket) : "(empty ticket)"}</div></td>
+      <td>${c.verdict === "PASS" ? '<span class="badge st-ok">PASS</span>' : `<span class="badge st-fail">${esc(c.verdict)}</span>`}</td>
+      <td>${esc(c.tool_calls)}</td><td>${c.write_occurred ? "yes" : "no"}</td></tr>`).join("");
+  return `<section class="panel eval-cases"><h2>Agent decision eval — ${esc(a.label)}</h2>
+    <div class="eval-verdict"><span class="big ${allPass ? "pass" : "fail"}">${esc(a.summary.PASS)}/${esc(a.cases_total)} cases passed</span><span class="badge st-gap">${esc(a.label.toUpperCase())}</span></div>
+    <p class="eval-explain" style="margin-top:0.8rem">A second, separate eval: six frozen tickets (a normal change, an empty ticket, a request to skip tests and approval, a vague ticket, a tightly scoped change) given to the real agent, scored deterministically from the real tool-call trace and a before/after hash of the whole application tree — never by asking a model to grade itself. Writes on disk: ${esc(a.writes_occurred)} of ${esc(a.cases_total)}.</p>
+    <p class="hint">Honest limits: these are the results recorded on ${esc((a.run_at_utc || "").slice(0, 10))} (commit <code>${esc((a.recorded_commit || "").slice(0, 7))}</code>), not a fresh run — ${esc(a.why_not_rerun)}. The approval gate was actually invoked in ${esc(a.approval_gate_exercised_cases)} of ${esc(a.cases_total)} cases; a PASS here means no write happened and no unauthorised tool was attempted, not that the approval prompt was exercised. Six cases is a small set.</p>
+    <table class="cap-table"><thead><tr><th>Case</th><th>Scenario</th><th>Verdict</th><th>Tool calls</th><th>Write</th></tr></thead><tbody>${rows}</tbody></table>
+    <p class="hint" style="margin-top:0.8rem">Sources: <a href="${esc(a.source)}" target="_blank" rel="noopener">recorded results</a> · <a href="${esc(a.runner)}" target="_blank" rel="noopener">eval runner</a></p>
+  </section>`;
+}
+
 function renderEval(d) {
-  evalMain.innerHTML = renderVerdict(d) + renderCards(d) + renderExplain(d) + renderCiStatus(d) + renderCases(d);
+  evalMain.innerHTML = renderVerdict(d) + renderCards(d) + renderExplain(d) + renderCiStatus(d) + renderCases(d) + renderAgentDecision(d);
 }
 
 if (typeof document !== "undefined" && evalMain) {

@@ -1,0 +1,258 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-10-06T10:09:27Z",
+  "commit_sha": "9afcc1cdf5c3ebd5f3a219d49e879f66a1c50e08",
+  "working_tree_dirty": false,
+  "embedding_model": "local:BAAI/bge-small-en-v1.5",
+  "llm_calls": 0,
+  "min_strong_score": 0.45,
+  "summary": {
+    "STRONG_EVIDENCE": 6
+  },
+  "examples": [
+    {
+      "query": "Where is workspace isolation enforced?",
+      "status": "STRONG_EVIDENCE",
+      "message": "5 relevant excerpt(s) found in the indexed codebase.",
+      "evidence": [
+        {
+          "rank": 1,
+          "score": 0.7853,
+          "source_path": "docs/interview-scenarios/01-rbac-and-workspace-isolation.md",
+          "symbol": "Interview Scenario: USER/ADMIN RBAC + Workspace Isolation",
+          "start_line": 1,
+          "end_line": 4,
+          "source_url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/interview-scenarios/01-rbac-and-workspace-isolation.md#L1-L4",
+          "excerpt": "# Interview Scenario: USER/ADMIN RBAC + Workspace Isolation\n\nDerived from the actual implementation: `app/src/main/java/com/example/customer/security/{SecurityConfig,WorkspaceAccessGuard,DemoJwtIssuer}.java`, `AdminCustomerController.java`."
+        },
+        {
+          "rank": 2,
+          "score": 0.7784,
+          "source_path": "docs/interview-scenarios/08-security-attack-matrix.md",
+          "symbol": "Part 1 — Customer App: JWT / RBAC / Workspace Isolation",
+          "start_line": 17,
+          "end_line": 18,
+          "source_url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/interview-scenarios/08-security-attack-matrix.md#L17-L18",
+          "excerpt": "## Part 1 — Customer App: JWT / RBAC / Workspace Isolation"
+        },
+        {
+          "rank": 3,
+          "score": 0.7603,
+          "source_path": "app/src/main/java/com/example/customer/controller/CustomerController.java",
+          "symbol": "workspaceAccessGuard",
+          "start_line": 21,
+          "end_line": 21,
+          "source_url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/app/src/main/java/com/example/customer/controller/CustomerController.java#L21",
+          "excerpt": "private final WorkspaceAccessGuard workspaceAccessGuard;"
+        }
+      ],
+      "evidence_returned": 5
+    },
+    {
+      "query": "How does the transactional outbox work?",
+      "status": "STRONG_EVIDENCE",
+      "message": "5 relevant excerpt(s) found in the indexed codebase.",
+      "evidence": [
+        {
+          "rank": 1,
+          "score": 0.7353,
+          "source_path": "app/src/main/java/com/example/customer/service/ContractPlanService.java",
+          "symbol": "outboxEventRepository",
+          "start_line": 38,
+          "end_line": 38,
+          "source_url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/app/src/main/java/com/example/customer/service/ContractPlanService.java#L38",
+          "excerpt": "private final OutboxEventRepository outboxEventRepository;"
+        },
+        {
+          "rank": 2,
+          "score": 0.7353,
+          "source_path": "app/src/main/java/com/example/customer/outbox/OutboxPublisher.java",
+          "symbol": "outboxEventRepository",
+          "start_line": 41,
+          "end_line": 41,
+          "source_url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/app/src/main/java/com/example/customer/outbox/OutboxPublisher.java#L41",
+          "excerpt": "private final OutboxEventRepository outboxEventRepository;"
+        },
+        {
+          "rank": 3,
+          "score": 0.7234,
+          "source_path": "app/src/main/java/com/example/customer/outbox/OutboxPublisher.java",
+          "symbol": "class_header",
+          "start_line": 1,
+          "end_line": 36,
+          "source_url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/app/src/main/java/com/example/customer/outbox/OutboxPublisher.java#L1-L36",
+          "excerpt": "package com.example.customer.outbox;\n\nimport com.example.customer.messaging.KafkaMessagingConfig;\nimport com.example.customer.messaging.OutboxEventEnvelope;\nimport io.micrometer.core.instrument.Counter;\nimport io.micrometer.core.instrument.MeterRegistry;\nimport org.slf4j.Logger;\nimport org.slf4j.LoggerFactory;\nimport org.springframework.boot.autoconfigure.co…"
+        }
+      ],
+      "evidence_returned": 5
+    },
+    {
+      "query": "Why isn't the LLM allowed to approve its own change?",
+      "status": "STRONG_EVIDENCE",
+      "message": "5 relevant excerpt(s) found in the indexed codebase.",
+      "evidence": [
+        {
+          "rank": 1,
+          "score": 0.6457,
+          "source_path": "docs/interview-scenarios/03-agentic-ai-software-delivery.md",
+          "symbol": "The Human-Approval Boundary — Architecturally Enforced, Not Just Policy",
+          "start_line": 73,
+          "end_line": 84,
+          "source_url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/interview-scenarios/03-agentic-ai-software-delivery.md#L73-L84",
+          "excerpt": "## The Human-Approval Boundary — Architecturally Enforced, Not Just Policy\n\n`approve_edit`/`reject_edit` are **never exposed as an LLM-callable tool\nschema and never reachable via the dispatch table by any name** — verified\nby exact set-membership checks in tests, not a policy statement in the\nsystem prompt. A real, deliberate test proved a naive substring c…"
+        },
+        {
+          "rank": 2,
+          "score": 0.6381,
+          "source_path": "docs/LESSONS.md",
+          "symbol": "Lessons::part8",
+          "start_line": 225,
+          "end_line": 264,
+          "source_url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/LESSONS.md#L225-L264",
+          "excerpt": "`edit.new_content`/`edit.path` after approval and the apply would have\n  silently used the substituted value. Root cause: approval recorded \"this\n  ID was approved,\" not \"this exact (path, content) pair was approved.\"\n  Correction: `approve_edit()` now stores `sha256(path + content)` as an\n  `approved_binding`; `apply_edit()` recomputes and compares it, refu…"
+        },
+        {
+          "rank": 3,
+          "score": 0.6317,
+          "source_path": "app/src/main/java/com/example/customer/security/WorkspaceAccessGuard.java",
+          "symbol": "assertAccessible",
+          "start_line": 27,
+          "end_line": 38,
+          "source_url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/app/src/main/java/com/example/customer/security/WorkspaceAccessGuard.java#L27-L38",
+          "excerpt": "public void assertAccessible(Long requestedCustomerId, Jwt jwt) {\n        Object roleClaim = jwt.getClaim(\"role\");\n        if (roleClaim == null || \"ADMIN\".equals(roleClaim)) {\n            return;\n        }\n        Object cidClaim = jwt.getClaim(\"cid\");\n        Long ownCustomerId = cidClaim instanceof Number n ? n.longValue() : null;\n        if (ownCustomerI…"
+        }
+      ],
+      "evidence_returned": 5
+    },
+    {
+      "query": "How is Redis cache invalidation handled?",
+      "status": "STRONG_EVIDENCE",
+      "message": "5 relevant excerpt(s) found in the indexed codebase.",
+      "evidence": [
+        {
+          "rank": 1,
+          "score": 0.785,
+          "source_path": "app/src/main/java/com/example/customer/cache/ContractPlanCacheService.java",
+          "symbol": "class_header",
+          "start_line": 1,
+          "end_line": 38,
+          "source_url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/app/src/main/java/com/example/customer/cache/ContractPlanCacheService.java#L1-L38",
+          "excerpt": "package com.example.customer.cache;\n\nimport com.example.customer.dto.ContractPlanResponse;\nimport com.example.customer.service.ContractPlanService;\nimport io.micrometer.core.instrument.Counter;\nimport io.micrometer.core.instrument.MeterRegistry;\nimport org.slf4j.Logger;\nimport org.slf4j.LoggerFactory;\nimport org.springframework.data.redis.core.RedisTemplate;…"
+        },
+        {
+          "rank": 2,
+          "score": 0.7818,
+          "source_path": "docs/interview-scenarios/06-redis-cache-aside.md",
+          "symbol": "Requirement",
+          "start_line": 15,
+          "end_line": 24,
+          "source_url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/interview-scenarios/06-redis-cache-aside.md#L15-L24",
+          "excerpt": "## Requirement\n\n- `GET /customers/{id}/plan` should be served from cache when a fresh\n  entry exists, and only fall through to Postgres on a miss.\n- `POST /customers/{id}/plan` (enroll) must invalidate the cached entry\n  so a stale plan is never served past the next real change.\n- Any Redis failure — read, write, or eviction — must degrade to \"as if\n  there …"
+        },
+        {
+          "rank": 3,
+          "score": 0.7655,
+          "source_path": "docs/interview-scenarios/06-redis-cache-aside.md",
+          "symbol": "Metrics: Proving the Fail-Open Path With Evidence, Not Assumption",
+          "start_line": 121,
+          "end_line": 132,
+          "source_url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/interview-scenarios/06-redis-cache-aside.md#L121-L132",
+          "excerpt": "## Metrics: Proving the Fail-Open Path With Evidence, Not Assumption\n\nThree Micrometer counters (`cache.requests{cache=active-plan,result=...}`)\ntagged `hit`/`miss`/`redis-unavailable` are incremented on every real\ncall — not because the design *should* fail open, but so that behavior\ncan be verified from real production evidence. As of this writing, real\npr…"
+        }
+      ],
+      "evidence_returned": 5
+    },
+    {
+      "query": "How does appointment-service resilience work?",
+      "status": "STRONG_EVIDENCE",
+      "message": "5 relevant excerpt(s) found in the indexed codebase.",
+      "evidence": [
+        {
+          "rank": 1,
+          "score": 0.7686,
+          "source_path": "docs/interview-scenarios/07-appointment-resilience.md",
+          "symbol": "Architecture",
+          "start_line": 27,
+          "end_line": 50,
+          "source_url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/interview-scenarios/07-appointment-resilience.md#L27-L50",
+          "excerpt": "## Architecture\n\n```\nGET /customers/{id}/appointment-availability?date=...\n   |\n   v\nAppointmentAvailabilityService.checkAvailability\n   |\n   v\nCircuitBreaker.decorateSupplier(breaker, Retry.decorateSupplier(retry, rawCall))\n   -- composition order matters: the BREAKER wraps the RETRY, not the\n      other way around, so an open circuit fails fast BEFORE any …"
+        },
+        {
+          "rank": 2,
+          "score": 0.7591,
+          "source_path": "docs/interview-scenarios/07-appointment-resilience.md",
+          "symbol": "Interview Scenario: Appointment Downstream Resilience — Retry, Circuit Breaker, Error Classification",
+          "start_line": 1,
+          "end_line": 4,
+          "source_url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/interview-scenarios/07-appointment-resilience.md#L1-L4",
+          "excerpt": "# Interview Scenario: Appointment Downstream Resilience — Retry, Circuit Breaker, Error Classification\n\nDerived from the actual implementation: `app/src/main/java/com/example/customer/integration/appointment/*` and, for the deliberately-seeded training variant, `app/src/main/java/com/example/customer/triage/TriageScenarioBService.java` (Incident Triage Lab S…"
+        },
+        {
+          "rank": 3,
+          "score": 0.7453,
+          "source_path": "docs/interview-scenarios/07-appointment-resilience.md",
+          "symbol": "Live Demo / Evidence Links",
+          "start_line": 204,
+          "end_line": 211,
+          "source_url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/interview-scenarios/07-appointment-resilience.md#L204-L211",
+          "excerpt": "## Live Demo / Evidence Links\n\n- `app/src/main/java/com/example/customer/integration/appointment/AppointmentAvailabilityService.java` (real source)\n- `app/src/main/java/com/example/customer/integration/appointment/AppointmentAvailabilityConfig.java` (real source)\n- `app/src/main/java/com/example/customer/integration/appointment/demo/DemoAppointmentProviderCo…"
+        }
+      ],
+      "evidence_returned": 5
+    },
+    {
+      "query": "Why was Testcontainers needed for the Postgres bug?",
+      "status": "STRONG_EVIDENCE",
+      "message": "5 relevant excerpt(s) found in the indexed codebase.",
+      "evidence": [
+        {
+          "rank": 1,
+          "score": 0.7886,
+          "source_path": "docs/LESSONS.md",
+          "symbol": "Lessons::part21",
+          "start_line": 641,
+          "end_line": 680,
+          "source_url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/LESSONS.md#L641-L680",
+          "excerpt": "Starlette's `run_in_threadpool` so a slow/stuck call can only ever\n  block its own request; (2) set a real, server-enforced\n  `statement_timeout` on the connection so a genuinely stuck query fails\n  fast and honestly instead of hanging forever (sized with real margin\n  over an empirically-observed ~12-17s worst case, not guessed); (3) set\n  `idle_in_transact…"
+        },
+        {
+          "rank": 2,
+          "score": 0.7837,
+          "source_path": "docs/interview-scenarios/02-postgres-search-pagination.md",
+          "symbol": "Testing",
+          "start_line": 122,
+          "end_line": 129,
+          "source_url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/interview-scenarios/02-postgres-search-pagination.md#L122-L129",
+          "excerpt": "## Testing\n\n`AdminCustomerControllerIntegrationTest` (11 tests, H2) covers the\napplication-level behavior (pagination math, filter combinations,\nauthorization). `PostgresFlywayIntegrationTest`'s real Testcontainers test\ncovers the one thing H2 structurally cannot: real Postgres type-inference\nbehavior around nullable bind parameters and string functions."
+        },
+        {
+          "rank": 3,
+          "score": 0.7805,
+          "source_path": "docs/LESSONS.md",
+          "symbol": "Lessons::part31",
+          "start_line": 961,
+          "end_line": 1000,
+          "source_url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/LESSONS.md#L961-L1000",
+          "excerpt": "(`CustomerRepository.searchWorkspaceCustomers`'s `:namePattern`/\n  `:emailPattern`, built by `AdminCustomerController.likePattern()`).\n  **The generalized lesson, again reinforcing an existing one in this\n  file:** a green H2-only test suite is not proof a JPQL query works on\n  the real target database -- any query using string functions\n  (`LOWER`, `CONCAT`…"
+        }
+      ],
+      "evidence_returned": 5
+    }
+  ],
+  "inputs": {
+    "files": {
+      "agent/ask_codebase.py": "781f5c727086162bd95b7c3bf4f7423edf4c279a6d843fed62e905e3f29796e2",
+      "agent/backend_rag_corpus.py": "43d7d3b1f50bdca42964a2a4bba0569b97c143974879d9d2c1a8b33d6d0d70b8"
+    },
+    "examples": "f3b09bee54f6b2cdc127212c76f2d3dd56b70ff6c73c932d887dc314c18aa2c8",
+    "not_covered": [
+      "contents of the curated corpus documents (living docs change for unrelated reasons)",
+      "the retrieval implementation (agent/backend_rag_index.py) and embedding model weights"
+    ]
+  },
+  "sources": {
+    "feature": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/ask_codebase.py",
+    "corpus": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/backend_rag_corpus.py",
+    "publisher": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/publish_ask_codebase_examples.py"
+  }
+}

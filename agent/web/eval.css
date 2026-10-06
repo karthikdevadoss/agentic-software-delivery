@@ -30,3 +30,28 @@
   .eval-cases .cap-table th:nth-child(4), .eval-cases .cap-table td:nth-child(4) { display: none; }
   .eval-cases .cap-table th, .eval-cases .cap-table td { padding: 0.55rem 0.4rem; }
 }
+/* /triage/evidence reuses this sheet (metric cards, badges). */
+.te-table { display: table; width: 100%; table-layout: auto; }
+.te-table td div + div { margin-top: 0.35rem; }
+.te-table .badge { white-space: nowrap; }
+.te-table th { white-space: nowrap; overflow-wrap: normal; word-break: normal; }
+.te-table a, .panel .hint a { color: var(--accent); }
+.te-table td:nth-child(4) a { white-space: nowrap; overflow-wrap: normal; word-break: normal; }
+.limits li { margin-bottom: 0.6rem; line-height: 1.55; }
+@media (max-width: 600px) {
+  .te-scenarios .te-table th:nth-child(3), .te-scenarios .te-table td:nth-child(3),
+  .te-scenarios .te-table th:nth-child(4), .te-scenarios .te-table td:nth-child(4) { display: none; }
+  .te-table th, .te-table td { padding: 0.55rem 0.4rem; }
+  .te-table code { overflow-wrap: anywhere; word-break: break-all; font-size: 12.5px; }
+  .te-scenarios .te-table td .hint { display: none; }
+  .te-scenarios .te-table td:nth-child(5) { width: 48%; }
+  .te-table th { white-space: normal; }
+}
+@media (max-width: 600px) {
+  /* Agent-decision table: drop tool-call count at phone width (in the JSON). */
+  .eval-cases .cap-table th:nth-child(4):nth-last-child(2), .eval-cases .cap-table td:nth-child(4):nth-last-child(2) { display: none; }
+}
+/* /ask-codebase/examples reuses this sheet. */
+.ace-ev { border-top: 1px solid var(--border); padding: 0.75rem 0; }
+.ace-ev a { color: var(--accent); overflow-wrap: anywhere; }
+.ace-excerpt { margin: 0.5rem 0 0; padding: 0.6rem 0.75rem; background: #0d0f14; border: 1px solid var(--border); border-radius: 6px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; max-height: 180px; overflow-y: auto; }

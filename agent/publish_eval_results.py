@@ -63,7 +63,8 @@ def build_eval_results(retrieval: dict, routing: dict, *, commit_sha: str,
                        working_tree_dirty: bool = False,
                        thresholds: dict = None,
                        ci_observation: dict = None,
-                       eval_inputs: dict = None) -> dict:
+                       eval_inputs: dict = None,
+                       agent_decision: dict = None) -> dict:
     """Pure function: eval_runner output in, publishable dict out."""
     thresholds = eval_runner.THRESHOLDS if thresholds is None else thresholds
     summaries = {"retrieval": retrieval["summary"], "routing": routing["summary"]}
@@ -114,6 +115,7 @@ def build_eval_results(retrieval: dict, routing: dict, *, commit_sha: str,
             }
             for c in retrieval["per_case"]
         ],
+        "agent_decision": agent_decision,
         "ci_gate": {
             "workflow": ".github/workflows/ci.yml",
             "step": "RAG/MCP retrieval + routing evals (must meet recorded thresholds)",
@@ -141,7 +143,13 @@ EVAL_INPUT_FILES = [
     "agent/eval_runner.py",
     "agent/evals/retrieval_dataset.json",
     "agent/evals/routing_dataset.json",
+    # Agent-decision eval: shown from the COMMITTED results (re-running needs a
+    # paid model API key), so the recorded results file is itself the input.
+    "agent/evals/agent_decision_dataset.json",
+    "agent/evals/agent_decision_results.json",
 ]
+AGENT_DECISION_RESULTS = "agent/evals/agent_decision_results.json"
+AGENT_DECISION_DATASET = "agent/evals/agent_decision_dataset.json"
 # Stated honestly in the JSON: things that also affect the scores but are NOT
 # hashed, because they change for unrelated reasons (the curated corpus pulls
 # in living docs such as docs/ACTION_QUEUE.json) or are not in the repo.
@@ -175,6 +183,47 @@ def compute_eval_input_hashes(repo_root: Path = None, thresholds: dict = None) -
 
 EVAL_STEP_NAME = "RAG/MCP retrieval + routing evals (must meet recorded thresholds)"
 GH_REPO = "karthikdevadoss/agentic-software-delivery"
+
+
+def build_agent_decision_section(results: dict, dataset: dict, recorded_commit: str) -> dict:
+    """Pure: the committed agent-decision eval results, as recorded. Nothing
+    is re-run or re-scored. Deliberately omits evidence_reference (a local
+    machine path) and the free-text expected/actual decision lists."""
+    names = {c["eval_id"]: c.get("name") for c in dataset.get("cases", [])}
+    cases = []
+    for r in results.get("results", []):
+        cases.append({
+            "id": r["eval_id"],
+            "name": names.get(r["eval_id"]),
+            "ticket": r.get("ticket"),
+            "verdict": r.get("verdict"),
+            "reason": r.get("reason"),
+            # The recorded file stores the full call list (inputs + result
+            # excerpts); publish only the count and the tool names.
+            "tool_calls": len(r["tool_calls"]) if isinstance(r.get("tool_calls"), list) else r.get("tool_calls"),
+            "tools_used": sorted({c.get("name") for c in r["tool_calls"] if isinstance(c, dict)})
+                          if isinstance(r.get("tool_calls"), list) else [],
+            "write_occurred": r.get("write_occurred"),
+            "approval_present": r.get("approval_present"),
+            "unsafe_action_attempted": r.get("unsafe_action_attempted"),
+        })
+    verdicts = [c["verdict"] for c in cases]
+    run_at = results.get("run_at_utc") or ""
+    return {
+        "label": f"recorded {run_at[:10]}" if run_at else "recorded (date unknown)",
+        "run_at_utc": run_at,
+        "recorded_commit": recorded_commit,
+        "model": results["results"][0].get("model") if results.get("results") else None,
+        "scoring_authority": "deterministic: real dispatch trace + before/after file hashes; never an LLM judge",
+        "summary": {v: verdicts.count(v) for v in ("PASS", "FAIL", "NOT_EXECUTED", "UNKNOWN")},
+        "cases_total": len(cases),
+        "approval_gate_exercised_cases": sum(1 for c in cases if c["approval_present"]),
+        "writes_occurred": sum(1 for c in cases if c["write_occurred"]),
+        "why_not_rerun": "re-running makes real, billed model API calls; no API key in the publishing environment",
+        "cases": cases,
+        "source": f"{REPO_URL}/blob/master/{AGENT_DECISION_RESULTS}",
+        "runner": f"{REPO_URL}/blob/master/agent/agent_decision_eval_runner.py",
+    }
 
 
 def summarise_ci_runs(runs: list, observed_at: str) -> dict:
@@ -268,6 +317,10 @@ def main(argv: list) -> int:
         working_tree_dirty=_working_tree_dirty(),
         ci_observation=summarise_ci_runs(ci_runs, now) if ci_runs else None,
         eval_inputs=compute_eval_input_hashes(),
+        agent_decision=build_agent_decision_section(
+            json.loads((REPO_ROOT / AGENT_DECISION_RESULTS).read_text(encoding="utf-8")),
+            json.loads((REPO_ROOT / AGENT_DECISION_DATASET).read_text(encoding="utf-8")),
+            _git("log", "-1", "--format=%H", "--", AGENT_DECISION_RESULTS)),
     )
     text = json.dumps(results, indent=2) + "\n"
     if "--stdout" in argv:
