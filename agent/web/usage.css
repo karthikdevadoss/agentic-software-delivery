@@ -165,3 +165,48 @@ main#sessions-main { max-width: var(--shell); }
   .value-ledger { grid-template-columns: 1fr; }
   .dev-session-form { flex-direction: column; align-items: stretch; }
 }
+
+/* Automation Sprint 6: /usage scrolled sideways at 390px (measured
+   scrollWidth 430 vs clientWidth 390). Root cause was long unbreakable
+   strings in .goal / .session-row / panel content, not (only) .cap-table —
+   dashboard.css already wraps .cap-table, but usage-specific row/goal
+   classes did not. Contain + wrap so the document never widens; tables
+   that must stay wide scroll inside their own box. CSS only. */
+body[data-surface="usage"] main,
+body[data-surface="usage"] .panel,
+body[data-surface="usage"] .session-row,
+body[data-surface="usage"] .goal,
+body[data-surface="usage"] .hist-goal,
+body[data-surface="usage"] .hist-session-card,
+body[data-surface="usage"] .hist-meta,
+body[data-surface="usage"] .session-goal,
+body[data-surface="usage"] .full-session-id {
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+body[data-surface="usage"] .cap-table {
+  display: block;
+  overflow-x: auto;
+  max-width: 100%;
+  table-layout: fixed;
+}
+body[data-surface="usage"] .cap-table th,
+body[data-surface="usage"] .cap-table td {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+body[data-surface="usage"] .exec-grid,
+body[data-surface="usage"] .econ-grid,
+body[data-surface="usage"] .value-ledger,
+body[data-surface="usage"] .summary-grid {
+  max-width: 100%;
+  min-width: 0;
+}
+@media (max-width: 480px) {
+  body[data-surface="usage"] .econ-grid,
+  body[data-surface="usage"] .exec-grid {
+    grid-template-columns: 1fr;
+  }
+}
