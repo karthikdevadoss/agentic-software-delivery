@@ -330,6 +330,33 @@ buggy code.
   is similar enough to count as a real recurrence demanding a process
   change rather than another one-off patch -- flagged as a real open
   question, not resolved by naming it.
+- **Five evidence rules (added 2026-10-06, Sprint 27, BL-122 / SI audit
+  BK-24).** Before any claim of "done", "verified", "working" or "PASSED" is
+  written down -- in a commit message, a retro, PROJECT_STATE.json, or a
+  report to the Owner -- check it against all five. Each is a real way this
+  project has previously let a true-sounding claim stand in for a checked
+  one; none requires new tooling, only not skipping the check.
+  1. **Code existing is not code working.** A function, endpoint or test
+     file being present in the repo proves it was written, not that it runs
+     correctly or at all. Run it.
+  2. **Passing once is not stable.** A single green run can be a lucky draw
+     -- see the Standing Interview's own `DoesNotOverRefuse` flake (1-in-3
+     draws) and the "fail-first" rule above. Where a result can vary
+     (model sampling, timing, external services), report the real N and the
+     pass count out of N, not one pass treated as the verdict.
+  3. **Related evidence is not proof.** A passing test in the same module,
+     a similar case working elsewhere, or a green CI run on an adjacent
+     change is context, not confirmation of the specific claim being made.
+     Name exactly what was checked and what was only adjacent.
+  4. **One example is not a track record.** One successful request, one
+     clean demo, one fixed instance of a bug class does not establish a
+     rate. Say "observed once" rather than implying "reliably works."
+  5. **Part of a requirement is not the requirement.** Satisfying the part
+     of an acceptance contract that was easy to check (it compiles, the
+     page loads) is not the same as satisfying the part that was the actual
+     point (the numbers shown are correct, the claim matches the code).
+     Re-read the full requirement before declaring it met, not just the
+     part already verified.
 
 ## Durable-state rules
 - Repository files and Git are authoritative; conversation history is supplementary.
