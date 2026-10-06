@@ -42,7 +42,10 @@
   .te-scenarios .te-table th:nth-child(3), .te-scenarios .te-table td:nth-child(3),
   .te-scenarios .te-table th:nth-child(4), .te-scenarios .te-table td:nth-child(4) { display: none; }
   .te-table th, .te-table td { padding: 0.55rem 0.4rem; }
-  .te-table code { overflow-wrap: anywhere; }
+  .te-table code { overflow-wrap: anywhere; word-break: break-all; font-size: 12.5px; }
+  .te-scenarios .te-table td .hint { display: none; }
+  .te-scenarios .te-table td:nth-child(5) { width: 48%; }
+  .te-table th { white-space: normal; }
 }
 @media (max-width: 600px) {
   /* Agent-decision table: drop tool-call count at phone width (in the JSON). */
