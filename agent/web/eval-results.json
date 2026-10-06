@@ -1,10 +1,23 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-06T09:42:26Z",
-  "commit_sha": "fe9324d159ad7a772dd701c7fda5043530e9fceb",
+  "generated_at": "2026-10-06T09:48:12Z",
+  "commit_sha": "08c6617e1b1cbfac827967d4e60efd08a84e2407",
   "working_tree_dirty": false,
   "embedding_model": "local:BAAI/bge-small-en-v1.5",
   "overall_passed": true,
+  "eval_inputs": {
+    "files": {
+      "agent/eval_runner.py": "7fc32cc28d1f761ef3a65b20cd5bfbe7de46ffba059c754432e4f12c0c75453d",
+      "agent/evals/retrieval_dataset.json": "3193e6b70c35178f79a4cbb4a2adeb47055ad43e32f9401e526485da8ec9e058",
+      "agent/evals/routing_dataset.json": "8a4cf82bcfff0b4a99f9de61c094d4be613fb141037da11d1476f8812d4b39c5"
+    },
+    "thresholds": "4dcbd2be69da87aa409ed2ced07bf71d42081d637beab36253269fafdeca9717",
+    "not_covered": [
+      "curated corpus document contents (agent/backend_rag_corpus.py and the files it lists)",
+      "retrieval/routing implementation (agent/backend_rag_index.py, agent/backend_planning.py)",
+      "embedding model weights (recorded by name in embedding_model)"
+    ]
+  },
   "labelled_set": {
     "retrieval_cases": 12,
     "routing_cases": 14,
@@ -144,7 +157,7 @@
     "behaviour": "exits 1 (fails the build) if any threshold is not met",
     "runs_on": "every pull request to master and every push to master",
     "observed": {
-      "observed_at": "2026-10-06T09:42:26Z",
+      "observed_at": "2026-10-06T09:48:12Z",
       "branch": "master",
       "latest_run": {
         "created_at": "2026-10-06T06:23:13Z",
