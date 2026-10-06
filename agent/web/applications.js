@@ -77,7 +77,9 @@
       const proof = item.proof || {};
       const raw = proof.applied_at_note || proof.applied_at || item.applied_at || "";
       const when = formatBerlinSubmitted(raw);
-      return when ? ("Submitted — " + when) : "Submitted";
+      const manual = (proof.method === "owner_manual");
+      const prefix = manual ? "Submitted manually — " : "Submitted — ";
+      return when ? (prefix + when) : (manual ? "Submitted manually" : "Submitted");
     }
     if (st === "failed") return "Apply failed";
     return st;
