@@ -108,6 +108,38 @@ class MetricPassesTestCase(unittest.TestCase):
             pub.metric_passes(1.0, 1.0, "<")
 
 
+class SummariseCiRunsTestCase(unittest.TestCase):
+    def test_skipped_streak_and_last_success(self):
+        runs = [
+            {"created_at": "2026-10-06T06:23:13Z", "head_sha": "c" * 40, "eval_step": "skipped",
+             "failed_steps": ["Python hermetic test suite"]},
+            {"created_at": "2026-10-05T06:24:09Z", "head_sha": "b" * 40, "eval_step": "skipped",
+             "failed_steps": ["Python hermetic test suite"]},
+            {"created_at": "2026-09-29T17:07:25Z", "head_sha": "a" * 40, "eval_step": "success",
+             "failed_steps": []},
+        ]
+        out = pub.summarise_ci_runs(runs, "2026-10-06T10:00:00Z")
+        self.assertEqual(out["latest_run"]["eval_step"], "skipped")
+        self.assertEqual(out["latest_run"]["failed_steps_in_same_job"], ["Python hermetic test suite"])
+        self.assertEqual(out["runs_since_eval_step_last_passed"], 2)
+        self.assertEqual(out["last_eval_step_success"]["head_sha"], "a" * 40)
+
+    def test_latest_run_passing(self):
+        runs = [{"created_at": "t", "head_sha": "a" * 40, "eval_step": "success", "failed_steps": []}]
+        out = pub.summarise_ci_runs(runs, "now")
+        self.assertEqual(out["runs_since_eval_step_last_passed"], 0)
+
+    def test_no_success_in_window_is_reported_as_unknown(self):
+        runs = [{"created_at": "t", "head_sha": "a" * 40, "eval_step": "skipped", "failed_steps": []}]
+        out = pub.summarise_ci_runs(runs, "now")
+        self.assertIsNone(out["last_eval_step_success"])
+        self.assertIsNone(out["runs_since_eval_step_last_passed"])
+
+    def test_no_runs_means_not_captured(self):
+        self.assertIsNone(pub.summarise_ci_runs([], "now"))
+        self.assertIsNone(_build(_retrieval(), _routing())["ci_gate"]["observed"])
+
+
 class PublishedArtifactTestCase(unittest.TestCase):
     """The committed agent/web/eval-results.json and the /eval page that
     renders it. Reads files only -- nothing is measured here."""

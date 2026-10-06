@@ -59,9 +59,37 @@ function renderCards(d) {
 function renderExplain(d) {
   const g = d.ci_gate;
   return `<section class="panel"><h2>What this means</h2>
-    <p class="eval-explain">When the agent investigates a code change, it first <em>retrieves</em> the most relevant files from the codebase. If retrieval returns the wrong files, everything downstream is built on the wrong context. So retrieval is treated like any other piece of production code: a hand-labelled set of questions, each with the files a correct answer must find, is run on every change. Recall@3 is the share of questions where a correct file is in the top 3 results; MRR rewards ranking the correct file higher. Each score has a written threshold, and the CI pipeline runs <code>${esc(g.command)}</code> on ${esc(g.runs_on)} — if any score drops below its threshold, that step exits 1 and the build fails, so a retrieval regression cannot be merged unnoticed. Security routing (refusing unauthorised requests) is zero tolerance: one miss fails the build.</p>
+    <p class="eval-explain">When the agent investigates a code change, it first <em>retrieves</em> the most relevant files from the codebase. If retrieval returns the wrong files, everything downstream is built on the wrong context. So retrieval is treated like any other piece of production code: a hand-labelled set of questions, each with the files a correct answer must find, is run on every change. Recall@3 is the share of questions where a correct file is in the top 3 results; MRR rewards ranking the correct file higher. Each score has a written threshold, and the CI pipeline is configured to run <code>${esc(g.command)}</code> on ${esc(g.runs_on)} — if any score drops below its threshold, that step exits 1 and the build fails, so a retrieval regression cannot be merged unnoticed. Security routing (refusing unauthorised requests) is zero tolerance: one miss fails the build.</p>
     <p class="hint">Sources: <a href="${esc(d.sources.eval_runner)}" target="_blank" rel="noopener">eval_runner.py</a> · <a href="${esc(d.sources.retrieval_dataset)}" target="_blank" rel="noopener">labelled retrieval set</a> · <a href="${esc(d.sources.routing_dataset)}" target="_blank" rel="noopener">labelled routing set</a> · <a href="${esc(d.sources.ci_workflow)}" target="_blank" rel="noopener">CI workflow</a> · <a href="${esc(d.sources.publisher)}" target="_blank" rel="noopener">results publisher</a></p>
   </section>`;
+}
+
+function shortDate(iso) {
+  const t = new Date(iso);
+  return isNaN(t) ? String(iso) : t.toISOString().slice(0, 16).replace("T", " ") + " UTC";
+}
+
+// Reports what CI actually did with the eval step -- including when it did
+// NOT run. Nothing here is inferred beyond the captured conclusions.
+function renderCiStatus(d) {
+  const o = d.ci_gate && d.ci_gate.observed;
+  if (!o) {
+    return `<section class="panel"><h2>Gate status in CI</h2><p>CI execution status was not captured when these results were published.</p></section>`;
+  }
+  const lr = o.latest_run;
+  const sha = (x) => `<code>${esc((x || "").slice(0, 7))}</code>`;
+  let body;
+  if (lr.eval_step === "success") {
+    body = `<p>${passBadge(true)} On the latest master CI run (${esc(shortDate(lr.created_at))}, ${sha(lr.head_sha)}) the eval step ran and passed.</p>`;
+  } else {
+    const blocking = (lr.failed_steps_in_same_job || []).map(esc).join(", ") || "an earlier step";
+    const last = o.last_eval_step_success
+      ? `It last ran and passed on ${esc(shortDate(o.last_eval_step_success.created_at))} (${sha(o.last_eval_step_success.head_sha)}); ${esc(o.runs_since_eval_step_last_passed)} master runs since then did not execute it.`
+      : `It did not pass on any of the ${esc(o.runs_examined)} most recent master runs examined.`;
+    body = `<p><span class="badge st-partial">NOT RUNNING ON MASTER</span> On the latest master CI run (${esc(shortDate(lr.created_at))}, ${sha(lr.head_sha)}) the eval step was <strong>${esc(lr.eval_step || "not found")}</strong>: an earlier step in the same CI job failed (${blocking}), so GitHub did not run the gate. ${last}</p>
+    <p class="hint">The scores above come from running the same, unchanged eval locally at the commit shown — not from that CI run. The gate is wired and would fail the build on a retrieval drop, but it only protects master once the earlier failing step is fixed.</p>`;
+  }
+  return `<section class="panel"><h2>Gate status in CI</h2>${body}<p class="hint">Captured from the GitHub Actions API at ${esc(shortDate(o.observed_at))}.</p></section>`;
 }
 
 function renderCases(d) {
@@ -76,7 +104,7 @@ function renderCases(d) {
 }
 
 function renderEval(d) {
-  evalMain.innerHTML = renderVerdict(d) + renderCards(d) + renderExplain(d) + renderCases(d);
+  evalMain.innerHTML = renderVerdict(d) + renderCards(d) + renderExplain(d) + renderCiStatus(d) + renderCases(d);
 }
 
 if (typeof document !== "undefined" && evalMain) {

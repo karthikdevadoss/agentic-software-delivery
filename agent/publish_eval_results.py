@@ -16,6 +16,11 @@ Run (from agent/, after building the curated index):
     python backend_rag_index.py
     python publish_eval_results.py            # writes web/eval-results.json
     python publish_eval_results.py --stdout   # print only, write nothing
+    python publish_eval_results.py --no-ci    # skip the GitHub Actions lookup
+
+It also records what CI actually did with the eval step on master (via the
+gh CLI, read-only): the latest run's eval-step conclusion and when the step
+last passed. If gh is unavailable that field is null, never guessed.
 """
 
 import json
@@ -56,7 +61,8 @@ def metric_passes(score, threshold, comparator: str) -> bool:
 def build_eval_results(retrieval: dict, routing: dict, *, commit_sha: str,
                        generated_at: str, embedding_model: str,
                        working_tree_dirty: bool = False,
-                       thresholds: dict = None) -> dict:
+                       thresholds: dict = None,
+                       ci_observation: dict = None) -> dict:
     """Pure function: eval_runner output in, publishable dict out."""
     thresholds = eval_runner.THRESHOLDS if thresholds is None else thresholds
     summaries = {"retrieval": retrieval["summary"], "routing": routing["summary"]}
@@ -109,6 +115,9 @@ def build_eval_results(retrieval: dict, routing: dict, *, commit_sha: str,
             "command": "python eval_runner.py all",
             "behaviour": "exits 1 (fails the build) if any threshold is not met",
             "runs_on": "every pull request to master and every push to master",
+            # What CI actually did, captured from the GitHub Actions API at
+            # publish time; None = not captured (gh unavailable).
+            "observed": ci_observation,
         },
         "sources": {
             "eval_runner": f"{REPO_URL}/blob/master/agent/eval_runner.py",
@@ -118,6 +127,74 @@ def build_eval_results(retrieval: dict, routing: dict, *, commit_sha: str,
             "publisher": f"{REPO_URL}/blob/master/agent/publish_eval_results.py",
         },
     }
+
+
+EVAL_STEP_NAME = "RAG/MCP retrieval + routing evals (must meet recorded thresholds)"
+GH_REPO = "karthikdevadoss/agentic-software-delivery"
+
+
+def summarise_ci_runs(runs: list, observed_at: str) -> dict:
+    """Pure: what CI actually did with the eval step on master.
+
+    `runs` is newest-first; each item is {"created_at", "head_sha",
+    "eval_step": conclusion or None, "failed_steps": [names in the same
+    job that failed]}. A "skipped" eval step means GitHub did not run it
+    because an earlier step in the same job failed (default if: success()),
+    so the gate did not execute on that run -- reported, not hidden."""
+    if not runs:
+        return None
+    latest = runs[0]
+    skipped_streak = 0
+    for r in runs:
+        if r["eval_step"] == "success":
+            break
+        skipped_streak += 1
+    last_success = next((r for r in runs if r["eval_step"] == "success"), None)
+    return {
+        "observed_at": observed_at,
+        "branch": "master",
+        "latest_run": {
+            "created_at": latest["created_at"],
+            "head_sha": latest["head_sha"],
+            "eval_step": latest["eval_step"],
+            "failed_steps_in_same_job": latest.get("failed_steps", []),
+        },
+        "runs_since_eval_step_last_passed": skipped_streak if last_success else None,
+        "last_eval_step_success": (
+            {"created_at": last_success["created_at"], "head_sha": last_success["head_sha"]}
+            if last_success else None),
+        "runs_examined": len(runs),
+    }
+
+
+def fetch_ci_runs(limit: int = 40) -> list:
+    """Newest-first master CI runs with the eval step's conclusion, via the
+    gh CLI. Stops at the first run where the eval step succeeded. Returns
+    None (never raises) when gh is unavailable or unauthenticated -- the page
+    then says the CI status was not captured, rather than guessing."""
+    try:
+        listing = json.loads(subprocess.run(
+            ["gh", "run", "list", "-R", GH_REPO, "-b", "master", "-w", "CI",
+             "-L", str(limit), "--json", "databaseId,createdAt,headSha"],
+            capture_output=True, text=True, check=True, timeout=60).stdout)
+        runs = []
+        for item in listing:
+            jobs = json.loads(subprocess.run(
+                ["gh", "run", "view", str(item["databaseId"]), "-R", GH_REPO, "--json", "jobs"],
+                capture_output=True, text=True, check=True, timeout=60).stdout)["jobs"]
+            conclusion, failed = None, []
+            for job in jobs:
+                steps = job.get("steps") or []
+                if any(st["name"] == EVAL_STEP_NAME for st in steps):
+                    conclusion = next(st["conclusion"] for st in steps if st["name"] == EVAL_STEP_NAME)
+                    failed = [st["name"] for st in steps if st["conclusion"] == "failure"]
+            runs.append({"created_at": item["createdAt"], "head_sha": item["headSha"],
+                         "eval_step": conclusion, "failed_steps": failed})
+            if conclusion == "success":
+                break
+        return runs
+    except (OSError, subprocess.SubprocessError, ValueError, KeyError):
+        return None
 
 
 def _git(*args: str) -> str:
@@ -137,12 +214,15 @@ def main(argv: list) -> int:
 
     retrieval = eval_runner.run_retrieval_eval()
     routing = eval_runner.run_routing_eval()
+    now = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    ci_runs = None if "--no-ci" in argv else fetch_ci_runs()
     results = build_eval_results(
         retrieval, routing,
         commit_sha=_git("rev-parse", "HEAD"),
-        generated_at=datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        generated_at=now,
         embedding_model=model_id(),
         working_tree_dirty=_working_tree_dirty(),
+        ci_observation=summarise_ci_runs(ci_runs, now) if ci_runs else None,
     )
     text = json.dumps(results, indent=2) + "\n"
     if "--stdout" in argv:
