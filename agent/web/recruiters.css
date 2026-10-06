@@ -90,6 +90,8 @@ details.rc-quotes q { color: var(--ink); }
   .rc-gaps { grid-template-columns: 1fr; }
 }
 @media (max-width: 600px) {
+  .rc-meta { flex-direction: column; gap: .25rem; }
+  .rc-meta li::before { content: none; margin: 0; }
   .rc-shell { padding: 28px 18px 56px; }
   .top-nav { padding: 14px 18px; }
   h1 { font-size: 1.9rem; }

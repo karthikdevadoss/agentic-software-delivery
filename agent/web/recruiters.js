@@ -92,7 +92,7 @@
       el("div", { class: "rc-card" }, [
         el("span", { class: "rc-big", text: cs[0].value }),
         el("span", { class: "rc-what", text: cs[0].label + ": the process is killed mid-change" }),
-        el("span", { class: "rc-sub", text: cs[0].note + ". " + cs[2].label + ": " + cs[2].value.toLowerCase() + " (" + cs[2].note + ")." }),
+        el("span", { class: "rc-sub", text: "Result: " + cs[0].value + " " + cs[0].note + ". " + cs[1].label + ": " + cs[1].value.toLowerCase() + ". " + cs[2].label + ": " + cs[2].value.toLowerCase() + " (" + cs[2].note + ")." }),
         el("span", { class: "rc-go" }, [link(byKey.case_study, "Read the case study")]),
       ]),
       el("div", { class: "rc-card" }, [
@@ -136,7 +136,7 @@
       const ad = m.eval.agent_decision;
       return el("span", { class: "rc-figure" }, [
         el("table", { class: "rc-metrics" }, [el("tbody", {}, rows)]),
-        ad ? el("span", { class: "rc-figure", text: "Agent decision eval: " + ad.passed + " of " + ad.total + " cases passed (" + ad.label + ")." }) : null,
+        ad ? el("span", { class: "rc-figure", text: "Agent decision eval: " + ad.passed + " of " + ad.total + " cases passed (" + String(ad.label).replace(/\b(\d{4}-\d{2}-\d{2})\b/, function (_, iso) { return day(iso); }) + ")." }) : null,
         el("span", { class: "rc-figure", text: "CI eval step on master: " + (ci.latest_status || "unknown") + " in the latest run (observed " + day(ci.observed_at) + "); last passed " + day(ci.last_success_at) + "." }),
       ]);
     }

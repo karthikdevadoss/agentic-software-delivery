@@ -26,7 +26,7 @@ profile:
     Current client engagement: NRG Energy. I took part in architecture
     discussions and design decisions with the lead. The platform on this page
     is my own system, not an NRG product.
-  facts_source: Owner-confirmed on 2026-10-06 (degree, languages, work mode, NRG wording); name, Berlin and the NRG separation also appear on the live home page.
+  facts_source: Confirmed by me on 6 Oct 2026 (degree, languages, work mode, NRG wording); name, Berlin and the NRG separation also appear on the live home page.
   links:
     - {label: GitHub, url: "https://github.com/karthikdevadoss"}
     - {label: LinkedIn, url: "https://www.linkedin.com/in/karthikeyan-devdoss/"}
@@ -156,8 +156,8 @@ requirements:
       clera: "sandboxed code execution and permission-aware data access"
       cortea: "directly improve the quality, cost, reliability"
     evidence:
-      - {label: "One model gateway for every call, with an off switch", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/reasoning_gateway.py"}
-      - {label: "Durable event log with token counts per model call", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/event_ledger.py"}
+      - {label: "Model gateway with purpose checks and an off switch", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/reasoning_gateway.py"}
+      - {label: "Durable event log that records token usage", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/event_ledger.py"}
       - {label: "Write boundary: the model can propose a file change but cannot approve it", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/write_tools.py"}
       - {label: "Capability and security model", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/CAPABILITY_SECURITY_MODEL.md"}
     limits: >-
@@ -214,7 +214,7 @@ gaps:
       clera: "shipping LLM-powered systems to real customers"
       mercor: "Experience shipping agents used by real users."
   - title: German beyond A1–A2
-    detail: These postings work in English and list German only as a plus.
+    detail: These postings work in English; German is a plus, not a requirement.
     asked_by:
       artefact: "Strong English skills; German is a plus."
       robco: "Fluent English (German is a plus)."
