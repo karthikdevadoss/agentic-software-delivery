@@ -151,7 +151,13 @@ LIVE_INFRA_MODULES = {
     "test_event_ledger": "requires a live DATABASE_URL (real Postgres event ledger)",
     "test_learn_pdf": "hits the live Railway deployment",
     "test_session_history": "hits the live Railway deployment",
-    "test_triage_execution": "hits live Railway over urllib + spawns a subprocess",
+    # Reason corrected 2026-10-06 (was "hits live Railway over urllib + spawns
+    # a subprocess"). Measured: with outbound sockets blocked, the module made
+    # zero network connections (HTTP to the Customer App is mocked). What it
+    # really needs: 5 of its 60 tests compile and run real Java via ./mvnw
+    # (ApplyAndVerifyCandidate*), which fail without a JDK; with JDK 21 on PATH
+    # all 60 pass. Kept out of the hermetic set because CI's Python job has no JDK.
+    "test_triage_execution": "5 of 60 tests compile/run real Java via ./mvnw (needs JDK 21); CI's Python job has no JDK",
     "test_web_server": "spawns a real web_server subprocess and hits live Railway",
 }
 
