@@ -26,6 +26,7 @@ const PUBLIC_PAGES = [
   "/triage/scenario-b",
   "/triage/scenario-c",
   "/case-study/durable-agent",
+  "/recruiters",
 ];
 
 function classifyHref(href) {

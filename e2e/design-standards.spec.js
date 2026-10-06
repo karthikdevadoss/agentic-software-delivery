@@ -23,6 +23,7 @@ const PUBLIC_PAGES = [
   ["usage", "/usage"],
   ["standing-interview", "/standing-interview"],
   ["dashboard", "/dashboard"],
+  ["recruiters", "/recruiters"],
 ];
 
 // Typographic research is unusually settled here: the comfortable line length
