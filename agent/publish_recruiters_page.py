@@ -56,7 +56,7 @@ MASTER_BLOB = REPO_URL + "/blob/master/"
 LIVE_BASE = "https://agentic-platform-backend-production.up.railway.app"
 MASTER_REF = "origin/master"
 
-HASHED_INPUTS = [SOURCE_PATH, CASE_STUDY_PATH, *SNAPSHOTS.values(), AGENT_DIR / "web_server.py"]
+HASHED_INPUTS = [SOURCE_PATH, CASE_STUDY_PATH, *SNAPSHOTS.values()]
 
 
 class LinkError(ValueError):
