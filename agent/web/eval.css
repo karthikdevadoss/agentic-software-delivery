@@ -18,3 +18,15 @@
 .metric-card .bar .tick { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--text); }
 .eval-explain { line-height: 1.65; }
 .eval-meta code, .eval-cases code { font-size: 0.85rem; overflow-wrap: anywhere; }
+/* .cap-table is display:block + table-layout:fixed (dashboard.css overflow
+   fix). This table instead sizes columns to content: the short id / badge /
+   number columns stay on one line and the question column takes the rest
+   and wraps, which is what keeps it readable at phone width. */
+.eval-cases .cap-table { display: table; width: 100%; table-layout: auto; }
+.eval-cases .cap-table th, .eval-cases .cap-table td:not(:nth-child(2)) { white-space: nowrap; overflow-wrap: normal; word-break: normal; }
+.eval-cases .badge { white-space: nowrap; }
+@media (max-width: 600px) {
+  /* Reciprocal rank stays in eval-results.json; dropped here for width. */
+  .eval-cases .cap-table th:nth-child(4), .eval-cases .cap-table td:nth-child(4) { display: none; }
+  .eval-cases .cap-table th, .eval-cases .cap-table td { padding: 0.55rem 0.4rem; }
+}

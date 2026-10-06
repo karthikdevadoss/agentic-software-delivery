@@ -59,7 +59,7 @@ function renderCards(d) {
 function renderExplain(d) {
   const g = d.ci_gate;
   return `<section class="panel"><h2>What this means</h2>
-    <p class="eval-explain">When the agent investigates a code change, it first <em>retrieves</em> the most relevant files from the codebase. If retrieval returns the wrong files, everything downstream is built on the wrong context. So retrieval is treated like any other piece of production code: a hand-labelled set of questions, each with the files a correct answer must find, is run on every change. Recall@3 is the share of questions where a correct file is in the top 3 results; MRR rewards ranking the correct file higher. Each score has a written threshold, and the CI pipeline runs <code>${esc(g.command)}</code> on ${esc(g.runs_on)} — if any score drops below its threshold the step ${esc(g.behaviour)}, so a retrieval regression cannot be merged unnoticed. Security routing (refusing unauthorised requests) is zero tolerance: one miss fails the build.</p>
+    <p class="eval-explain">When the agent investigates a code change, it first <em>retrieves</em> the most relevant files from the codebase. If retrieval returns the wrong files, everything downstream is built on the wrong context. So retrieval is treated like any other piece of production code: a hand-labelled set of questions, each with the files a correct answer must find, is run on every change. Recall@3 is the share of questions where a correct file is in the top 3 results; MRR rewards ranking the correct file higher. Each score has a written threshold, and the CI pipeline runs <code>${esc(g.command)}</code> on ${esc(g.runs_on)} — if any score drops below its threshold, that step exits 1 and the build fails, so a retrieval regression cannot be merged unnoticed. Security routing (refusing unauthorised requests) is zero tolerance: one miss fails the build.</p>
     <p class="hint">Sources: <a href="${esc(d.sources.eval_runner)}" target="_blank" rel="noopener">eval_runner.py</a> · <a href="${esc(d.sources.retrieval_dataset)}" target="_blank" rel="noopener">labelled retrieval set</a> · <a href="${esc(d.sources.routing_dataset)}" target="_blank" rel="noopener">labelled routing set</a> · <a href="${esc(d.sources.ci_workflow)}" target="_blank" rel="noopener">CI workflow</a> · <a href="${esc(d.sources.publisher)}" target="_blank" rel="noopener">results publisher</a></p>
   </section>`;
 }
@@ -71,7 +71,7 @@ function renderCases(d) {
       <td>${fmt(c.reciprocal_rank)}</td></tr>`).join("");
   return `<section class="panel eval-cases"><h2>Every retrieval question</h2>
     <p class="hint">Misses are shown, not hidden — the thresholds are set so the build tolerates a few hard questions but fails on a real drop.</p>
-    <table class="cap-table"><thead><tr><th style="width:12%">Case</th><th>Question</th><th style="width:14%">Top-3</th><th style="width:16%">Reciprocal rank</th></tr></thead><tbody>${rows}</tbody></table>
+    <table class="cap-table"><thead><tr><th>Case</th><th>Question</th><th>Top-3</th><th>Reciprocal rank</th></tr></thead><tbody>${rows}</tbody></table>
   </section>`;
 }
 
