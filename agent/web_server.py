@@ -59,7 +59,10 @@ import demo_catalogue
 import showcase_data
 import interview_walkthrough_data
 import ask_codebase
+import functools
 import si_budget
+import owner_auth
+import triage_budget
 import standing_interview
 import durable_workflow
 import jd_match
@@ -1138,6 +1141,7 @@ def _run_trainer_thread(run: "Run", requirement: str, normalized: "demo_catalogu
 
 # --- HTTP routes ---------------------------------------------------------
 
+@owner_auth.require_owner
 async def start_run(request: Request):
     body = await request.json()
     requirement = (body.get("requirement") or "").strip()
@@ -1158,6 +1162,7 @@ async def start_run(request: Request):
     return JSONResponse({"run_id": run_id})
 
 
+@owner_auth.require_owner
 async def start_mock_run(request: Request):
     """DEV/VERIFICATION ONLY: re-exercise the SSE/UI plumbing (including a
     real human approval click) without any Anthropic API call. See
@@ -1495,7 +1500,15 @@ async def workbench_page(request: Request):
 
 async def control_plane_page(request: Request):
     """Internal/debug human-approval tool — not linked from public
-    navigation (see docs/DECISIONS.md), but deliberately not deleted."""
+    navigation (see docs/DECISIONS.md), but deliberately not deleted.
+
+    Automation Sprint 4: owner-only. Served to a request carrying the owner
+    token, or locally when PRIVATE_SURFACES_ENABLED is set (the existing
+    switch for internal tools). Everyone else gets the same 404 as any
+    unknown path, so production does not advertise it. The APIs it drives
+    (/api/runs, /decide) check the owner token themselves either way."""
+    if not (PRIVATE_SURFACES_ENABLED or owner_auth.is_owner(request.headers)):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
     return FileResponse(str(WEB_DIR / "control-plane.html"))
 
 
@@ -1596,6 +1609,7 @@ async def stream_events(request: Request):
     return EventSourceResponse(_generate_run_events(run, request.is_disconnected))
 
 
+@owner_auth.require_owner
 async def decide(request: Request):
     run = RUNS.get(request.path_params["run_id"])
     if run is None:
@@ -1759,6 +1773,26 @@ def _visitor_key(request) -> str:
     return (getattr(client, "host", None) or "unknown")[:64]
 
 
+def _triage_model_budget(handler):
+    """Automation Sprint 4: every Triage Lab request that makes a paid model
+    call (diagnose, generate-candidate-patch; all three scenarios) reserves
+    one call from triage_budget BEFORE the handler runs. Refusals are 429s
+    with Retry-After and never reach the model. The owner token exempts a
+    request from the per-visitor limits, never from the global daily cap."""
+    @functools.wraps(handler)
+    async def budgeted(request):
+        verdict = triage_budget.check_and_reserve(
+            _visitor_key(request),
+            exempt_from_visitor_limits=owner_auth.is_owner(request.headers))
+        if not verdict["allowed"]:
+            return JSONResponse(
+                {"error": verdict["message"], "outcome": verdict["status"].lower()},
+                status_code=429, headers={"Retry-After": str(verdict["retry_after"])})
+        return await handler(request)
+    budgeted.model_budgeted = True
+    return budgeted
+
+
 async def standing_interview_ask(request: Request):
     """Real retrieval + a real model call, both CPU/IO-bound, so both run off
     the event loop (AEQ-010: a sync call left on the loop froze the service).
@@ -1909,6 +1943,7 @@ async def triage_reproduce(request: Request):
         return JSONResponse({"error": str(e)}, status_code=502)
 
 
+@_triage_model_budget
 async def triage_diagnose(request: Request):
     body = await request.json()
     reproduction_result = body.get("reproduction_result") or {}
@@ -1920,6 +1955,7 @@ async def triage_patch(request: Request):
     return JSONResponse(await run_in_threadpool(triage_execution.get_patch_diff))
 
 
+@_triage_model_budget
 async def triage_generate_candidate(request: Request):
     """Real, on-demand candidate-patch generation: a SECOND Claude call
     (distinct from diagnose) writes the actual fix given the real
@@ -2024,6 +2060,7 @@ async def triage_reproduce_b(request: Request):
         return JSONResponse({"error": str(e)}, status_code=502)
 
 
+@_triage_model_budget
 async def triage_diagnose_b(request: Request):
     body = await request.json()
     reproduction_result = body.get("reproduction_result") or {}
@@ -2035,6 +2072,7 @@ async def triage_reference_b(request: Request):
     return JSONResponse(await run_in_threadpool(triage_execution.get_reference_b))
 
 
+@_triage_model_budget
 async def triage_generate_candidate_b(request: Request):
     body = await request.json()
     reproduction_result = body.get("reproduction_result") or {}
@@ -2110,6 +2148,7 @@ async def triage_reproduce_c(request: Request):
         return JSONResponse({"error": str(e)}, status_code=502)
 
 
+@_triage_model_budget
 async def triage_diagnose_c(request: Request):
     body = await request.json()
     reproduction_result = body.get("reproduction_result") or {}
@@ -2121,6 +2160,7 @@ async def triage_reference_c(request: Request):
     return JSONResponse(await run_in_threadpool(triage_execution.get_reference_c))
 
 
+@_triage_model_budget
 async def triage_generate_candidate_c(request: Request):
     body = await request.json()
     reproduction_result = body.get("reproduction_result") or {}
@@ -2196,6 +2236,7 @@ async def get_session_detail(request: Request):
     return JSONResponse(detail)
 
 
+@owner_auth.require_owner
 async def start_dev_session_route(request: Request):
     body = await request.json()
     goal = (body.get("goal") or "").strip()
@@ -2206,6 +2247,7 @@ async def start_dev_session_route(request: Request):
     return JSONResponse(rec)
 
 
+@owner_auth.require_owner
 async def stop_dev_session_route(request: Request):
     body = await request.json()
     session_id = body.get("session_id")

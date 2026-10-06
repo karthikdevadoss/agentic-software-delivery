@@ -117,6 +117,27 @@ function closeEventSource() {
   }
 }
 
+// Automation Sprint 4: the control-plane APIs are owner-only. The token is
+// asked for once per browser tab, kept in sessionStorage (never in the page,
+// a cookie or the URL) and sent as X-Owner-Token. A 401 clears it and asks
+// again on the next action.
+function ownerToken() {
+  let t = sessionStorage.getItem("ownerToken");
+  if (!t) {
+    t = (window.prompt("Owner token for the control plane:") || "").trim();
+    if (t) sessionStorage.setItem("ownerToken", t);
+  }
+  return t;
+}
+
+async function ownerFetch(url, options) {
+  const opts = Object.assign({}, options || {});
+  opts.headers = Object.assign({}, opts.headers || {}, { "X-Owner-Token": ownerToken() || "" });
+  const resp = await fetch(url, opts);
+  if (resp.status === 401) sessionStorage.removeItem("ownerToken");
+  return resp;
+}
+
 startBtn.addEventListener("click", async () => {
   const requirement = requirementInput.value.trim();
   if (!requirement) return;
@@ -127,7 +148,7 @@ startBtn.addEventListener("click", async () => {
   mockBtn.disabled = true;
   setStatus("STARTING");
 
-  const resp = await fetch("/api/runs", {
+  const resp = await ownerFetch("/api/runs", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ requirement }),
@@ -150,7 +171,8 @@ mockBtn.addEventListener("click", async () => {
   mockBtn.disabled = true;
   setStatus("STARTING");
 
-  const resp = await fetch("/api/runs/mock", { method: "POST" });
+  const resp = await ownerFetch("/api/runs/mock", { method: "POST" });
+  if (!resp.ok) { setStatus("FAILED"); startBtn.disabled = false; mockBtn.disabled = false; return; }
   const data = await resp.json();
   currentRunId = data.run_id;
   subscribeToRun(currentRunId);
@@ -290,7 +312,7 @@ rejectBtn.addEventListener("click", () => sendDecision("reject"));
 async function sendDecision(decision) {
   approveBtn.disabled = true;
   rejectBtn.disabled = true;
-  await fetch(`/api/runs/${currentRunId}/decide`, {
+  await ownerFetch(`/api/runs/${currentRunId}/decide`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ edit_id: currentEditId, decision }),
