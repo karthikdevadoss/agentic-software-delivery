@@ -1,0 +1,154 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-10-06T09:36:36Z",
+  "commit_sha": "5dcac5cb5e12f788abec3c9cf9c247705d299f8c",
+  "working_tree_dirty": false,
+  "embedding_model": "local:BAAI/bge-small-en-v1.5",
+  "overall_passed": true,
+  "labelled_set": {
+    "retrieval_cases": 12,
+    "routing_cases": 14,
+    "security_routing_cases": 7
+  },
+  "metrics": [
+    {
+      "key": "recall_at_3",
+      "label": "Retrieval Recall@3",
+      "eval": "retrieval",
+      "score": 0.833,
+      "threshold": 0.4,
+      "comparator": ">=",
+      "passed": true
+    },
+    {
+      "key": "mrr",
+      "label": "Retrieval MRR (mean reciprocal rank)",
+      "eval": "retrieval",
+      "score": 0.868,
+      "threshold": 0.35,
+      "comparator": ">=",
+      "passed": true
+    },
+    {
+      "key": "routing_accuracy",
+      "label": "Tool-routing accuracy",
+      "eval": "routing",
+      "score": 1.0,
+      "threshold": 0.85,
+      "comparator": ">=",
+      "passed": true
+    },
+    {
+      "key": "security_case_accuracy",
+      "label": "Security-case routing accuracy (zero tolerance)",
+      "eval": "routing",
+      "score": 1.0,
+      "threshold": 1.0,
+      "comparator": "==",
+      "passed": true
+    }
+  ],
+  "informational": {
+    "recall_at_5": 0.917
+  },
+  "retrieval_cases": [
+    {
+      "id": "rq-01",
+      "query": "Where is the customer-not-found error handled in the service layer?",
+      "hit_at_3": false,
+      "reciprocal_rank": 0.167,
+      "top_result": "docs/interview-scenarios/02-postgres-search-pagination.md"
+    },
+    {
+      "id": "rq-02",
+      "query": "How does the controller expose the customer lookup endpoint?",
+      "hit_at_3": true,
+      "reciprocal_rank": 1.0,
+      "top_result": "app/src/main/java/com/example/customer/controller/CustomerController.java"
+    },
+    {
+      "id": "rq-03",
+      "query": "Where is the not-found exception converted into an HTTP JSON error response?",
+      "hit_at_3": true,
+      "reciprocal_rank": 1.0,
+      "top_result": "app/src/test/java/com/example/customer/controller/CustomerControllerIntegrationTest.java"
+    },
+    {
+      "id": "rq-04",
+      "query": "What validation errors exist for creating a customer with bad input?",
+      "hit_at_3": true,
+      "reciprocal_rank": 1.0,
+      "top_result": "app/src/test/java/com/example/customer/controller/CustomerControllerIntegrationTest.java"
+    },
+    {
+      "id": "rq-05",
+      "query": "How is a new customer persisted to the database?",
+      "hit_at_3": true,
+      "reciprocal_rank": 1.0,
+      "top_result": "app/src/main/java/com/example/customer/service/CustomerService.java"
+    },
+    {
+      "id": "rq-06",
+      "query": "What fields does the Customer entity have?",
+      "hit_at_3": true,
+      "reciprocal_rank": 1.0,
+      "top_result": "app/src/main/java/com/example/customer/model/Customer.java"
+    },
+    {
+      "id": "rq-07",
+      "query": "How does this platform verify a backend deployment actually reached real production?",
+      "hit_at_3": true,
+      "reciprocal_rank": 1.0,
+      "top_result": "docs/ACTION_QUEUE.json"
+    },
+    {
+      "id": "rq-08",
+      "query": "What is the ACT-008 internal backend acceptance scenario?",
+      "hit_at_3": true,
+      "reciprocal_rank": 1.0,
+      "top_result": "docs/ACTION_QUEUE.json"
+    },
+    {
+      "id": "rq-09",
+      "query": "What real incident caused a deployment to be falsely verified as successful?",
+      "hit_at_3": true,
+      "reciprocal_rank": 1.0,
+      "top_result": "docs/LESSONS.md"
+    },
+    {
+      "id": "rq-10",
+      "query": "What is the rule about RAG or an LLM never being allowed to authorize a change?",
+      "hit_at_3": false,
+      "reciprocal_rank": 0.25,
+      "top_result": "app/src/main/java/com/example/customer/security/WorkspaceAccessGuard.java"
+    },
+    {
+      "id": "rq-11",
+      "query": "Why can't the deployed platform backend push commits to GitHub on its own?",
+      "hit_at_3": true,
+      "reciprocal_rank": 1.0,
+      "top_result": "docs/ACTION_QUEUE.json"
+    },
+    {
+      "id": "rq-12",
+      "query": "What test covers submitting a customer with a malformed email address?",
+      "hit_at_3": true,
+      "reciprocal_rank": 1.0,
+      "top_result": "app/src/test/java/com/example/customer/controller/CustomerControllerIntegrationTest.java"
+    }
+  ],
+  "ci_gate": {
+    "workflow": ".github/workflows/ci.yml",
+    "step": "RAG/MCP retrieval + routing evals (must meet recorded thresholds)",
+    "command": "python eval_runner.py all",
+    "behaviour": "exits 1 (fails the build) if any threshold is not met",
+    "runs_on": "every pull request to master and every push to master"
+  },
+  "sources": {
+    "eval_runner": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/eval_runner.py",
+    "retrieval_dataset": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/evals/retrieval_dataset.json",
+    "routing_dataset": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/evals/routing_dataset.json",
+    "ci_workflow": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/.github/workflows/ci.yml",
+    "publisher": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/publish_eval_results.py"
+  }
+}

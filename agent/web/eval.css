@@ -1,0 +1,20 @@
+/* /eval page -- reuses style.css + dashboard.css (panels, .badge, .kv,
+   .cap-table). Only the score-vs-threshold cards are new. Nothing below
+   12.5px (Sprint 15 D6 rule in style.css). */
+.eval-verdict { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1.25rem; }
+.eval-verdict .big { font-size: var(--t-title, 22px); font-weight: 700; }
+.eval-verdict .big.pass { color: var(--green); }
+.eval-verdict .big.fail { color: var(--red); }
+.badge.st-fail { background: rgba(239,90,90,0.12); color: var(--red); border-color: rgba(239,90,90,0.3); }
+
+.metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 0.9rem; }
+.metric-card { border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.1rem; background: rgba(255,255,255,0.015); }
+.metric-card .m-label { color: var(--muted); font-size: 0.85rem; font-weight: 600; min-height: 2.4em; }
+.metric-card .m-score { font-size: 2rem; font-weight: 700; margin: 0.35rem 0 0.1rem; }
+.metric-card .m-threshold { color: var(--muted); font-size: 0.85rem; }
+.metric-card .bar { position: relative; height: 8px; border-radius: 4px; background: #232838; margin: 0.7rem 0 0.6rem; }
+.metric-card .bar .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: var(--green); }
+.metric-card.failed .bar .fill { background: var(--red); }
+.metric-card .bar .tick { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--text); }
+.eval-explain { line-height: 1.65; }
+.eval-meta code, .eval-cases code { font-size: 0.85rem; overflow-wrap: anywhere; }

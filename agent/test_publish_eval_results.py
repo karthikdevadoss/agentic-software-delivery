@@ -108,5 +108,41 @@ class MetricPassesTestCase(unittest.TestCase):
             pub.metric_passes(1.0, 1.0, "<")
 
 
+class PublishedArtifactTestCase(unittest.TestCase):
+    """The committed agent/web/eval-results.json and the /eval page that
+    renders it. Reads files only -- nothing is measured here."""
+
+    def setUp(self):
+        self.data = json.loads(pub.OUTPUT_PATH.read_text(encoding="utf-8"))
+
+    def test_published_json_has_required_fields(self):
+        for key in ("generated_at", "commit_sha", "labelled_set", "metrics",
+                    "overall_passed", "ci_gate", "sources", "retrieval_cases"):
+            self.assertIn(key, self.data)
+        self.assertRegex(self.data["commit_sha"], r"^[0-9a-f]{40}$")
+        self.assertEqual(self.data["labelled_set"]["retrieval_cases"],
+                         len(self.data["retrieval_cases"]))
+
+    def test_published_thresholds_match_eval_runner(self):
+        for m in self.data["metrics"]:
+            self.assertEqual(m["threshold"], eval_runner.THRESHOLDS[m["key"]])
+
+    def test_published_verdicts_are_internally_consistent(self):
+        for m in self.data["metrics"]:
+            self.assertEqual(m["passed"], pub.metric_passes(m["score"], m["threshold"], m["comparator"]))
+        self.assertEqual(self.data["overall_passed"], all(m["passed"] for m in self.data["metrics"]))
+
+    def test_eval_page_is_routed_and_loads_the_json(self):
+        import web_server
+        routes = {r.path: r for r in web_server.routes if hasattr(r, "path")}
+        self.assertIn("/eval", routes)
+        self.assertIs(routes["/eval"].endpoint, web_server.eval_page)
+        html = (pub.AGENT_DIR / "web" / "eval.html").read_text(encoding="utf-8")
+        self.assertIn('src="/eval.js"', html)
+        self.assertIn('id="top-nav"', html)
+        js = (pub.AGENT_DIR / "web" / "eval.js").read_text(encoding="utf-8")
+        self.assertIn("/eval-results.json", js)
+
+
 if __name__ == "__main__":
     unittest.main()

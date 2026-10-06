@@ -1689,6 +1689,14 @@ async def get_interview_walkthrough_data(request: Request):
     return JSONResponse(walkthrough)
 
 
+async def eval_page(request: Request):
+    """Public retrieval-eval page: renders agent/web/eval-results.json, the
+    static snapshot written by agent/publish_eval_results.py from the
+    unchanged agent/eval_runner.py. Static file only -- no eval runs on
+    request."""
+    return FileResponse(str(WEB_DIR / "eval.html"))
+
+
 async def ask_codebase_page(request: Request):
     """Public, read-only 'Ask the Codebase' page. See agent/ask_codebase.py
     for the full design rationale (zero LLM calls, fixed curated corpus,
@@ -2368,6 +2376,7 @@ routes = [
     Route("/usage/session/{session_id}", usage_page, methods=["GET"]),
     Route("/showcase/{slug}", showcase_page, methods=["GET"]),
     Route("/ask-codebase", ask_codebase_page, methods=["GET"]),
+    Route("/eval", eval_page, methods=["GET"]),
     Route("/standing-interview", standing_interview_page, methods=["GET"]),
     Route("/triage", triage_page, methods=["GET"]),
     Route("/triage/scenario-b", triage_page_b, methods=["GET"]),
