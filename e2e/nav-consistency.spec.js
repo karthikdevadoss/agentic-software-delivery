@@ -17,7 +17,7 @@ const { test, expect } = require("@playwright/test");
 // Automation Sprint 4 (Owner decision): Showcase and Usage left the nav, For
 // Recruiters joined. The pages stay in PAGES below: reachable directly, and
 // still rendering the same nav as everything else.
-const CANONICAL_LABELS = ["Home", "Workbench", "Triage", "Ask Codebase", "For Recruiters"];
+const CANONICAL_LABELS = ["Home", "Workbench", "Triage", "Ask Codebase", "For Recruiters", "Interviewer Brief"];
 const REMOVED_LABELS = ["Showcase", "Usage"];
 
 // Sprint 14: Learn left public navigation entirely (Owner decision), so the
@@ -36,6 +36,7 @@ const PAGES = [
   "/case-study/durable-agent",
   "/showcase/senior-java-ai-transformation",
   "/recruiters",
+  "/interviewer",
 ];
 
 async function visibleNavLabels(page) {
@@ -64,6 +65,8 @@ test.describe("Public navigation consistency", () => {
       // A real, clickable, visible link -- not merely text.
       await expect(page.locator("#top-nav a", { hasText: "For Recruiters" }))
         .toHaveAttribute("href", "/recruiters");
+      await expect(page.locator("#top-nav a", { hasText: "Interviewer Brief" }))
+        .toHaveAttribute("href", "/interviewer");
     });
 
     test(`${path} nav is identical after a hard reload (direct navigation vs. in-app state)`, async ({ page }) => {
@@ -96,6 +99,10 @@ test.describe("Public navigation consistency", () => {
     await page.locator("#top-nav").getByRole("link", { name: "For Recruiters", exact: true }).click();
     await expect(page).toHaveURL(/\/recruiters$/);
     await expect(page.locator("#top-nav a strong", { hasText: "For Recruiters" })).toBeVisible();
+
+    await page.locator("#top-nav").getByRole("link", { name: "Interviewer Brief", exact: true }).click();
+    await expect(page).toHaveURL(/\/interviewer$/);
+    await expect(page.locator("#top-nav a strong", { hasText: "Interviewer Brief" })).toBeVisible();
   });
 
   test("Showcase and Usage stay reachable by direct link", async ({ request }) => {

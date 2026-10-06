@@ -1766,6 +1766,13 @@ async def recruiters_page(request: Request):
     return FileResponse(str(WEB_DIR / "recruiters.html"))
 
 
+async def interviewer_page(request: Request):
+    """Interviewer Brief: one page for the technical interviewer (post-HR).
+    Live proof cards (Workbench, Triage, evals, Ask Codebase, honest gaps,
+    live platform). Not the HR posting map (/recruiters) and not Standing
+    Interview Q&A. Automation Sprint 14 (Owner decision)."""
+    return FileResponse(str(WEB_DIR / "interviewer.html"))
+
 async def applications_page(request: Request):
     """Owner-facing Applications Review (Automation Sprint 11). Direct URL
     only — not in public nav. Requires ?k= matching APPLICATIONS_REVIEW_TOKEN.
@@ -2579,6 +2586,7 @@ routes = [
     Route("/ask-codebase/examples", ask_codebase_examples_page, methods=["GET"]),
     Route("/eval", eval_page, methods=["GET"]),
     Route("/recruiters", recruiters_page, methods=["GET"]),
+    Route("/interviewer", interviewer_page, methods=["GET"]),
     Route("/applications", applications_page, methods=["GET"]),
     Route("/applications.json", applications_json, methods=["GET"]),
     Route("/applications_pdf/{name}", applications_pdf, methods=["GET"]),

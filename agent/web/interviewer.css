@@ -1,0 +1,99 @@
+/* /interviewer: light, self-contained technical-interviewer brief.
+   Same palette as home / recruiters. Does not load style.css. No web fonts. */
+:root {
+  --ink: #14161a; --soft: #545a62; --line: #dcdfe3; --paper: #fbfaf8;
+  --card: #ffffff; --accent: #1f4d3d; --accent-ink: #123026;
+  --prose: 58ch;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink);
+  font: 17px/1.62 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent); text-underline-offset: 2px; }
+a:hover { color: var(--accent-ink); }
+a:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+
+.navwrap { border-bottom: 1px solid var(--line); background: var(--card); }
+.top-nav {
+  display: flex; flex-wrap: wrap; row-gap: .5rem; gap: 1.2rem; align-items: center;
+  padding: 18px 32px; max-width: 1200px; margin: 0 auto;
+}
+.top-nav a {
+  color: var(--soft); text-decoration: none; font-size: .88rem; font-weight: 600;
+  padding-bottom: .15rem; border-bottom: 2px solid transparent;
+}
+.top-nav a:hover { color: var(--ink); }
+.top-nav a strong {
+  color: var(--accent); border-bottom: 2px solid var(--accent);
+  padding-bottom: .15rem; font-weight: 700;
+}
+
+.iv-shell { max-width: 1200px; margin: 0 auto; padding: 44px 32px 72px; }
+.iv-eyebrow {
+  font-size: .8rem; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--soft); font-weight: 700; margin: 0 0 .5rem;
+}
+h1 {
+  font-size: clamp(28px, 5vw, 36px); line-height: 1.15; margin: 0 0 8px;
+  letter-spacing: -.02em; font-weight: 660;
+}
+.iv-role {
+  font-size: clamp(17px, 2.4vw, 20px); color: var(--accent); font-weight: 620;
+  margin: 0 0 16px; letter-spacing: -.01em;
+}
+.iv-lede { color: var(--soft); max-width: var(--prose); margin: 0 0 12px; font-size: 17px; }
+.iv-note {
+  border-left: 3px solid var(--line); padding: 4px 0 4px 14px;
+  color: var(--soft); max-width: var(--prose); font-size: 15px; margin: 0 0 8px;
+}
+.iv-links {
+  display: flex; flex-wrap: wrap; gap: 10px 18px; margin: 18px 0 0; font-weight: 600; font-size: 15px;
+}
+.iv-links a { text-decoration: none; }
+.iv-links a:hover { text-decoration: underline; }
+
+h2.iv-sec {
+  font-size: 12.5px; letter-spacing: .15em; text-transform: uppercase;
+  color: var(--soft); margin: 48px 0 16px; font-weight: 700;
+}
+
+.iv-proof {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 0;
+}
+.iv-card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+  padding: 20px 20px 18px; display: flex; flex-direction: column;
+}
+.iv-card h3 {
+  font-size: 17px; line-height: 1.3; margin: 0 0 8px; font-weight: 650; letter-spacing: -.01em;
+}
+.iv-card p {
+  margin: 0 0 14px; color: var(--soft); font-size: 15px; flex: 1; max-width: none;
+}
+.iv-card .go {
+  font-size: 14.5px; font-weight: 640; text-decoration: none; margin-top: auto;
+}
+.iv-card .go:hover { text-decoration: underline; }
+.iv-card .go2 {
+  display: block; margin-top: 8px; font-size: 13.5px; font-weight: 600;
+  color: var(--soft); text-decoration: none;
+}
+.iv-card .go2:hover { color: var(--accent); text-decoration: underline; }
+.iv-card.iv-gaps { border-left: 3px solid #c9ccd1; }
+.iv-card.iv-live { border-left: 3px solid var(--accent); }
+
+.iv-footer {
+  margin: 48px 0 0; padding-top: 22px; border-top: 1px solid var(--line);
+  font-size: 14px; color: var(--soft); max-width: var(--prose);
+}
+
+@media (max-width: 900px) {
+  .iv-proof { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 560px) {
+  .iv-shell { padding: 32px 20px 56px; }
+  .iv-proof { grid-template-columns: 1fr; }
+  .top-nav { padding: 14px 20px; }
+}
