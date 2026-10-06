@@ -6,9 +6,13 @@ Source (run on a box that has DEVADOSS checked out):
     --architect10 /path/to/storage/applications/architect-2026-10-06 \\
     --posting-dates /path/to/storage/applications/POSTING_DATES_2026-10-06.json
 
-Bakes ranks 1–25 from architect50 (PDF packs) plus the earlier 10 architect
-packs, sorted newest-posted first. Cover letters and fit/gaps are inlined so
-the gated page can render without a second private store.
+Bakes PDF packs from architect50 ranks that still have PDFs plus the earlier
+10 architect packs, then applies the owner location TOP filter (policy v32 /
+rule 62): ONLY remote Germany or remote worldwide/EU/EMEA, Berlin hybrid, or
+Berlin office. Within that set, newest-posted first. Non-TOP cities (London,
+Munich, Amsterdam, Paris, Stockholm, …) are dropped from the review page.
+Cover letters and fit/gaps are inlined so the gated page can render without a
+second private store.
 """
 from __future__ import annotations
 
@@ -23,6 +27,58 @@ AGENT_DIR = Path(__file__).resolve().parent
 WEB_DIR = AGENT_DIR / "web"
 OUTPUT_PATH = WEB_DIR / "applications.json"
 AS_OF = date(2026, 10, 6)
+
+def location_tier(loc: str) -> int | None:
+    """1=remote DE/worldwide/EU/EMEA, 2=Berlin hybrid, 3=Berlin office, None=drop.
+
+    Owner 2026-10-06 17:07–17:10 Berlin (policy v32 / rule 62).
+    """
+    import re as _re
+    l = (loc or "").lower()
+    has_berlin = "berlin" in l
+    has_remote = "remote" in l
+
+    # Munich-only (no Berlin) unless remote-from-Germany
+    if "munich" in l and not has_berlin:
+        if has_remote and "germany" in l:
+            return 1
+        return None
+
+    drop_cities = ["stockholm", "paris", "amsterdam", "dublin", "lisbon", "milan", "madrid"]
+    if any(c in l for c in drop_cities) and not has_berlin:
+        if "amsterdam" in l:
+            return None
+        if has_remote and any(x in l for x in ["europe", "emea", "germany", "global", "worldwide"]):
+            return 1
+        if not has_remote:
+            return None
+
+    if "london" in l:
+        if has_remote and any(x in l for x in ["europe", "emea", "germany", "global", "worldwide"]):
+            return 1
+        if has_berlin and "hybrid" in l:
+            return 2
+        return None
+
+    if has_remote and (
+        ("united kingdom" in l or _re.search(r"\buk\b", l))
+        and "germany" not in l
+        and "europe" not in l
+        and "emea" not in l
+        and "global" not in l
+        and "worldwide" not in l
+    ):
+        return None
+
+    if has_remote:
+        return 1
+    if has_berlin and "hybrid" in l:
+        return 2
+    if has_berlin:
+        return 3
+    return None
+
+
 
 # Slug order for architect50 ranks 1–25 (matches INDEX.md / PDF names).
 A50_SLUGS = [
@@ -73,7 +129,8 @@ def _read(path: Path) -> str:
 
 
 def _parse_index_row(line: str) -> dict | None:
-    if not line.startswith("|") or "Rank" in line or line.startswith("|---"):
+    """Parse a TOP or legacy INDEX table row. Supports optional Loc tier column."""
+    if not line.startswith("|") or "Rank" in line or "Loc tier" in line or line.startswith("|---"):
         return None
     parts = [p.strip() for p in line.strip().strip("|").split("|")]
     if len(parts) < 9:
@@ -81,10 +138,17 @@ def _parse_index_row(line: str) -> dict | None:
     rank_s = parts[0]
     if not re.fullmatch(r"\d+", rank_s):
         return None
+    # New INDEX: Rank | Loc tier | Company | Title | Location | Posted | Age | PDF | URL | Fit
+    # Legacy:    Rank | Company | Title | Location | Posted | Age | PDF | URL | Fit
+    if len(parts) >= 10 and parts[1].startswith(("1 ", "2 ", "3 ")):
+        company, title, location, posted, age_s, pdf_cell, url, fit = (
+            parts[2], parts[3], parts[4], parts[5], parts[6], parts[7], parts[8], parts[9]
+        )
+    else:
+        company, title, location, posted, age_s, pdf_cell, url, fit = (
+            parts[1], parts[2], parts[3], parts[4], parts[5], parts[6], parts[7], parts[8]
+        )
     rank = int(rank_s)
-    if rank > 25:
-        return None
-    pdf_cell = parts[6]
     pdf_name = None
     m = re.search(r"(_cv_pdf/[\w.-]+\.pdf)", pdf_cell)
     if m:
@@ -93,16 +157,18 @@ def _parse_index_row(line: str) -> dict | None:
         pdf_name = pdf_cell.split("—", 1)[1].strip().split()[0]
         if pdf_name.startswith("_cv_pdf/"):
             pdf_name = Path(pdf_name).name
+    if not pdf_name and "yes" not in pdf_cell.lower():
+        return None  # content-only rows are not baked into the review page
     return {
         "source_rank": rank,
-        "company": parts[1],
-        "title": parts[2],
-        "location": parts[3],
-        "posted": parts[4],
-        "age_days": int(parts[5]) if parts[5].isdigit() else None,
+        "company": company,
+        "title": title,
+        "location": location,
+        "posted": posted,
+        "age_days": int(age_s) if age_s.isdigit() else None,
         "pdf": pdf_name,
-        "url": parts[7],
-        "fit_oneliner": parts[8],
+        "url": url,
+        "fit_oneliner": fit,
     }
 
 
@@ -164,22 +230,62 @@ def _fit_oneliner_from_gaps(fit_gaps: str, fallback: str) -> str:
 
 
 def _load_a50(root: Path) -> list[dict]:
+    """Load architect50 PDF packs. INDEX may be location-filtered; match by PDF name / slug."""
     index = root / "INDEX.md"
-    by_rank = {}
+    by_pdf = {}
+    by_url = {}
     for line in _read(index).splitlines():
         row = _parse_index_row(line)
-        if row:
-            by_rank[row["source_rank"]] = row
+        if not row:
+            continue
+        if row.get("pdf"):
+            by_pdf[row["pdf"]] = row
+        if row.get("url"):
+            by_url[row["url"]] = row
     packs = []
     for i, slug in enumerate(A50_SLUGS, start=1):
-        meta = by_rank.get(i)
-        if not meta:
-            raise SystemExit(f"architect50 INDEX missing rank {i}")
+        pdf = f"{i:02d}_{slug}.pdf"
+        meta = by_pdf.get(pdf)
         pack_dir = root / slug
+        if not meta:
+            # Pack dropped from TOP INDEX — still load if we want unfiltered; skip here.
+            # Fall back: read nothing; caller filters. Keep loading from posting for filter input.
+            if not (pack_dir / "posting.md").exists():
+                continue
+            # Minimal meta from slug only when not in TOP INDEX (will be filtered out)
+            posting = _read(pack_dir / "posting.md")
+            cover = _read(pack_dir / "cover_letter.md") if (pack_dir / "cover_letter.md").exists() else ""
+            fit_gaps = _read(pack_dir / "fit_gaps.md") if (pack_dir / "fit_gaps.md").exists() else ""
+            # Location from first lines of posting if possible
+            loc = ""
+            for ln in posting.splitlines()[:30]:
+                if "location" in ln.lower() or "remote" in ln.lower() or "berlin" in ln.lower():
+                    loc = ln.split(":", 1)[-1].strip() if ":" in ln else ln.strip()
+                    break
+            # Prefer matching INDEX Other EU is not parsed; use slug heuristics for location
+            # via hardcoded map from prior bake when missing
+            packs.append({
+                "id": f"a50-{i:02d}-{slug}",
+                "batch": "architect50-2026-10-06",
+                "source_rank": i,
+                "slug": slug,
+                "company": slug.split("-")[0].title(),
+                "title": slug,
+                "location": loc or slug,
+                "posted": "1970-01-01",
+                "age_days": None,
+                "fit_oneliner": "",
+                "url": "",
+                "posting": posting,
+                "cover_letter": cover,
+                "fit_gaps": fit_gaps,
+                "cv_pdf": pdf,
+                "pdfs": [pdf],
+            })
+            continue
         posting = _read(pack_dir / "posting.md") if (pack_dir / "posting.md").exists() else ""
         cover = _read(pack_dir / "cover_letter.md") if (pack_dir / "cover_letter.md").exists() else ""
         fit_gaps = _read(pack_dir / "fit_gaps.md") if (pack_dir / "fit_gaps.md").exists() else ""
-        pdf = meta["pdf"] or f"{i:02d}_{slug}.pdf"
         packs.append({
             "id": f"a50-{i:02d}-{slug}",
             "batch": "architect50-2026-10-06",
@@ -293,16 +399,36 @@ def _load_a10(root: Path, dates: dict[str, str]) -> list[dict]:
 def build(architect50: Path, architect10: Path, posting_dates: Path | None) -> dict:
     dates = _posting_dates_map(posting_dates)
     packs = _load_a50(architect50) + _load_a10(architect10, dates)
-    packs.sort(key=lambda p: (p["posted"] or "0000-00-00", -p["source_rank"]), reverse=True)
-    for i, p in enumerate(packs, start=1):
+    filtered = []
+    for p in packs:
+        tier = location_tier(p.get("location") or "")
+        if tier is None:
+            continue
+        p["loc_tier"] = tier
+        filtered.append(p)
+    filtered.sort(key=lambda p: (p["posted"] or "0000-00-00", -p.get("loc_tier", 9), -p["source_rank"]), reverse=True)
+    for i, p in enumerate(filtered, start=1):
         p["rank"] = i
     return {
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "as_of": AS_OF.isoformat(),
         "title": "Applications Review",
-        "description": "Owner-facing application packs (CV + cover letter + posting). Never apply or send from this page.",
-        "count": len(packs),
-        "packs": packs,
+        "description": (
+            "Owner-facing application packs (CV + cover letter + posting). "
+            "TOP filter (policy v32): remote DE/worldwide/EU/EMEA, Berlin hybrid, Berlin office; "
+            "newest posted first. Never apply or send from this page."
+        ),
+        "filter": {
+            "policy": "v32",
+            "rule": 62,
+            "allow": [
+                "remote Germany or remote worldwide/EU/EMEA",
+                "Berlin hybrid full-time",
+                "Berlin all-days office",
+            ],
+        },
+        "count": len(filtered),
+        "packs": filtered,
     }
 
 
