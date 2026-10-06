@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-06T11:23:50Z",
-  "commit_sha": "0dfba1e0fa1cc117c21b7afd24b667ef4039eabe",
+  "generated_at": "2026-10-06T11:27:22Z",
+  "commit_sha": "1f94531ff19e9950ab9d414bdf31d30fb501948c",
   "branch": "mahadeva/automation-3",
   "working_tree_dirty": false,
   "postings_accessed": "2026-10-06",
@@ -15,7 +15,7 @@
     "languages": "English (working language); German A1–A2",
     "education": "B.E. Computer Science, Madras University",
     "nrg": "Current client engagement: NRG Energy. I took part in architecture discussions and design decisions with the lead. The platform on this page is my own system, not an NRG product.",
-    "facts_source": "Owner-confirmed on 2026-10-06 (degree, languages, work mode, NRG wording); name, Berlin and the NRG separation also appear on the live home page.",
+    "facts_source": "Confirmed by me on 2026-10-06 (degree, languages, work mode, NRG wording); name, Berlin and the NRG separation also appear on the live home page.",
     "links": [
       {
         "label": "GitHub",
@@ -465,12 +465,12 @@
       ],
       "evidence": [
         {
-          "label": "One model gateway for every call, with an off switch",
+          "label": "Model gateway with purpose checks and an off switch",
           "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/reasoning_gateway.py",
           "status": "source"
         },
         {
-          "label": "Durable event log with token counts per model call",
+          "label": "Durable event log that records token usage",
           "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/event_ledger.py",
           "status": "source"
         },
@@ -632,7 +632,7 @@
     },
     {
       "title": "German beyond A1–A2",
-      "detail": "These postings work in English and list German only as a plus.",
+      "detail": "These postings work in English; German is a plus, not a requirement.",
       "asked_count": 4,
       "asked_by": [
         {
@@ -776,7 +776,7 @@
   "link_check": {
     "offline": "passed",
     "online": {
-      "checked_at": "2026-10-06T11:24:06Z",
+      "checked_at": "2026-10-06T11:27:37Z",
       "results": [
         {
           "url": "https://remoshift.com/job/ai-engineer-cc791343",
@@ -936,10 +936,10 @@
   "quotes_verified": {
     "quotes": 72,
     "against": "posting text captured on 2026-10-06",
-    "source_sha256": "09138725fca7e4b600ec5af4c3832d0f4a99a4c9896080e0ea4d5d31e32686a0"
+    "source_sha256": "68fd4069597a0549f6a4f9943541af6697ba348a61084a8ed101b5af7e27db05"
   },
   "inputs": {
-    "agent/recruiters_source.yaml": "09138725fca7e4b600ec5af4c3832d0f4a99a4c9896080e0ea4d5d31e32686a0",
+    "agent/recruiters_source.yaml": "68fd4069597a0549f6a4f9943541af6697ba348a61084a8ed101b5af7e27db05",
     "agent/web/case-study-durable-agent.html": "af901f92f7533bb94fb08703c5090380aef0eedf311812752e63c62e6871f44d",
     "agent/web/eval-results.json": "cd47e5ae2d3d2037fdb5ec467ea603e9b0a81b3f60e6563e4f11038fc059bd7a",
     "agent/web/triage-evidence.json": "69845e1d9445b44136bc6db1aad2f8518c8889f3e7a9377eb4c6af041c7fb3f7",
