@@ -41,13 +41,44 @@
     setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
   }
 
+  function formatBerlinSubmitted(raw) {
+    if (!raw) return null;
+    const d = new Date(raw);
+    if (!Number.isNaN(d.getTime())) {
+      const parts = new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Europe/Berlin",
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+      }).formatToParts(d);
+      const get = function (type) {
+        const p = parts.find(function (x) { return x.type === type; });
+        return p ? p.value : "";
+      };
+      let hour = get("hour");
+      if (hour.length === 1) hour = "0" + hour;
+      return String(parseInt(get("day"), 10)) + " " + get("month") + " " + get("year") +
+        ", " + hour + ":" + get("minute");
+    }
+    const cleaned = String(raw).replace(/\s*Berlin\s*$/i, "").trim();
+    return cleaned || null;
+  }
+
   function statusLabel(item) {
     if (!item) return "";
     const st = item.status || "";
     if (st === "pending_apply" || st === "approved") {
       return "Approved · queued for Mahadeva";
     }
-    if (st === "applied") return "Applied";
+    if (st === "applied") {
+      const proof = item.proof || {};
+      const raw = proof.applied_at_note || proof.applied_at || item.applied_at || "";
+      const when = formatBerlinSubmitted(raw);
+      return when ? ("Submitted — " + when) : "Submitted";
+    }
     if (st === "failed") return "Apply failed";
     return st;
   }
