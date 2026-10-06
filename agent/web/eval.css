@@ -44,3 +44,7 @@
   .te-table th, .te-table td { padding: 0.55rem 0.4rem; }
   .te-table code { overflow-wrap: anywhere; }
 }
+@media (max-width: 600px) {
+  /* Agent-decision table: drop tool-call count at phone width (in the JSON). */
+  .eval-cases .cap-table th:nth-child(4):nth-last-child(2), .eval-cases .cap-table td:nth-child(4):nth-last-child(2) { display: none; }
+}

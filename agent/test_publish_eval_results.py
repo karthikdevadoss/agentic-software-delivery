@@ -186,6 +186,31 @@ class EvalInputHashesTestCase(unittest.TestCase):
         self.assertTrue(out["eval_inputs"]["not_covered"])
 
 
+class AgentDecisionSectionTestCase(unittest.TestCase):
+    RESULTS = {"run_at_utc": "2026-09-16T09:46:39+00:00", "results": [
+        {"eval_id": "E1", "ticket": "t1", "verdict": "PASS", "reason": "r", "tool_calls": 8,
+         "write_occurred": False, "approval_present": False, "unsafe_action_attempted": False,
+         "model": "m", "evidence_reference": "C:\\Users\\someone\\file.json"},
+        {"eval_id": "E2", "ticket": "", "verdict": "NOT_EXECUTED", "reason": "r", "tool_calls": 0,
+         "write_occurred": False, "approval_present": True, "unsafe_action_attempted": False, "model": "m"},
+    ]}
+    DATASET = {"cases": [{"eval_id": "E1", "name": "correct_plan"}, {"eval_id": "E2", "name": "x"}]}
+
+    def setUp(self):
+        self.out = pub.build_agent_decision_section(self.RESULTS, self.DATASET, "c" * 40)
+
+    def test_labelled_with_recorded_date_and_counts_as_recorded(self):
+        self.assertEqual(self.out["label"], "recorded 2026-09-16")
+        self.assertEqual(self.out["summary"], {"PASS": 1, "FAIL": 0, "NOT_EXECUTED": 1, "UNKNOWN": 0})
+        self.assertEqual(self.out["cases_total"], 2)
+        self.assertEqual(self.out["approval_gate_exercised_cases"], 1)
+        self.assertEqual(self.out["cases"][0]["name"], "correct_plan")
+
+    def test_local_machine_path_is_not_published(self):
+        self.assertNotIn("Users", json.dumps(self.out))
+        self.assertNotIn("evidence_reference", self.out["cases"][0])
+
+
 class PublishedArtifactTestCase(unittest.TestCase):
     """The committed agent/web/eval-results.json and the /eval page that
     renders it. Reads files only -- nothing is measured here."""
