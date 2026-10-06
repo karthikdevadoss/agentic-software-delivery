@@ -1,0 +1,185 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-10-06T09:48:12Z",
+  "commit_sha": "08c6617e1b1cbfac827967d4e60efd08a84e2407",
+  "working_tree_dirty": false,
+  "embedding_model": "local:BAAI/bge-small-en-v1.5",
+  "overall_passed": true,
+  "eval_inputs": {
+    "files": {
+      "agent/eval_runner.py": "7fc32cc28d1f761ef3a65b20cd5bfbe7de46ffba059c754432e4f12c0c75453d",
+      "agent/evals/retrieval_dataset.json": "3193e6b70c35178f79a4cbb4a2adeb47055ad43e32f9401e526485da8ec9e058",
+      "agent/evals/routing_dataset.json": "8a4cf82bcfff0b4a99f9de61c094d4be613fb141037da11d1476f8812d4b39c5"
+    },
+    "thresholds": "4dcbd2be69da87aa409ed2ced07bf71d42081d637beab36253269fafdeca9717",
+    "not_covered": [
+      "curated corpus document contents (agent/backend_rag_corpus.py and the files it lists)",
+      "retrieval/routing implementation (agent/backend_rag_index.py, agent/backend_planning.py)",
+      "embedding model weights (recorded by name in embedding_model)"
+    ]
+  },
+  "labelled_set": {
+    "retrieval_cases": 12,
+    "routing_cases": 14,
+    "security_routing_cases": 7
+  },
+  "metrics": [
+    {
+      "key": "recall_at_3",
+      "label": "Retrieval Recall@3",
+      "eval": "retrieval",
+      "score": 0.833,
+      "threshold": 0.4,
+      "comparator": ">=",
+      "passed": true
+    },
+    {
+      "key": "mrr",
+      "label": "Retrieval MRR (mean reciprocal rank)",
+      "eval": "retrieval",
+      "score": 0.868,
+      "threshold": 0.35,
+      "comparator": ">=",
+      "passed": true
+    },
+    {
+      "key": "routing_accuracy",
+      "label": "Tool-routing accuracy",
+      "eval": "routing",
+      "score": 1.0,
+      "threshold": 0.85,
+      "comparator": ">=",
+      "passed": true
+    },
+    {
+      "key": "security_case_accuracy",
+      "label": "Security-case routing accuracy (zero tolerance)",
+      "eval": "routing",
+      "score": 1.0,
+      "threshold": 1.0,
+      "comparator": "==",
+      "passed": true
+    }
+  ],
+  "informational": {
+    "recall_at_5": 0.917
+  },
+  "retrieval_cases": [
+    {
+      "id": "rq-01",
+      "query": "Where is the customer-not-found error handled in the service layer?",
+      "hit_at_3": false,
+      "reciprocal_rank": 0.167,
+      "top_result": "docs/interview-scenarios/02-postgres-search-pagination.md"
+    },
+    {
+      "id": "rq-02",
+      "query": "How does the controller expose the customer lookup endpoint?",
+      "hit_at_3": true,
+      "reciprocal_rank": 1.0,
+      "top_result": "app/src/main/java/com/example/customer/controller/CustomerController.java"
+    },
+    {
+      "id": "rq-03",
+      "query": "Where is the not-found exception converted into an HTTP JSON error response?",
+      "hit_at_3": true,
+      "reciprocal_rank": 1.0,
+      "top_result": "app/src/test/java/com/example/customer/controller/CustomerControllerIntegrationTest.java"
+    },
+    {
+      "id": "rq-04",
+      "query": "What validation errors exist for creating a customer with bad input?",
+      "hit_at_3": true,
+      "reciprocal_rank": 1.0,
+      "top_result": "app/src/test/java/com/example/customer/controller/CustomerControllerIntegrationTest.java"
+    },
+    {
+      "id": "rq-05",
+      "query": "How is a new customer persisted to the database?",
+      "hit_at_3": true,
+      "reciprocal_rank": 1.0,
+      "top_result": "app/src/main/java/com/example/customer/service/CustomerService.java"
+    },
+    {
+      "id": "rq-06",
+      "query": "What fields does the Customer entity have?",
+      "hit_at_3": true,
+      "reciprocal_rank": 1.0,
+      "top_result": "app/src/main/java/com/example/customer/model/Customer.java"
+    },
+    {
+      "id": "rq-07",
+      "query": "How does this platform verify a backend deployment actually reached real production?",
+      "hit_at_3": true,
+      "reciprocal_rank": 1.0,
+      "top_result": "docs/ACTION_QUEUE.json"
+    },
+    {
+      "id": "rq-08",
+      "query": "What is the ACT-008 internal backend acceptance scenario?",
+      "hit_at_3": true,
+      "reciprocal_rank": 1.0,
+      "top_result": "docs/ACTION_QUEUE.json"
+    },
+    {
+      "id": "rq-09",
+      "query": "What real incident caused a deployment to be falsely verified as successful?",
+      "hit_at_3": true,
+      "reciprocal_rank": 1.0,
+      "top_result": "docs/LESSONS.md"
+    },
+    {
+      "id": "rq-10",
+      "query": "What is the rule about RAG or an LLM never being allowed to authorize a change?",
+      "hit_at_3": false,
+      "reciprocal_rank": 0.25,
+      "top_result": "app/src/main/java/com/example/customer/security/WorkspaceAccessGuard.java"
+    },
+    {
+      "id": "rq-11",
+      "query": "Why can't the deployed platform backend push commits to GitHub on its own?",
+      "hit_at_3": true,
+      "reciprocal_rank": 1.0,
+      "top_result": "docs/ACTION_QUEUE.json"
+    },
+    {
+      "id": "rq-12",
+      "query": "What test covers submitting a customer with a malformed email address?",
+      "hit_at_3": true,
+      "reciprocal_rank": 1.0,
+      "top_result": "app/src/test/java/com/example/customer/controller/CustomerControllerIntegrationTest.java"
+    }
+  ],
+  "ci_gate": {
+    "workflow": ".github/workflows/ci.yml",
+    "step": "RAG/MCP retrieval + routing evals (must meet recorded thresholds)",
+    "command": "python eval_runner.py all",
+    "behaviour": "exits 1 (fails the build) if any threshold is not met",
+    "runs_on": "every pull request to master and every push to master",
+    "observed": {
+      "observed_at": "2026-10-06T09:48:12Z",
+      "branch": "master",
+      "latest_run": {
+        "created_at": "2026-10-06T06:23:13Z",
+        "head_sha": "12b9f564a819bb9825b971667b98ba34eaeb2457",
+        "eval_step": "skipped",
+        "failed_steps_in_same_job": [
+          "Python hermetic test suite (BLOCKING -- asserts tests really ran)"
+        ]
+      },
+      "runs_since_eval_step_last_passed": 34,
+      "last_eval_step_success": {
+        "created_at": "2026-09-29T17:07:25Z",
+        "head_sha": "af28bb3ac914c59d944fbc43748ff8dd8c6265b6"
+      },
+      "runs_examined": 35
+    }
+  },
+  "sources": {
+    "eval_runner": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/eval_runner.py",
+    "retrieval_dataset": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/evals/retrieval_dataset.json",
+    "routing_dataset": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/evals/routing_dataset.json",
+    "ci_workflow": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/.github/workflows/ci.yml",
+    "publisher": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/publish_eval_results.py"
+  }
+}
