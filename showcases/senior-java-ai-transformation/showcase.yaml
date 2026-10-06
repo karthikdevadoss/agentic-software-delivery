@@ -63,6 +63,8 @@ selected_capabilities:
     addresses_requirement: "Ability to root-cause real production incidents from evidence, not guesses"
   - id: workbench-live-delivery-ui
     addresses_requirement: null  # real, tested capability; not itself a named JD requirement above
+  - id: standing-interview-grounded-rag
+    addresses_requirement: "Practical, hands-on experience with LLM-based tooling / agentic AI software delivery — not just API calls, but a measurable, auditable delivery process"
 
 primary_demo:
   name: "Watch a real requirement travel through the full agentic delivery pipeline"
@@ -78,6 +80,8 @@ secondary_evidence:
     url: "https://agentic-platform-backend-production.up.railway.app/usage"
   - name: "Learn (AI/Agentic-AI interview knowledge base, built from this project's own real bugs)"
     url: "https://agentic-platform-backend-production.up.railway.app/learn"
+  - name: "Standing Interview (grounded first-person Q&A, deterministic refusal/leak gates, zero invented answers)"
+    url: "https://agentic-platform-backend-production.up.railway.app/standing-interview"
   - name: "AI Engineering Quality Ledger (structured defect/root-cause/fix records)"
     url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml"
   - name: "Public source repository"
@@ -89,6 +93,7 @@ recommended_talking_points:
   - "Why 'AI does not certify its own work' is enforced architecturally, not just as a policy: approve/reject are never exposed as model-callable tools (verified by exact set-membership, not substring matching — itself a real bug found and fixed, AEQ-003), and a structurally separate qa-evaluator subagent independently re-verifies changes."
   - "A real Spring Boot 4 migration gotcha (AEQ-011): Flyway autoconfiguration silently split into its own module; three consecutive CI failures were root-caused only by decompiling the actual class bytecode to confirm it wasn't even on the classpath."
   - "A real Postgres-only production bug that a green H2 test suite could not have caught (AEQ-012): JPQL LOWER/CONCAT around a nullable bind parameter defaulted to bytea on Postgres — found via real Railway logs within minutes of a bad deploy, fixed, and locked in with a real Testcontainers regression test."
+  - "Sprint 13's Standing Interview: a grounded Q&A surface answering real interview questions from a private corpus only, with a deterministic refusal gate for off-book/world-knowledge/private-topic questions and a leak scan with one corrective retry — 15/15 acceptance (9 exam + 6 unseen questions) on four consecutive production runs, 117 hermetic tests, and an independent qa-evaluator pass confirming all 8 claims before it shipped."
 
 optional_role_specific_feature: null
 
@@ -118,4 +123,13 @@ production_urls:
 # Changes since the previous 2026-09-17 verification were additive only
 # (+90/-2 across PORTFOLIO_CAPABILITIES.yaml and INTERVIEW_WALKTHROUGH.yaml);
 # this file itself was unchanged.
-last_verified: "2026-09-29"
+#
+# 2026-10-06 (Sprint 27, BL-106): added the Sprint 13 standing-interview-
+# grounded-rag capability (real, PRODUCTION_VERIFIED in
+# docs/PORTFOLIO_CAPABILITIES.yaml, previously absent from this showcase)
+# plus its secondary_evidence link and one talking point quoting its real
+# recorded numbers. Checked this session: load_showcase() resolves all 14
+# capabilities with zero unresolved ids/requirement texts, and a real curl
+# to /standing-interview returned HTTP 200. The other URLs/capabilities
+# from the 2026-09-25 pass were not independently re-fetched this session.
+last_verified: "2026-10-06"

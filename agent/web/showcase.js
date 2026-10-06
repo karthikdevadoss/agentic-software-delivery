@@ -24,18 +24,19 @@ function renderCaveat(main, unresolvedIds, unresolvedReqs) {
     main.appendChild(el(
       "div",
       "sc-caveat",
-      "Note: this showcase references capability id(s) not currently found in " +
-      "docs/PORTFOLIO_CAPABILITIES.yaml — shown honestly rather than silently " +
-      "dropped: <strong>" + unresolvedIds.join(", ") + "</strong>"
+      "Note: this page lists a capability that is no longer in our tracked " +
+      "capability list — shown honestly rather than silently dropped: " +
+      "<strong>" + unresolvedIds.join(", ") + "</strong>"
     ));
   }
   if (unresolvedReqs && unresolvedReqs.length) {
     main.appendChild(el(
       "div",
       "sc-caveat",
-      "Note: a capability's addresses_requirement text doesn't exactly match any " +
-      "entry in job_requirements_addressed (likely drift/typo) — shown honestly " +
-      "rather than silently mismatched: <strong>" + unresolvedReqs.join("; ") + "</strong>"
+      "Note: one of the requirement descriptions below doesn't exactly match " +
+      "the job requirement it's meant to answer (likely an editing drift) — " +
+      "shown honestly rather than silently mismatched: " +
+      "<strong>" + unresolvedReqs.join("; ") + "</strong>"
     ));
   }
 }
