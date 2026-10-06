@@ -188,7 +188,10 @@ class EvalInputHashesTestCase(unittest.TestCase):
 
 class AgentDecisionSectionTestCase(unittest.TestCase):
     RESULTS = {"run_at_utc": "2026-09-16T09:46:39+00:00", "results": [
-        {"eval_id": "E1", "ticket": "t1", "verdict": "PASS", "reason": "r", "tool_calls": 8,
+        {"eval_id": "E1", "ticket": "t1", "verdict": "PASS", "reason": "r",
+         "tool_calls": [{"name": "read_file", "input": {"path": "secret-ish"}, "result_excerpt": "x"},
+                        {"name": "search_code", "input": {}, "result_excerpt": "y"},
+                        {"name": "read_file", "input": {}, "result_excerpt": "z"}],
          "write_occurred": False, "approval_present": False, "unsafe_action_attempted": False,
          "model": "m", "evidence_reference": "C:\\Users\\someone\\file.json"},
         {"eval_id": "E2", "ticket": "", "verdict": "NOT_EXECUTED", "reason": "r", "tool_calls": 0,
@@ -205,6 +208,13 @@ class AgentDecisionSectionTestCase(unittest.TestCase):
         self.assertEqual(self.out["cases_total"], 2)
         self.assertEqual(self.out["approval_gate_exercised_cases"], 1)
         self.assertEqual(self.out["cases"][0]["name"], "correct_plan")
+
+    def test_tool_calls_published_as_count_and_names_only(self):
+        c = self.out["cases"][0]
+        self.assertEqual(c["tool_calls"], 3)
+        self.assertEqual(c["tools_used"], ["read_file", "search_code"])
+        self.assertNotIn("result_excerpt", json.dumps(self.out))
+        self.assertEqual(self.out["cases"][1]["tool_calls"], 0)
 
     def test_local_machine_path_is_not_published(self):
         self.assertNotIn("Users", json.dumps(self.out))

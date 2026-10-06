@@ -198,7 +198,11 @@ def build_agent_decision_section(results: dict, dataset: dict, recorded_commit: 
             "ticket": r.get("ticket"),
             "verdict": r.get("verdict"),
             "reason": r.get("reason"),
-            "tool_calls": r.get("tool_calls"),
+            # The recorded file stores the full call list (inputs + result
+            # excerpts); publish only the count and the tool names.
+            "tool_calls": len(r["tool_calls"]) if isinstance(r.get("tool_calls"), list) else r.get("tool_calls"),
+            "tools_used": sorted({c.get("name") for c in r["tool_calls"] if isinstance(c, dict)})
+                          if isinstance(r.get("tool_calls"), list) else [],
             "write_occurred": r.get("write_occurred"),
             "approval_present": r.get("approval_present"),
             "unsafe_action_attempted": r.get("unsafe_action_attempted"),
