@@ -33,6 +33,22 @@ CORRECTED 2026-09-26. This section previously described a single monolithic
 Spring app with H2 and was years out of date; the history of how it got here is
 preserved unchanged in the dated "Current Reality" sections below.
 
+NOTE added 2026-10-06 (Sprint 27, T13): "five public Railway-hosted surfaces"
+below was already an undercount by the time this document was last corrected
+and is now stale enough to actively mislead -- real public surfaces as of
+today number well over a dozen (recruiters, interviewer brief, standing
+interview, triage a/b/c + evidence, ask-codebase + examples, eval, home,
+workbench, plus dashboard/usage/showcase reachable by direct link). Rather
+than hardcode a second number that will drift the same way, see
+`docs/PUBLIC_SURFACE_CHECKLIST.md` (re-derived from the real
+`agent/web_server.py` routes) for the current, maintained list. The agent
+layer also now includes a LangGraph-based durable workflow
+(`agent/durable_workflow.py`, `agent/workflow_checkpointer.py`, added
+2026-09-29) -- not reflected in the one-paragraph summary below, which this
+note intentionally does not rewrite wholesale given the 71-commit gap this
+session found between this document and real HEAD (see PROJECT_STATE.json's
+`next_action`).
+
 Two things live in this repository and should not be confused:
 
 1. THE AI DELIVERY PLATFORM (`agent/`, `public-site/`, `agent/web/`) - a Python
@@ -236,26 +252,38 @@ docs-only commits), see `last_verified_code_commit` in
 - old exposed key was rotated
 
 # What does NOT exist yet
-CORRECTED 2026-09-26. The previous version of this list was written before V4
-and claimed that CI/CD, production hosting, a test agent and a reviewer agent
-did not exist. All four demonstrably do, and the stale list was actively
-misleading a fresh reader. Re-verified against the real codebase on this date:
+CORRECTED 2026-10-06 (Sprint 27, T13). The 2026-09-26 version of this list
+(preserved below as dated history) was itself accurate the day it was
+written, then went stale within days and was never re-checked -- two of its
+claims are now directly contradicted by real code read this session:
+LangGraph was added 2026-09-29 (`agent/durable_workflow.py`,
+`agent/workflow_checkpointer.py`, BL-093/094 -- real `from langgraph...`
+imports, not a plan) and Standing Interview shipped and was verified
+PRODUCTION_VERIFIED in Sprint 13 (2026-09-29, 15/15 acceptance on 4
+production runs; confirmed live again this session, `curl` returning
+HTTP 200 against `/standing-interview`). Re-verified against the real
+codebase 2026-10-06:
 
 - OpenAI and Gemini provider integration (only a key-shape pattern in a secret
   scanner and a mention in learning content - neither is an integration)
-- LangGraph, LangChain, Spring AI (verified absent from the codebase)
+- LangChain, Spring AI (verified absent from the codebase; LangGraph is NOT
+  absent -- see correction above)
 - LLM-as-judge evaluation (deterministic evals only)
 - hybrid search and reranking (embeddings and cosine vector search are real;
   these two are not)
 - end-to-end OpenTelemetry tracing (an opt-in console METRICS exporter exists,
   `scripts/otel_session.sh`; that is a foundation, not tracing)
-- a dedicated indirect prompt-injection test suite
+- a dedicated indirect prompt-injection test suite (confirmed again this
+  session, docs/SECURITY_MATRIX.md row 2 -- no real control or test exists)
 - general crash-mid-workflow checkpoint/resume
-- Standing Interview (the planned deep-RAG interview surface - not started)
 - production-grade code embeddings (Voyage is coded but blocked on a key;
   fastembed is what is actually verified)
 - a vector database at scale (the index is local JSON plus numpy)
 - multi-user concurrency or production scale claims
+
+Standing Interview is REMOVED from this list (see correction above, it now
+exists and is live) -- it is not replaced with anything, since removal
+itself is the correction.
 
 # Exact next development step
 CORRECTED 2026-09-26. This section previously said "Next planned phase: V4",
