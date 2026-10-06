@@ -9,7 +9,11 @@
 #
 # Rules for editing (owner decisions, 2026-10-06):
 # - Never invent a fact, a year, a salary, a skill or a title. No salary and
-#   no notice period appear anywhere on the page.
+#   no notice period appear anywhere on the page. No years-of-experience
+#   figure and no degree year. The only calendar year in the profile is the
+#   owner-confirmed "since early 2026" for the NRG AI team (2026-10-06).
+# - No architect job title, for NRG or anyone else; the headline describes
+#   the work ("AI solution architecture and engineering"), not a title.
 # - Posting quotes are the posting's words, not claims about the owner. They
 #   are the only text exempt from the forbidden-claims scan.
 # - Every evidence link must be a live route, a pending-deploy route (served
@@ -17,16 +21,18 @@
 
 profile:
   name: Karthikeyan Devadoss
-  headline: AI Engineer
+  headline: AI solution architecture and engineering
   location: Berlin
   work_mode: Remote-first, open to contract work
   languages: English (working language); German A1–A2
   education: B.E. Computer Science, Madras University
   nrg: >-
-    Current client engagement: NRG Energy. I took part in architecture
-    discussions and design decisions with the lead. The platform on this page
-    is my own system, not an NRG product.
-  facts_source: Confirmed by me on 2026-10-06 (degree, languages, work mode, NRG wording); name, Berlin and the NRG separation also appear on the live home page.
+    Current client engagement: NRG Energy. Since early 2026 I have been one of
+    a handful of engineers in NRG's initial core AI team, designing and
+    building AI solutions hands-on alongside senior backend work, and taking
+    part in architecture discussions and design decisions with the lead. The
+    platform on this page is my own system, not an NRG product.
+  facts_source: Confirmed by me on 2026-10-06 (headline, degree, languages, work mode, NRG wording and NRG AI team role); name, Berlin and the NRG separation also appear on the live home page.
   links:
     - {label: GitHub, url: "https://github.com/karthikdevadoss"}
     - {label: LinkedIn, url: "https://www.linkedin.com/in/karthikeyan-devdoss/"}

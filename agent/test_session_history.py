@@ -292,13 +292,16 @@ class SessionDetailTestCase(unittest.TestCase):
         self.assertIn("NOT CAPTURED", not_captured)
         self.assertNotIn("$0", actual + agg_only + not_captured)
 
-    def test_long_raw_prompt_goal_has_concise_title_and_preserved_raw_capture(self):
+    def test_claude_code_prompt_text_is_never_published(self):
+        # Automation Sprint 4: this session's first prompt used to be shown in
+        # full as raw_capture on the public Usage page. Prompt text is now
+        # private; only a neutral label, the prompt count and tokens remain.
         d = sh.get_session_detail("4f0fd490-b705-4907-a2ba-6263b291e640")
         self.assertIsNotNone(d)
-        self.assertLess(len(d["goal"]), 200)
-        self.assertIsNotNone(d["raw_capture"])
-        self.assertGreater(len(d["raw_capture"]), len(d["goal"]))
-        self.assertIn("→", d["raw_capture"])  # mojibake repaired in the full capture, not just truncated away
+        self.assertEqual(d["goal"], sh.CLAUDE_CODE_SESSION_LABEL)
+        self.assertIsNone(d["raw_capture"])
+        self.assertEqual(d["prompt_text"], "PRIVATE")
+        self.assertGreaterEqual(d["prompt_count"], 1)
 
     def test_ai_active_time_is_derived_from_real_tool_call_durations(self):
         d = sh.get_session_detail("trainer-4733d1c0")

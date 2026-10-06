@@ -73,6 +73,10 @@ HERMETIC_MODULES = [
     "test_eval_results_fresh",        # hashes eval inputs on disk vs eval-results.json, no network
     "test_publish_triage_results",    # synthetic inputs + hashes vs triage-evidence.json; no Java/network
     "test_publish_ask_codebase_examples",  # synthetic answers + hashes vs ask-codebase-examples.json
+    "test_owner_auth_and_triage_budget",  # owner-only control plane (fail closed), triage model-call caps
+    "test_home_claims",  # home CI/deploy wording vs ci.yml and the deploy code path
+    "test_self_hosted_fonts",  # no Google Fonts requests; local woff2 files exist, licensed and served
+    "test_session_prompt_privacy",  # fake ledger with a sentinel prompt: nothing reaches /api/sessions/history
     "test_publish_recruiters_page",  # link classification, quotes, claims scan, freshness of recruiters.json
     "test_execution_tools",
     "test_interview_walkthrough_data",

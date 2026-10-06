@@ -1,21 +1,21 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-06T11:27:22Z",
-  "commit_sha": "1f94531ff19e9950ab9d414bdf31d30fb501948c",
-  "branch": "mahadeva/automation-3",
+  "generated_at": "2026-10-06T12:27:11Z",
+  "commit_sha": "91b8041f1c5b19edafae6d15e5b848a3808a593a",
+  "branch": "mahadeva/automation-4",
   "working_tree_dirty": false,
   "postings_accessed": "2026-10-06",
   "postings_note": "Thirteen English-language AI engineering job postings that were listed as open on the access date, in this order: remote first, then Berlin hybrid, Berlin on-site and other German cities. Architect-titled roles based in Germany in the same search all required German; the one architect-titled role here is EU-remote.",
   "postings_total": 13,
   "profile": {
     "name": "Karthikeyan Devadoss",
-    "headline": "AI Engineer",
+    "headline": "AI solution architecture and engineering",
     "location": "Berlin",
     "work_mode": "Remote-first, open to contract work",
     "languages": "English (working language); German A1–A2",
     "education": "B.E. Computer Science, Madras University",
-    "nrg": "Current client engagement: NRG Energy. I took part in architecture discussions and design decisions with the lead. The platform on this page is my own system, not an NRG product.",
-    "facts_source": "Confirmed by me on 2026-10-06 (degree, languages, work mode, NRG wording); name, Berlin and the NRG separation also appear on the live home page.",
+    "nrg": "Current client engagement: NRG Energy. Since early 2026 I have been one of a handful of engineers in NRG's initial core AI team, designing and building AI solutions hands-on alongside senior backend work, and taking part in architecture discussions and design decisions with the lead. The platform on this page is my own system, not an NRG product.",
+    "facts_source": "Confirmed by me on 2026-10-06 (headline, degree, languages, work mode, NRG wording and NRG AI team role); name, Berlin and the NRG separation also appear on the live home page.",
     "links": [
       {
         "label": "GitHub",
@@ -40,7 +40,7 @@
       "link": {
         "url": "/eval",
         "status": "pending_deploy",
-        "fallback_url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/mahadeva/automation-3/agent/web/eval.html"
+        "fallback_url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/mahadeva/automation-4/agent/web/eval.html"
       }
     },
     {
@@ -55,7 +55,7 @@
       "link": {
         "url": "/triage/evidence",
         "status": "pending_deploy",
-        "fallback_url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/mahadeva/automation-3/agent/web/triage-evidence.html"
+        "fallback_url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/mahadeva/automation-4/agent/web/triage-evidence.html"
       }
     }
   ],
@@ -272,7 +272,7 @@
           "label": "Retrieval and routing eval results page",
           "url": "/eval",
           "status": "pending_deploy",
-          "fallback_url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/mahadeva/automation-3/agent/web/eval.html",
+          "fallback_url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/mahadeva/automation-4/agent/web/eval.html",
           "metrics": "eval"
         },
         {
@@ -354,7 +354,7 @@
           "label": "Triage evidence: which scenario tests ran, and what did not",
           "url": "/triage/evidence",
           "status": "pending_deploy",
-          "fallback_url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/mahadeva/automation-3/agent/web/triage-evidence.html",
+          "fallback_url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/mahadeva/automation-4/agent/web/triage-evidence.html",
           "metrics": "triage"
         },
         {
@@ -414,7 +414,7 @@
           "label": "All six example questions answered (recorded snapshot)",
           "url": "/ask-codebase/examples",
           "status": "pending_deploy",
-          "fallback_url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/mahadeva/automation-3/agent/web/ask-codebase-examples.html",
+          "fallback_url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/mahadeva/automation-4/agent/web/ask-codebase-examples.html",
           "metrics": "ask"
         },
         {
@@ -776,7 +776,7 @@
   "link_check": {
     "offline": "passed",
     "online": {
-      "checked_at": "2026-10-06T11:27:37Z",
+      "checked_at": "2026-10-06T12:27:29Z",
       "results": [
         {
           "url": "https://remoshift.com/job/ai-engineer-cc791343",
@@ -859,7 +859,7 @@
           "status": 404
         },
         {
-          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/mahadeva/automation-3/agent/web/eval.html",
+          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/mahadeva/automation-4/agent/web/eval.html",
           "status": 200
         },
         {
@@ -883,7 +883,7 @@
           "status": 404
         },
         {
-          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/mahadeva/automation-3/agent/web/triage-evidence.html",
+          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/mahadeva/automation-4/agent/web/triage-evidence.html",
           "status": 200
         },
         {
@@ -903,7 +903,7 @@
           "status": 404
         },
         {
-          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/mahadeva/automation-3/agent/web/ask-codebase-examples.html",
+          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/mahadeva/automation-4/agent/web/ask-codebase-examples.html",
           "status": 200
         },
         {
@@ -936,11 +936,11 @@
   "quotes_verified": {
     "quotes": 72,
     "against": "posting text captured on 2026-10-06",
-    "source_sha256": "68fd4069597a0549f6a4f9943541af6697ba348a61084a8ed101b5af7e27db05"
+    "source_sha256": "14cd40ae4176adab2217ba7d2fb1e3af5291a388438ffa4c2dac55fd6cc43368"
   },
   "inputs": {
-    "agent/recruiters_source.yaml": "68fd4069597a0549f6a4f9943541af6697ba348a61084a8ed101b5af7e27db05",
-    "agent/web/case-study-durable-agent.html": "af901f92f7533bb94fb08703c5090380aef0eedf311812752e63c62e6871f44d",
+    "agent/recruiters_source.yaml": "14cd40ae4176adab2217ba7d2fb1e3af5291a388438ffa4c2dac55fd6cc43368",
+    "agent/web/case-study-durable-agent.html": "e6eaf381b8b8936d5f90f6fb2f75d774ea842eb5a226fc609495f320db52c6d7",
     "agent/web/eval-results.json": "cd47e5ae2d3d2037fdb5ec467ea603e9b0a81b3f60e6563e4f11038fc059bd7a",
     "agent/web/triage-evidence.json": "69845e1d9445b44136bc6db1aad2f8518c8889f3e7a9377eb4c6af041c7fb3f7",
     "agent/web/ask-codebase-examples.json": "ef0c201b37bb33e16e2a69b653f8c9dc12955c0d0973b56b4ca4df16724da74d"

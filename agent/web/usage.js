@@ -394,46 +394,9 @@ function renderConsumptionCategories(d) {
   return section("What the spending is split into", `<p class="hint">Every session and every run is filed under exactly one of these. They are never added together into a single figure, because a demo and a paying customer are not the same kind of cost.</p><ul>${items}</ul>`);
 }
 
-function renderDevSessionControls() {
-  return section("Development Session (start/stop)", `
-    <p class="hint">Explicit start/stop wall-clock tracking for future Claude Code / ChatGPT development sessions. This records WALL-CLOCK time only — never inferred active/idle time.</p>
-    <div class="dev-session-form">
-      <input type="text" id="dev-goal" placeholder="Goal / current duty for this session" />
-      <button id="dev-start-btn">START SESSION</button>
-    </div>
-    <div id="dev-active" class="hint"></div>
-  `);
-}
-
-let activeDevSessionId = null;
-
-function wireDevSessionControls() {
-  const startBtn = document.getElementById("dev-start-btn");
-  const goalInput = document.getElementById("dev-goal");
-  const activeDiv = document.getElementById("dev-active");
-  if (!startBtn) return;
-
-  startBtn.addEventListener("click", async () => {
-    const goal = goalInput.value.trim();
-    if (!goal) return;
-    const resp = await fetch("/api/dev-sessions/start", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ goal }),
-    });
-    const rec = await resp.json();
-    activeDevSessionId = rec.id;
-    activeDiv.innerHTML = `Session <code>${esc(rec.id)}</code> started. <button id="dev-stop-btn">END SESSION</button>`;
-    startBtn.disabled = true;
-    document.getElementById("dev-stop-btn").addEventListener("click", async () => {
-      await fetch("/api/dev-sessions/stop", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ session_id: activeDevSessionId }),
-      });
-      activeDiv.textContent = "Session ended. Reload to see it in the list below.";
-      startBtn.disabled = false;
-    });
-  });
-}
+// The Development Session start/stop form was removed from this public page
+// in Automation Sprint 4: /api/dev-sessions/start|stop are owner-only now
+// (owner_auth.py), so a visitor's click could only ever fail.
 
 // ---------------------------------------------------------------------
 // Complete Historical Session System (P0-B): every real session ever
@@ -840,6 +803,7 @@ async function renderSessionDetail(sessionId) {
     ${section("Human Interventions", d.human_interventions && d.human_interventions.length
       ? `<ul class="ledger-recent">${d.human_interventions.map(h => `<li>${esc(h.event_type)} — ${esc(h.status)} <span class="hint">${berlinTimeLabel(h.timestamp_utc)}</span></li>`).join("")}</ul>`
       : `<p class="hint">None captured for this session.</p>`)}
+    ${d.prompt_privacy_note ? section("Prompts", `<p>${esc(String(d.prompt_count))} prompt(s) in this session. <span class="hint">${esc(d.prompt_privacy_note)}</span></p>`) : ""}
     ${d.raw_capture ? section("Original Instruction / Raw Capture", `
       <details class="raw-capture-details">
         <summary>Show the complete original text (${d.raw_capture.length.toLocaleString()} characters)</summary>
@@ -890,7 +854,6 @@ async function load() {
     renderEfficiencySummary(data),
     renderDevSessionCostSummary(data),
     renderEventLedger(data),
-    renderDevSessionControls(),
     renderSessionHistoryPanel(),
     renderToday(data),
     renderCoverageExplainer(),
@@ -900,7 +863,6 @@ async function load() {
     renderConsumptionCategories(data),
   ].join("");
 
-  wireDevSessionControls();
   wireSessionHistoryPanel();
 
   main.querySelectorAll(".session-row").forEach(row => {

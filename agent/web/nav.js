@@ -44,8 +44,11 @@ const CANONICAL_NAV_DESTINATIONS = [
   { href: "/workbench", label: "Workbench" },
   { href: "/triage", label: "Triage" },
   { href: "/ask-codebase", label: "Ask Codebase" },
-  { href: "/showcase/senior-java-ai-transformation", label: "Showcase" },
-  { href: "/usage", label: "Usage" },
+  // Automation Sprint 4 (Owner decision, 2026-10-06): Showcase and Usage
+  // left the public nav (both routes stay reachable by direct link), and
+  // "For Recruiters" joined it -- the one page built from what real job
+  // postings ask for, with links to where each thing can be checked.
+  { href: "/recruiters", label: "For Recruiters" },
   // BL-079: gated, not unconditional. The Owner's condition was that Standing
   // Interview may appear in the live nav ONLY if the production page can
   // actually answer, and the corpus is delivered at deploy time rather than

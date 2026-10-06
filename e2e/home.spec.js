@@ -22,7 +22,8 @@ const VIEWPORTS = [
   ["mobile", 390, 844],
 ];
 
-const CANONICAL_NAV = ["Home", "Workbench", "Triage", "Ask Codebase", "Showcase", "Usage"];
+// Automation Sprint 4 (Owner decision): Showcase and Usage out, For Recruiters in.
+const CANONICAL_NAV = ["Home", "Workbench", "Triage", "Ask Codebase", "For Recruiters"];
 
 test.describe("Home page — identity and claims", () => {
   test("the first screen names the person, the role and the separation", async ({ page }) => {
@@ -102,7 +103,7 @@ test.describe("Home page — navigation and links", () => {
     const labels = await page.locator("#top-nav a").allTextContents();
     const visible = labels.map((l) => l.trim()).filter(Boolean);
     // Standing Interview is gated on its corpus endpoint and may legitimately
-    // be absent; the unconditional six must be present, in order.
+    // be absent; the unconditional five must be present, in order.
     const withoutGated = visible.filter((l) => l !== "Standing Interview");
     expect(withoutGated).toEqual(CANONICAL_NAV);
   });
