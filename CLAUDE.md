@@ -357,6 +357,17 @@ buggy code.
      point (the numbers shown are correct, the claim matches the code).
      Re-read the full requirement before declaring it met, not just the
      part already verified.
+- **Unattended Claude Code task contracts follow
+  docs/templates/CLAUDE_CODE_TASK_TEMPLATE.md** (added 2026-10-06, Sprint
+  27, BL-125/BL-127/BL-128). Covers bounded production calls, stop
+  conditions, a committed report, a required quality-acceptance line and
+  page-purpose line per task, and the rule that a prompt may not assert a
+  fact about the Owner or the system it has not verified -- a hypothesis is
+  labelled a hypothesis. Validate a filled-in contract before launching it:
+  `python agent/check_task_template.py <path>` -- a deterministic,
+  zero-LLM structural gate that fails closed and names exactly which
+  required section or per-task field is missing. It checks structure only,
+  never truthfulness (that is the five evidence rules' job, above).
 
 ## Durable-state rules
 - Repository files and Git are authoritative; conversation history is supplementary.
