@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-06T09:36:36Z",
-  "commit_sha": "5dcac5cb5e12f788abec3c9cf9c247705d299f8c",
+  "generated_at": "2026-10-06T09:42:26Z",
+  "commit_sha": "fe9324d159ad7a772dd701c7fda5043530e9fceb",
   "working_tree_dirty": false,
   "embedding_model": "local:BAAI/bge-small-en-v1.5",
   "overall_passed": true,
@@ -142,7 +142,25 @@
     "step": "RAG/MCP retrieval + routing evals (must meet recorded thresholds)",
     "command": "python eval_runner.py all",
     "behaviour": "exits 1 (fails the build) if any threshold is not met",
-    "runs_on": "every pull request to master and every push to master"
+    "runs_on": "every pull request to master and every push to master",
+    "observed": {
+      "observed_at": "2026-10-06T09:42:26Z",
+      "branch": "master",
+      "latest_run": {
+        "created_at": "2026-10-06T06:23:13Z",
+        "head_sha": "12b9f564a819bb9825b971667b98ba34eaeb2457",
+        "eval_step": "skipped",
+        "failed_steps_in_same_job": [
+          "Python hermetic test suite (BLOCKING -- asserts tests really ran)"
+        ]
+      },
+      "runs_since_eval_step_last_passed": 34,
+      "last_eval_step_success": {
+        "created_at": "2026-09-29T17:07:25Z",
+        "head_sha": "af28bb3ac914c59d944fbc43748ff8dd8c6265b6"
+      },
+      "runs_examined": 35
+    }
   },
   "sources": {
     "eval_runner": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/eval_runner.py",
