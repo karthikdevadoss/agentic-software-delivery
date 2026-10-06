@@ -25,6 +25,7 @@ const PUBLIC_PAGES = [
   ["usage", "/usage"],
   ["standing-interview", "/standing-interview"],
   ["dashboard", "/dashboard"],
+  ["recruiters", "/recruiters"],
 ];
 
 // --- the agreed standard, in one place -------------------------------------

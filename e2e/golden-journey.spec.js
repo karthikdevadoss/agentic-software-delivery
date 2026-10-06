@@ -21,6 +21,7 @@ const PUBLIC_PAGES = [
   { path: "/triage", title: /Incident Triage Lab/, heading: /Incident Triage Lab/ },
   { path: "/triage/scenario-b", title: /Incident Triage Lab \(Scenario B\)/, heading: /Incident Triage Lab/ },
   { path: "/triage/scenario-c", title: /Incident Triage Lab \(Scenario C\)/, heading: /Incident Triage Lab/ },
+  { path: "/recruiters", title: /what the postings ask for/, heading: /Karthikeyan Devadoss/ },
 ];
 
 test.describe("Public golden journey — page identity and real content", () => {

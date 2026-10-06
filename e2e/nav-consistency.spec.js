@@ -31,6 +31,7 @@ const PAGES = [
   "/ask-codebase",
   "/case-study/durable-agent",
   "/showcase/senior-java-ai-transformation",
+  "/recruiters",
 ];
 
 async function visibleNavLabels(page) {

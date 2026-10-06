@@ -22,7 +22,7 @@ a:hover { color: var(--accent-ink); }
 .top-nav a:hover { color: var(--ink); }
 .top-nav a strong { color: var(--accent); border-bottom: 2px solid var(--accent); padding-bottom: .15rem; font-weight: 700; }
 
-.rc-shell { max-width: 1100px; margin: 0 auto; padding: 40px 32px 72px; }
+.rc-shell { max-width: 1200px; margin: 0 auto; padding: 40px 32px 72px; }
 .rc-hint { color: var(--soft); }
 .rc-eyebrow { font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; color: var(--soft); font-weight: 700; margin: 0 0 .5rem; }
 h1 { font-size: 2.4rem; line-height: 1.15; margin: 0 0 .3rem; letter-spacing: -.01em; }
@@ -30,12 +30,12 @@ h1 { font-size: 2.4rem; line-height: 1.15; margin: 0 0 .3rem; letter-spacing: -.
 .rc-meta { display: flex; flex-wrap: wrap; gap: .4rem 1.4rem; margin: 0 0 1rem; padding: 0; list-style: none; color: var(--ink); font-size: .98rem; }
 .rc-meta li::before { content: "·"; color: var(--soft); margin-right: .5rem; }
 .rc-meta li:first-child::before { content: ""; margin: 0; }
-.rc-nrg { border-left: 3px solid var(--line); padding: .2rem 0 .2rem 1rem; color: var(--soft); max-width: 68ch; font-size: .95rem; margin: 0 0 1rem; }
+.rc-nrg { border-left: 3px solid var(--line); padding: .2rem 0 .2rem 1rem; color: var(--soft); max-width: 56ch; font-size: .95rem; margin: 0 0 1rem; }
 .rc-links { display: flex; gap: 1.2rem; flex-wrap: wrap; font-weight: 600; font-size: .95rem; margin: 0; }
 
 section { margin-top: 3rem; }
 h2 { font-size: 1.5rem; margin: 0 0 .4rem; }
-.rc-lead { color: var(--soft); max-width: 72ch; margin: 0 0 1.4rem; }
+.rc-lead { color: var(--soft); max-width: 56ch; margin: 0 0 1.4rem; }
 
 .rc-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .rc-card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 20px 22px; display: flex; flex-direction: column; gap: .35rem; }
@@ -62,7 +62,7 @@ details.rc-quotes ul { margin: .5rem 0 0; padding-left: 1.1rem; color: var(--sof
 details.rc-quotes li { margin-bottom: .45rem; }
 details.rc-quotes q { color: var(--ink); }
 
-.rc-badge { display: inline-block; font-size: .78rem; font-weight: 700; letter-spacing: .02em; padding: .08rem .45rem; border-radius: 999px; margin-left: .4rem; vertical-align: 1px; white-space: nowrap; }
+.rc-badge { display: inline-block; font-size: .8rem; font-weight: 700; letter-spacing: .02em; padding: .08rem .45rem; border-radius: 999px; margin-left: .4rem; vertical-align: 1px; white-space: nowrap; }
 .rc-badge.live { background: var(--ok-bg); color: var(--ok-ink); }
 .rc-badge.pending { background: var(--warn-bg); color: var(--warn-ink); }
 .rc-badge.source { background: #eef0f2; color: var(--soft); }
@@ -81,7 +81,7 @@ details.rc-quotes q { color: var(--ink); }
 .rc-table th, .rc-table td { text-align: left; padding: .6rem .8rem; border-bottom: 1px solid var(--line); vertical-align: top; }
 .rc-table th { font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; color: var(--soft); background: #f6f6f4; }
 .rc-table tr:last-child td { border-bottom: 0; }
-.rc-foot { margin-top: 3rem; padding-top: 1.2rem; border-top: 1px solid var(--line); color: var(--soft); font-size: .88rem; max-width: 80ch; }
+.rc-foot { margin-top: 3rem; padding-top: 1.2rem; border-top: 1px solid var(--line); color: var(--soft); font-size: .88rem; max-width: 56ch; }
 
 @media (max-width: 860px) {
   .rc-cards { grid-template-columns: 1fr; }
@@ -97,3 +97,7 @@ details.rc-quotes q { color: var(--ink); }
   .rc-table .rc-hide-sm { display: none; }
   .rc-table th, .rc-table td { padding: .5rem .55rem; }
 }
+
+/* Reading measure (design-standards: 50-75 characters per line). */
+.rc-shell p, .rc-shell li { max-width: 56ch; }
+.rc-shell .rc-table td, .rc-shell .rc-metrics td { max-width: none; }
