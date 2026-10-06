@@ -2,7 +2,7 @@
   "generated_at": "2026-10-06T15:12:32Z",
   "as_of": "2026-10-06",
   "title": "Applications Review",
-  "description": "Owner-facing application packs (CV + cover letter + posting). TOP filter (policy v32): remote DE/worldwide/EU/EMEA, Berlin hybrid, Berlin office; newest posted first. Never apply or send from this page.",
+  "description": "Owner-facing application packs (CV + cover letter + posting). TOP filter (policy v32): remote DE/worldwide/EU/EMEA, Berlin hybrid, Berlin office; newest posted first. Tap Approve to queue for Mahadeva; never apply or send from this page.",
   "filter": {
     "policy": "v32",
     "rule": 62,
@@ -190,5 +190,15 @@
       "rank": 8,
       "loc_tier": 1
     }
-  ]
+  ],
+  "approve": {
+    "one_tap": true,
+    "records": [
+      "owner_approved",
+      "approved_at",
+      "status=pending_apply"
+    ],
+    "web_applies": false,
+    "mahadeva": "employer careers form or email apply link only; no LinkedIn Easy Apply"
+  }
 }

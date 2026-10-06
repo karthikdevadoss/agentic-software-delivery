@@ -88,3 +88,7 @@ playwright/.cache/
 # Durable-workflow crash-drill evidence (derived/local per-run record -- see agent/workflow_drill.py;
 # the committed record of a drill is the summary in docs/DURABLE_EXECUTION_RECOVERY.md)
 agent/.workflow_drill_evidence/
+
+# Runtime Owner Approve → apply queue (Sprint 13)
+agent/applications_apply_queue.json
+agent/applications_apply_queue.json.tmp

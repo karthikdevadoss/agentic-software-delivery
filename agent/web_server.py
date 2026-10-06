@@ -82,6 +82,7 @@ import risk_policy
 import session_history
 import sessions_data
 import write_tools
+import applications_apply_queue
 
 WEB_DIR = Path(__file__).resolve().parent / "web"
 
@@ -1798,6 +1799,83 @@ async def applications_pdf(request: Request):
     return FileResponse(str(target), media_type="application/pdf", filename=safe)
 
 
+async def applications_approve(request: Request):
+    """Owner one-tap Approve on Applications Review (Automation Sprint 13).
+
+    Records owner_approved + approved_at and enqueues pending_apply.
+    Does NOT submit any application to an employer from this process.
+    """
+    if not _applications_review_authorized(request):
+        return PlainTextResponse("404 Not Found", status_code=404)
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "JSON body required"}, status_code=400)
+    if not isinstance(body, dict):
+        return JSONResponse({"error": "JSON object required"}, status_code=400)
+    pack_id = (body.get("pack_id") or "").strip()
+    if not pack_id:
+        return JSONResponse({"error": "pack_id is required"}, status_code=400)
+
+    def _approve():
+        pack = applications_apply_queue.load_pack_by_id(
+            WEB_DIR / "applications.json", pack_id
+        )
+        if pack is None:
+            return None, "unknown pack_id"
+        item = applications_apply_queue.record_owner_approve(pack)
+        return item, None
+
+    item, err = await run_in_threadpool(_approve)
+    if err == "unknown pack_id":
+        return JSONResponse({"error": "unknown pack_id"}, status_code=404)
+    return JSONResponse({"ok": True, "item": item, "applied": False})
+
+
+async def applications_queue(request: Request):
+    """Apply queue for Owner UI status + Mahadeva handoff. Same ?k= gate."""
+    if not _applications_review_authorized(request):
+        return PlainTextResponse("404 Not Found", status_code=404)
+    data = await run_in_threadpool(applications_apply_queue.load_queue)
+    return JSONResponse(data)
+
+
+async def applications_queue_update(request: Request):
+    """Mahadeva updates queue status/proof after (or while) applying.
+
+    Still gated by APPLICATIONS_REVIEW_TOKEN. Never creates Owner Approve.
+    Never applies from this handler — proof/status only.
+    """
+    if not _applications_review_authorized(request):
+        return PlainTextResponse("404 Not Found", status_code=404)
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "JSON body required"}, status_code=400)
+    if not isinstance(body, dict):
+        return JSONResponse({"error": "JSON object required"}, status_code=400)
+    pack_id = (body.get("pack_id") or "").strip()
+    if not pack_id:
+        return JSONResponse({"error": "pack_id is required"}, status_code=400)
+    status = body.get("status")
+    proof = body.get("proof")
+    error = body.get("error")
+    notes = body.get("notes")
+
+    def _update():
+        return applications_apply_queue.update_item(
+            pack_id, status=status, proof=proof, error=error, notes=notes
+        )
+
+    try:
+        item = await run_in_threadpool(_update)
+    except KeyError:
+        return JSONResponse({"error": "unknown pack_id"}, status_code=404)
+    except ValueError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+    return JSONResponse({"ok": True, "item": item})
+
+
 async def standing_interview_page(request: Request):
     """Standing Interview v0. Typed question in, first-person answer out,
     grounded only in the private corpus. See agent/standing_interview.py for
@@ -2504,6 +2582,9 @@ routes = [
     Route("/applications", applications_page, methods=["GET"]),
     Route("/applications.json", applications_json, methods=["GET"]),
     Route("/applications_pdf/{name}", applications_pdf, methods=["GET"]),
+    Route("/applications/approve", applications_approve, methods=["POST"]),
+    Route("/applications/queue", applications_queue, methods=["GET"]),
+    Route("/applications/queue/update", applications_queue_update, methods=["POST"]),
     Route("/standing-interview", standing_interview_page, methods=["GET"]),
     Route("/triage", triage_page, methods=["GET"]),
     Route("/triage/scenario-b", triage_page_b, methods=["GET"]),
