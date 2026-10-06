@@ -75,9 +75,13 @@
     }
     if (st === "applied") {
       const proof = item.proof || {};
-      const raw = proof.applied_at_note || proof.applied_at || item.applied_at || "";
+      let raw = proof.applied_at_note || proof.applied_at || item.applied_at || "";
+      const manual = (proof.method === "owner_manual") ||
+        /^Submitted\s+manually/i.test(String(raw));
+      // Avoid double prefix when note already says "Submitted manually — …"
+      raw = String(raw).replace(/^Submitted\s+manually\s*[—\-]\s*/i, "")
+                       .replace(/^Submitted\s*[—\-]\s*/i, "");
       const when = formatBerlinSubmitted(raw);
-      const manual = (proof.method === "owner_manual");
       const prefix = manual ? "Submitted manually — " : "Submitted — ";
       return when ? (prefix + when) : (manual ? "Submitted manually" : "Submitted");
     }
