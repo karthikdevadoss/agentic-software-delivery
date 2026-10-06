@@ -1697,6 +1697,13 @@ async def eval_page(request: Request):
     return FileResponse(str(WEB_DIR / "eval.html"))
 
 
+async def triage_evidence_page(request: Request):
+    """Public triage evidence page: renders agent/web/triage-evidence.json
+    (agent/publish_triage_results.py). Static file only -- never calls the
+    triage reproduce/reset endpoints."""
+    return FileResponse(str(WEB_DIR / "triage-evidence.html"))
+
+
 async def ask_codebase_page(request: Request):
     """Public, read-only 'Ask the Codebase' page. See agent/ask_codebase.py
     for the full design rationale (zero LLM calls, fixed curated corpus,
@@ -2381,6 +2388,7 @@ routes = [
     Route("/triage", triage_page, methods=["GET"]),
     Route("/triage/scenario-b", triage_page_b, methods=["GET"]),
     Route("/triage/scenario-c", triage_page_c, methods=["GET"]),
+    Route("/triage/evidence", triage_evidence_page, methods=["GET"]),
     # Learn and JD Match: PUBLIC routes removed in Sprint 14 (Owner decision).
     # They are personal/internal tools, not part of the recruiter-facing
     # deployment. Nothing was deleted -- the implementations, datasets and
