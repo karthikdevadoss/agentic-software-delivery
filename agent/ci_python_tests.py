@@ -69,6 +69,7 @@ HERMETIC_MODULES = [
     "test_dev_check",
     "test_estimation",
     "test_eval_runner",
+    "test_publish_eval_results",      # synthetic eval output only, no index/model/network
     "test_execution_tools",
     "test_interview_walkthrough_data",
     "test_learn_tree",

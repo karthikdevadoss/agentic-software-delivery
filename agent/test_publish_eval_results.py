@@ -1,0 +1,112 @@
+"""
+Unit tests for agent/publish_eval_results.py using synthetic eval output --
+no index, no embedding model, no network. Hermetic.
+
+Run: python agent/test_publish_eval_results.py
+"""
+
+import contextlib
+import io
+import json
+import unittest
+
+import eval_runner
+import publish_eval_results as pub
+
+
+def _retrieval(r3=0.833, mrr=0.868, r5=0.917, cases=None):
+    cases = cases if cases is not None else [
+        {"id": "rq-01", "query": "q1", "hit_at_3": True, "hit_at_5": True,
+         "reciprocal_rank": 1.0, "top_result": "a.java"},
+        {"id": "rq-02", "query": "q2", "hit_at_3": False, "hit_at_5": True,
+         "reciprocal_rank": 0.16666666, "top_result": "b.md"},
+    ]
+    return {"summary": {"cases": len(cases), "recall_at_3": r3, "recall_at_5": r5, "mrr": mrr},
+            "per_case": cases}
+
+
+def _routing(acc=1.0, sec=1.0):
+    per_case = [
+        {"id": "r1", "requirement": "x", "expected_route": "REJECT_UNAUTHORIZED",
+         "actual_route": "REJECT_UNAUTHORIZED", "correct": True},
+        {"id": "r2", "requirement": "y", "expected_route": "SEARCH",
+         "actual_route": "SEARCH", "correct": True},
+        {"id": "r3", "requirement": "z", "expected_route": "SEARCH",
+         "actual_route": "SEARCH", "correct": True},
+    ]
+    return {"summary": {"cases": len(per_case), "routing_accuracy": acc,
+                        "security_case_accuracy": sec}, "per_case": per_case}
+
+
+def _build(retrieval, routing, **kw):
+    return pub.build_eval_results(retrieval, routing, commit_sha="abc1234",
+                                  generated_at="2026-10-06T09:40:00Z",
+                                  embedding_model="local:test", **kw)
+
+
+class BuildEvalResultsTestCase(unittest.TestCase):
+    def test_all_passing_has_required_fields(self):
+        out = _build(_retrieval(), _routing())
+        self.assertTrue(out["overall_passed"])
+        self.assertEqual(out["commit_sha"], "abc1234")
+        self.assertEqual(out["generated_at"], "2026-10-06T09:40:00Z")
+        self.assertEqual(out["labelled_set"],
+                         {"retrieval_cases": 2, "routing_cases": 3, "security_routing_cases": 1})
+        keys = [m["key"] for m in out["metrics"]]
+        self.assertEqual(keys, ["recall_at_3", "mrr", "routing_accuracy", "security_case_accuracy"])
+        for m in out["metrics"]:
+            self.assertEqual(m["threshold"], eval_runner.THRESHOLDS[m["key"]])
+            self.assertTrue(m["passed"])
+        self.assertEqual(out["informational"]["recall_at_5"], 0.917)
+        self.assertEqual(out["retrieval_cases"][1]["reciprocal_rank"], 0.167)
+        self.assertIn("eval_runner.py all", out["ci_gate"]["command"])
+
+    def test_retrieval_drop_below_threshold_fails(self):
+        out = _build(_retrieval(r3=0.39), _routing())
+        self.assertFalse(out["overall_passed"])
+        r3 = next(m for m in out["metrics"] if m["key"] == "recall_at_3")
+        self.assertFalse(r3["passed"])
+
+    def test_score_exactly_at_threshold_passes(self):
+        out = _build(_retrieval(r3=eval_runner.THRESHOLDS["recall_at_3"],
+                                mrr=eval_runner.THRESHOLDS["mrr"]), _routing())
+        self.assertTrue(out["overall_passed"])
+
+    def test_security_metric_is_zero_tolerance(self):
+        out = _build(_retrieval(), _routing(sec=0.99))
+        sec = next(m for m in out["metrics"] if m["key"] == "security_case_accuracy")
+        self.assertEqual(sec["comparator"], "==")
+        self.assertFalse(sec["passed"])
+        self.assertFalse(out["overall_passed"])
+
+    def test_missing_score_fails_rather_than_passing(self):
+        out = _build(_retrieval(r3=None), _routing())
+        self.assertFalse(out["overall_passed"])
+
+    def test_output_is_json_serialisable(self):
+        json.dumps(_build(_retrieval(), _routing()))
+
+    def test_overall_verdict_matches_eval_runner_gate(self):
+        """The published pass/fail must agree with the CI gate
+        (eval_runner._print_report) for passing and failing inputs."""
+        scenarios = [
+            (_retrieval(), _routing()),
+            (_retrieval(r3=0.2), _routing()),
+            (_retrieval(mrr=0.1), _routing()),
+            (_retrieval(), _routing(acc=0.5)),
+            (_retrieval(), _routing(sec=0.9)),
+        ]
+        for retrieval, routing in scenarios:
+            with contextlib.redirect_stdout(io.StringIO()):
+                gate = eval_runner._print_report(retrieval, routing)
+            self.assertEqual(_build(retrieval, routing)["overall_passed"], gate)
+
+
+class MetricPassesTestCase(unittest.TestCase):
+    def test_unknown_comparator_raises(self):
+        with self.assertRaises(ValueError):
+            pub.metric_passes(1.0, 1.0, "<")
+
+
+if __name__ == "__main__":
+    unittest.main()
