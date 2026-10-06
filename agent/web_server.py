@@ -30,6 +30,7 @@ import dataclasses
 import json
 import os
 import queue
+import secrets
 import shutil
 import subprocess
 import sys
@@ -93,6 +94,30 @@ WEB_DIR = Path(__file__).resolve().parent / "web"
 PRIVATE_SURFACES_ENABLED = os.environ.get("PRIVATE_SURFACES_ENABLED", "").strip().lower() in (
     "1", "true", "yes", "on",
 )
+
+# Automation Sprint 11: owner-facing Applications Review at /applications.
+# Gated by query ?k=<token>. Default token is for local tests only; production
+# must set APPLICATIONS_REVIEW_TOKEN (live value lives in DEVADOSS
+# storage/personal/CONTACT.md — never in public HTML). Without the key the
+# handlers return a plain 404 with no hint. Not linked from public nav.
+DEFAULT_APPLICATIONS_REVIEW_TOKEN = "local-test-applications-review"
+APPLICATIONS_REVIEW_TOKEN = (
+    os.environ.get("APPLICATIONS_REVIEW_TOKEN", DEFAULT_APPLICATIONS_REVIEW_TOKEN).strip()
+    or DEFAULT_APPLICATIONS_REVIEW_TOKEN
+)
+APPLICATIONS_PDF_DIR = WEB_DIR / "applications_pdf"
+
+
+def _applications_review_authorized(request: Request) -> bool:
+    provided = request.query_params.get("k") or ""
+    expected = APPLICATIONS_REVIEW_TOKEN
+    if not provided or not expected:
+        return False
+    # secrets.compare_digest requires equal-length str in some versions; pad-safe:
+    try:
+        return secrets.compare_digest(provided, expected)
+    except (TypeError, ValueError):
+        return False
 REPO_ROOT = Path(__file__).resolve().parent.parent
 APP_DIR = REPO_ROOT / "app"
 RUN_HISTORY_PATH = Path(__file__).resolve().parent / "web_run_history.jsonl"
@@ -1740,6 +1765,39 @@ async def recruiters_page(request: Request):
     return FileResponse(str(WEB_DIR / "recruiters.html"))
 
 
+async def applications_page(request: Request):
+    """Owner-facing Applications Review (Automation Sprint 11). Direct URL
+    only — not in public nav. Requires ?k= matching APPLICATIONS_REVIEW_TOKEN.
+    Wrong or missing key → plain 404, no hint."""
+    if not _applications_review_authorized(request):
+        return PlainTextResponse("404 Not Found", status_code=404)
+    return FileResponse(str(WEB_DIR / "applications.html"))
+
+
+async def applications_json(request: Request):
+    """Baked pack data for /applications. Same gate as the HTML page."""
+    if not _applications_review_authorized(request):
+        return PlainTextResponse("404 Not Found", status_code=404)
+    return FileResponse(str(WEB_DIR / "applications.json"), media_type="application/json")
+
+
+async def applications_pdf(request: Request):
+    """CV PDFs for /applications. Same gate — files contain owner phone."""
+    if not _applications_review_authorized(request):
+        return PlainTextResponse("404 Not Found", status_code=404)
+    name = request.path_params.get("name") or ""
+    # Basename only; reject path traversal.
+    safe = Path(name).name
+    if not safe or safe != name or ".." in name or "/" in name or "\\" in name:
+        return PlainTextResponse("404 Not Found", status_code=404)
+    if not safe.endswith(".pdf"):
+        return PlainTextResponse("404 Not Found", status_code=404)
+    target = APPLICATIONS_PDF_DIR / safe
+    if not target.is_file():
+        return PlainTextResponse("404 Not Found", status_code=404)
+    return FileResponse(str(target), media_type="application/pdf", filename=safe)
+
+
 async def standing_interview_page(request: Request):
     """Standing Interview v0. Typed question in, first-person answer out,
     grounded only in the private corpus. See agent/standing_interview.py for
@@ -2443,6 +2501,9 @@ routes = [
     Route("/ask-codebase/examples", ask_codebase_examples_page, methods=["GET"]),
     Route("/eval", eval_page, methods=["GET"]),
     Route("/recruiters", recruiters_page, methods=["GET"]),
+    Route("/applications", applications_page, methods=["GET"]),
+    Route("/applications.json", applications_json, methods=["GET"]),
+    Route("/applications_pdf/{name}", applications_pdf, methods=["GET"]),
     Route("/standing-interview", standing_interview_page, methods=["GET"]),
     Route("/triage", triage_page, methods=["GET"]),
     Route("/triage/scenario-b", triage_page_b, methods=["GET"]),
@@ -2488,6 +2549,10 @@ routes = [
             Route("/learn-deep-topics.json", private_surface_not_found, methods=["GET"]),
         ]
     ),
+    # Applications Review static filenames must not bypass the ?k= gate.
+    # /applications, /applications.json and /applications_pdf/{name} are
+    # handled above; these catch raw static fall-through.
+    Route("/applications.html", private_surface_not_found, methods=["GET"]),
     Mount("/", app=StaticFiles(directory=str(WEB_DIR), html=True), name="static"),
 ]
 
