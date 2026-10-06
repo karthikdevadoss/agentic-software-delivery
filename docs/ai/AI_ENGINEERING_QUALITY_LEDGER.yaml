@@ -1080,3 +1080,34 @@ defects:
     commit: "ba4cb7e"
     production_evidence: "ACCEPTANCE PASSED -- 15 of 15 (9 exam + 6 unseen), after runs failing 4 of 15 and then 1 of 15. The failing runs never deployed: the gate aborted the deploy script before upload and the live deploy marker was unchanged, verified directly against the production status endpoint while the failures stood."
     recurrence_status: MONITORING
+
+  - defect_id: AEQ-034
+    title: "A backlog item's size_rationale stated a specific technical fact as settled ('the ledger already carries correlation_id/trace_id and the Usage page already reads it') that was never checked against the real code, and was wrong"
+    requirement_run_id: "Sprint 27 (2026-10-06), task T10, BL-104"
+    original_prompt: "EXACT (from docs/indra/SPRINT_27_5H_PROMPT.md's T10): 'Usage: one run, step-by-step from correlated ledger events; never call it tracing.' The size_rationale being checked here was written earlier, by the Standing Interview truth audit (docs/audits/SI_AUDIT_2026-09-29.md, BK-06), when BL-104 was first registered -- not by this sprint's implementer."
+    analysis_confidence: EXACT
+    model_provider_version: "claude-sonnet-5 (this session, verifying); the original size_rationale's author/model is not recorded in docs/BACKLOG.json"
+    tools_context_used: "grep across agent/*.py for correlation_id/trace_id usage; direct read of agent/event_ledger.py's column list and agent/session_history.py's real correlation mechanism (session_id/run_id grouping); a real curl against /api/sessions/history/<run_id> in production"
+    model_interpreted_as: "The size_rationale read as a verified fact about the current codebase ('the ledger already carries X and the page already reads it'), stated with the same confidence as the rest of the sizing rationale, with no UNVERIFIED/hypothesis marker distinguishing it from checked claims."
+    expected_behavior: "Per this sprint's own BL-128 rule (added in the same sprint, T3-T5: 'a prompt may not assert a fact about the Owner or the system it has not verified'), a specific, checkable technical claim about the current codebase should either be verified before being stated as fact, or explicitly labelled a hypothesis."
+    actual_behavior: "grep confirmed correlation_id and trace_id exist ONLY as column-name strings in agent/event_ledger.py's schema definition -- never populated by any write path, never read by any query. The real correlation mechanism the Usage page actually uses is session_id/run_id grouping, which does achieve the same end-user goal, but is a materially different technical fact than the one stated."
+    stage_introduced: "backlog registration -- SI audit BK-06, 2026-09-29, before this sprint existed"
+    stage_detected: "Sprint 27 T10 implementation, while verifying the task's own premise before building on top of it"
+    detection_method: "A direct grep for the two named column names across agent/*.py, run because the feature the size_rationale described sounded already complete enough to be worth checking before assuming more work was needed -- not from a specific suspicion of the earlier audit."
+    root_cause: "An earlier analysis pass (an LLM-driven audit) stated a specific, falsifiable implementation detail ('the page already reads it') in the same declarative voice as its other, actually-checked findings, with no mechanism distinguishing a verified claim from an inferred/assumed one at the point of writing. This is the generalisable version of the gap this sprint's own BL-128 rule and CLAUDE.md's five evidence rules (rule 1, 'code existing is not code working'; this is its sibling, 'a column existing is not a column used') were written to close -- it recurred in the audit that helped motivate those very rules, before they existed to catch it."
+    gaps:
+      prompt_gap: true
+      context_rag_gap: false
+      test_gap: false
+      test_oracle_gap: false
+      harness_gap: false
+      environment_gap: false
+      tool_deployment_gap: false
+    product_fix: "No code change required -- the underlying feature (one run, step-by-step, from correlated events) was already live and working via session_id/run_id grouping, independently confirmed via a real curl against production. The fix is documentary: docs/BACKLOG.json's BL-104 entry now carries the correction, and this sprint's CLAUDE.md additions (the five evidence rules, BL-128's verify-don't-assert rule) are the structural fix going forward."
+    new_product_regression_test: "None -- this is a planning-document defect, not a code defect; there is no code path to regression-test. The structural fix is process (BL-128's rule, this sprint) plus this ledger entry."
+    new_harness_process_regression: "Generalized rule: a size_rationale, audit finding, or any planning-document claim about 'the code already does X' is itself a claim requiring evidence, not evidence on its own -- CLAUDE.md's five evidence rules (added this same sprint, T1) rule 3, 'related evidence is not proof', applies even when the related evidence is a previous AI session's own confident-sounding analysis."
+    future_prompt_clause_learned: "When a task contract's size_rationale or background section states a specific technical fact about the current codebase, verify it with one real grep/read before relying on it to scope the remaining work -- a wrong 'already done' claim doesn't just waste effort if trusted, it can also cause real remaining work to be under-scoped."
+    deterministic_rule_or_tooling: "docs/templates/CLAUDE_CODE_TASK_TEMPLATE.md's 'Verified facts only, never asserted' section (BL-128, this same sprint) requires every task contract to separate 'facts verified before this contract was written' from 'facts assumed/hypothesised' -- this exact defect shape is what that field exists to prevent going forward."
+    commit: "45c84db"
+    production_evidence: "Correction recorded in docs/BACKLOG.json's BL-104 entry (same commit) and in docs/indra/SPRINT_27_RETRO.md. The underlying feature itself was independently confirmed live via a real curl against https://agentic-platform-backend-production.up.railway.app/api/sessions/history/trainer-4e68fe81, 2026-10-06."
+    recurrence_status: MONITORING
