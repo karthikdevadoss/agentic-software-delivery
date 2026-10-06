@@ -21,7 +21,7 @@ What it records, all from real sources:
 Run (from agent/):
     # optional, for real Java counts (needs JDK 21):
     (cd ../app && ./mvnw -B test -Dtest='TriageScenario*IntegrationTest' \
-        -Dsurefire.failIfNoSpecifiedTests=false -Djacoco.skip=true)
+        -Dsurefire.failIfNoSpecifiedTests=false -Djacoco.check.skip=true)
     python publish_triage_results.py
 """
 
