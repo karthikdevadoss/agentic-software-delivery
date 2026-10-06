@@ -140,6 +140,52 @@ class SummariseCiRunsTestCase(unittest.TestCase):
         self.assertIsNone(_build(_retrieval(), _routing())["ci_gate"]["observed"])
 
 
+class EvalInputHashesTestCase(unittest.TestCase):
+    def _fake_repo(self, tmp):
+        from pathlib import Path
+        root = Path(tmp)
+        for rel in pub.EVAL_INPUT_FILES:
+            (root / rel).parent.mkdir(parents=True, exist_ok=True)
+            (root / rel).write_text("content of " + rel + "\n", encoding="utf-8")
+        return root
+
+    def test_hash_changes_when_an_input_file_changes(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._fake_repo(tmp)
+            before = pub.compute_eval_input_hashes(root, {"a": 1})
+            target = root / pub.EVAL_INPUT_FILES[1]
+            target.write_text(target.read_text(encoding="utf-8") + "new case\n", encoding="utf-8")
+            after = pub.compute_eval_input_hashes(root, {"a": 1})
+        changed = [k for k in before["files"] if before["files"][k] != after["files"][k]]
+        self.assertEqual(changed, [pub.EVAL_INPUT_FILES[1]])
+
+    def test_hash_changes_when_a_threshold_changes(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._fake_repo(tmp)
+            a = pub.compute_eval_input_hashes(root, {"recall_at_3": 0.40})
+            b = pub.compute_eval_input_hashes(root, {"recall_at_3": 0.30})
+        self.assertNotEqual(a["thresholds"], b["thresholds"])
+        self.assertEqual(a["files"], b["files"])
+
+    def test_crlf_checkout_hashes_the_same_as_lf(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._fake_repo(tmp)
+            lf = pub.compute_eval_input_hashes(root, {})
+            for rel in pub.EVAL_INPUT_FILES:
+                p = root / rel
+                p.write_bytes(p.read_bytes().replace(b"\n", b"\r\n"))
+            crlf = pub.compute_eval_input_hashes(root, {})
+        self.assertEqual(lf, crlf)
+
+    def test_build_records_inputs_and_what_is_not_covered(self):
+        out = _build(_retrieval(), _routing(), eval_inputs={"files": {"x": "1"}, "thresholds": "2"})
+        self.assertEqual(out["eval_inputs"]["files"], {"x": "1"})
+        self.assertTrue(out["eval_inputs"]["not_covered"])
+
+
 class PublishedArtifactTestCase(unittest.TestCase):
     """The committed agent/web/eval-results.json and the /eval page that
     renders it. Reads files only -- nothing is measured here."""

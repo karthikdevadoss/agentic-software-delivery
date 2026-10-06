@@ -62,7 +62,8 @@ def build_eval_results(retrieval: dict, routing: dict, *, commit_sha: str,
                        generated_at: str, embedding_model: str,
                        working_tree_dirty: bool = False,
                        thresholds: dict = None,
-                       ci_observation: dict = None) -> dict:
+                       ci_observation: dict = None,
+                       eval_inputs: dict = None) -> dict:
     """Pure function: eval_runner output in, publishable dict out."""
     thresholds = eval_runner.THRESHOLDS if thresholds is None else thresholds
     summaries = {"retrieval": retrieval["summary"], "routing": routing["summary"]}
@@ -88,6 +89,10 @@ def build_eval_results(retrieval: dict, routing: dict, *, commit_sha: str,
         "working_tree_dirty": working_tree_dirty,
         "embedding_model": embedding_model,
         "overall_passed": all(m["passed"] for m in metrics),
+        # Content hashes of what produced these numbers; see
+        # test_eval_results_fresh.py. None only in synthetic unit tests.
+        "eval_inputs": (
+            dict(eval_inputs, not_covered=EVAL_INPUTS_NOT_COVERED) if eval_inputs else None),
         "labelled_set": {
             "retrieval_cases": retrieval["summary"]["cases"],
             "routing_cases": routing["summary"]["cases"],
@@ -126,6 +131,45 @@ def build_eval_results(retrieval: dict, routing: dict, *, commit_sha: str,
             "ci_workflow": f"{REPO_URL}/blob/master/.github/workflows/ci.yml",
             "publisher": f"{REPO_URL}/blob/master/agent/publish_eval_results.py",
         },
+    }
+
+
+# Staleness check inputs (retro action 2026-10-06, item 3). The published
+# numbers are only valid for these exact inputs; agent/test_eval_results_fresh.py
+# fails CI when any of them changes without the JSON being regenerated.
+EVAL_INPUT_FILES = [
+    "agent/eval_runner.py",
+    "agent/evals/retrieval_dataset.json",
+    "agent/evals/routing_dataset.json",
+]
+# Stated honestly in the JSON: things that also affect the scores but are NOT
+# hashed, because they change for unrelated reasons (the curated corpus pulls
+# in living docs such as docs/ACTION_QUEUE.json) or are not in the repo.
+EVAL_INPUTS_NOT_COVERED = [
+    "curated corpus document contents (agent/backend_rag_corpus.py and the files it lists)",
+    "retrieval/routing implementation (agent/backend_rag_index.py, agent/backend_planning.py)",
+    "embedding model weights (recorded by name in embedding_model)",
+]
+
+
+def _sha256_text(text: str) -> str:
+    import hashlib
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def compute_eval_input_hashes(repo_root: Path = None, thresholds: dict = None) -> dict:
+    """sha256 of each eval input file and of the THRESHOLDS dict as canonical
+    JSON. Files are read in text mode and CRLF is normalised to LF, so a
+    Windows checkout with core.autocrlf hashes the same as Linux CI."""
+    repo_root = REPO_ROOT if repo_root is None else repo_root
+    thresholds = eval_runner.THRESHOLDS if thresholds is None else thresholds
+    files = {}
+    for rel in EVAL_INPUT_FILES:
+        raw = (repo_root / rel).read_text(encoding="utf-8")
+        files[rel] = _sha256_text(raw.replace("\r\n", "\n"))
+    return {
+        "files": files,
+        "thresholds": _sha256_text(json.dumps(thresholds, sort_keys=True)),
     }
 
 
@@ -223,6 +267,7 @@ def main(argv: list) -> int:
         embedding_model=model_id(),
         working_tree_dirty=_working_tree_dirty(),
         ci_observation=summarise_ci_runs(ci_runs, now) if ci_runs else None,
+        eval_inputs=compute_eval_input_hashes(),
     )
     text = json.dumps(results, indent=2) + "\n"
     if "--stdout" in argv:
