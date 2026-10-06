@@ -157,3 +157,115 @@ class ApplicationsReviewDataTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ApplicationsApproveQueueTest(unittest.TestCase):
+    """Sprint 13: Approve records Owner yes; queue gated; never auto-applies."""
+
+    def setUp(self):
+        self._prev = os.environ.pop("APPLICATIONS_REVIEW_TOKEN", None)
+        ws.APPLICATIONS_REVIEW_TOKEN = TOKEN
+        self._tmpdir = pathlib.Path(self._mk_tmp())
+        self._queue = self._tmpdir / "apply_queue.json"
+        self._prev_q = os.environ.get("APPLICATIONS_APPLY_QUEUE_PATH")
+        os.environ["APPLICATIONS_APPLY_QUEUE_PATH"] = str(self._queue)
+        # Reload path resolution uses env each call — no module reload needed.
+        self.client = TestClient(ws.app)
+        packs = self.client.get("/applications.json", params={"k": TOKEN}).json()["packs"]
+        self.pack_id = packs[0]["id"]
+
+    def _mk_tmp(self):
+        import tempfile
+        return tempfile.mkdtemp(prefix="apq-")
+
+    def tearDown(self):
+        if self._prev is None:
+            os.environ.pop("APPLICATIONS_REVIEW_TOKEN", None)
+        else:
+            os.environ["APPLICATIONS_REVIEW_TOKEN"] = self._prev
+        ws.APPLICATIONS_REVIEW_TOKEN = (
+            os.environ.get("APPLICATIONS_REVIEW_TOKEN", TOKEN).strip() or TOKEN
+        )
+        if self._prev_q is None:
+            os.environ.pop("APPLICATIONS_APPLY_QUEUE_PATH", None)
+        else:
+            os.environ["APPLICATIONS_APPLY_QUEUE_PATH"] = self._prev_q
+        import shutil
+        shutil.rmtree(self._tmpdir, ignore_errors=True)
+
+    def test_approve_without_key_is_404(self):
+        r = self.client.post("/applications/approve", json={"pack_id": self.pack_id})
+        self.assertEqual(r.status_code, 404)
+        self.assertFalse(self._queue.is_file())
+
+    def test_approve_wrong_key_is_404(self):
+        r = self.client.post(
+            "/applications/approve",
+            params={"k": "wrong"},
+            json={"pack_id": self.pack_id},
+        )
+        self.assertEqual(r.status_code, 404)
+
+    def test_approve_records_owner_yes_and_pending_apply(self):
+        r = self.client.post(
+            "/applications/approve",
+            params={"k": TOKEN},
+            json={"pack_id": self.pack_id},
+        )
+        self.assertEqual(r.status_code, 200, r.text[:300])
+        body = r.json()
+        self.assertTrue(body.get("ok"))
+        self.assertFalse(body.get("applied"), "web must never mark applied on Approve")
+        item = body["item"]
+        self.assertTrue(item["owner_approved"])
+        self.assertTrue(item["approved_at"])
+        self.assertEqual(item["status"], "pending_apply")
+        self.assertEqual(item["pack_id"], self.pack_id)
+        self.assertTrue(self._queue.is_file())
+
+        q = self.client.get("/applications/queue", params={"k": TOKEN})
+        self.assertEqual(q.status_code, 200)
+        items = q.json()["items"]
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["pack_id"], self.pack_id)
+
+    def test_approve_idempotent(self):
+        a = self.client.post(
+            "/applications/approve", params={"k": TOKEN}, json={"pack_id": self.pack_id}
+        ).json()["item"]
+        b = self.client.post(
+            "/applications/approve", params={"k": TOKEN}, json={"pack_id": self.pack_id}
+        ).json()["item"]
+        self.assertEqual(a["approved_at"], b["approved_at"])
+        q = self.client.get("/applications/queue", params={"k": TOKEN}).json()
+        self.assertEqual(len(q["items"]), 1)
+
+    def test_approve_unknown_pack_is_404(self):
+        r = self.client.post(
+            "/applications/approve",
+            params={"k": TOKEN},
+            json={"pack_id": "no-such-pack-id"},
+        )
+        self.assertEqual(r.status_code, 404)
+
+    def test_queue_update_applied_with_proof(self):
+        self.client.post(
+            "/applications/approve", params={"k": TOKEN}, json={"pack_id": self.pack_id}
+        )
+        r = self.client.post(
+            "/applications/queue/update",
+            params={"k": TOKEN},
+            json={
+                "pack_id": self.pack_id,
+                "status": "applied",
+                "proof": {"method": "employer_form", "confirmation": "test-only"},
+            },
+        )
+        self.assertEqual(r.status_code, 200, r.text[:300])
+        item = r.json()["item"]
+        self.assertEqual(item["status"], "applied")
+        self.assertEqual(item["proof"]["method"], "employer_form")
+        self.assertTrue(item["applied_at"])
+
+    def test_queue_without_key_is_404(self):
+        self.assertEqual(self.client.get("/applications/queue").status_code, 404)

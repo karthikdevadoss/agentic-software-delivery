@@ -90,3 +90,27 @@ h1 { font-size: 2rem; line-height: 1.2; margin: 0 0 .35rem; letter-spacing: -.01
   .ap-shell { padding: 24px 14px 56px; }
   h1 { font-size: 1.65rem; }
 }
+
+.ap-actions .ap-approve {
+  background: var(--accent); color: #fff; border-color: var(--accent);
+  min-width: 7.5rem; font-weight: 700;
+}
+.ap-actions .ap-approve:disabled {
+  opacity: 0.75; cursor: default; filter: none;
+}
+.ap-approve-hint {
+  margin: 0.35rem 0 0; color: var(--soft); font-size: .85rem; max-width: 52ch;
+}
+.ap-status {
+  display: inline-block; font-size: .82rem; font-weight: 600;
+  padding: .25rem .55rem; border-radius: 999px; margin-left: 4px;
+}
+.ap-status-queued { background: var(--warn-bg); color: var(--warn-ink); }
+.ap-status-ok { background: var(--ok-bg); color: var(--ok-ink); }
+.ap-status-fail { background: #fde8e8; color: #7a1f1f; }
+.ap-row-btn .ap-status {
+  grid-column: 1 / -1; justify-self: start; margin: 2px 0 0;
+}
+@media (max-width: 900px) {
+  .ap-row-btn .ap-status { grid-column: 2; }
+}
