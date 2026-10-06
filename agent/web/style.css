@@ -792,3 +792,11 @@ body[data-surface="workbench"] .panel:not(:has(table)):not(:has(.exec-grid)),
 body[data-surface="showcase"] .panel:not(:has(table)):not(:has(.exec-grid)) {
   max-width: 76ch;
 }
+
+/* Automation Sprint 4: showcase prose measured 77 characters a line at 58ch
+   (design-standards caps it at 75). Its panel copy runs to longer words than
+   the other surfaces, so the same ch value packs more characters. A smaller
+   measure here only; every other surface is unchanged. */
+body[data-surface="showcase"] {
+  --prose: 54ch;
+}

@@ -165,6 +165,8 @@ FRONTEND_PATH_TO_SPECS = {
     "agent/web/recruiters.html": [_UI_STANDARDS, "e2e/design-standards.spec.js", "e2e/link-integrity.spec.js"],
     "agent/web/recruiters.js": [_UI_STANDARDS, "e2e/design-standards.spec.js", "e2e/link-integrity.spec.js"],
     "agent/web/recruiters.css": [_UI_STANDARDS, "e2e/design-standards.spec.js"],
+    # Automation Sprint 4: self-hosted fonts move every page's type metrics.
+    "agent/web/fonts/fonts.css": [_UI_STANDARDS, "e2e/design-standards.spec.js"],
     "agent/web/learn.html": ["e2e/learn.spec.js"],
     "agent/web/learn.js": ["e2e/learn.spec.js"],
     # Sprint 13 / BL-097: JD Match. The backend module is mapped too, because a
