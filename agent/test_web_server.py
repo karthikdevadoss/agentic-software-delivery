@@ -332,16 +332,42 @@ class PublicRouteStructureTestCase(unittest.TestCase):
     def _route_map(self):
         return {r.path: r for r in ws.routes if hasattr(r, "path")}
 
-    def test_all_four_public_surfaces_are_registered_get_routes(self):
+    def test_every_public_surface_is_a_registered_get_route(self):
+        """CORRECTED 2026-10-06. The list still contained /learn, which a later
+        sprint made private, so this had been red ever since. The public surfaces
+        are the ones a visitor can actually reach."""
         routes = self._route_map()
-        for path in ("/", "/workbench", "/dashboard", "/usage", "/learn"):
-            self.assertIn(path, routes, f"{path} is not registered")
-            self.assertIn("GET", routes[path].methods)
+        for path in ("/", "/workbench", "/dashboard", "/usage", "/proof",
+                     "/triage", "/ask-codebase", "/one-pager"):
+            with self.subTest(path=path):
+                self.assertIn(path, routes, path + " is not registered")
+                self.assertIn("GET", routes[path].methods)
 
-    def test_root_and_workbench_serve_the_same_handler(self):
+    def test_the_private_surfaces_are_not_public_routes(self):
+        """The other half of the same decision, so neither can drift back."""
         routes = self._route_map()
-        self.assertIs(routes["/"].endpoint, routes["/workbench"].endpoint)
-        self.assertIs(routes["/"].endpoint, ws.workbench_page)
+        if ws.PRIVATE_SURFACES_ENABLED:
+            self.skipTest("private surfaces are enabled in this environment")
+        for path in ("/learn", "/jd-match"):
+            with self.subTest(path=path):
+                self.assertNotIn(path, routes)
+
+    def test_root_and_workbench_are_deliberately_separate_pages(self):
+        """CORRECTED 2026-10-06. The root used to be the Workbench itself. A later
+        sprint gave the site a first screen of its own, so the two now have
+        different handlers and this had been red ever since. Both must still
+        answer, because the Workbench is one of the three public operations the
+        first screen names."""
+        routes = self._route_map()
+        self.assertIs(routes["/"].endpoint, ws.home_page)
+        self.assertIs(routes["/workbench"].endpoint, ws.workbench_page)
+        self.assertIsNot(routes["/"].endpoint, routes["/workbench"].endpoint)
+        from starlette.testclient import TestClient
+
+        client = TestClient(ws.app)
+        for path in ("/", "/workbench"):
+            with self.subTest(path=path):
+                self.assertEqual(200, client.get(path).status_code)
 
     def test_retired_terminology_redirects_not_dead_links(self):
         routes = self._route_map()
@@ -456,12 +482,53 @@ class ProfilePrivacyTestCase(unittest.TestCase):
         self.assertFalse((served_dir / "profile.css").exists())
 
     def test_no_public_html_page_links_to_profile(self):
+        """CORRECTED 2026-10-06. This searched for the substring "/profile"
+        anywhere in the file, so it failed on home.html's own HTML comment
+        explaining that /profile is deliberately private. A comment recording
+        that decision is the opposite of a leak, and a test that forbids writing
+        the reason down pushes the reason out of the code.
+
+        What must not exist is something a visitor can follow: an href, src,
+        action or data URL pointing at /profile.
+        """
+        import re
+
+        link = re.compile(r"""(?:href|src|action|data-url)\s*=\s*["']?[^"'>]*?/profile""",
+                          re.IGNORECASE)
         for html_file in ws.WEB_DIR.glob("*.html"):
             content = html_file.read_text(encoding="utf-8")
-            self.assertNotIn(
-                "/profile", content,
-                f"{html_file.name} must not reference /profile",
+            found = link.search(content)
+            self.assertIsNone(
+                found,
+                f"{html_file.name} links to /profile: " + (found.group(0) if found else ""),
             )
+
+    def test_no_served_script_fetches_the_profile_route(self):
+        """The same rule for the JavaScript, which can reach a route with no link."""
+        import re
+
+        fetcher = re.compile(
+            r"""(?:fetch|location\.href|window\.open)\s*\(?\s*=?\s*["'`][^"'`]*/profile""",
+            re.IGNORECASE)
+        for script in ws.WEB_DIR.glob("*.js"):
+            content = script.read_text(encoding="utf-8")
+            found = fetcher.search(content)
+            self.assertIsNone(found, script.name + " fetches /profile: "
+                              + (found.group(0) if found else ""))
+
+    def test_the_narrowed_rule_still_catches_a_real_link(self):
+        """Proves the check has teeth rather than passing vacuously."""
+        import re
+
+        link = re.compile(r"""(?:href|src|action|data-url)\s*=\s*["']?[^"'>]*?/profile""",
+                          re.IGNORECASE)
+        for leak in ('<a href="/profile">My CV</a>',
+                     "<a href='/profile'>cv</a>",
+                     '<form action="/profile">',
+                     '<img src="/profile/photo.png">'):
+            with self.subTest(leak=leak):
+                self.assertIsNotNone(link.search(leak))
+        self.assertIsNone(link.search("<!-- /profile is deliberately private -->"))
 
 
 class VerifiedRunLinkTestCase(unittest.TestCase):
@@ -1249,10 +1316,18 @@ class LearnRecursiveRouteTestCase(unittest.IsolatedAsyncioTestCase):
     def _route_map(self):
         return {r.path: r for r in ws.routes if hasattr(r, "path")}
 
-    def test_nested_learn_route_is_registered(self):
+    def test_the_nested_learn_route_follows_the_private_surfaces_flag(self):
+        """CORRECTED 2026-10-06, same reason as the PDF route above: Learn became
+        a private surface, so the nested topic route registers only behind the
+        flag. The server-side slug validation this class covers still matters for
+        the private deployment, which is why the handler is checked either way."""
         routes = self._route_map()
-        self.assertIn("/learn/{path:path}", routes)
-        self.assertIs(routes["/learn/{path:path}"].endpoint, ws.learn_page)
+        if ws.PRIVATE_SURFACES_ENABLED:
+            self.assertIn("/learn/{path:path}", routes)
+            self.assertIs(routes["/learn/{path:path}"].endpoint, ws.learn_page)
+        else:
+            self.assertNotIn("/learn/{path:path}", routes)
+        self.assertTrue(callable(ws.learn_page))
 
     async def test_landing_page_has_no_path_param(self):
         response = await ws.learn_page(mock.Mock(path_params={}))
@@ -1331,9 +1406,39 @@ class AiIntelligenceRouteTestCase(unittest.IsolatedAsyncioTestCase):
 
 
 class LearnPdfRouteTestCase(unittest.IsolatedAsyncioTestCase):
-    def test_pdf_route_is_registered(self):
-        routes = {r.path: r for r in ws.routes if hasattr(r, "path")}
-        self.assertIn("/api/learn/book.pdf", routes)
+    def test_the_pdf_route_follows_the_private_surfaces_flag(self):
+        """CORRECTED 2026-10-06. This asserted the route is always registered. A
+        later sprint made Learn a private surface: its routes register only when
+        PRIVATE_SURFACES_ENABLED is set, which it is not in the public
+        configuration these tests run in, so the test had been red ever since.
+
+        The contract asserted now is the real one: registered exactly when the
+        flag is on, with the handler present either way so a private deployment
+        still works.
+        """
+        routes = {r.path for r in ws.routes if hasattr(r, "path")}
+        if ws.PRIVATE_SURFACES_ENABLED:
+            self.assertIn("/api/learn/book.pdf", routes)
+        else:
+            self.assertNotIn("/api/learn/book.pdf", routes)
+        self.assertTrue(callable(ws.get_learn_book_pdf),
+                        "the handler must survive even while the route is withheld")
+
+    def test_the_public_configuration_serves_no_learn_surface(self):
+        """The reason the flag exists: nothing of Learn is reachable publicly."""
+        if ws.PRIVATE_SURFACES_ENABLED:
+            self.skipTest("private surfaces are enabled in this environment")
+        routes = {r.path for r in ws.routes if hasattr(r, "path")}
+        for path in ("/api/learn/tree", "/api/learn/book.pdf"):
+            with self.subTest(path=path):
+                self.assertNotIn(path, routes)
+        from starlette.testclient import TestClient
+
+        client = TestClient(ws.app)
+        for path in ("/learn.html", "/learn.js", "/learn-data.json"):
+            with self.subTest(path=path):
+                self.assertEqual(404, client.get(path).status_code,
+                                 path + " must not fall through to the static mount")
 
     async def test_pdf_response_has_correct_mime_and_is_non_empty(self):
         response = await ws.get_learn_book_pdf(mock.Mock())
