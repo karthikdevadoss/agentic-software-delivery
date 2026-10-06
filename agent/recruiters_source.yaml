@@ -34,8 +34,8 @@ profile:
 
 postings_accessed: "2026-10-06"
 postings_note: >-
-  Thirteen English-language AI Engineer postings that were open on the access
-  date, in this order: remote first, then Berlin hybrid, Berlin on-site and
+  Thirteen English-language AI engineering job postings that were listed as
+  open on the access date, in this order: remote first, then Berlin hybrid, Berlin on-site and
   other German cities. Architect-titled roles based in Germany in the same
   search all required German; the one architect-titled role here is EU-remote.
 
@@ -77,8 +77,9 @@ requirements:
       - {label: "Incident Triage Lab: reproduce, diagnose, patch, real tests", url: "/triage"}
       - {label: "Agent loop source", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/agent_loop.py"}
     limits: >-
-      One model provider. One run at a time. The public preview accepts only
-      small, low-risk requests.
+      One model provider. One run at a time. In the public preview only small,
+      low-risk requests run on their own; larger ones need the owner's
+      authorization.
 
   - id: evals
     title: Evaluations that measure quality
@@ -193,7 +194,7 @@ gaps:
       commercetools: "Python and TypeScript/Node + React"
       kuro: "Web-App: Typescript"
   - title: Several cooperating agents
-    detail: Each run is one agent loop.
+    detail: Each platform run uses one agent loop; there is no hand-off between cooperating agents.
     asked_by:
       trustedshops: "orchestrate multi-agent workflows using frameworks like LangGraph"
       synera: "new tools, sub-agents, prompt iterations"

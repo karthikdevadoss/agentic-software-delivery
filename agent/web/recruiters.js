@@ -157,7 +157,7 @@
   function requirements(d) {
     const total = d.postings_total;
     return el("section", { "aria-labelledby": "rc-h-req" }, [
-      el("h2", { id: "rc-h-req", text: "What " + total + " AI Engineer postings ask for, and where to check it here" }),
+      el("h2", { id: "rc-h-req", text: "What " + total + " AI engineering job postings ask for, and where to check it here" }),
       el("p", { class: "rc-lead", text: "Counts are how many of the " + total + " postings ask for each thing, in their own words (open “What the postings say”). The right-hand side links to where this portfolio shows it, and what it does not show." }),
     ].concat(d.requirements.map(function (r) {
       return el("article", { class: "rc-req" }, [
