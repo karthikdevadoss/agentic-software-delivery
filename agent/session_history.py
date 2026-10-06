@@ -181,21 +181,33 @@ def _provenance(kind: str, has_end_event: bool) -> str:
     return "LIVE_CAPTURED" if has_end_event else "PARTIAL_RECONSTRUCTION"
 
 
-def _goal_for_claude_code(conn, session_ids):
+# Claude Code prompt text is PRIVATE. The hook stores a bounded excerpt in the
+# ledger for the owner's own use, but none of it is published: the public
+# Usage page and /api/sessions/history showed raw prompts (instructions to
+# agents, client names, a local file path) until Automation Sprint 4. The fix
+# is structural rather than a filter on the way out -- this module never
+# SELECTs the prompt text at all, so there is nothing to leak. A session is
+# described only by a neutral label, its prompt COUNT, timestamps and tokens.
+CLAUDE_CODE_SESSION_LABEL = "Claude Code development session"
+PROMPT_PRIVACY_NOTE = ("Prompt text is private and is not published; "
+                       "only counts, timestamps and token totals are shown.")
+
+
+def _prompt_counts_for_claude_code(conn, session_ids):
     if not session_ids:
         return {}
     with conn.cursor() as cur:
         cur.execute(
             """
-            SELECT DISTINCT ON (session_id) session_id, payload->>'prompt_excerpt'
+            SELECT session_id, COUNT(*)
             FROM delivery_events
             WHERE source = 'claude_code' AND event_type = 'user_prompt_submitted'
               AND session_id = ANY(%s)
-            ORDER BY session_id, timestamp_utc ASC
+            GROUP BY session_id
             """,
             (session_ids,),
         )
-        return {sid: repair_mojibake(text) for sid, text in cur.fetchall()}
+        return {sid: int(n) for sid, n in cur.fetchall()}
 
 
 def _goal_for_workbench(conn, run_ids):
@@ -407,7 +419,7 @@ def list_sessions(before_cursor: str = None, limit: int = 20, include_test_data:
         wb_ids = [r["id"] for r in rows if r["kind"] == KIND_WORKBENCH_RUN]
         v2_ids = [r["id"] for r in rows if r["kind"] == KIND_V2_TRIAL]
 
-        goals_cc = _goal_for_claude_code(conn, cc_ids)
+        prompt_counts_cc = _prompt_counts_for_claude_code(conn, cc_ids)
         goals_wb = _goal_for_workbench(conn, wb_ids)
         ai_active = _ai_active_ms(conn, cc_ids, wb_ids + v2_ids)
         usage_wb = _usage_for_workbench(conn, wb_ids)
@@ -416,7 +428,7 @@ def list_sessions(before_cursor: str = None, limit: int = 20, include_test_data:
 
         sessions = []
         for r in rows:
-            sessions.append(_render_session_summary(r, goals_cc, goals_wb, ai_active, usage_wb, usage_v2, usage_cc))
+            sessions.append(_render_session_summary(r, prompt_counts_cc, goals_wb, ai_active, usage_wb, usage_v2, usage_cc))
 
         next_cursor = rows[-1]["start_ts"].isoformat() if (has_more and rows) else None
         return {
@@ -494,7 +506,7 @@ def _window_semantics(start_ts, end_ts, has_end_event):
     return wall_ms, "OBSERVED_EVENT_WINDOW", "reconstructed from first/last OBSERVED event only — does not prove continuous activity across this span"
 
 
-def _render_session_summary(r, goals_cc, goals_wb, ai_active, usage_wb, usage_v2, usage_cc=None):
+def _render_session_summary(r, prompt_counts_cc, goals_wb, ai_active, usage_wb, usage_v2, usage_cc=None):
     usage_cc = usage_cc or {}
     sid, kind = r["id"], r["kind"]
     start_ts, end_ts = r["start_ts"], r["end_ts"]
@@ -525,9 +537,11 @@ def _render_session_summary(r, goals_cc, goals_wb, ai_active, usage_wb, usage_v2
     }
 
     if kind == KIND_CLAUDE_CODE:
-        raw_goal = goals_cc.get(sid) or "NOT CAPTURED"
-        summary["goal"] = concise_title(raw_goal) if raw_goal != "NOT CAPTURED" else raw_goal
-        summary["raw_capture"] = raw_goal if raw_goal != summary["goal"] else None
+        summary["goal"] = CLAUDE_CODE_SESSION_LABEL
+        summary["raw_capture"] = None
+        summary["prompt_count"] = prompt_counts_cc.get(sid, 0)
+        summary["prompt_text"] = "PRIVATE"
+        summary["prompt_privacy_note"] = PROMPT_PRIVACY_NOTE
         usage = usage_cc.get(sid)
         if usage:
             summary["model"] = usage["model"] or "claude-sonnet-5"
@@ -837,13 +851,13 @@ def get_session_detail(session_id: str) -> dict:
         cc_ids = [session_id] if kind == KIND_CLAUDE_CODE else []
         wb_ids = [session_id] if kind == KIND_WORKBENCH_RUN else []
         v2_ids = [session_id] if kind == KIND_V2_TRIAL else []
-        goals_cc = _goal_for_claude_code(conn, cc_ids)
+        prompt_counts_cc = _prompt_counts_for_claude_code(conn, cc_ids)
         goals_wb = _goal_for_workbench(conn, wb_ids)
         ai_active = _ai_active_ms(conn, cc_ids, wb_ids + v2_ids)
         usage_wb = _usage_for_workbench(conn, wb_ids)
         usage_v2 = _usage_for_v2_trial(conn, v2_ids)
         usage_cc = _usage_for_claude_code(conn, cc_ids)
-        summary = _render_session_summary(r, goals_cc, goals_wb, ai_active, usage_wb, usage_v2, usage_cc)
+        summary = _render_session_summary(r, prompt_counts_cc, goals_wb, ai_active, usage_wb, usage_v2, usage_cc)
 
         # Timeline: real observable events for this id, in order.
         id_col = "session_id" if kind == KIND_CLAUDE_CODE else "run_id"

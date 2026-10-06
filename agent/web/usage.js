@@ -840,6 +840,7 @@ async function renderSessionDetail(sessionId) {
     ${section("Human Interventions", d.human_interventions && d.human_interventions.length
       ? `<ul class="ledger-recent">${d.human_interventions.map(h => `<li>${esc(h.event_type)} — ${esc(h.status)} <span class="hint">${berlinTimeLabel(h.timestamp_utc)}</span></li>`).join("")}</ul>`
       : `<p class="hint">None captured for this session.</p>`)}
+    ${d.prompt_privacy_note ? section("Prompts", `<p>${esc(String(d.prompt_count))} prompt(s) in this session. <span class="hint">${esc(d.prompt_privacy_note)}</span></p>`) : ""}
     ${d.raw_capture ? section("Original Instruction / Raw Capture", `
       <details class="raw-capture-details">
         <summary>Show the complete original text (${d.raw_capture.length.toLocaleString()} characters)</summary>
