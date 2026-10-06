@@ -1718,6 +1718,14 @@ async def ask_codebase_examples_page(request: Request):
     return FileResponse(str(WEB_DIR / "ask-codebase-examples.html"))
 
 
+async def recruiters_page(request: Request):
+    """'For Recruiters': what 13 real AI Engineer postings ask for, mapped to
+    where this platform shows it, with honest gaps. Static page rendered from
+    agent/web/recruiters.json (agent/publish_recruiters_page.py). Not in the
+    top nav until the Owner decides."""
+    return FileResponse(str(WEB_DIR / "recruiters.html"))
+
+
 async def standing_interview_page(request: Request):
     """Standing Interview v0. Typed question in, first-person answer out,
     grounded only in the private corpus. See agent/standing_interview.py for
@@ -2392,6 +2400,7 @@ routes = [
     Route("/ask-codebase", ask_codebase_page, methods=["GET"]),
     Route("/ask-codebase/examples", ask_codebase_examples_page, methods=["GET"]),
     Route("/eval", eval_page, methods=["GET"]),
+    Route("/recruiters", recruiters_page, methods=["GET"]),
     Route("/standing-interview", standing_interview_page, methods=["GET"]),
     Route("/triage", triage_page, methods=["GET"]),
     Route("/triage/scenario-b", triage_page_b, methods=["GET"]),
