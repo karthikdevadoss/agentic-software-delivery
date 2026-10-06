@@ -64,6 +64,7 @@ HERMETIC_MODULES = [
     "test_capability_boundaries",
     "test_change_risk",
     "test_check_config_drift",
+    "test_claims_audit",  # BL-123: DISHONEST claim status, deterministic, no network
     "test_demo_catalogue",
     "test_demo_execution",
     "test_dev_check",
