@@ -802,14 +802,24 @@ def _workbench_engineering_evidence(conn, run_id: str) -> dict:
         elif event_type == "risk_assessment":
             ev["operation_id"] = payload.get("operation_id", ev["operation_id"])
             ev["human_name"] = payload.get("human_name", ev["human_name"])
-            ev["requested_value"] = payload.get("new_value", ev["requested_value"])
+            if payload.get("new_value") is not None:
+                ev["requested_value"] = repair_mojibake(payload["new_value"])
         elif event_type == "diff":
             ev["changed_file"] = payload.get("file", ev["changed_file"])
-            ev["diff_old_line"] = payload.get("old_line", ev["diff_old_line"])
-            ev["diff_new_line"] = payload.get("new_line", ev["diff_new_line"])
+            if payload.get("old_line") is not None:
+                ev["diff_old_line"] = repair_mojibake(payload["old_line"])
+            if payload.get("new_line") is not None:
+                ev["diff_new_line"] = repair_mojibake(payload["new_line"])
         elif event_type == "stage_started" and str(payload.get("stage", "")).startswith("TESTING"):
-            ev["testing_state"] = payload.get("stage")
-            ev["testing_reason"] = payload.get("reason", _UNAVAILABLE)
+            # BL-104 (Sprint 27): these two carried the same mojibake pattern
+            # repair_mojibake() exists to fix (e.g. "TESTING — NOT
+            # APPLICABLE" was stored/served as "TESTING â€” NOT
+            # APPLICABLE") -- found live in production via run trainer-4e68fe81
+            # while verifying this task, and was the only field in this
+            # function that skipped the repair every other free-text field
+            # here already gets.
+            ev["testing_state"] = repair_mojibake(payload.get("stage"))
+            ev["testing_reason"] = repair_mojibake(payload.get("reason", _UNAVAILABLE))
         elif event_type == "commit_created":
             ev["local_commit_sha"] = payload.get("sha", ev["local_commit_sha"])
             ev["local_commit_branch"] = payload.get("branch", ev["local_commit_branch"])

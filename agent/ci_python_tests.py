@@ -68,6 +68,7 @@ HERMETIC_MODULES = [
     "test_claims_audit",  # BL-123: DISHONEST claim status, deterministic, no network
     "test_check_task_template",  # BL-125/127: task-contract structural gate, deterministic, no network
     "test_classify_test_oracles",  # BL-116: test oracle classifier, deterministic AST parsing, no network
+    "test_session_history_mojibake_hermetic",  # BL-104: fake-cursor regression test for a real mojibake bug, no network
     "test_demo_catalogue",
     "test_demo_execution",
     "test_dev_check",
