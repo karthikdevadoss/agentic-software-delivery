@@ -122,7 +122,9 @@
         ]),
         el("div", { class: "ap-actions" }, [
           p.cv_pdf ? el("a", { href: withKey("/applications_pdf/" + encodeURIComponent(p.cv_pdf)), text: "Download CV (PDF)" }) : null,
-          el("button", { type: "button", class: "secondary ap-cover", text: "Download cover letter" }),
+          p.cover_pdf
+            ? el("a", { href: withKey("/applications_pdf/" + encodeURIComponent(p.cover_pdf)), text: "Download cover letter (PDF)", class: "secondary" })
+            : el("button", { type: "button", class: "secondary ap-cover", text: "Download cover letter" }),
           approveBtn,
           statusEl,
         ]),
