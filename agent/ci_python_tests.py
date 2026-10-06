@@ -78,6 +78,7 @@ HERMETIC_MODULES = [
     "test_self_hosted_fonts",  # no Google Fonts requests; local woff2 files exist, licensed and served
     "test_session_prompt_privacy",  # fake ledger with a sentinel prompt: nothing reaches /api/sessions/history
     "test_publish_recruiters_page",  # link classification, quotes, claims scan, freshness of recruiters.json
+    "test_interviewer_page",  # Sprint 14: /interviewer brief route, nav, proof links, no invented claims
     "test_applications_review",  # Sprint 11: /applications gate (no/wrong key 404, right key 200); nav has no Applications
     "test_execution_tools",
     "test_interview_walkthrough_data",

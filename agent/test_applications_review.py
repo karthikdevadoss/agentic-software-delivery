@@ -117,6 +117,7 @@ class ApplicationsReviewNavTest(unittest.TestCase):
         self.assertNotIn("job-packs", nav)
         # Still has For Recruiters (public HR page) — unchanged.
         self.assertIn('{ href: "/recruiters", label: "For Recruiters" }', nav)
+        self.assertIn('{ href: "/interviewer", label: "Interviewer Brief" }', nav)
 
     def test_standing_interview_untouched(self):
         nav = (WEB / "nav.js").read_text(encoding="utf-8")

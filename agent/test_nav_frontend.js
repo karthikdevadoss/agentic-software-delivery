@@ -36,6 +36,7 @@ const EXPECTED_DESTINATIONS = [
   { href: "/triage", label: "Triage" },
   { href: "/ask-codebase", label: "Ask Codebase" },
   { href: "/recruiters", label: "For Recruiters" },
+  { href: "/interviewer", label: "Interviewer Brief" },
 ];
 // BL-079 added a GATED entry (Standing Interview, shown only when the server
 // reports a loaded corpus). The unconditional set is what this guard pins;
@@ -61,6 +62,11 @@ for (const removed of ["/showcase/senior-java-ai-transformation", "/usage"]) {
 assert(
   nav.CANONICAL_NAV_DESTINATIONS.some((d) => d.href === "/recruiters" && d.label === "For Recruiters"),
   "For Recruiters must be a canonical destination (Automation Sprint 4 Owner decision)"
+);
+
+assert(
+  nav.CANONICAL_NAV_DESTINATIONS.some((d) => d.href === "/interviewer" && d.label === "Interviewer Brief"),
+  "Interviewer Brief must be a canonical destination (Automation Sprint 14 Owner decision)"
 );
 
 // Ask the Codebase must genuinely be present -- real production defect
@@ -137,7 +143,7 @@ const PAGES_THAT_MUST_USE_CANONICAL_NAV = [
   // Sprint 14: home.html and the durable-agent case study are recruiter-facing
   // and must obey the same rule -- they were the most likely place for a
   // hand-authored nav to reappear, since both use a light theme of their own.
-  "home.html", "case-study-durable-agent.html",
+  "home.html", "interviewer.html", "case-study-durable-agent.html",
   "workbench.html", "dashboard.html", "usage.html", "learn.html",
   "triage.html", "triage-b.html", "triage-c.html", "showcase.html",
 ];

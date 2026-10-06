@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Karthikeyan Devadoss — Interviewer Brief (Junior AI Architect / AI solutions)</title>
+<meta name="description" content="Short brief for the technical interviewer: live proof on Workbench, Triage, evals, Ask Codebase, honest gaps, and the running platform.">
+<link rel="stylesheet" href="/interviewer.css">
+</head>
+<body data-surface="interviewer">
+<div class="navwrap"><nav class="top-nav" id="top-nav" aria-label="Main"></nav></div>
+
+<main class="iv-shell">
+  <p class="iv-eyebrow">For the technical interviewer</p>
+  <h1>Karthikeyan Devadoss</h1>
+  <p class="iv-role">Junior AI Architect / AI solutions — with a backend engineering foundation</p>
+  <p class="iv-lede">
+    You are past the HR screen. This page is a short map of live proof you can open
+    before or during a technical interview — not a keyword checklist and not a CV rewrite.
+  </p>
+  <p class="iv-note">
+    Target roles: Junior AI Architect or AI solutions work with an architect.
+    At NRG Energy the job title remains Senior Backend Developer; architecture
+    participation is described in the work, not as a title claim.
+  </p>
+  <p class="iv-note">
+    The platform linked here is my own system, independently designed and built —
+    not an NRG product. For deeper Q&amp;A against recorded engineering knowledge,
+    use <a href="/standing-interview">Standing Interview</a>. HR posting map stays on
+    <a href="/recruiters">For Recruiters</a>.
+  </p>
+  <p class="iv-links">
+    <a href="https://agentic-platform-backend-production.up.railway.app/">Live platform</a>
+    <a href="https://github.com/karthikdevadoss/agentic-software-delivery">GitHub repo</a>
+    <a href="/">Home overview</a>
+  </p>
+
+  <h2 class="iv-sec">Live proof to poke at</h2>
+  <section class="iv-proof" aria-label="Proof cards">
+    <article class="iv-card">
+      <h3>Workbench — approval-gated agent run</h3>
+      <p>
+        Watch a recorded end-to-end run: investigate, propose a change, wait for a
+        human approval bound to the exact content, then verify. The model cannot
+        approve its own write.
+      </p>
+      <a class="go" href="/workbench#verified-run-panel">Open Workbench verified run →</a>
+    </article>
+
+    <article class="iv-card">
+      <h3>Triage — defect to patch with real tests</h3>
+      <p>
+        Work a contained software defect: reproduction, AI diagnosis, a proposed
+        patch, real tests, and a human approval step before anything lands.
+      </p>
+      <a class="go" href="/triage">Open Triage lab →</a>
+      <a class="go2" href="/triage/evidence">Triage evidence snapshot →</a>
+    </article>
+
+    <article class="iv-card">
+      <h3>Evals — labelled scores, CI gates</h3>
+      <p>
+        Retrieval quality is scored against a hand-labelled question set. Thresholds
+        are written down; CI can fail the build when a score drops. Small sets —
+        measured, not assumed.
+      </p>
+      <a class="go" href="/eval">See eval scores and CI status →</a>
+      <a class="go2" href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/eval_runner.py">Eval runner source →</a>
+    </article>
+
+    <article class="iv-card">
+      <h3>Ask Codebase — grounded answers</h3>
+      <p>
+        Ask technical questions against this repository. Answers come from retrieval
+        over the real code and docs, not a free-form chat persona.
+      </p>
+      <a class="go" href="/ask-codebase">Try Ask Codebase →</a>
+      <a class="go2" href="/ask-codebase/examples">Recorded example answers →</a>
+    </article>
+
+    <article class="iv-card iv-gaps">
+      <h3>Honest gaps — what this does not claim</h3>
+      <p>
+        One model provider. Local cosine retrieval over small corpora — not a managed
+        vector database. No multi-agent hand-off between cooperating agents. No
+        production-scale vector DB, reranker, or second provider yet. Script-based
+        Railway deploy, not a multi-cloud ML platform.
+      </p>
+      <a class="go" href="/#scope">Same boundaries on the home page →</a>
+    </article>
+
+    <article class="iv-card iv-live">
+      <h3>Live platform — production URL</h3>
+      <p>
+        Everything above is served from the same production deployment. Open the
+        base URL, use the nav, and verify links yourself rather than taking a slide deck
+        on faith.
+      </p>
+      <a class="go" href="https://agentic-platform-backend-production.up.railway.app/">Open live platform →</a>
+      <a class="go2" href="https://github.com/karthikdevadoss">GitHub profile →</a>
+    </article>
+  </section>
+
+  <p class="iv-footer">
+    Berlin · English (working language) · German A1–A2.
+    This site sets no cookies and uses no analytics or third-party trackers.
+    No salary or notice period appears here.
+  </p>
+</main>
+
+<script src="/nav.js"></script>
+</body>
+</html>
