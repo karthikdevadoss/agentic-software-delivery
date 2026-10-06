@@ -82,6 +82,58 @@ async function submitQuery(query) {
   }
 }
 
+// BL-105 (Sprint 27): shows this page's own retrieval quality in plain
+// English, read directly from the same published eval-results.json the
+// /eval page uses -- never a separate or re-derived number.
+function renderQuality(d) {
+  const box = document.getElementById("ac-quality");
+  const byKey = {};
+  (d.metrics || []).forEach((m) => { byKey[m.key] = m; });
+  const recall3 = byKey.recall_at_3;
+  const mrr = byKey.mrr;
+  const recall5 = d.informational && d.informational.recall_at_5;
+
+  if (!recall3 || !mrr) {
+    box.innerHTML = `<p class="hint">Retrieval quality numbers are not available right now.</p>`;
+    return;
+  }
+
+  const when = new Date(d.generated_at);
+  const whenText = isNaN(when) ? d.generated_at : when.toUTCString();
+  const pct = (n) => `${Math.round(n * 100)}%`;
+
+  box.innerHTML = `
+    <p>Measured against a hand-labelled set of ${(d.labelled_set || {}).retrieval_cases || "?"} real
+    questions with a known correct answer, so this is a real score, not a self-report:</p>
+    <ul class="ac-quality-list">
+      <li><strong>${pct(recall3.score)} of the time</strong>, the file that actually answers the
+      question appears somewhere in the top 3 results shown.</li>
+      <li>When it does appear, it is usually <strong>close to the top</strong>, not buried at
+      position 3 — that is what "mean reciprocal rank" (${mrr.score.toFixed(2)} out of 1.0) means
+      in plain terms: 1.0 would mean always ranked first.</li>
+      ${typeof recall5 === "number" ? `<li>Widening the window to the top 5 results instead of 3 catches the right file <strong>${pct(recall5)} of the time</strong> (tracked, not yet a required gate).</li>` : ""}
+    </ul>
+    <p class="hint">Measured ${esc(whenText)} at commit <code>${esc((d.commit_sha || "").slice(0, 7))}</code>.
+    Full breakdown, every question, and what happens when a score drops: <a href="/eval">the retrieval eval page →</a></p>
+  `;
+}
+
+function loadQuality() {
+  fetch("/eval-results.json", { cache: "no-cache" })
+    .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+    .then(renderQuality)
+    .catch((err) => {
+      document.getElementById("ac-quality").innerHTML =
+        `<p class="hint">Could not load the latest measured retrieval quality (${esc(err.message)}). No number is shown rather than an invented one.</p>`;
+    });
+}
+
+function esc(s) {
+  const div = document.createElement("div");
+  div.textContent = s == null ? "" : String(s);
+  return div.innerHTML;
+}
+
 function main() {
   const form = document.getElementById("ac-form");
   const textarea = document.getElementById("ac-query");
@@ -105,6 +157,8 @@ function main() {
       submitQuery(textarea.value);
     });
   });
+
+  loadQuality();
 }
 
 main();

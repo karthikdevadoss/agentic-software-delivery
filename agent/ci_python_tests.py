@@ -56,6 +56,7 @@ HERMETIC_MODULES = [
     "test_aggregate_evidence",
     "test_ai_intelligence",
     "test_ask_codebase",
+    "test_ask_codebase_quality",  # BL-105: plain-English retrieval metrics wired to eval-results.json
     "test_backend_catalogue",
     "test_backend_planning",
     "test_backend_rag_index",
