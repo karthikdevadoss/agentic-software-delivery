@@ -252,8 +252,9 @@ class RecruitersPageArtifactTestCase(unittest.TestCase):
         for path in ("recruiters.html", "recruiters.css"):
             self.assertNotIn("fonts.googleapis", (WEB / path).read_text(encoding="utf-8"))
 
-    def test_page_is_not_added_to_the_top_nav(self):
-        self.assertNotIn("/recruiters", (WEB / "nav.js").read_text(encoding="utf-8"))
+    def test_page_is_in_the_top_nav_as_for_recruiters(self):
+        # Automation Sprint 4: the Owner approved the nav entry.
+        self.assertIn('{ href: "/recruiters", label: "For Recruiters" }', (WEB / "nav.js").read_text(encoding="utf-8"))
 
     def test_no_placeholder_or_dead_link_markers(self):
         for path in ("recruiters.html", "recruiters.js"):

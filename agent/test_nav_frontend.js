@@ -35,8 +35,7 @@ const EXPECTED_DESTINATIONS = [
   { href: "/workbench", label: "Workbench" },
   { href: "/triage", label: "Triage" },
   { href: "/ask-codebase", label: "Ask Codebase" },
-  { href: "/showcase/senior-java-ai-transformation", label: "Showcase" },
-  { href: "/usage", label: "Usage" },
+  { href: "/recruiters", label: "For Recruiters" },
 ];
 // BL-079 added a GATED entry (Standing Interview, shown only when the server
 // reports a loaded corpus). The unconditional set is what this guard pins;
@@ -49,10 +48,19 @@ assertDeepEqual(gated.map((d) => [d.href, d.label, d.requiresEndpoint, d.require
   [["/standing-interview", "Standing Interview", "/api/standing-interview/status", "loaded"]],
   "the only gated destination is Standing Interview, gated on the corpus-status endpoint");
 
-// Role Showcase must genuinely be present -- the exact real defect.
+// Automation Sprint 4 (Owner decision, 2026-10-06): Showcase and Usage left
+// the public nav (their routes stay reachable by direct link) and "For
+// Recruiters" joined it. The earlier "Showcase must be present" guard pinned a
+// 2026-09 defect (Showcase missing from SOME pages); the consistency half of
+// that guard survives in nav-consistency.spec.js, which checks every page
+// renders the same set.
+for (const removed of ["/showcase/senior-java-ai-transformation", "/usage"]) {
+  assert(!nav.CANONICAL_NAV_DESTINATIONS.some((d) => d.href === removed),
+    `${removed} must NOT be in public navigation (Automation Sprint 4 Owner decision)`);
+}
 assert(
-  nav.CANONICAL_NAV_DESTINATIONS.some((d) => d.href === "/showcase/senior-java-ai-transformation" && d.label === "Showcase"),
-  "Showcase must be a real canonical destination (this is the exact production defect being fixed)"
+  nav.CANONICAL_NAV_DESTINATIONS.some((d) => d.href === "/recruiters" && d.label === "For Recruiters"),
+  "For Recruiters must be a canonical destination (Automation Sprint 4 Owner decision)"
 );
 
 // Ask the Codebase must genuinely be present -- real production defect
@@ -65,9 +73,9 @@ assert(
   "Ask the Codebase must be a real canonical destination (real production defect: existed but was unreachable from any nav)"
 );
 
-// No duplicate Showcase URL (the directive's explicit constraint).
+// No Showcase entry at all now (it used to be "exactly one, no duplicates").
 const showcaseEntries = nav.CANONICAL_NAV_DESTINATIONS.filter((d) => d.href.startsWith("/showcase"));
-assert(showcaseEntries.length === 1, "exactly one canonical Showcase URL, no duplicates");
+assert(showcaseEntries.length === 0, "no Showcase entry in the public nav (Automation Sprint 4)");
 
 // Sprint 14 (Owner decision): Learn, JD Match and Dashboard must NOT appear in
 // public navigation. Learn and JD Match 404 publicly; Dashboard is

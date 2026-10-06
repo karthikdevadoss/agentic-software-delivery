@@ -1735,8 +1735,8 @@ async def ask_codebase_examples_page(request: Request):
 async def recruiters_page(request: Request):
     """'For Recruiters': what 13 real AI Engineer postings ask for, mapped to
     where this platform shows it, with honest gaps. Static page rendered from
-    agent/web/recruiters.json (agent/publish_recruiters_page.py). Not in the
-    top nav until the Owner decides."""
+    agent/web/recruiters.json (agent/publish_recruiters_page.py). In the top
+    nav as "For Recruiters" since Automation Sprint 4 (Owner decision)."""
     return FileResponse(str(WEB_DIR / "recruiters.html"))
 
 
