@@ -182,6 +182,57 @@ jobs:
           git fetch origin master:refs/remotes/origin/master || true
           python agent/verify_change.py --base origin/master --dry-run
 
+  # Automation Sprint 8 (2026-10-06): the Postgres event-ledger tests finally
+  # run in CI. Until now test_event_ledger (42 tests, 27 of them against a real
+  # database) and the three modules that reach the ledger through imports sat
+  # in ci_python_tests.LIVE_INFRA_MODULES and never ran on a fresh runner.
+  # A postgres service container is the database; nothing here touches the
+  # deployed Railway ledger and no secret is needed.
+  #   - test_event_ledger: agent/ledger_db_fixture.py creates a throwaway
+  #     database on the service (EVENT_LEDGER_TEST_SERVER_URL), the real
+  #     schema.sql DDL builds the table, and the database is dropped after.
+  #     EVENT_LEDGER_REQUIRE_DB=1 turns "no database reachable" into a
+  #     FAILURE, so this job can never go green by skipping every real test.
+  #   - the ledger-dependent modules use their own database on the same
+  #     service (POSTGRES_DB below) through EVENT_LEDGER_DATABASE_URL.
+  # BLOCKING: same assertions as against the real ledger, none weakened.
+  ledger-postgres:
+    name: Event ledger tests (real Postgres service container)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ledger_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      EVENT_LEDGER_TEST_SERVER_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      EVENT_LEDGER_REQUIRE_DB: '1'
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: agent/requirements.txt
+      - run: pip install -r agent/requirements.txt
+      - name: test_event_ledger against a throwaway database (a skip is a failure here)
+        working-directory: agent
+        run: python -m unittest -v test_event_ledger
+      - name: Ledger-dependent modules (knowledge candidates, Claude Code hook, workflow checkpointer)
+        working-directory: agent
+        env:
+          EVENT_LEDGER_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ledger_ci
+        run: python -m unittest -v test_knowledge_candidates test_claude_code_hook test_workflow_checkpointer
+
   agentic-platform-frontend:
     name: Agentic platform frontend (Node)
     runs-on: ubuntu-latest

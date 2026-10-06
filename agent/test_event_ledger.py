@@ -25,6 +25,13 @@ proven deterministically without depending on the DB being *down* on
 demand.
 
 Run: python agent/test_event_ledger.py
+     (uses EVENT_LEDGER_DATABASE_URL as before), or against a throwaway
+     database on any Postgres server -- what CI does with its postgres
+     service container (the database is created and dropped by the fixture):
+     EVENT_LEDGER_TEST_SERVER_URL=postgresql://postgres:postgres@localhost:5432/postgres \
+         EVENT_LEDGER_REQUIRE_DB=1 python agent/test_event_ledger.py
+     With no database reachable the real-database tests skip cleanly; with
+     EVENT_LEDGER_REQUIRE_DB=1 that is a failure instead (agent/ledger_db_fixture.py).
 """
 
 import json
@@ -36,6 +43,13 @@ from pathlib import Path
 from unittest import mock
 
 import event_ledger as el
+
+# Automation Sprint 8: real-database tests below carry @needs_ledger_db. With
+# EVENT_LEDGER_TEST_SERVER_URL set, setUpModule creates a throwaway database
+# for this module and tearDownModule drops it; with no database reachable they
+# skip cleanly, unless EVENT_LEDGER_REQUIRE_DB=1 (CI), where that is a failure.
+# See agent/ledger_db_fixture.py.
+from ledger_db_fixture import needs_ledger_db, setUpModule, tearDownModule  # noqa: F401
 
 
 def _unique(prefix):
@@ -58,6 +72,7 @@ class ConnectionResilienceTestCase(unittest.TestCase):
     it — defense in depth this application's own code cannot provide by
     itself against an externally-orphaned connection."""
 
+    @needs_ledger_db
     def test_real_connection_has_a_bounded_statement_timeout(self):
         conn = el._connect()
         try:
@@ -67,6 +82,7 @@ class ConnectionResilienceTestCase(unittest.TestCase):
         finally:
             conn.close()
 
+    @needs_ledger_db
     def test_real_connection_has_a_bounded_idle_in_transaction_timeout(self):
         conn = el._connect()
         try:
@@ -76,6 +92,7 @@ class ConnectionResilienceTestCase(unittest.TestCase):
         finally:
             conn.close()
 
+    @needs_ledger_db
     def test_ensure_schema_completes_well_within_the_statement_timeout(self):
         """Direct regression for the exact incident: ensure_schema()'s
         multi-statement DDL must complete comfortably inside the
@@ -142,6 +159,7 @@ class ConnectionResilienceTestCase(unittest.TestCase):
         self.assertTrue(el._schema_ready)
 
 
+@needs_ledger_db
 class RealRemoteInsertTestCase(unittest.TestCase):
     """A. Normal event -> real remote DB."""
 
@@ -156,6 +174,7 @@ class RealRemoteInsertTestCase(unittest.TestCase):
         self.assertEqual(rows[0]["event_type"], "run_started")
 
 
+@needs_ledger_db
 class OrderingTestCase(unittest.TestCase):
     """B. Multiple events preserve real ordering via timestamp/event_id."""
 
@@ -173,6 +192,7 @@ class OrderingTestCase(unittest.TestCase):
         self.assertEqual(len({r["event_id"] for r in rows}), len(expected_types))
 
 
+@needs_ledger_db
 class IdempotentRetryTestCase(unittest.TestCase):
     """C. A retried insert of the SAME event_id is a no-op, never a
     duplicate row — the exact guarantee sync_spool() depends on."""
@@ -190,6 +210,7 @@ class IdempotentRetryTestCase(unittest.TestCase):
         self.assertEqual(rows[0]["event_id"], envelope["event_id"])
 
 
+@needs_ledger_db
 class RunReconstructionTestCase(unittest.TestCase):
     """I. A full run trajectory can be reconstructed from stored events
     alone — proves run_id correlation actually works end-to-end, not just
@@ -220,6 +241,7 @@ class RunReconstructionTestCase(unittest.TestCase):
         self.assertEqual(rows[-1]["event_type"], "run_completed")
 
 
+@needs_ledger_db
 class RecentEventsExcludesMockFixturesTestCase(unittest.TestCase):
     """Real regression for the flagship-completion session's Usage
     'Event Ledger (Live)' mock-leak finding: source='workbench_mock' rows
@@ -269,6 +291,7 @@ class RecentEventsExcludesMockFixturesTestCase(unittest.TestCase):
                           "sorted above real events by its genuine (far-future) timestamp")
 
 
+@needs_ledger_db
 class TokenUsageTestCase(unittest.TestCase):
     """J. Model/token usage data is preserved where the provider exposes
     it — and honestly absent (None), never invented, where it doesn't."""
@@ -328,6 +351,7 @@ class OutageSpoolTestCase(unittest.TestCase):
         self.assertEqual(spooled["run_id"], run_id)
         self.assertEqual(spooled["event_id"], result["event_id"])
 
+    @needs_ledger_db
     def test_e_spooled_event_syncs_once_the_remote_ledger_is_reachable_again(self):
         run_id = _unique("test-run-e")
         with mock.patch.object(el, "_insert", side_effect=RuntimeError("simulated remote outage")):
@@ -344,6 +368,7 @@ class OutageSpoolTestCase(unittest.TestCase):
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["event_id"], result["event_id"])
 
+    @needs_ledger_db
     def test_sync_spool_retry_is_idempotent_no_duplicate_after_partial_success(self):
         """A spool entry that IS already in the remote DB (e.g. a prior
         sync partially succeeded before a crash) must sync as a safe
@@ -361,6 +386,7 @@ class OutageSpoolTestCase(unittest.TestCase):
         self.assertEqual(len(rows), 1, "spool retry of an already-inserted event must not duplicate")
 
 
+@needs_ledger_db
 class SyncSpoolFreshProcessTestCase(unittest.TestCase):
     """Real incident (2026-09-18): sync_spool()'s `with _lock:` calls
     _insert(), which unconditionally calls ensure_schema(), which itself
@@ -449,6 +475,7 @@ class StaleSyncLockTestCase(unittest.TestCase):
         self.assertLess(time.time() - self.lock_path.stat().st_mtime, 5)
 
 
+@needs_ledger_db
 class PreTerminalCrashDurabilityTestCase(unittest.TestCase):
     """F. A run that fails/crashes BEFORE reaching a terminal state must
     not lose events emitted earlier — write-through means each event is
@@ -467,6 +494,7 @@ class PreTerminalCrashDurabilityTestCase(unittest.TestCase):
         self.assertEqual(rows[-1]["event_type"], "tool_call_started")
 
 
+@needs_ledger_db
 class HistoricalFailureNotOverwrittenTestCase(unittest.TestCase):
     """H. An append-only ledger never overwrites an earlier failure event
     just because a later run/attempt succeeded — both rows must coexist."""
@@ -536,6 +564,7 @@ class EnvelopeConstructionTestCase(unittest.TestCase):
             el.build_envelope("run_started", run_id="r1", not_a_real_field="x")
 
 
+@needs_ledger_db
 class UsageEconomicsTestCase(unittest.TestCase):
     """K. Real, ledger-backed economics aggregation (get_usage_economics()).
 
@@ -794,6 +823,7 @@ class DisplayTimezoneWindowTestCase(unittest.TestCase):
         )
 
 
+@needs_ledger_db
 class DevSessionCostSummaryTestCase(unittest.TestCase):
     """Real gap found 2026-09-18 (the 40 EUR overnight-session incident):
     get_usage_economics() is Workbench-only, but its 'Lifetime AI spend'
@@ -850,6 +880,7 @@ class DevSessionCostSummaryTestCase(unittest.TestCase):
                 el.delete_event_for_test_cleanup(event_id)
 
 
+@needs_ledger_db
 class DeliveryPathShareTestCase(unittest.TestCase):
     """BL-059: which real delivery path is actually used -- Workbench
     pipeline runs vs direct Claude Code sessions -- counted from real
@@ -895,6 +926,7 @@ class DeliveryPathShareTestCase(unittest.TestCase):
                 el.delete_event_for_test_cleanup(session_event_id)
 
 
+@needs_ledger_db
 class SessionIncidentWindowTestCase(unittest.TestCase):
     """Real feature requested by the Owner (2026-09-18): a session's own
     detail page only ever showed the WHOLE session's total cost, even when

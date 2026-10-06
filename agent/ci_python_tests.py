@@ -136,9 +136,13 @@ HERMETIC_MODULES = [
 # This list is PRINTED ON EVERY CI RUN so the exclusion cannot quietly decay
 # into "nobody ever runs these". Closing it is tracked work, not a silent gap.
 # ---------------------------------------------------------------------------
+# Automation Sprint 8 (2026-10-06): the four Postgres modules marked "runs in
+# the ledger-postgres CI job" below DO run in CI now -- in their own job with a
+# postgres service container (.github/workflows/ci.yml), not in this hermetic
+# runner, which deliberately holds no database.
 LIVE_INFRA_MODULES = {
     "test_backend_execution": "spawns a real web_server subprocess",
-    "test_workflow_checkpointer": "BL-094: real Postgres checkpoint tables via EVENT_LEDGER_DATABASE_URL",
+    "test_workflow_checkpointer": "BL-094: real Postgres checkpoint tables via EVENT_LEDGER_DATABASE_URL; runs in the ledger-postgres CI job",
     # --- The four below were MISCLASSIFIED as hermetic and were caught by the
     # first real CI run (2026-09-25, run 36172353680), not by local testing.
     # Root cause of the misclassification: "hermetic" was judged from grepping
@@ -149,11 +153,11 @@ LIVE_INFRA_MODULES = {
     # and a JDK that CI's Python job deliberately does not have. This is the
     # repo's own documented "green on a long-lived dev machine, red on a fresh
     # checkout" trap, reproduced exactly.
-    "test_knowledge_candidates": "imports the event ledger; needs a live EVENT_LEDGER_DATABASE_URL",
-    "test_claude_code_hook": "RealLedgerDistinctnessTestCase queries the live Postgres ledger",
+    "test_knowledge_candidates": "imports the event ledger; needs Postgres; runs in the ledger-postgres CI job",
+    "test_claude_code_hook": "RealLedgerDistinctnessTestCase queries a Postgres ledger; runs in the ledger-postgres CI job",
     "test_environment_preflight": "asserts a live JDK on the host; CI's Python job has no Java installed",
     "test_verify_claude_hooks_config": "asserts ~/.claude/settings.json exists on this developer machine",
-    "test_event_ledger": "requires a live DATABASE_URL (real Postgres event ledger)",
+    "test_event_ledger": "needs real Postgres; runs in the ledger-postgres CI job (service container + throwaway DB)",
     "test_learn_pdf": "hits the live Railway deployment",
     "test_session_history": "hits the live Railway deployment",
     # Reason corrected 2026-10-06 (was "hits live Railway over urllib + spawns
