@@ -1,0 +1,948 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-10-06T11:23:50Z",
+  "commit_sha": "0dfba1e0fa1cc117c21b7afd24b667ef4039eabe",
+  "branch": "mahadeva/automation-3",
+  "working_tree_dirty": false,
+  "postings_accessed": "2026-10-06",
+  "postings_note": "Thirteen English-language AI engineering job postings that were listed as open on the access date, in this order: remote first, then Berlin hybrid, Berlin on-site and other German cities. Architect-titled roles based in Germany in the same search all required German; the one architect-titled role here is EU-remote.",
+  "postings_total": 13,
+  "profile": {
+    "name": "Karthikeyan Devadoss",
+    "headline": "AI Engineer",
+    "location": "Berlin",
+    "work_mode": "Remote-first, open to contract work",
+    "languages": "English (working language); German A1–A2",
+    "education": "B.E. Computer Science, Madras University",
+    "nrg": "Current client engagement: NRG Energy. I took part in architecture discussions and design decisions with the lead. The platform on this page is my own system, not an NRG product.",
+    "facts_source": "Owner-confirmed on 2026-10-06 (degree, languages, work mode, NRG wording); name, Berlin and the NRG separation also appear on the live home page.",
+    "links": [
+      {
+        "label": "GitHub",
+        "url": "https://github.com/karthikdevadoss",
+        "status": "external"
+      },
+      {
+        "label": "LinkedIn",
+        "url": "https://www.linkedin.com/in/karthikeyan-devdoss/",
+        "status": "external"
+      },
+      {
+        "label": "Home page",
+        "url": "/",
+        "status": "live"
+      }
+    ]
+  },
+  "headline": [
+    {
+      "metric": "eval",
+      "link": {
+        "url": "/eval",
+        "status": "pending_deploy",
+        "fallback_url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/mahadeva/automation-3/agent/web/eval.html"
+      }
+    },
+    {
+      "metric": "case_study",
+      "link": {
+        "url": "/case-study/durable-agent",
+        "status": "live"
+      }
+    },
+    {
+      "metric": "triage",
+      "link": {
+        "url": "/triage/evidence",
+        "status": "pending_deploy",
+        "fallback_url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/mahadeva/automation-3/agent/web/triage-evidence.html"
+      }
+    }
+  ],
+  "metrics": {
+    "eval": {
+      "generated_at": "2026-10-06T10:07:23Z",
+      "commit_sha": "674958abf3ff8437f7a5b874446fd4377b6a9d41",
+      "overall_passed": true,
+      "labelled_set": {
+        "retrieval_cases": 12,
+        "routing_cases": 14,
+        "security_routing_cases": 7
+      },
+      "metrics": [
+        {
+          "key": "recall_at_3",
+          "label": "Retrieval Recall@3",
+          "score": 0.833,
+          "threshold": 0.4,
+          "comparator": ">=",
+          "passed": true
+        },
+        {
+          "key": "mrr",
+          "label": "Retrieval MRR (mean reciprocal rank)",
+          "score": 0.868,
+          "threshold": 0.35,
+          "comparator": ">=",
+          "passed": true
+        },
+        {
+          "key": "routing_accuracy",
+          "label": "Tool-routing accuracy",
+          "score": 1.0,
+          "threshold": 0.85,
+          "comparator": ">=",
+          "passed": true
+        },
+        {
+          "key": "security_case_accuracy",
+          "label": "Security-case routing accuracy (zero tolerance)",
+          "score": 1.0,
+          "threshold": 1.0,
+          "comparator": "==",
+          "passed": true
+        }
+      ],
+      "ci_eval_step_on_master": {
+        "observed_at": "2026-10-06T10:07:23Z",
+        "latest_status": "skipped",
+        "last_success_at": "2026-09-29T17:07:25Z"
+      },
+      "agent_decision": {
+        "label": "recorded 2026-09-16",
+        "passed": 6,
+        "total": 6
+      }
+    },
+    "triage": {
+      "generated_at": "2026-10-06T10:04:29Z",
+      "commit_sha": "80c3a94ac25bb182996f7840cbd146e2e71da710",
+      "scenarios": 4,
+      "java_tests": 20,
+      "java_passed": 18,
+      "java_failed": 0,
+      "java_skipped": 2,
+      "skip_reason": "needs Docker, which the recording machine did not have"
+    },
+    "ask": {
+      "generated_at": "2026-10-06T10:09:27Z",
+      "commit_sha": "9afcc1cdf5c3ebd5f3a219d49e879f66a1c50e08",
+      "examples": 6,
+      "strong_evidence": 6,
+      "llm_calls": 0
+    },
+    "case_study": {
+      "banner": [
+        {
+          "label": "Crash drill",
+          "value": "22 / 22",
+          "note": "assertions, one run"
+        },
+        {
+          "label": "Restart in production",
+          "value": "Survived",
+          "note": "while waiting for approval"
+        },
+        {
+          "label": "Duplicate writes",
+          "value": "Zero",
+          "note": "one commit, after the kill"
+        }
+      ]
+    }
+  },
+  "requirements": [
+    {
+      "id": "agents",
+      "title": "Agents that use tools and act",
+      "asked_count": 12,
+      "asked_by": [
+        {
+          "posting": "micro1",
+          "quote": "requiring agents to discover and reason over information from real MCP servers"
+        },
+        {
+          "posting": "mercor",
+          "quote": "Build and operate LLM agents in production environments."
+        },
+        {
+          "posting": "space44",
+          "quote": "Configure AI agents, knowledge structures and governance within PIPE44."
+        },
+        {
+          "posting": "flodesk",
+          "quote": "context, tools, agent loops, orchestration and product state"
+        },
+        {
+          "posting": "robco",
+          "quote": "orchestration, tool use, MCP, memory, and retrieval"
+        },
+        {
+          "posting": "trustedshops",
+          "quote": "Design agents that make informed decisions, interact with users and systems"
+        },
+        {
+          "posting": "synera",
+          "quote": "new tools, sub-agents, prompt iterations"
+        },
+        {
+          "posting": "commercetools",
+          "quote": "Build agent loops and orchestration: tool use, structured outputs, business-rule enforcement, graceful failure"
+        },
+        {
+          "posting": "kuro",
+          "quote": "workflow harness to run agentic workflows"
+        },
+        {
+          "posting": "clera",
+          "quote": "Build agent orchestration, context management"
+        },
+        {
+          "posting": "cortea",
+          "quote": "production-grade LLM agents used in complex audit workflows"
+        },
+        {
+          "posting": "ml6",
+          "quote": "autonomous AI agents, advanced work assistants, and Agentic AI platform engineering"
+        }
+      ],
+      "evidence": [
+        {
+          "label": "Workbench: a recorded end-to-end run (requirement, agent investigation, tests, commit, deploy, production check)",
+          "url": "/workbench#verified-run-panel",
+          "status": "live"
+        },
+        {
+          "label": "Incident Triage Lab: reproduce, diagnose, patch, real tests",
+          "url": "/triage",
+          "status": "live"
+        },
+        {
+          "label": "Agent loop source",
+          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/agent_loop.py",
+          "status": "source"
+        }
+      ],
+      "limits": "One model provider. One run at a time. In the public preview only small, low-risk requests run on their own; larger ones need the owner's authorization."
+    },
+    {
+      "id": "evals",
+      "title": "Evaluations that measure quality",
+      "asked_count": 9,
+      "asked_by": [
+        {
+          "posting": "micro1",
+          "quote": "golden reference solutions that accurately measure both MCP tool use and software engineering ability"
+        },
+        {
+          "posting": "mercor",
+          "quote": "Evaluate agent performance and determine improvements after changes."
+        },
+        {
+          "posting": "flodesk",
+          "quote": "Set quality baselines and release gates for prompt, model and agent changes."
+        },
+        {
+          "posting": "robco",
+          "quote": "design and run evals, monitor agents in production"
+        },
+        {
+          "posting": "synera",
+          "quote": "co-own the evaluation framework that gates every change"
+        },
+        {
+          "posting": "commercetools",
+          "quote": "Treat evals as a first-class system - provable improvement, not vibes"
+        },
+        {
+          "posting": "kuro",
+          "quote": "Manage evaluations and scoring, and perform error analysis on new and shipped AI features."
+        },
+        {
+          "posting": "clera",
+          "quote": "Develop evaluations for multi-turn workflows so agent quality and reliability can be measured."
+        },
+        {
+          "posting": "cortea",
+          "quote": "build the evaluation and observability foundation for production-grade LLM agents"
+        }
+      ],
+      "evidence": [
+        {
+          "label": "Retrieval and routing eval results page",
+          "url": "/eval",
+          "status": "pending_deploy",
+          "fallback_url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/mahadeva/automation-3/agent/web/eval.html",
+          "metrics": "eval"
+        },
+        {
+          "label": "Eval runner and thresholds",
+          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/eval_runner.py",
+          "status": "source"
+        },
+        {
+          "label": "Hand-labelled retrieval questions",
+          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/evals/retrieval_dataset.json",
+          "status": "source"
+        },
+        {
+          "label": "Agent decision eval runner",
+          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/agent_decision_eval_runner.py",
+          "status": "source"
+        }
+      ],
+      "limits": "Small labelled sets. No model-graded scoring and no calibration against human labels. The CI status of the eval step is shown on the eval page as it was observed, including when it is not running."
+    },
+    {
+      "id": "production",
+      "title": "Owning it in production",
+      "asked_count": 11,
+      "asked_by": [
+        {
+          "posting": "mercor",
+          "quote": "Experience shipping agents used by real users."
+        },
+        {
+          "posting": "space44",
+          "quote": "Experience designing or implementing AI-enabled business solutions in production environments."
+        },
+        {
+          "posting": "flodesk",
+          "quote": "Turn production failures, traces and member feedback into durable regression cases"
+        },
+        {
+          "posting": "robco",
+          "quote": "owning each from concept through production."
+        },
+        {
+          "posting": "trustedshops",
+          "quote": "Build production-ready GenAI systems"
+        },
+        {
+          "posting": "synera",
+          "quote": "end-to-end, in production, for two real agentic products"
+        },
+        {
+          "posting": "commercetools",
+          "quote": "Take a capability from prompt-in-a-notebook to a measured, guard-railed production feature"
+        },
+        {
+          "posting": "kuro",
+          "quote": "Have proven experience delivering production-grade applied AI features to customers"
+        },
+        {
+          "posting": "clera",
+          "quote": "Experience shipping LLM-powered systems to real customers and owning them after launch."
+        },
+        {
+          "posting": "cortea",
+          "quote": "You should expect to write production code"
+        },
+        {
+          "posting": "ml6",
+          "quote": "Work end-to-end: from data to production"
+        }
+      ],
+      "evidence": [
+        {
+          "label": "Case study: what happens when the machine dies halfway through an AI-written change",
+          "url": "/case-study/durable-agent",
+          "status": "live",
+          "metrics": "case_study"
+        },
+        {
+          "label": "Triage evidence: which scenario tests ran, and what did not",
+          "url": "/triage/evidence",
+          "status": "pending_deploy",
+          "fallback_url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/mahadeva/automation-3/agent/web/triage-evidence.html",
+          "metrics": "triage"
+        },
+        {
+          "label": "The live Java/Spring application the platform changes",
+          "url": "https://agentic-delivery-customer-app-production.up.railway.app",
+          "status": "external"
+        },
+        {
+          "label": "Durable workflow source",
+          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/durable_workflow.py",
+          "status": "source"
+        }
+      ],
+      "limits": "This is my own platform. Its users are portfolio visitors, not paying customers."
+    },
+    {
+      "id": "retrieval",
+      "title": "Retrieval over real sources",
+      "asked_count": 7,
+      "asked_by": [
+        {
+          "posting": "space44",
+          "quote": "Retrieval-Augmented Generation (RAG), AI agents and modern enterprise AI workflows."
+        },
+        {
+          "posting": "robco",
+          "quote": "Built knowledge bases and put RAG pipelines to work"
+        },
+        {
+          "posting": "trustedshops",
+          "quote": "Build Retrieval-Augmented Generation systems"
+        },
+        {
+          "posting": "commercetools",
+          "quote": "Ground models in real data: retrieval, embeddings, and feedback loops that actually close"
+        },
+        {
+          "posting": "artefact",
+          "quote": "Interest in data, LLMs, Prompt Engineering, or Retrieval-Augmented Generation (RAG)."
+        },
+        {
+          "posting": "cortea",
+          "quote": "the evaluation systems that power our multimodal retrieval agents"
+        },
+        {
+          "posting": "ml6",
+          "quote": "advanced Retrieval-Augmented Generation (RAG) systems and conversational AI."
+        }
+      ],
+      "evidence": [
+        {
+          "label": "Ask the Codebase: cited answers from the repository, no model call",
+          "url": "/ask-codebase",
+          "status": "live"
+        },
+        {
+          "label": "All six example questions answered (recorded snapshot)",
+          "url": "/ask-codebase/examples",
+          "status": "pending_deploy",
+          "fallback_url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/mahadeva/automation-3/agent/web/ask-codebase-examples.html",
+          "metrics": "ask"
+        },
+        {
+          "label": "Retrieval source",
+          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/ask_codebase.py",
+          "status": "source"
+        }
+      ],
+      "limits": "A local embedding model and plain similarity search over a small curated set of files. No hosted search service."
+    },
+    {
+      "id": "ops",
+      "title": "Cost, observability and safe boundaries",
+      "asked_count": 8,
+      "asked_by": [
+        {
+          "posting": "mercor",
+          "quote": "Ensure visibility into agent actions and associated costs."
+        },
+        {
+          "posting": "flodesk",
+          "quote": "LLM evaluation, observability and experimental design"
+        },
+        {
+          "posting": "robco",
+          "quote": "manage observability, cost, guardrails, and security so teams can trust what the agents produce"
+        },
+        {
+          "posting": "synera",
+          "quote": "review Langfuse traces from the weekend, and flag any new failure modes worth triaging"
+        },
+        {
+          "posting": "commercetools",
+          "quote": "comfortable with async, streaming, and observability"
+        },
+        {
+          "posting": "kuro",
+          "quote": "Obsv., Eval. & Tracking: Langfuse, Datadog"
+        },
+        {
+          "posting": "clera",
+          "quote": "sandboxed code execution and permission-aware data access"
+        },
+        {
+          "posting": "cortea",
+          "quote": "directly improve the quality, cost, reliability"
+        }
+      ],
+      "evidence": [
+        {
+          "label": "One model gateway for every call, with an off switch",
+          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/reasoning_gateway.py",
+          "status": "source"
+        },
+        {
+          "label": "Durable event log with token counts per model call",
+          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/event_ledger.py",
+          "status": "source"
+        },
+        {
+          "label": "Write boundary: the model can propose a file change but cannot approve it",
+          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/write_tools.py",
+          "status": "source"
+        },
+        {
+          "label": "Capability and security model",
+          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/CAPABILITY_SECURITY_MODEL.md",
+          "status": "source"
+        }
+      ],
+      "limits": "The approval step covers the model's file-writing tools. Small, low-risk Workbench requests in the public preview are applied without a human approval step."
+    },
+    {
+      "id": "mcp",
+      "title": "Model Context Protocol",
+      "asked_count": 4,
+      "asked_by": [
+        {
+          "posting": "micro1",
+          "quote": "using Model Context Protocol (MCP) tools"
+        },
+        {
+          "posting": "robco",
+          "quote": "orchestration, tool use, MCP, memory, and retrieval"
+        },
+        {
+          "posting": "trustedshops",
+          "quote": "integrate with tools and data sources using modular logic and the Model Context Protocol (MCP)"
+        },
+        {
+          "posting": "commercetools",
+          "quote": "Build the integration layer (via MCP) that lets agents securely call backend systems and business APIs"
+        }
+      ],
+      "evidence": [
+        {
+          "label": "MCP server exposing the read-only repository tools",
+          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/mcp_server.py",
+          "status": "source"
+        }
+      ],
+      "limits": "Implemented and tested; it runs locally, not as a hosted service."
+    }
+  ],
+  "gaps": [
+    {
+      "title": "Managed cloud AI services (AWS, Azure, GCP)",
+      "detail": "The platform runs on Railway and calls one model provider directly.",
+      "asked_count": 6,
+      "asked_by": [
+        {
+          "posting": "trustedshops",
+          "quote": "Work with AWS (Bedrock, SageMaker, Lambda, ECS/Fargate) or other cloud platforms"
+        },
+        {
+          "posting": "synera",
+          "quote": "You’ve worked with at least two of Anthropic, OpenAI/Azure, Bedrock, or Vertex AI."
+        },
+        {
+          "posting": "kuro",
+          "quote": "AI: Azure / OpenAI, Gemini, Cohere, AWS"
+        },
+        {
+          "posting": "artefact",
+          "quote": "Proficiency in Python and familiarity with cloud platforms (GCP, AWS, or Azure)."
+        },
+        {
+          "posting": "cortea",
+          "quote": "Have deployed and operated systems in the cloud, ideally on GCP."
+        },
+        {
+          "posting": "ml6",
+          "quote": "Work with Python, ML frameworks, GenAI, and cloud (AWS/GCP/Azure)"
+        }
+      ]
+    },
+    {
+      "title": "TypeScript and React agent interfaces",
+      "detail": "The platform's pages are plain HTML and JavaScript; the backend is Python and Java.",
+      "asked_count": 3,
+      "asked_by": [
+        {
+          "posting": "clera",
+          "quote": "strong TypeScript skills"
+        },
+        {
+          "posting": "commercetools",
+          "quote": "Python and TypeScript/Node + React"
+        },
+        {
+          "posting": "kuro",
+          "quote": "Web-App: Typescript"
+        }
+      ]
+    },
+    {
+      "title": "Several cooperating agents",
+      "detail": "Each platform run uses one agent loop; there is no hand-off between cooperating agents.",
+      "asked_count": 2,
+      "asked_by": [
+        {
+          "posting": "trustedshops",
+          "quote": "orchestrate multi-agent workflows using frameworks like LangGraph"
+        },
+        {
+          "posting": "synera",
+          "quote": "new tools, sub-agents, prompt iterations"
+        }
+      ]
+    },
+    {
+      "title": "Model-graded evaluation calibrated against human labels",
+      "detail": "The evals here are labelled sets with fixed thresholds.",
+      "asked_count": 2,
+      "asked_by": [
+        {
+          "posting": "synera",
+          "quote": "Review a calibrated LLM-as-judge output alongside human labels"
+        },
+        {
+          "posting": "cortea",
+          "quote": "deterministic checks, ground truth, LLM-as-judge, human review, and quality metrics"
+        }
+      ]
+    },
+    {
+      "title": "Fine-tuning models",
+      "detail": "Not done in this portfolio.",
+      "asked_count": 2,
+      "asked_by": [
+        {
+          "posting": "trustedshops",
+          "quote": "Train, fine-tune, and deploy models"
+        },
+        {
+          "posting": "commercetools",
+          "quote": "Fine-tuning/distillation"
+        }
+      ]
+    },
+    {
+      "title": "Paying users at scale",
+      "detail": "The platform's users are portfolio visitors.",
+      "asked_count": 2,
+      "asked_by": [
+        {
+          "posting": "clera",
+          "quote": "shipping LLM-powered systems to real customers"
+        },
+        {
+          "posting": "mercor",
+          "quote": "Experience shipping agents used by real users."
+        }
+      ]
+    },
+    {
+      "title": "German beyond A1–A2",
+      "detail": "These postings work in English and list German only as a plus.",
+      "asked_count": 4,
+      "asked_by": [
+        {
+          "posting": "artefact",
+          "quote": "Strong English skills; German is a plus."
+        },
+        {
+          "posting": "robco",
+          "quote": "Fluent English (German is a plus)."
+        },
+        {
+          "posting": "ml6",
+          "quote": "in English (German is a plus)"
+        },
+        {
+          "posting": "kuro",
+          "quote": "German-speaking (definitely not a must, we’re fully international)"
+        }
+      ]
+    }
+  ],
+  "postings": [
+    {
+      "id": "micro1",
+      "company": "micro1",
+      "title": "AI Engineer",
+      "where": "Remote (worldwide), contractor, about 15 h/week",
+      "url": "https://remoshift.com/job/ai-engineer-cc791343",
+      "source": "job aggregator",
+      "status": "external"
+    },
+    {
+      "id": "mercor",
+      "company": "Mercor",
+      "title": "LLM Agent Engineer (Production)",
+      "where": "Remote (Germany), contract",
+      "url": "https://remoshift.com/job/llm-agent-engineer-production-b09d7fcf",
+      "source": "job aggregator",
+      "status": "external"
+    },
+    {
+      "id": "space44",
+      "company": "SPACE44",
+      "title": "AI Solutions Architect",
+      "where": "Remote (EU), contractor, part-time to full-time",
+      "url": "https://jobs.ashbyhq.com/space44/f1bd4b1f-93de-492b-871e-77b134705bb5",
+      "source": "company job board",
+      "status": "external"
+    },
+    {
+      "id": "flodesk",
+      "company": "Flodesk",
+      "title": "Senior Applied AI Engineer, Agent Quality & Evaluations",
+      "where": "Remote",
+      "url": "https://job-boards.greenhouse.io/flodesk/jobs/5432437008",
+      "source": "company job board",
+      "status": "external"
+    },
+    {
+      "id": "robco",
+      "company": "RobCo",
+      "title": "Senior Full Stack Engineer, Agentic Workflows",
+      "where": "Remote (Europe)",
+      "url": "https://jobs.ashbyhq.com/robco/4d090169-ddee-4058-9020-4940f0877f7d",
+      "source": "company job board",
+      "status": "external"
+    },
+    {
+      "id": "trustedshops",
+      "company": "Trusted Shops",
+      "title": "(Senior) GenAI Engineer",
+      "where": "Remote (Germany)",
+      "url": "https://trustedshops.recruitee.com/o/senior-genai-engineer-fmd",
+      "source": "company job board",
+      "status": "external"
+    },
+    {
+      "id": "synera",
+      "company": "Synera",
+      "title": "Senior AI Engineer",
+      "where": "Remote (Germany)",
+      "url": "https://remoshift.com/job/senior-ai-engineer-f-m-d-remote-in-germany-ee4f1739",
+      "source": "job aggregator",
+      "status": "external"
+    },
+    {
+      "id": "commercetools",
+      "company": "commercetools",
+      "title": "AI Engineer",
+      "where": "Berlin or Munich, hybrid",
+      "url": "https://job-boards.greenhouse.io/commercetools/jobs/7774985003",
+      "source": "company job board",
+      "status": "external"
+    },
+    {
+      "id": "artefact",
+      "company": "ARTEFACT",
+      "title": "Junior AI Engineer",
+      "where": "Hamburg or Berlin, hybrid",
+      "url": "https://devjobs.de/job/cf5fece816d4dfb477be84376b65ad24",
+      "source": "job board",
+      "status": "external"
+    },
+    {
+      "id": "kuro",
+      "company": "Kuro",
+      "title": "Software Engineer - AI",
+      "where": "Berlin, on-site",
+      "url": "https://jobs.ashbyhq.com/kuro/446f292f-534d-425f-9bfa-e12f71271444",
+      "source": "company job board",
+      "status": "external"
+    },
+    {
+      "id": "clera",
+      "company": "Clera",
+      "title": "Lead AI Engineer, Agents & Infrastructure",
+      "where": "Berlin, on-site",
+      "url": "https://jobs.ashbyhq.com/clera/903977f2-aef8-43a2-a42b-ed791e556543",
+      "source": "company job board",
+      "status": "external"
+    },
+    {
+      "id": "cortea",
+      "company": "cortea",
+      "title": "Senior/Staff AI Engineer, Quality & Evals",
+      "where": "Berlin",
+      "url": "https://jobera.com/job/cortea-senior-staff-ai-engineer-quality-evals-m-f-x-81e5dc20/",
+      "source": "job aggregator",
+      "status": "external"
+    },
+    {
+      "id": "ml6",
+      "company": "ML6",
+      "title": "Senior AI Engineer",
+      "where": "Munich",
+      "url": "https://ml6.teamtailor.com/jobs/8308812-senior-ai-engineer",
+      "source": "company job board",
+      "status": "external"
+    }
+  ],
+  "link_check": {
+    "offline": "passed",
+    "online": {
+      "checked_at": "2026-10-06T11:24:06Z",
+      "results": [
+        {
+          "url": "https://remoshift.com/job/ai-engineer-cc791343",
+          "status": 200
+        },
+        {
+          "url": "https://remoshift.com/job/llm-agent-engineer-production-b09d7fcf",
+          "status": 200
+        },
+        {
+          "url": "https://jobs.ashbyhq.com/space44/f1bd4b1f-93de-492b-871e-77b134705bb5",
+          "status": 200
+        },
+        {
+          "url": "https://job-boards.greenhouse.io/flodesk/jobs/5432437008",
+          "status": 200
+        },
+        {
+          "url": "https://jobs.ashbyhq.com/robco/4d090169-ddee-4058-9020-4940f0877f7d",
+          "status": 200
+        },
+        {
+          "url": "https://trustedshops.recruitee.com/o/senior-genai-engineer-fmd",
+          "status": 200
+        },
+        {
+          "url": "https://remoshift.com/job/senior-ai-engineer-f-m-d-remote-in-germany-ee4f1739",
+          "status": 200
+        },
+        {
+          "url": "https://job-boards.greenhouse.io/commercetools/jobs/7774985003",
+          "status": 200
+        },
+        {
+          "url": "https://devjobs.de/job/cf5fece816d4dfb477be84376b65ad24",
+          "status": 200
+        },
+        {
+          "url": "https://jobs.ashbyhq.com/kuro/446f292f-534d-425f-9bfa-e12f71271444",
+          "status": 200
+        },
+        {
+          "url": "https://jobs.ashbyhq.com/clera/903977f2-aef8-43a2-a42b-ed791e556543",
+          "status": 200
+        },
+        {
+          "url": "https://jobera.com/job/cortea-senior-staff-ai-engineer-quality-evals-m-f-x-81e5dc20/",
+          "status": 200
+        },
+        {
+          "url": "https://ml6.teamtailor.com/jobs/8308812-senior-ai-engineer",
+          "status": 200
+        },
+        {
+          "url": "https://github.com/karthikdevadoss",
+          "status": 200
+        },
+        {
+          "url": "https://www.linkedin.com/in/karthikeyan-devdoss/",
+          "status": 999
+        },
+        {
+          "url": "https://agentic-platform-backend-production.up.railway.app/",
+          "status": 200
+        },
+        {
+          "url": "https://agentic-platform-backend-production.up.railway.app/workbench#verified-run-panel",
+          "status": 200
+        },
+        {
+          "url": "https://agentic-platform-backend-production.up.railway.app/triage",
+          "status": 200
+        },
+        {
+          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/agent_loop.py",
+          "status": 200
+        },
+        {
+          "url": "https://agentic-platform-backend-production.up.railway.app/eval",
+          "status": 404
+        },
+        {
+          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/mahadeva/automation-3/agent/web/eval.html",
+          "status": 200
+        },
+        {
+          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/eval_runner.py",
+          "status": 200
+        },
+        {
+          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/evals/retrieval_dataset.json",
+          "status": 200
+        },
+        {
+          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/agent_decision_eval_runner.py",
+          "status": 200
+        },
+        {
+          "url": "https://agentic-platform-backend-production.up.railway.app/case-study/durable-agent",
+          "status": 200
+        },
+        {
+          "url": "https://agentic-platform-backend-production.up.railway.app/triage/evidence",
+          "status": 404
+        },
+        {
+          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/mahadeva/automation-3/agent/web/triage-evidence.html",
+          "status": 200
+        },
+        {
+          "url": "https://agentic-delivery-customer-app-production.up.railway.app",
+          "status": 200
+        },
+        {
+          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/durable_workflow.py",
+          "status": 200
+        },
+        {
+          "url": "https://agentic-platform-backend-production.up.railway.app/ask-codebase",
+          "status": 200
+        },
+        {
+          "url": "https://agentic-platform-backend-production.up.railway.app/ask-codebase/examples",
+          "status": 404
+        },
+        {
+          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/mahadeva/automation-3/agent/web/ask-codebase-examples.html",
+          "status": 200
+        },
+        {
+          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/ask_codebase.py",
+          "status": 200
+        },
+        {
+          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/reasoning_gateway.py",
+          "status": 200
+        },
+        {
+          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/event_ledger.py",
+          "status": 200
+        },
+        {
+          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/write_tools.py",
+          "status": 200
+        },
+        {
+          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/CAPABILITY_SECURITY_MODEL.md",
+          "status": 200
+        },
+        {
+          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/mcp_server.py",
+          "status": 200
+        }
+      ]
+    }
+  },
+  "quotes_verified": {
+    "quotes": 72,
+    "against": "posting text captured on 2026-10-06",
+    "source_sha256": "09138725fca7e4b600ec5af4c3832d0f4a99a4c9896080e0ea4d5d31e32686a0"
+  },
+  "inputs": {
+    "agent/recruiters_source.yaml": "09138725fca7e4b600ec5af4c3832d0f4a99a4c9896080e0ea4d5d31e32686a0",
+    "agent/web/case-study-durable-agent.html": "af901f92f7533bb94fb08703c5090380aef0eedf311812752e63c62e6871f44d",
+    "agent/web/eval-results.json": "cd47e5ae2d3d2037fdb5ec467ea603e9b0a81b3f60e6563e4f11038fc059bd7a",
+    "agent/web/triage-evidence.json": "69845e1d9445b44136bc6db1aad2f8518c8889f3e7a9377eb4c6af041c7fb3f7",
+    "agent/web/ask-codebase-examples.json": "ef0c201b37bb33e16e2a69b653f8c9dc12955c0d0973b56b4ca4df16724da74d"
+  }
+}
