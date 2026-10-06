@@ -73,7 +73,7 @@ class ApplicationsReviewGateTest(unittest.TestCase):
         data = self.client.get("/applications.json", params={"k": TOKEN})
         self.assertEqual(data.status_code, 200)
         payload = data.json()
-        self.assertGreaterEqual(payload.get("count", 0), 35)
+        self.assertEqual(payload.get("count", 0), 8)
         self.assertEqual(len(payload["packs"]), payload["count"])
         first = payload["packs"][0]
         for key in ("rank", "company", "title", "location", "posted", "fit_oneliner",
@@ -135,10 +135,20 @@ class ApplicationsReviewDataTest(unittest.TestCase):
         import json
         data = json.loads(data_path.read_text(encoding="utf-8"))
         self.assertEqual(data["count"], len(data["packs"]))
-        self.assertGreaterEqual(data["count"], 35)
+        self.assertEqual(data["count"], 8)
         # Newest-posted first
         dates = [p["posted"] for p in data["packs"]]
         self.assertEqual(dates, sorted(dates, reverse=True))
+        # Location TOP filter (policy v32): no London-only / Munich-only /
+        # Amsterdam / Paris / Stockholm primary rows.
+        for pack in data["packs"]:
+            loc = (pack.get("location") or "").lower()
+            if "remote" in loc and any(x in loc for x in ("europe", "emea", "germany", "global", "worldwide")):
+                continue  # remote Europe with optional London mention OK (e.g. Tavily)
+            if "berlin" in loc:
+                continue
+            for city in ("london", "stockholm", "munich", "paris", "amsterdam"):
+                self.assertNotIn(city, loc, pack.get("slug"))
         pdf_dir = WEB / "applications_pdf"
         for p in data["packs"]:
             self.assertTrue((pdf_dir / p["cv_pdf"]).is_file(), p["cv_pdf"])
