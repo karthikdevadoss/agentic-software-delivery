@@ -1711,6 +1711,13 @@ async def ask_codebase_page(request: Request):
     return FileResponse(str(WEB_DIR / "ask-codebase.html"))
 
 
+async def ask_codebase_examples_page(request: Request):
+    """Recorded answers to Ask the Codebase's example questions:
+    agent/web/ask-codebase-examples.json from
+    agent/publish_ask_codebase_examples.py. Static; no query runs here."""
+    return FileResponse(str(WEB_DIR / "ask-codebase-examples.html"))
+
+
 async def standing_interview_page(request: Request):
     """Standing Interview v0. Typed question in, first-person answer out,
     grounded only in the private corpus. See agent/standing_interview.py for
@@ -2383,6 +2390,7 @@ routes = [
     Route("/usage/session/{session_id}", usage_page, methods=["GET"]),
     Route("/showcase/{slug}", showcase_page, methods=["GET"]),
     Route("/ask-codebase", ask_codebase_page, methods=["GET"]),
+    Route("/ask-codebase/examples", ask_codebase_examples_page, methods=["GET"]),
     Route("/eval", eval_page, methods=["GET"]),
     Route("/standing-interview", standing_interview_page, methods=["GET"]),
     Route("/triage", triage_page, methods=["GET"]),
