@@ -55,20 +55,18 @@ test.describe("Usage / Session History journey", () => {
     expect(bodyText).not.toMatch(/\$0\.00\b/);
   });
 
-  test("no-token reconstructed session: NOT CAPTURED, COST UNAVAILABLE, reconstructed-window semantics, concise title, raw instruction available separately", async ({ page }) => {
+  test("Claude Code session: NOT CAPTURED, COST UNAVAILABLE, neutral title, prompt text private", async ({ page }) => {
     await page.goto(`/usage/session/${RECONSTRUCTED_SESSION}`);
     const summary = page.locator(".session-summary-panel");
     await expect(summary).toBeVisible(DETAIL_LOAD_TIMEOUT);
     await expect(page.locator("main")).toContainText(/NOT CAPTURED/i);
     await expect(page.locator("main")).toContainText(/COST UNAVAILABLE/i);
 
-    // Concise title: the visible <h2> goal must not be the entire raw prompt.
-    const titleText = await page.locator(".session-goal").innerText();
-    expect(titleText.length).toBeLessThan(200);
-
-    // Full original text preserved, but tucked into an expandable section.
-    const rawDetails = page.locator(".raw-capture-details");
-    await expect(rawDetails).toBeVisible();
-    await expect(rawDetails.locator("summary")).toContainText(/original text/i);
+    // Automation Sprint 4: the owner's prompts are private. The title is a
+    // neutral label and the raw-capture section no longer exists for Claude
+    // Code sessions; only the prompt count and a privacy note are shown.
+    await expect(page.locator(".session-goal")).toHaveText("Claude Code development session");
+    await expect(page.locator(".raw-capture-details")).toHaveCount(0);
+    await expect(page.locator("main")).toContainText(/Prompt text is private/);
   });
 });

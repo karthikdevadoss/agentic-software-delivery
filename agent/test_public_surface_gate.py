@@ -215,10 +215,26 @@ class DeadLinkAndPlaceholderTestCase(unittest.TestCase):
         # routes with path params that the home page links into
         served.add("/showcase/senior-java-ai-transformation")
 
+        # Static assets (e.g. the self-hosted /fonts/fonts.css) are served by
+        # the Mount("/", StaticFiles(directory=WEB_DIR)) at the end of the
+        # route list, so a link to one is live only if that exact file exists.
+        mounts_web_dir = any(
+            getattr(route, "path", None) == ""
+            and pathlib.Path(getattr(getattr(route, "app", None), "directory", "") or "").resolve() == WEB_DIR
+            for route in web_server.routes)
+
+        def is_existing_static_asset(href):
+            if not mounts_web_dir or "." not in href.rsplit("/", 1)[-1]:
+                return False
+            candidate = (WEB_DIR / href.lstrip("/")).resolve()
+            return WEB_DIR in candidate.parents and candidate.is_file()
+
         for path in (HOME, CASE_STUDY):
             html = _strip_comments(path.read_text(encoding="utf-8"))
             for href in re.findall(r'href="(/[^"#]*)(?:#[^"]*)?"', html):
                 with self.subTest(page=path.name, href=href):
+                    if is_existing_static_asset(href):
+                        continue
                     self.assertIn(
                         href, served,
                         f"{path.name} links to {href}, which no route serves")
