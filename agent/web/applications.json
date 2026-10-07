@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-10-06T16:49:54Z",
+  "generated_at": "2026-10-07T18:09:42Z",
   "as_of": "2026-10-06",
   "title": "Applications Review — location-filtered TOP",
-  "description": "Owner policy v32 / rule 62: remote Germany or remote worldwide/EU/EMEA, Berlin hybrid, or Berlin office; newest posted first. Sealed CV content + hybrid cover letters. PDF names: Karthikeyan_Devadoss_CV_<slug> / Karthikeyan_Devadoss_CoverLetter_<slug>.",
+  "description": "Owner policy v32 / rule 62: remote Germany or remote worldwide/EU/EMEA, Berlin hybrid, or Berlin office; newest posted first. Sealed CV content + hybrid cover letters. PDF names: Karthikeyan_Devadoss_CV_<slug> / Karthikeyan_Devadoss_CoverLetter_<slug>. 2026-10-07: LangChain Deployed Architect Amsterdam added by Owner exception (≤15; Cursor SA dropped).",
   "filter": {
     "policy": "v32",
     "rule": 62,
@@ -140,6 +140,31 @@
       "loc_tier": 2
     },
     {
+      "id": "a10-langchain-langchain-deployed-architect-amsterdam",
+      "batch": "architect-2026-10-06",
+      "source_rank": 7,
+      "slug": "langchain-deployed-architect-amsterdam",
+      "company_slug": "langchain",
+      "company": "LangChain",
+      "title": "Deployed Architect, Professional Services (Amsterdam)",
+      "location": "Amsterdam, Netherlands — remote with up to 25% travel (NL-anchored); Owner exception 2026-10-07 for Review list",
+      "posted": "2026-08-28",
+      "age_days": 39,
+      "fit_oneliner": "Exact Deployed Architect title at LangChain; multi-agent/LangGraph/RAG/evals + customer PS; English; remote with travel.",
+      "url": "https://jobs.ashbyhq.com/LangChain/fc868832-3865-4f4a-8222-33422a7d3d96",
+      "posting": "# LangChain — Deployed Architect, Professional Services (Amsterdam)\n\n- **URL:** https://jobs.ashbyhq.com/LangChain/fc868832-3865-4f4a-8222-33422a7d3d96\n- **Company:** LangChain\n- **Title:** Deployed Architect, Professional Services (Amsterdam)\n- **Location / remote:** Amsterdam, Netherlands — remote with up to 25% travel (NL-anchored) (tier 1)\n- **Language:** English\n- **Seniority:** Deployed Architect (7+ years customer-facing — stretch)\n- **Posted / verified:** open 2026-10-06 (page loaded 2026-10-06; not closed)\n- **Salary (if stated):** competitive; location/experience based\n- **Excluded checks:** not the rule-64 excluded employer; not a defence/weapons firm posting (Mistral defence-tagged roles skipped elsewhere)\n\n## Key requirements (quoted / closely paraphrased from posting)\n\n- \"7+ years in technical hands-on customer-facing roles (SA, Deployed Architect, FDE); founders welcome.\"\n- \"1+ years building production AI/ML applications or agents; LangChain/LangGraph; evaluation frameworks; RAG/vector stores.\"\n- \"3+ years designing/deploying production cloud infra; strong Kubernetes; Terraform/Helm; Python and/or TypeScript.\"\n- \"Amsterdam / remote with up to 25% travel.\"\n\n## Why it fits\n\nExact Deployed Architect title at LangChain; multi-agent/LangGraph/RAG/evals + customer PS; English; remote with travel. Closest title match to Junior AI Architect goal among agent platforms.\n\n## Gaps\n\n7+ years customer-facing SA/FDE preferred; strong Kubernetes/Terraform infrastructure bar; NL location anchor — confirm if Berlin remote OK.\n\n## Apply route\n\nCompany ATS page above. **Do not apply from this sprint** — packs only.\n\n## Posting date (Sprint 9)\n\n- posted_at: 2026-08-28 (employer ATS `publishedAt` = `2026-08-27T22:21:33.067+00:00`)\n- source_updated_at: not given by the source\n- age_days (as of 2026-10-06): 39\n- still_open: yes (checked 2026-10-06 ~15:58 CEST)\n- date source: https://api.ashbyhq.com/posting-api/job-board/LangChain\n- applicants_linkedin: **Over 200** (read 2026-10-06 16:00 CEST, browser guest view, one page; display-only, never used in ranking)\n- linkedin_posted: 2 weeks ago — LinkedIn's relative age, NOT the posting date (posted_at above is the employer ATS date)\n- linkedin_url: https://nl.linkedin.com/jobs/view/4383267328\n",
+      "cover_letter": "# Cover letter — Deployed Architect, Professional Services (Amsterdam) at LangChain\n\nKarthikeyan Devadoss  \nBerlin, Germany · itskarthiksid@yahoo.com · +49 1521 0924553  \nhttps://jobs.ashbyhq.com/LangChain/fc868832-3865-4f4a-8222-33422a7d3d96\n\nDear Hiring Team,\n\nLangChain is the platform teams use to put agents, RAG, and evaluation into production — and Deployed Architect, Professional Services (Amsterdam) is the customer-facing architecture seat that makes those systems survive real deployments. That Deployed Architect title is the shape I want next. I am writing about the Deployed Architect, Professional Services (Amsterdam) role.\n\n**What I bring**\n- About ten years of Java/Spring backend work, including US large-enterprise delivery: Marsh in Phoenix (Bluestream / Digital Broker for Affinity — ~95,000 colleagues across 130 countries) and BCBSA in Chicago (national hub connecting state Blue Cross Blue Shield plans, ~118 million members system-wide).\n- Since early 2026, one of a handful of engineers in an initial core AI team at a large retail-energy company: production AI triage with Azure OpenAI, vector retrieval, and a human approval step before any action, now used by several teams.\n- Own agentic software-delivery platform (live): approval-gated agents, RAG with labelled retrieval evals, MCP tool boundaries — public proof that AI systems work can hold up past a demo.\n\n**How it fits this role**\n- Multi-agent / RAG / evaluation craft from production AI triage and a public agentic delivery platform (LangGraph-class patterns, labelled retrieval evals, MCP boundaries).\n- Customer-facing technical delivery: architecture discussions with the lead plus backend depth for cloud/Python integrations.\n- Berlin-based, English day-to-day; comfortable with remote collaboration and travel for professional-services engagements.\n\nAgent platforms only matter when evaluation and production discipline travel with the demo. That is already how I design. At this point in my career I want that customer-facing, architecture-adjacent seat more than another pure backend lane.\n\nIf LangChain customers are going to trust agents in production, Deployed Architect is where that trust gets earned — and that is the work I want to do.\n\nKind regards,  \nKarthikeyan Devadoss\n",
+      "fit_gaps": "# Fit and gaps — LangChain / Deployed Architect, Professional Services (Amsterdam)\n\nExact Deployed Architect title at LangChain; multi-agent/LangGraph/RAG/evals + customer PS; English; remote with travel.\n",
+      "cv_pdf": "Karthikeyan_Devadoss_CV_langchain.pdf",
+      "cover_pdf": "Karthikeyan_Devadoss_CoverLetter_langchain.pdf",
+      "pdfs": [
+        "Karthikeyan_Devadoss_CV_langchain.pdf",
+        "Karthikeyan_Devadoss_CoverLetter_langchain.pdf"
+      ],
+      "rank": 6,
+      "loc_tier": 1
+    },
+    {
       "id": "a50-runpod-runpod-forward-deployed-engineer-emea",
       "batch": "architect50-2026-10-06",
       "source_rank": 33,
@@ -161,7 +186,7 @@
         "Karthikeyan_Devadoss_CV_runpod.pdf",
         "Karthikeyan_Devadoss_CoverLetter_runpod.pdf"
       ],
-      "rank": 6,
+      "rank": 7,
       "loc_tier": 1
     },
     {
@@ -186,7 +211,7 @@
         "Karthikeyan_Devadoss_CV_databricks.pdf",
         "Karthikeyan_Devadoss_CoverLetter_databricks.pdf"
       ],
-      "rank": 7,
+      "rank": 8,
       "loc_tier": 3
     },
     {
@@ -211,7 +236,7 @@
         "Karthikeyan_Devadoss_CV_dbxfull.pdf",
         "Karthikeyan_Devadoss_CoverLetter_dbxfull.pdf"
       ],
-      "rank": 8,
+      "rank": 9,
       "loc_tier": 3
     },
     {
@@ -236,7 +261,7 @@
         "Karthikeyan_Devadoss_CV_taktilesa.pdf",
         "Karthikeyan_Devadoss_CoverLetter_taktilesa.pdf"
       ],
-      "rank": 9,
+      "rank": 10,
       "loc_tier": 2
     },
     {
@@ -261,7 +286,7 @@
         "Karthikeyan_Devadoss_CV_taktilefde.pdf",
         "Karthikeyan_Devadoss_CoverLetter_taktilefde.pdf"
       ],
-      "rank": 10,
+      "rank": 11,
       "loc_tier": 2
     },
     {
@@ -286,7 +311,7 @@
         "Karthikeyan_Devadoss_CV_taktilesr.pdf",
         "Karthikeyan_Devadoss_CoverLetter_taktilesr.pdf"
       ],
-      "rank": 11,
+      "rank": 12,
       "loc_tier": 2
     },
     {
@@ -311,33 +336,8 @@
         "Karthikeyan_Devadoss_CV_taktilops.pdf",
         "Karthikeyan_Devadoss_CoverLetter_taktilops.pdf"
       ],
-      "rank": 12,
-      "loc_tier": 2
-    },
-    {
-      "id": "a10-cursor-cursor-solutions-architect-central-europe",
-      "batch": "architect-2026-10-06",
-      "source_rank": 2,
-      "slug": "cursor-solutions-architect-central-europe",
-      "company_slug": "cursor",
-      "company": "Cursor (Anysphere)",
-      "title": "Solutions Architect, Central Europe",
-      "location": "Remote in Germany",
-      "posted": "2026-07-02",
-      "age_days": 96,
-      "fit_oneliner": "Exact Solutions Architect title at an AI coding company; remote Germany; architecture reviews, CI/SDLC enablement.",
-      "url": "https://jobs.ashbyhq.com/cursor/c2fb18fe-8d3d-4803-b21b-2f7e8b700d9d",
-      "posting": "# Cursor (Anysphere) — Solutions Architect, Central Europe\n\n- **URL:** https://jobs.ashbyhq.com/cursor/c2fb18fe-8d3d-4803-b21b-2f7e8b700d9d\n- **Company:** Cursor (Anysphere)\n- **Title:** Solutions Architect, Central Europe\n- **Location / remote:** Remote in Germany (tier 1)\n- **Language:** English\n- **Seniority:** Solutions Architect (no Principal / 15y bar)\n- **Posted / verified:** published 2026-07-02; open 2026-10-06 (page loaded 2026-10-06; not closed)\n- **Salary (if stated):** not stated\n- **Excluded checks:** not the rule-64 excluded employer; not a defence/weapons firm posting (Mistral defence-tagged roles skipped elsewhere)\n\n## Key requirements (quoted / closely paraphrased from posting)\n\n- \"Strong technical background in software engineering, infrastructure, DevOps, platform engineering, or developer tooling.\"\n- \"Experience in customer-facing technical roles such as Solution Architect, Solutions Engineer, Forward Deployed Engineer, TAM, or similar.\"\n- \"Hands-on with developer workflows, SDLC tooling, integrations, CI/CD, governance; lead architecture reviews.\"\n- \"Remote Germany; English.\"\n\n## Why it fits\n\nExact Solutions Architect title at an AI coding company; remote Germany; post-sale architecture reviews, CI/SDLC enablement, AI-native workflow design — maps to backend+architecture path and personal agentic delivery platform.\n\n## Gaps\n\nExplicit prior SA/SE/FDE customer-facing title preferred; role is post-sale enablement more than greenfield AI product architecture.\n\n## Apply route\n\nCompany ATS page above. **Do not apply from this sprint** — packs only.\n\n## Posting date (Sprint 9)\n\n- posted_at: 2026-07-02 (employer ATS `publishedAt` = `2026-07-02T07:59:16.902+00:00`)\n- source_updated_at: not given by the source\n- age_days (as of 2026-10-06): 96\n- still_open: yes (checked 2026-10-06 ~15:58 CEST)\n- date source: https://api.ashbyhq.com/posting-api/job-board/cursor\n- applicants_linkedin: **Over 200** (read 2026-10-06 16:00 CEST, browser guest view, one page; display-only, never used in ranking)\n- linkedin_posted: 1 week ago — LinkedIn's relative age, NOT the posting date (posted_at above is the employer ATS date)\n- linkedin_url: https://de.linkedin.com/jobs/view/4436477391\n",
-      "cover_letter": "# Cover letter — Solutions Architect, Central Europe at Cursor (Anysphere)\n\nKarthikeyan Devadoss  \nBerlin, Germany · itskarthiksid@yahoo.com · +49 1521 0924553  \nhttps://jobs.ashbyhq.com/cursor/c2fb18fe-8d3d-4803-b21b-2f7e8b700d9d\n\nDear Hiring Team,\n\nCursor is betting that AI-native development becomes the default way serious teams ship software. Solutions Architect, Central Europe — remote in Germany — is the post-sale architecture and enablement seat that makes that bet real for customers. That is the title and shape I want next. I am writing about the Solutions Architect, Central Europe role.\n\n**What I bring**\n- About ten years of Java/Spring backend work, including US large-enterprise delivery: Marsh in Phoenix (Bluestream / Digital Broker for Affinity — ~95,000 colleagues across 130 countries) and BCBSA in Chicago (national hub connecting state Blue Cross Blue Shield plans, ~118 million members system-wide).\n- Since early 2026, one of a handful of engineers in an initial core AI team at a large retail-energy company: production AI triage with Azure OpenAI, vector retrieval, and a human approval step before any action, now used by several teams.\n- Own agentic software-delivery platform (live): approval-gated agents, RAG with labelled retrieval evals, MCP tool boundaries — public proof that AI systems work can hold up past a demo.\n\n**How it fits this role**\n- Architecture discussions with the lead plus a public agentic delivery platform (evals, MCP, approval gates) for AI-native workflow design.\n- Strong backend/DevOps-adjacent craft for CI/SDLC integrations and governance conversations.\n- Remote Germany; English; experience enabling others (mentoring, informal AI teaching at NRG).\n\nDeveloper tools win when architecture reviews leave teams faster and safer, not just impressed. I want to be measured on that outcome. At this point in my career I want that customer-facing, architecture-adjacent seat more than another pure backend lane.\n\nIf Cursor is how Central European teams rebuild their SDLC around AI, I want to help them do it well.\n\nKind regards,  \nKarthikeyan Devadoss\n",
-      "fit_gaps": "# Fit and gaps — Cursor (Anysphere) / Solutions Architect, Central Europe\n\nExact Solutions Architect title at an AI coding company; remote Germany; architecture reviews, CI/SDLC enablement.\n",
-      "cv_pdf": "Karthikeyan_Devadoss_CV_cursor.pdf",
-      "cover_pdf": "Karthikeyan_Devadoss_CoverLetter_cursor.pdf",
-      "pdfs": [
-        "Karthikeyan_Devadoss_CV_cursor.pdf",
-        "Karthikeyan_Devadoss_CoverLetter_cursor.pdf"
-      ],
       "rank": 13,
-      "loc_tier": 1
+      "loc_tier": 2
     },
     {
       "id": "a10-cohere-cohere-fde-agentic-platform-europe",
@@ -426,10 +426,16 @@
     {
       "company": "Cursor (Anysphere)",
       "title": "Forward Deployed Engineer - EMEA",
-      "why": "London-anchored posting — fails location filter (SA remote Germany kept instead)"
+      "why": "London-anchored posting — fails location filter"
     },
     {
-      "why": "All London/Stockholm/Munich-only/Paris/Amsterdam architect50 Other-EU rows — location filter"
+      "company": "Cursor (Anysphere)",
+      "title": "Solutions Architect, Central Europe",
+      "posted": "2026-07-02",
+      "why": "Dropped from ≤15 2026-10-07 to add LangChain (Owner-authorized); Cursor SA ATS 404 / unused closed slot preferred over removing submitted packs"
+    },
+    {
+      "why": "All London/Stockholm/Munich-only/Paris/Amsterdam architect50 Other-EU rows — location filter (LangChain Amsterdam added 2026-10-07 by Owner exception)"
     }
   ]
 }
