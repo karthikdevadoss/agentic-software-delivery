@@ -73,7 +73,7 @@ class ApplicationsReviewGateTest(unittest.TestCase):
         data = self.client.get("/applications.json", params={"k": TOKEN})
         self.assertEqual(data.status_code, 200)
         payload = data.json()
-        self.assertEqual(payload.get("count", 0), 8)
+        self.assertEqual(payload.get("count", 0), 15)
         self.assertEqual(len(payload["packs"]), payload["count"])
         first = payload["packs"][0]
         for key in ("rank", "company", "title", "location", "posted", "fit_oneliner",
@@ -136,14 +136,18 @@ class ApplicationsReviewDataTest(unittest.TestCase):
         import json
         data = json.loads(data_path.read_text(encoding="utf-8"))
         self.assertEqual(data["count"], len(data["packs"]))
-        self.assertEqual(data["count"], 8)
+        self.assertEqual(data["count"], 15)
         # Newest-posted first
         dates = [p["posted"] for p in data["packs"]]
         self.assertEqual(dates, sorted(dates, reverse=True))
         # Location TOP filter (policy v32): no London-only / Munich-only /
         # Amsterdam / Paris / Stockholm primary rows.
+        # Owner exception 2026-10-07: LangChain Deployed Architect Amsterdam may appear.
         for pack in data["packs"]:
             loc = (pack.get("location") or "").lower()
+            slug = pack.get("slug") or ""
+            if slug == "langchain-deployed-architect-amsterdam":
+                continue  # Owner-authorized exception for Review ≤15
             if "remote" in loc and any(x in loc for x in ("europe", "emea", "germany", "global", "worldwide")):
                 continue  # remote Europe with optional London mention OK (e.g. Tavily)
             if "berlin" in loc:
