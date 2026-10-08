@@ -1,0 +1,123 @@
+# Rebuild the CV and cover-letter PDFs, and prove the CV is still one page.
+#
+# Queue item 40, Owner answer P2 (2026-10-08). The rebuild cannot be verified on
+# the Owner's Windows laptop: Carlito and Liberation Sans are not installed
+# there, the layout reflows, and the CV comes out two pages where the committed
+# one is one. The generator's own assert_cv_pdf catches it, so nothing bad ships
+# -- but it means a laptop can never answer "does this still build correctly?".
+# This job can, because it installs the fonts the layout was designed against.
+#
+# It does NOT commit or deploy anything. It builds into the runner's checkout and
+# throws it away. Replacing the committed PDFs is a visible change to what an
+# employer receives and waits for the Owner.
+#
+# Incident: DEVADOSS storage/incidents/INC_2026-10-08_pack_pdf_pipeline.md
+# Rule: "no artifact used for a submit may come from an uncommitted tool"
+#       (knowledge/current/governance/TESTING_RULE.md)
+
+name: Application PDFs
+
+on:
+  pull_request:
+    paths:
+      - 'agent/build_application_pdfs.py'
+      - 'agent/pack_pdf_names.py'
+      - 'agent/application_sources/**'
+      - 'agent/web/applications_pdf/**'
+      - '.github/workflows/application-pdfs.yml'
+  workflow_dispatch:
+
+jobs:
+  build-and-assert-one-page:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: agent/requirements.txt
+
+      - run: pip install -r agent/requirements.txt
+
+      # The two fonts the CV template is laid out against. Without them the
+      # renderer substitutes metrics, the text reflows, and a one-page CV
+      # silently becomes two -- which is the whole reason this job exists.
+      - name: Install Carlito and Liberation Sans
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fonts-crosextra-carlito fonts-liberation
+          fc-list | grep -Ei 'carlito|liberation' | head -5
+
+      # Fails, and names what is missing, rather than rendering something
+      # approximate. Today it would fail if cv_v1.html were absent.
+      - name: Every input is in the repository
+        working-directory: agent
+        run: python build_application_pdfs.py --check
+
+      - name: Rebuild every pair
+        working-directory: agent
+        run: python build_application_pdfs.py --chrome "$(which google-chrome || which chromium-browser)"
+
+      # The assertion the Owner asked for, stated here as well as inside the
+      # generator, so a change to the generator's own checks cannot quietly
+      # remove it.
+      - name: Every CV is exactly one page
+        working-directory: agent
+        run: |
+          python - <<'PY'
+          import sys
+          from pathlib import Path
+          from pypdf import PdfReader
+
+          pdf_dir = Path("web/applications_pdf")
+          bad = []
+          cvs = sorted(pdf_dir.glob("Karthikeyan_Devadoss_CV_*.pdf"))
+          if not cvs:
+              sys.exit("no CV PDFs were produced")
+          for pdf in cvs:
+              pages = len(PdfReader(str(pdf)).pages)
+              if pages != 1:
+                  bad.append(pdf.name + ": " + str(pages) + " pages")
+          print("checked", len(cvs), "CVs")
+          if bad:
+              sys.exit("CV is not one page:\n  " + "\n  ".join(bad))
+          PY
+
+      - name: Every cover letter rendered
+        working-directory: agent
+        run: |
+          python - <<'PY'
+          import sys
+          from pathlib import Path
+          from pypdf import PdfReader
+
+          pdf_dir = Path("web/applications_pdf")
+          letters = sorted(pdf_dir.glob("Karthikeyan_Devadoss_CoverLetter_*.pdf"))
+          cvs = sorted(pdf_dir.glob("Karthikeyan_Devadoss_CV_*.pdf"))
+          if len(letters) != len(cvs):
+              sys.exit("every CV needs a cover letter: "
+                       + str(len(cvs)) + " CVs, " + str(len(letters)) + " letters")
+          for pdf in letters:
+              if len(PdfReader(str(pdf)).pages) < 1:
+                  sys.exit("empty cover letter: " + pdf.name)
+          print("checked", len(letters), "cover letters")
+          PY
+
+      # The rebuild is for verification only. If it differs from what is
+      # committed, say so loudly and still fail nothing here -- replacing the
+      # Owner's artifacts is his decision, not a CI side effect.
+      - name: Report any difference from the committed PDFs
+        if: always()
+        run: |
+          if git diff --quiet -- agent/web/applications_pdf; then
+            echo "rebuild matches the committed PDFs"
+          else
+            echo "::warning::the rebuild differs from the committed PDFs"
+            git diff --stat -- agent/web/applications_pdf
+          fi
+
+      - name: Discard the rebuild
+        if: always()
+        run: git checkout -- agent/web/applications_pdf || true
