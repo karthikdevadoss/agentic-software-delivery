@@ -21,6 +21,18 @@ WEB = pathlib.Path(__file__).resolve().parent / "web"
 TOKEN = ws.DEFAULT_APPLICATIONS_REVIEW_TOKEN
 
 
+def _expected_pack_count() -> int:
+    """How many packs the committed Review data holds.
+
+    Single source of truth for every count assertion in this file, so the API
+    test and the data test can never disagree about what "right" is.
+    """
+    import json
+
+    data = json.loads((WEB / "applications.json").read_text(encoding="utf-8"))
+    return int(data["count"])
+
+
 class ApplicationsReviewGateTest(unittest.TestCase):
     def setUp(self):
         # Ensure default local token is active for these tests.
@@ -73,7 +85,15 @@ class ApplicationsReviewGateTest(unittest.TestCase):
         data = self.client.get("/applications.json", params={"k": TOKEN})
         self.assertEqual(data.status_code, 200)
         payload = data.json()
-        self.assertEqual(payload.get("count", 0), 8)
+        # The expected count is READ from the committed data, not written here.
+        #
+        # It was hardcoded to 8 and the committed file says 15 -- Mahadeva's
+        # handover of 2026-10-08 describes "the <=15 Review packs", so 15 is
+        # right and the literal was stale (Owner answer P4, 2026-10-08). A
+        # literal here asserts what someone believed on the day they typed it;
+        # reading the file asserts that the API serves what the repository holds,
+        # which is the thing that can actually break.
+        self.assertEqual(payload.get("count", 0), _expected_pack_count())
         self.assertEqual(len(payload["packs"]), payload["count"])
         first = payload["packs"][0]
         for key in ("rank", "company", "title", "location", "posted", "fit_oneliner",
@@ -136,7 +156,12 @@ class ApplicationsReviewDataTest(unittest.TestCase):
         import json
         data = json.loads(data_path.read_text(encoding="utf-8"))
         self.assertEqual(data["count"], len(data["packs"]))
-        self.assertEqual(data["count"], 8)
+        # Self-consistency plus a floor, rather than a literal that goes stale.
+        # The floor matters: a bug that emptied the page would satisfy
+        # count == len(packs) perfectly.
+        self.assertGreaterEqual(data["count"], 1, "the Review page is empty")
+        self.assertLessEqual(data["count"], 15,
+                             "more than the <=15 Review packs the Owner approved")
         # Newest-posted first
         dates = [p["posted"] for p in data["packs"]]
         self.assertEqual(dates, sorted(dates, reverse=True))
