@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Karthikeyan Devadoss — CV</title>
+<style>
+@page { size: A4; margin: 0; }
+@page { @top-left { content: none; } @top-center { content: none; } @top-right { content: none; }
+        @bottom-left { content: none; } @bottom-center { content: none; } @bottom-right { content: none; } }
+:root { --accent: #1f4e79; --ink: #1d2329; --muted: #5a6470; --rule: #d5dde6; }
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { font-family: Carlito, "Liberation Sans", Arial, sans-serif; color: var(--ink);
+  font-size: 10pt; line-height: 1.34; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.page { width: 210mm; padding: 15mm 15mm 14mm 15mm; }
+header { border-bottom: 2.2px solid var(--accent); padding-bottom: 6px; margin-bottom: 7px; }
+h1 { font-size: 22pt; margin: 0; letter-spacing: -0.3px; font-weight: 700; line-height: 1.1; }
+.headline { font-size: 11.3pt; color: var(--accent); font-weight: 600; margin-top: 3px; }
+.contact { margin-top: 5px; color: var(--muted); font-size: 8.8pt; }
+.contact span + span::before { content: "·"; margin: 0 7px; color: var(--rule); color:#9aa5b1; }
+a { color: var(--accent); text-decoration: none; }
+h2 { font-size: 9.6pt; text-transform: uppercase; letter-spacing: 1.1px; color: var(--accent);
+  margin: 8px 0 4px; padding-bottom: 2px; border-bottom: 1px solid var(--rule); font-weight: 700; }
+p { margin: 0; }
+.summary { text-align: left; }
+.skills { display: grid; grid-template-columns: 27mm 1fr; row-gap: 2.5px; column-gap: 8px; }
+.skills .k { font-weight: 600; color: var(--ink); }
+.job { margin-bottom: 4.5px; }
+.job-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.role { font-weight: 700; font-size: 10pt; }
+.org { font-weight: 600; color: var(--accent); }
+.dates { color: var(--muted); font-size: 8.8pt; white-space: nowrap; font-weight: 500; }
+.sub { color: var(--muted); font-size: 8.6pt; margin-top: 0; }
+ul { margin: 2px 0 0 0; padding-left: 14px; }
+li { margin: 1.2px 0; padding-left: 1px; }
+li::marker { color: var(--accent); }
+.tag { display: inline-block; font-size: 7.8pt; font-weight: 600; color: var(--accent); border: 1px solid var(--accent);
+  border-radius: 3px; padding: 0 5px; margin-left: 6px; vertical-align: 1px; letter-spacing: .3px; }
+.two { display: grid; grid-template-columns: 1fr 1fr; column-gap: 10mm; }
+b { font-weight: 600; }
+</style></head>
+<body><div class="page">
+
+<header>
+  <h1>Karthikeyan Devadoss</h1>
+  <div class="headline">Forward Deployed Engineer (search &amp; agent infrastructure) | RAG &amp; backend foundation</div>
+    <div class="contact">
+    <span>Berlin, Germany</span>
+    <span>German permanent residence (Niederlassungserlaubnis) · no visa sponsorship needed</span>
+    <span>Live AI platform: <a href="https://agentic-platform-backend-production.up.railway.app/">agentic-platform-backend-production.up.railway.app</a></span>
+    <span><a href="https://github.com/karthikdevadoss">github.com/karthikdevadoss</a></span>
+  </div>
+</header>
+
+<h2>Summary</h2>
+<p class="summary">Applying for Forward Deployed Engineer, Enterprise at Tavily. Engineer focused on AI solution architecture, with about ten years of backend development since December 2016. Since early 2026, one of a handful of engineers in an initial core AI team at a large retail-energy company, designing and building AI solutions hands-on alongside senior backend work, including production AI triage with a human approval step, adopted by several teams. 4+ years combining hands-on Java/Spring with architecture discussions and design decisions alongside the lead.</p>
+
+<h2>Core skills</h2>
+<div class="skills">
+  <div class="k">AI stack</div><div>Models used day-to-day: Claude Sonnet, Claude Code, Grok Bot, Fabel, GPT-4o / Azure OpenAI, Gemini � vector retrieval (production triage) � Python, Anthropic API, embeddings, Postgres, Playwright (personal project)</div>
+  <div class="k">AI architecture</div><div>AI solution design � human-approval &amp; capability boundaries � deterministic vs LLM decision split � RAG &amp; retrieval evaluation (recall/MRR) � MCP &amp; agent tool boundaries</div>
+  <div class="k">Backend</div><div>Java, Spring Boot, REST, GraphQL, JWT/FusionAuth, AWS Lambda/SAM, SQS, Oracle, Docker, Jenkins, JUnit, Kafka, FHIR, Apache Camel</div>
+</div>
+
+<h2>Experience</h2>
+
+<div class="job">
+  <div class="job-head"><div><span class="role">Senior Backend Developer</span> — <span class="org">NRG Energy</span></div><div class="dates">Mar 2022 – present</div></div>
+  <div class="sub">End client; employed via Remote GmbH · Texas, USA / Berlin</div>
+  <ul>
+    <li>Java/Spring Boot on a large retail-energy platform serving 5+ million customers; since early 2026, one of a handful of engineers in the initial core AI team — designing and building AI solutions hands-on (production AI triage with Azure OpenAI, vector retrieval, and human email approval before action; adopted by several teams) alongside senior backend work.</li>
+    <li>Took part in architecture discussions and design decisions with the lead; REST, GraphQL, JWT/FusionAuth; 2025 AWS Lambda/SAM; mentoring; monthly production on-call.</li>
+  </ul>
+</div>
+
+<div class="job">
+  <div class="job-head"><div><span class="role">Java Developer Consultant</span> — <span class="org">Blue Cross Blue Shield Association (BCBSA)</span></div><div class="dates">Jun 2019 – Mar 2022</div></div>
+  <div class="sub">Chicago, USA</div>
+  <ul>
+    <li>National hub connecting state Blue Cross Blue Shield plans (~118 million members system-wide): Java/Spring Boot REST and FHIR interoperability / payer-to-payer exchange for member, coverage, and claims services.</li>
+    <li>Application-side Kafka producers and consumers for domain events; careful handling of sensitive healthcare data.</li>
+  </ul>
+</div>
+
+<div class="job">
+  <div class="job-head"><div><span class="role">Java Backend Developer</span> — <span class="org">Marsh (Digital Broker / Bluestream, Affinity)</span></div><div class="dates">Dec 2016 – Jun 2019</div></div>
+  <div class="sub">Via Innovecture LLC · Phoenix, USA · ~95,000 colleagues, 130 countries</div>
+  <ul>
+    <li>Java/Spring carrier integrations (Apache Camel routes, ACORD-oriented mapping); on IMT-Germany, Data Modeler and System Analyst — built within the technical architect’s design.</li>
+  </ul>
+</div>
+
+<h2>Personal project</h2>
+<div class="job">
+  <div class="job-head"><div><span class="role">Agentic Software Delivery Platform</span><span class="tag">PERSONAL PROJECT</span></div><div class="dates"><a href="https://agentic-platform-backend-production.up.railway.app/">Live demo</a> · <a href="https://github.com/karthikdevadoss/agentic-software-delivery">GitHub repo</a></div></div>
+  <div class="sub">Independently designed and built</div>
+  <ul>
+    <li><b>Deterministic vs LLM split:</b> deterministic checks kept separate from LLM proposals; a Python agent (Anthropic API) plans and applies changes to a real Spring Boot target via tool calling.</li>
+    <li><b>Human-approval boundary:</b> structural approval gate; the model has no code path to approve its own change, and approval is bound by content hash to the exact change.</li>
+    <li><b>RAG eval design:</b> local retrieval (embeddings, cosine similarity, content-hash indexing) with a labelled eval (recall/MRR).</li>
+    <li><b>MCP / tool boundaries:</b> MCP server for read-only repository tools; independent QA subagent without write tools; durable Postgres event ledger with versioned pricing.</li>
+  </ul>
+</div>
+
+<div class="two">
+  <div><h2>Education</h2><p><b>B.E. Computer Science</b> — Madras University, Chennai</p></div>
+  <div><h2>Languages</h2><p><b>English</b> — fluent &nbsp;·&nbsp; <b>German</b> — A1–A2</p></div>
+</div>
+
+</div></body></html>

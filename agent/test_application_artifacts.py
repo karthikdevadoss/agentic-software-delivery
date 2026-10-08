@@ -231,21 +231,71 @@ class TestTheGeneratorIsInTheRepository(unittest.TestCase):
                 with self.subTest(module=name, path=bad):
                     self.assertNotIn(bad, code)
 
-    def test_the_generator_declares_every_pack_it_can_build(self):
-        """Every pack on the Review page must be buildable from repo inputs."""
+    #: The live page and the committed generator disagree about exactly two
+    #: packs, and the disagreement is deliberate rather than a fault.
+    #:
+    #: `applications.json` was baked on 2026-10-06. On 2026-10-07 the Owner
+    #: authorised swapping Cursor's Solutions Architect out for LangChain --
+    #: APPLY_LOG_2026-10-07.md records the Cursor ATS as a 404, and the generator
+    #: carries the newer list. The page has simply not been rebuilt since.
+    #:
+    #: Pinned in BOTH directions. A third entry means a new, unrecorded drift.
+    #: Rebuilding the page is what clears it, and doing so is a visible change to
+    #: what the Owner sees, so it waits for his yes rather than happening as a
+    #: side effect of a test.
+    KNOWN_PAGE_DRIFT = {
+        "on_page_not_in_generator": {"cursor-solutions-architect-central-europe"},
+        "in_generator_not_on_page": {"langchain-deployed-architect-amsterdam"},
+    }
+
+    def test_the_page_and_the_generator_differ_only_where_recorded(self):
         import build_application_pdfs as gen
 
-        buildable = set(gen.PACK_KEYS)
+        buildable = {pack["role_slug"] for pack in gen.PACKS}
         on_page = {p.get("slug") for p in _packs()}
-        self.assertEqual(set(), on_page - buildable,
-                         "on the Review page but not buildable: " + str(on_page - buildable))
+        self.assertEqual(self.KNOWN_PAGE_DRIFT["on_page_not_in_generator"],
+                         on_page - buildable)
+        self.assertEqual(self.KNOWN_PAGE_DRIFT["in_generator_not_on_page"],
+                         buildable - on_page)
 
-    def test_every_declared_pack_has_its_markdown_sources_in_the_repo(self):
+    def test_every_other_pack_on_the_page_is_buildable(self):
+        """The drift above aside, nothing the page offers is unreproducible."""
         import build_application_pdfs as gen
 
-        missing = [slug for slug in gen.PACK_KEYS if not gen.sources_for(slug)]
-        self.assertEqual([], missing,
-                         "declared but with no repo-only source: " + str(missing))
+        buildable = {pack["role_slug"] for pack in gen.PACKS}
+        on_page = {p.get("slug") for p in _packs()}
+        unexplained = (on_page - buildable) - self.KNOWN_PAGE_DRIFT["on_page_not_in_generator"]
+        self.assertEqual(set(), unexplained,
+                         "on the Review page, not buildable, not recorded: " + str(unexplained))
+
+    def test_the_generator_reports_no_missing_inputs(self):
+        """`--check` is the contract: every input it needs is in this repo.
+
+        This is the test the incident turns on. It was impossible to satisfy
+        until the 2026-10-08 handover committed the generator, and it stayed red
+        afterwards until cv_v1.html -- dropped by a .gitignore "build/" rule --
+        was force-added to DEVADOSS main.
+        """
+        import build_application_pdfs as gen
+
+        self.assertEqual([], gen.missing_inputs())
+
+    def test_the_generator_needs_no_sibling_checkout(self):
+        """Its pack inputs are vendored here, not read from the DEVADOSS repo."""
+        import build_application_pdfs as gen
+
+        for root in (gen.GOV50, gen.GOV10, gen.COVERS, gen.TEMPLATE):
+            with self.subTest(path=str(root)):
+                self.assertTrue(str(root).startswith(str(AGENT_DIR)), str(root))
+
+    def test_the_generator_shells_out_to_no_uncommitted_helper_binary(self):
+        """It used to call poppler's pdfinfo and pdftotext to verify its own
+        output -- a second pair of tools nobody committed, absent on Windows.
+        Chrome is the one external binary left, and it is passed in explicitly."""
+        code = _py_code_only(self.GENERATOR)
+        for binary in ("pdfinfo", "pdftotext", "wkhtmltopdf", "pandoc"):
+            with self.subTest(binary=binary):
+                self.assertNotIn(binary, code)
 
 
 class TestTheSubmitManifest(unittest.TestCase):
