@@ -115,6 +115,7 @@ HERMETIC_MODULES = [
     # stays RED until agent/testdata/si_production_answers_after.json exists,
     # which is deliberate: the specification change is UNVERIFIED until it has
     # been measured on production, and a skip would read as green.
+    "test_application_artifacts",
     "test_si_quality",
     "test_standing_interview",
     "test_state_brief",

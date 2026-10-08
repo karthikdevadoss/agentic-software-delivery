@@ -25,6 +25,24 @@ from pathlib import Path
 
 AGENT_DIR = Path(__file__).resolve().parent
 WEB_DIR = AGENT_DIR / "web"
+APPLICATIONS_PDF_DIR = WEB_DIR / "applications_pdf"
+
+from pack_pdf_names import existing_pair  # noqa: E402
+
+
+def _artifact_fields(slug: str) -> dict:
+    """The candidate-facing filenames for one pack, checked to exist.
+
+    This replaced `"cv_pdf": f"{i:02d}_{slug}.pdf"`, which emitted the internal
+    shortlist rank as the filename an employer reads, and emitted no cover letter
+    at all. Both were root cause 2 of incident INC_2026-10-08 (DEVADOSS
+    storage/incidents/). Raising here is deliberate: a Review entry that names a
+    file nobody can download reads as ready to send.
+    """
+    cv_name, cover_name = existing_pair(slug, APPLICATIONS_PDF_DIR)
+    return {"cv_pdf": cv_name, "cover_pdf": cover_name, "pdfs": [cv_name, cover_name]}
+
+
 OUTPUT_PATH = WEB_DIR / "applications.json"
 AS_OF = date(2026, 10, 6)
 
@@ -279,8 +297,7 @@ def _load_a50(root: Path) -> list[dict]:
                 "posting": posting,
                 "cover_letter": cover,
                 "fit_gaps": fit_gaps,
-                "cv_pdf": pdf,
-                "pdfs": [pdf],
+                **_artifact_fields(slug),
             })
             continue
         posting = _read(pack_dir / "posting.md") if (pack_dir / "posting.md").exists() else ""
@@ -301,8 +318,7 @@ def _load_a50(root: Path) -> list[dict]:
             "posting": posting,
             "cover_letter": cover,
             "fit_gaps": fit_gaps,
-            "cv_pdf": pdf,
-            "pdfs": [pdf] if pdf else [],
+            **_artifact_fields(slug),
         })
     return packs
 
@@ -390,8 +406,7 @@ def _load_a10(root: Path, dates: dict[str, str]) -> list[dict]:
             "posting": posting,
             "cover_letter": cover,
             "fit_gaps": fit_gaps,
-            "cv_pdf": pdf,
-            "pdfs": [pdf],
+            **_artifact_fields(slug),
         })
     return packs
 

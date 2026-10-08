@@ -161,7 +161,11 @@
           p.cv_pdf ? el("a", { href: withKey("/applications_pdf/" + encodeURIComponent(p.cv_pdf)), text: "Download CV (PDF)" }) : null,
           p.cover_pdf
             ? el("a", { href: withKey("/applications_pdf/" + encodeURIComponent(p.cover_pdf)), text: "Download cover letter (PDF)", class: "secondary" })
-            : el("button", { type: "button", class: "secondary ap-cover", text: "Download cover letter" }),
+            // No markdown fallback. This used to render a button that handed the
+            // user "<slug>-cover-letter.md", which is not a document an applicant
+            // tracking system renders -- root cause 4 of incident INC_2026-10-08.
+            // A pack with no cover PDF is a packaging fault and says so.
+            : el("span", { class: "ap-cover-missing", text: "Cover letter PDF missing - do not submit this pack" }),
           approveBtn,
           statusEl,
         ]),
@@ -170,13 +174,6 @@
           text: "Approve = Owner yes. Mahadeva then applies via the employer careers form or email apply link in the pack. No LinkedIn Easy Apply. Nothing is sent from this tap."
         }),
       ]);
-      const coverBtn = detail.querySelector("button.ap-cover");
-      if (coverBtn) {
-        coverBtn.addEventListener("click", function (ev) {
-          ev.stopPropagation();
-          downloadText((p.slug || p.id) + "-cover-letter.md", p.cover_letter || "");
-        });
-      }
       approveBtn.addEventListener("click", function (ev) {
         ev.stopPropagation();
         if (approveBtn.disabled) return;
