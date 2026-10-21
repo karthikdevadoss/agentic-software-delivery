@@ -92,3 +92,15 @@ agent/.workflow_drill_evidence/
 # Runtime Owner Approve → apply queue (Sprint 13)
 agent/applications_apply_queue.json
 agent/applications_apply_queue.json.tmp
+
+# Personal job-application material and private interview captures (Owner
+# decision, 2026-10-21). Removed from the repository by a normal delete commit;
+# kept out from now on. The /applications review route answers 404 when the
+# local pack file is absent.
+agent/web/applications.json
+agent/web/applications_pdf/
+*_CV_*.pdf
+*_CoverLetter_*.pdf
+agent/testdata/si_production_answers*.json
+docs/audits/SI_AUDIT_2026-09-29.md
+P0_PROMPT.txt

@@ -1,21 +1,21 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-06T12:27:11Z",
-  "commit_sha": "91b8041f1c5b19edafae6d15e5b848a3808a593a",
-  "branch": "mahadeva/automation-4",
+  "generated_at": "2026-10-21T12:23:33Z",
+  "commit_sha": "2cd0769bdda4f76aafa33dfea761ebadda632276",
+  "branch": "p0-fixes-2026-10-21",
   "working_tree_dirty": false,
   "postings_accessed": "2026-10-06",
   "postings_note": "Thirteen English-language AI engineering job postings that were listed as open on the access date, in this order: remote first, then Berlin hybrid, Berlin on-site and other German cities. Architect-titled roles based in Germany in the same search all required German; the one architect-titled role here is EU-remote.",
   "postings_total": 13,
   "profile": {
     "name": "Karthikeyan Devadoss",
-    "headline": "AI solution architecture and engineering",
-    "location": "Berlin",
-    "work_mode": "Remote-first, open to contract work",
+    "headline": "AI Engineer – Full Stack",
+    "location": "Berlin, Germany",
+    "work_mode": "Remote-first",
     "languages": "English (working language); German A1–A2",
     "education": "B.E. Computer Science, Madras University",
-    "nrg": "Current client engagement: NRG Energy. Since early 2026 I have been one of a handful of engineers in NRG's initial core AI team, designing and building AI solutions hands-on alongside senior backend work, and taking part in architecture discussions and design decisions with the lead. The platform on this page is my own system, not an NRG product.",
-    "facts_source": "Confirmed by me on 2026-10-06 (headline, degree, languages, work mode, NRG wording and NRG AI team role); name, Berlin and the NRG separation also appear on the live home page.",
+    "nrg": "Since March 2022 I have worked for NRG Energy through Remote, my employer; NRG is the client. Since early 2026 I have been one of a handful of engineers in the initial core AI team at NRG, designing and building AI solutions hands-on alongside senior backend work. Since January 2026 I have led AI adoption in my area, cutting routine work time by about 20%. The platform on this page is my own system, separate from NRG.",
+    "facts_source": "Confirmed by me on 2026-10-06 (degree, languages, NRG AI team role) and 2026-10-21 (headline, work mode, NRG dates and wording, AI adoption); name, Berlin and the NRG separation also appear on the live home page.",
     "links": [
       {
         "label": "GitHub",
@@ -39,8 +39,7 @@
       "metric": "eval",
       "link": {
         "url": "/eval",
-        "status": "pending_deploy",
-        "fallback_url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/mahadeva/automation-4/agent/web/eval.html"
+        "status": "live"
       }
     },
     {
@@ -54,8 +53,7 @@
       "metric": "triage",
       "link": {
         "url": "/triage/evidence",
-        "status": "pending_deploy",
-        "fallback_url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/mahadeva/automation-4/agent/web/triage-evidence.html"
+        "status": "live"
       }
     }
   ],
@@ -271,8 +269,7 @@
         {
           "label": "Retrieval and routing eval results page",
           "url": "/eval",
-          "status": "pending_deploy",
-          "fallback_url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/mahadeva/automation-4/agent/web/eval.html",
+          "status": "live",
           "metrics": "eval"
         },
         {
@@ -353,8 +350,7 @@
         {
           "label": "Triage evidence: which scenario tests ran, and what did not",
           "url": "/triage/evidence",
-          "status": "pending_deploy",
-          "fallback_url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/mahadeva/automation-4/agent/web/triage-evidence.html",
+          "status": "live",
           "metrics": "triage"
         },
         {
@@ -413,8 +409,7 @@
         {
           "label": "All six example questions answered (recorded snapshot)",
           "url": "/ask-codebase/examples",
-          "status": "pending_deploy",
-          "fallback_url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/mahadeva/automation-4/agent/web/ask-codebase-examples.html",
+          "status": "live",
           "metrics": "ask"
         },
         {
@@ -485,7 +480,7 @@
           "status": "source"
         }
       ],
-      "limits": "The approval step covers the model's file-writing tools. Small, low-risk Workbench requests in the public preview are applied without a human approval step."
+      "limits": "A person approves before anything changes: the model's file edits wait for an approval bound to the exact content, and a Workbench change is deployed only after the owner approves it."
     },
     {
       "id": "mcp",
@@ -775,171 +770,17 @@
   ],
   "link_check": {
     "offline": "passed",
-    "online": {
-      "checked_at": "2026-10-06T12:27:29Z",
-      "results": [
-        {
-          "url": "https://remoshift.com/job/ai-engineer-cc791343",
-          "status": 200
-        },
-        {
-          "url": "https://remoshift.com/job/llm-agent-engineer-production-b09d7fcf",
-          "status": 200
-        },
-        {
-          "url": "https://jobs.ashbyhq.com/space44/f1bd4b1f-93de-492b-871e-77b134705bb5",
-          "status": 200
-        },
-        {
-          "url": "https://job-boards.greenhouse.io/flodesk/jobs/5432437008",
-          "status": 200
-        },
-        {
-          "url": "https://jobs.ashbyhq.com/robco/4d090169-ddee-4058-9020-4940f0877f7d",
-          "status": 200
-        },
-        {
-          "url": "https://trustedshops.recruitee.com/o/senior-genai-engineer-fmd",
-          "status": 200
-        },
-        {
-          "url": "https://remoshift.com/job/senior-ai-engineer-f-m-d-remote-in-germany-ee4f1739",
-          "status": 200
-        },
-        {
-          "url": "https://job-boards.greenhouse.io/commercetools/jobs/7774985003",
-          "status": 200
-        },
-        {
-          "url": "https://devjobs.de/job/cf5fece816d4dfb477be84376b65ad24",
-          "status": 200
-        },
-        {
-          "url": "https://jobs.ashbyhq.com/kuro/446f292f-534d-425f-9bfa-e12f71271444",
-          "status": 200
-        },
-        {
-          "url": "https://jobs.ashbyhq.com/clera/903977f2-aef8-43a2-a42b-ed791e556543",
-          "status": 200
-        },
-        {
-          "url": "https://jobera.com/job/cortea-senior-staff-ai-engineer-quality-evals-m-f-x-81e5dc20/",
-          "status": 200
-        },
-        {
-          "url": "https://ml6.teamtailor.com/jobs/8308812-senior-ai-engineer",
-          "status": 200
-        },
-        {
-          "url": "https://github.com/karthikdevadoss",
-          "status": 200
-        },
-        {
-          "url": "https://www.linkedin.com/in/karthikeyan-devdoss/",
-          "status": 999
-        },
-        {
-          "url": "https://agentic-platform-backend-production.up.railway.app/",
-          "status": 200
-        },
-        {
-          "url": "https://agentic-platform-backend-production.up.railway.app/workbench#verified-run-panel",
-          "status": 200
-        },
-        {
-          "url": "https://agentic-platform-backend-production.up.railway.app/triage",
-          "status": 200
-        },
-        {
-          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/agent_loop.py",
-          "status": 200
-        },
-        {
-          "url": "https://agentic-platform-backend-production.up.railway.app/eval",
-          "status": 404
-        },
-        {
-          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/mahadeva/automation-4/agent/web/eval.html",
-          "status": 200
-        },
-        {
-          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/eval_runner.py",
-          "status": 200
-        },
-        {
-          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/evals/retrieval_dataset.json",
-          "status": 200
-        },
-        {
-          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/agent_decision_eval_runner.py",
-          "status": 200
-        },
-        {
-          "url": "https://agentic-platform-backend-production.up.railway.app/case-study/durable-agent",
-          "status": 200
-        },
-        {
-          "url": "https://agentic-platform-backend-production.up.railway.app/triage/evidence",
-          "status": 404
-        },
-        {
-          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/mahadeva/automation-4/agent/web/triage-evidence.html",
-          "status": 200
-        },
-        {
-          "url": "https://agentic-delivery-customer-app-production.up.railway.app",
-          "status": 200
-        },
-        {
-          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/durable_workflow.py",
-          "status": 200
-        },
-        {
-          "url": "https://agentic-platform-backend-production.up.railway.app/ask-codebase",
-          "status": 200
-        },
-        {
-          "url": "https://agentic-platform-backend-production.up.railway.app/ask-codebase/examples",
-          "status": 404
-        },
-        {
-          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/mahadeva/automation-4/agent/web/ask-codebase-examples.html",
-          "status": 200
-        },
-        {
-          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/ask_codebase.py",
-          "status": 200
-        },
-        {
-          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/reasoning_gateway.py",
-          "status": 200
-        },
-        {
-          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/event_ledger.py",
-          "status": 200
-        },
-        {
-          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/write_tools.py",
-          "status": 200
-        },
-        {
-          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/CAPABILITY_SECURITY_MODEL.md",
-          "status": 200
-        },
-        {
-          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/mcp_server.py",
-          "status": 200
-        }
-      ]
-    }
+    "online": null
   },
   "quotes_verified": {
     "quotes": 72,
     "against": "posting text captured on 2026-10-06",
-    "source_sha256": "14cd40ae4176adab2217ba7d2fb1e3af5291a388438ffa4c2dac55fd6cc43368"
+    "source_sha256": "fecfc4a66d7d1820a26852b226bac8382385fc413d40af886c1dc20cfee78d59",
+    "carried_from_source_sha256": "14cd40ae4176adab2217ba7d2fb1e3af5291a388438ffa4c2dac55fd6cc43368",
+    "carried_because": "2026-10-21 edit changed profile and limit text only; all 72 posting quotes are byte-identical to the verified source"
   },
   "inputs": {
-    "agent/recruiters_source.yaml": "14cd40ae4176adab2217ba7d2fb1e3af5291a388438ffa4c2dac55fd6cc43368",
+    "agent/recruiters_source.yaml": "fecfc4a66d7d1820a26852b226bac8382385fc413d40af886c1dc20cfee78d59",
     "agent/web/case-study-durable-agent.html": "e6eaf381b8b8936d5f90f6fb2f75d774ea842eb5a226fc609495f320db52c6d7",
     "agent/web/eval-results.json": "cd47e5ae2d3d2037fdb5ec467ea603e9b0a81b3f60e6563e4f11038fc059bd7a",
     "agent/web/triage-evidence.json": "69845e1d9445b44136bc6db1aad2f8518c8889f3e7a9377eb4c6af041c7fb3f7",

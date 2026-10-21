@@ -23,17 +23,19 @@ const VIEWPORTS = [
 ];
 
 // Automation Sprint 4 (Owner decision): Showcase and Usage out, For Recruiters in.
-const CANONICAL_NAV = ["Home", "Workbench", "Triage", "Ask Codebase", "For Recruiters"];
+// Automation Sprint 14: Interviewer Brief joined. 2026-10-21: Standing Interview left.
+const CANONICAL_NAV = ["Home", "Workbench", "Triage", "Ask Codebase", "For Recruiters", "Interviewer Brief"];
 
 test.describe("Home page — identity and claims", () => {
   test("the first screen names the person, the role and the separation", async ({ page }) => {
     await page.goto("/");
     await expect(page.locator("h1")).toHaveText("Karthikeyan Devadoss");
-    await expect(page.locator(".role")).toContainText("Java, Spring & Agentic AI");
-    await expect(page.locator(".meta")).toContainText("Berlin");
+    await expect(page.locator(".role")).toHaveText("AI Engineer – Full Stack");
+    await expect(page.locator(".meta")).toContainText("Berlin, Germany");
     // The NRG separation is the single most important truthfulness sentence
     // on the page: the platform must never read as an employer's product.
-    await expect(page.locator(".sep")).toContainText("not an NRG product");
+    await expect(page.locator(".sep")).toContainText("separate from NRG");
+    await expect(page.locator(".sep")).toContainText("Since March 2022");
   });
 
   test("exactly three proof cards, each with a working destination", async ({ page }) => {
@@ -68,13 +70,12 @@ test.describe("Home page — identity and claims", () => {
     await expect(mcp.locator(".estat")).toHaveText("Implemented and tested");
   });
 
-  test("scope boundaries are present and neutrally worded", async ({ page }) => {
+  test("how-it-runs summary is present and plainly worded", async ({ page }) => {
     await page.goto("/");
     const scope = page.locator(".scope");
     await expect(scope).toBeVisible();
-    await expect(scope).toContainText("one model provider");
-    await expect(scope).toContainText("managed vector database");
-    await expect(scope).toContainText("future work");
+    await expect(scope).toContainText("One model provider, Anthropic Claude");
+    await expect(scope).toContainText("once the owner approves it");
   });
 
   test("employers are exactly the three approved, with no dates", async ({ page }) => {
@@ -102,10 +103,7 @@ test.describe("Home page — navigation and links", () => {
     await expect(page.locator("#top-nav a")).not.toHaveCount(0);
     const labels = await page.locator("#top-nav a").allTextContents();
     const visible = labels.map((l) => l.trim()).filter(Boolean);
-    // Standing Interview is gated on its corpus endpoint and may legitimately
-    // be absent; the unconditional five must be present, in order.
-    const withoutGated = visible.filter((l) => l !== "Standing Interview");
-    expect(withoutGated).toEqual(CANONICAL_NAV);
+    expect(visible).toEqual(CANONICAL_NAV);
   });
 
   test("Home is marked as the current page on /", async ({ page }) => {

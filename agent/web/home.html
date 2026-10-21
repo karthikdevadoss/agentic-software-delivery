@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Karthikeyan Devadoss — Senior Backend / Software Engineer (Java, Spring &amp; Agentic AI)</title>
-<meta name="description" content="Enterprise Java/Spring backend engineer building and operating a production-deployed Agentic AI platform with human control, durable workflows and measurable quality.">
+<title>Karthikeyan Devadoss — AI Engineer – Full Stack</title>
+<meta name="description" content="AI Engineer – Full Stack. I build AI agents end to end: Java and Python backends, the web front end, retrieval, evaluation, and the controls that keep a person in charge of every change.">
 <link rel="stylesheet" href="/fonts/fonts.css">
 <style>
   /* Sprint 14: this page deliberately does NOT load /style.css. That sheet is
@@ -76,7 +76,7 @@
        margin: 0 0 10px; font-weight: 660; }
   .role { font-size: clamp(18px, 2.6vw, 21px); color: var(--accent); font-weight: 620;
           margin: 0 0 20px; letter-spacing: -.01em; }
-  .lede { font-size: 18px; color: var(--soft); margin: 0 0 20px; max-width: 60ch; }
+  .lede { font-size: 18px; color: var(--soft); margin: 0 0 20px; max-width: 54ch; }
   .meta { font-size: 15px; color: var(--soft); margin: 0 0 14px; }
   .meta b { color: var(--ink); font-weight: 600; }
   .sep { font-size: 15px; color: var(--soft); border-left: 3px solid var(--line);
@@ -171,10 +171,10 @@
 
   <header>
     <h1>Karthikeyan Devadoss</h1>
-    <p class="role">Senior Backend / Software Engineer — Java, Spring &amp; Agentic AI</p>
-    <p class="lede">Enterprise Java/Spring backend engineer building and operating a production-deployed Agentic AI platform with human control, durable workflows and measurable quality.</p>
-    <p class="meta"><b>Berlin</b> · English · Open to full-time Senior / Lead IC roles in Germany</p>
-    <p class="sep">Current client engagement: NRG Energy. The AI platform shown here is my own system, not an NRG product.</p>
+    <p class="role">AI Engineer – Full Stack</p>
+    <p class="lede">I build AI agents end to end: Java and Python backends, the web front end, retrieval, evaluation, and the controls that keep a person in charge of every change. The platform on this site is one I designed, built and run in production.</p>
+    <p class="meta"><b>Berlin, Germany</b> · English</p>
+    <p class="sep">Since March 2022 I have worked for NRG Energy through Remote, my employer; NRG is the client. Since early 2026 I have been one of a handful of engineers in the initial core AI team at NRG, and since January 2026 I have led AI adoption in my area, cutting routine work time by about 20%. The AI platform shown here is my own system, separate from NRG.</p>
   </header>
 
   <section class="proof" aria-label="Three proof points">
@@ -202,14 +202,15 @@
   <h2 class="sec">What I build</h2>
   <div class="cols">
     <div>
-      <h3>Enterprise backend</h3>
+      <h3>Backend and web</h3>
       <ul>
         <li>Java 21 / Spring Boot</li>
         <li>REST &amp; GraphQL APIs</li>
         <li>Spring Security / JWT</li>
         <li>PostgreSQL</li>
         <li>AWS</li>
-        <li>Testing / CI</li>
+        <li>JavaScript, HTML and CSS front ends</li>
+        <li>Testing / CI, Playwright end-to-end tests</li>
         <li>Distributed-service and production troubleshooting</li>
       </ul>
     </div>
@@ -259,7 +260,7 @@
       <div>
         <p class="estat">Checked in CI</p>
         <h3>Retrieval with labelled evaluation</h3>
-        <p>Search quality is scored against a hand-labelled set of questions and expected answers. In CI the evaluation runs after the Python tests on every push and pull request to master, and fails the build if a score drops below its recorded threshold. If an earlier step fails, the evaluation does not run; the eval page shows when it last passed.</p>
+        <p>Search quality is scored against a hand-labelled set of questions and expected answers. In CI the evaluation runs after the Python tests on every push and pull request to master, and fails the build if a score drops below its recorded threshold. The eval page shows the current scores and when they last passed.</p>
       </div>
       <div class="side"><a href="/eval">See the scores and CI status →</a></div>
     </div>
@@ -268,7 +269,7 @@
       <div>
         <p class="estat">Implemented and tested</p>
         <h3>MCP server for tool integration</h3>
-        <p>The platform's read-only repository tools are also exposed over the Model Context Protocol, so other AI clients can use them. This runs locally rather than as a hosted service.</p>
+        <p>The platform's read-only repository tools are also exposed over the Model Context Protocol, so other AI clients can use them. It runs locally, next to the platform.</p>
       </div>
       <div class="side"><a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/mcp_server.py">See the MCP server →</a></div>
     </div>
@@ -293,10 +294,9 @@
 
   </div>
 
-  <h2 class="sec">Current scope boundaries</h2>
+  <h2 class="sec">How it runs</h2>
   <div class="scope" id="scope">
-    <p>This platform does not claim capabilities it has not implemented. It currently uses one model provider, local cosine retrieval over small corpora rather than a managed vector database, and script-based deployment: the platform itself is deployed by a manually triggered Railway CLI command, while a Workbench run deploys the small Customer App change it made by running the same CLI step itself.</p>
-    <p>Multi-provider routing, managed vector search and hybrid retrieval remain future work.</p>
+    <p>One model provider, Anthropic Claude, reached through a single gateway. Retrieval is local cosine search over the repository and its documents. The platform is deployed to Railway by a script, and a Workbench change reaches the Customer App through the same deploy step once the owner approves it.</p>
   </div>
 
   <h2 class="sec">Explore the live system</h2>

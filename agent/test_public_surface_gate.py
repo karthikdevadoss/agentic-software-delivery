@@ -98,7 +98,9 @@ class ForbiddenClaimTestCase(unittest.TestCase):
         return _visible_text(html).lower()
 
     def test_home_page_makes_no_forbidden_positive_claim(self):
-        surface = self._claim_surface(HOME, "scope")
+        # Since 2026-10-21 the scope block states what runs in positive terms,
+        # so nothing on the home page is excluded from this scan any more.
+        surface = self._claim_surface(HOME)
         for name, pattern in FORBIDDEN_CLAIMS:
             with self.subTest(claim=name):
                 m = re.search(pattern, surface, re.I)
@@ -116,15 +118,14 @@ class ForbiddenClaimTestCase(unittest.TestCase):
                 self.assertIsNone(
                     m, f"case study positively claims {name}: {detail}")
 
-    def test_the_scope_block_really_does_name_the_absent_capabilities(self):
-        """The exclusion above is only safe if the excluded block is actually
-        doing its job. If someone deletes the scope block, the forbidden-claim
-        test would start passing vacuously -- this stops that."""
+    def test_the_scope_block_states_how_the_platform_runs(self):
+        """The how-it-runs block names the one provider, the retrieval and the
+        deploy path, so a reader never has to infer them."""
         text = _visible_text(HOME.read_text(encoding="utf-8")).lower()
-        for needle in ("one model provider", "vector database",
-                       "manually triggered", "future work"):
+        for needle in ("one model provider, anthropic claude", "local cosine search",
+                       "deployed to railway by a script", "once the owner approves it"):
             self.assertIn(needle, text,
-                          f"the scope-boundaries block must still state {needle!r}")
+                          f"the how-it-runs block must still state {needle!r}")
 
     # Markers that turn a mention of an absent capability into a disclaimer.
     # "rather than X" / "no X" / "does not use X" / "X remains future work".
@@ -190,7 +191,7 @@ class ForbiddenClaimTestCase(unittest.TestCase):
 
     def test_home_states_the_nrg_separation_explicitly(self):
         text = _visible_text(HOME.read_text(encoding="utf-8")).lower()
-        self.assertIn("not an nrg product", text,
+        self.assertIn("separate from nrg", text,
                       "the hero must keep the explicit NRG separation sentence")
 
 

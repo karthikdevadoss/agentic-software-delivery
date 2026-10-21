@@ -39,24 +39,26 @@ class HomeCiClaimTestCase(unittest.TestCase):
         self.assertIn("eval_runner.py all", step)
         runs_always = re.search(r"if:\s*(always\(\)|\$\{\{\s*always\(\)\s*\}\})", step)
         if not runs_always:
-            self.assertIn("If an earlier step fails, the evaluation does not run", HOME)
+            # The step can be skipped, so the page must not promise it always
+            # runs; it points to when the scores last passed instead.
+            self.assertNotIn("always runs", HOME)
+            self.assertIn("when they last passed", HOME)
         self.assertIn("fails the build if a score drops below its recorded threshold", HOME)
 
 
 class DeployClaimsAgreeTestCase(unittest.TestCase):
     def test_home_scope_names_both_deploy_paths(self):
-        self.assertIn("the platform itself is deployed by a manually triggered Railway CLI command", HOME)
-        self.assertIn("a Workbench run deploys the small Customer App change", HOME)
-        # The old line said only "manually triggered deployment scripts", which
-        # read as a contradiction of the Workbench's automatic deploy.
-        self.assertNotIn("and manually triggered deployment scripts.", HOME)
+        self.assertIn("The platform is deployed to Railway by a script", HOME)
+        self.assertIn("a Workbench change reaches the Customer App through the same deploy step once the owner approves it", HOME)
 
     def test_workbench_says_what_it_deploys(self):
-        self.assertIn("deployed to the Customer App automatically", WORKBENCH)
+        self.assertIn("deployed to the Customer App only after the owner approves it", WORKBENCH)
 
     def test_the_workbench_claim_is_backed_by_code(self):
         src = (ROOT / "agent/web_server.py").read_text(encoding="utf-8")
         self.assertIn("demo_execution.trigger_deploy(", src)
+        # 2026-10-21: the run only starts behind the owner's approval.
+        self.assertIn("_require_person_approval(", src)
         self.assertIn("railway up", (ROOT / "agent/demo_execution.py").read_text(encoding="utf-8"))
 
 

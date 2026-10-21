@@ -803,6 +803,73 @@ class VoiceSpecInPromptTestCase(unittest.TestCase):
                 f"{reinstates_the_defect!r}")
 
 
+
+class CurrentFactsTestCase(unittest.TestCase):
+    """Owner-confirmed facts, 2026-10-21. Production answers repeated an old
+    NRG start date from the corpus; the prompt now carries the current facts
+    and a deterministic gate rewrites what slips through."""
+
+    def test_current_facts_are_in_every_system_prompt(self):
+        for corpus in (None, make_corpus()):
+            prompt = si.build_system_prompt(corpus)
+            self.assertIn("since March 2022", prompt)
+            self.assertIn("initial\n  core AI team at NRG", prompt)
+            self.assertIn("about 20%", prompt)
+            self.assertIn("Berlin, Germany", prompt)
+
+    def test_old_start_dates_are_rewritten(self):
+        for old in ("I've been at NRG since July 2021.", "ongoing work since mid-2021.",
+                    "NRG (2021-present) is current."):
+            fixed = si.correct_current_facts(old)
+            self.assertNotIn("2021", fixed)
+            self.assertIn("2022", fixed)
+
+    def test_title_disclaimer_sentence_is_dropped(self):
+        text = ("I lead AI adoption in my area. I have no formal AI-leadership title "
+                "there. It cut routine work time by about 20%.")
+        fixed = si.correct_current_facts(text)
+        self.assertNotIn("formal", fixed)
+        self.assertIn("about 20%", fixed)
+
+    def test_answered_text_goes_through_the_facts_gate(self):
+        strong = [dict(make_corpus().chunks[0], score=0.81)]
+        model = fake_model("Yes, I'm still at NRG, since July 2021, through Remote.")
+        with mock.patch.object(si, "retrieve", return_value=strong):
+            out = si.answer("are you still working at NRG", make_corpus(), create_fn=model)
+        self.assertEqual("answered", out["outcome"])
+        self.assertNotIn("2021", out["answer"])
+        self.assertIn("March 2022", out["answer"])
+
+
+class FrontendQuestionTestCase(unittest.TestCase):
+    """JavaScript / front-end questions are answered, not refused for thin
+    retrieval over backend books."""
+
+    def test_frontend_questions_are_recognised(self):
+        for q in ("Explain closures in JavaScript", "How does the event loop work?",
+                  "What is the difference between a promise and async/await?",
+                  "How do you test a front-end page?"):
+            self.assertTrue(si.is_frontend(q), q)
+        self.assertFalse(si.is_frontend("How did you use Spring Security at NRG?"))
+
+    def test_a_javascript_question_is_answered_with_nothing_retrieved(self):
+        model = fake_model("A closure is a function that keeps access to the variables "
+                           "of the scope it was created in. On my platform's pages I use "
+                           "that for the polling callbacks that update run status.")
+        with mock.patch.object(si, "retrieve", return_value=[]):
+            out = si.answer("Explain closures in JavaScript", make_corpus(), create_fn=model)
+        self.assertEqual("answered", out["outcome"])
+        self.assertEqual("frontend", out["scope"])
+        self.assertIn("FRONT-END AND JAVASCRIPT QUESTIONS", model.last_kwargs["system"])
+
+    def test_a_non_frontend_question_with_nothing_retrieved_still_refuses(self):
+        def must_not_run(**kwargs):
+            raise AssertionError("model called for an ungrounded question")
+        with mock.patch.object(si, "retrieve", return_value=[]):
+            out = si.answer("What is the capital of France?", make_corpus(),
+                            create_fn=must_not_run)
+        self.assertEqual("ungrounded", out["outcome"])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
 

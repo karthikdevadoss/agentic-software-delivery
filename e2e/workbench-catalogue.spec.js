@@ -80,7 +80,7 @@ test.describe("Workbench — deterministic catalogue (safe, non-mutating)", () =
     await expect(page.locator("#assessment-body")).toContainText("Authorization required");
   });
 
-  test("a genuinely supported requirement's preview shows the exact field, value, and $0.00 cost", async ({ page }) => {
+  test("a genuinely supported requirement's preview shows the exact field, value, $0.00 cost and waits for approval", async ({ page }) => {
     await page.goto("/workbench");
     // Assess only (read-only) — verified directly via the API to avoid
     // depending on exact timing of the (real, mutating) submit flow here.
@@ -88,7 +88,9 @@ test.describe("Workbench — deterministic catalogue (safe, non-mutating)", () =
       data: { requirement: 'Change the footer text to "Verification Preview Test"' },
     });
     const body = await resp.json();
-    expect(body.decision).toBe("auto");
+    // 2026-10-21: an in-scope request waits for the owner's approval.
+    expect(body.decision).toBe("approval_required");
+    expect(body.message).toContain("A person approves");
     expect(body.operation_id).toBe("footer_text");
     expect(body.new_value).toBe("Verification Preview Test");
     expect(body.estimated_cost_usd).toBe(0.0);

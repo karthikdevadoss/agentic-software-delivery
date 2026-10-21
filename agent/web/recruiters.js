@@ -158,7 +158,7 @@
     const total = d.postings_total;
     return el("section", { "aria-labelledby": "rc-h-req" }, [
       el("h2", { id: "rc-h-req", text: "What " + total + " AI engineering job postings ask for, and where to check it here" }),
-      el("p", { class: "rc-lead", text: "Counts are how many of the " + total + " postings ask for each thing, in their own words (open “What the postings say”). The right-hand side links to where this portfolio shows it, and what it does not show." }),
+      el("p", { class: "rc-lead", text: "Counts are how many of the " + total + " postings ask for each thing, in their own words (open “What the postings say”). The right-hand side links to where this portfolio shows it." }),
     ].concat(d.requirements.map(function (r) {
       return el("article", { class: "rc-req" }, [
         el("div", {}, [
@@ -170,23 +170,8 @@
           return el("li", {}, [link(e, e.label), e.metrics ? figure(d, e.metrics) : null]);
         })),
         quotes(d, r.asked_by, r.asked_count),
-        el("p", { class: "rc-limit" }, [el("b", { text: "Limit: " }), r.limits]),
       ]);
     })));
-  }
-
-  function gaps(d) {
-    return el("section", { "aria-labelledby": "rc-h-gaps" }, [
-      el("h2", { id: "rc-h-gaps", text: "Not in this portfolio" }),
-      el("p", { class: "rc-lead", text: "Things some of these postings ask for that this portfolio does not show. Listed so you do not have to find out later." }),
-      el("div", { class: "rc-gaps" }, d.gaps.map(function (g) {
-        return el("div", { class: "rc-gap" }, [
-          el("h3", { text: g.title }),
-          el("p", { text: g.detail }),
-          quotes(d, g.asked_by, g.asked_count),
-        ]);
-      })),
-    ]);
   }
 
   function postings(d) {
@@ -218,7 +203,7 @@
     .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
     .then(function (d) {
       main.textContent = "";
-      [header(d), headline(d), requirements(d), gaps(d), postings(d), footer(d)].forEach(function (n) { main.appendChild(n); });
+      [header(d), headline(d), requirements(d), postings(d), footer(d)].forEach(function (n) { main.appendChild(n); });
       upgradePending();
     })
     .catch(function (e) {

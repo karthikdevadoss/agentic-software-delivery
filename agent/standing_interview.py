@@ -372,6 +372,45 @@ questions -- for a multi-employer answer, two to three sentences per employer.
 No bullet lists, no headings, no markdown. Plain sentences, the way you would
 actually say it in a room."""
 
+# Owner-confirmed current facts (2026-10-21). They sit in front of the model on
+# EVERY generate, with or without a career map, and they win over any excerpt:
+# the private corpus was built earlier and still carries an older NRG start
+# date and an older way of describing the AI work, which production answers
+# repeated. correct_current_facts() below is the deterministic backstop.
+CURRENT_FACTS = """CURRENT FACTS -- these override anything in the excerpts or the summary
+- My employer is Remote, and NRG Energy is the client I work for through
+  Remote. I have worked on NRG since March 2022, and I still do.
+- Since early 2026 I have been one of a handful of engineers in the initial
+  core AI team at NRG.
+- Since January 2026 I have led AI adoption in my area, which cut the time
+  spent on routine work by about 20%.
+- I live in Berlin, Germany.
+Never give any other start date for NRG. Never describe my AI role in terms of
+a title I do or do not hold; describe the work."""
+
+# JavaScript / front-end questions. The private books are about backend work
+# at three employers, so a front-end question scored under the grounding
+# threshold and was refused -- an interviewer asking about JavaScript got "not
+# something I've got a specific example of". These questions are answered
+# instead: concepts from sound engineering knowledge, experience only from what
+# is true and public (this platform's own front end).
+FRONTEND_BRIEF = """FRONT-END AND JAVASCRIPT QUESTIONS
+This question is about JavaScript or front-end work. Answer it directly and
+confidently, as an engineer explaining something they use. For this question
+the "only the excerpts" rule covers claims about my own jobs and dates; a
+JavaScript or browser concept may be explained from sound engineering
+knowledge.
+- For a concept question (closures, the event loop, promises and async/await,
+  this-binding, prototypes, the DOM, events, fetch, modules, rendering,
+  performance, accessibility, testing), explain the concept accurately in
+  plain spoken English, with a short concrete example in words.
+- For my own experience, use what is true: the platform I built has a front
+  end written in plain JavaScript -- pages that call JSON APIs with fetch,
+  render results into the DOM, poll for run status, and are covered by
+  Playwright end-to-end tests that check the pages in a real browser. The
+  backend behind it is Python and Java.
+- Do not name an employer for front-end work unless an excerpt below says it."""
+
 # Deterministic post-generation leak scan. Prompt instructions are advisory;
 # this is the control.
 _LEAK_PATTERNS = [
@@ -475,6 +514,19 @@ _BACKEND_HINTS = re.compile(
     r'marsh|bcbsa|nrg|energy|insurance|billing|claim)\w*\b', re.I)
 
 
+_FRONTEND_HINTS = re.compile(
+    r'\b(javascript|js|typescript|ecmascript|es6|node\.?js|front[\s-]?end|'
+    r'browser|dom|css|html|react|angular|vue|svelte|closure|event\s*loop|'
+    r'promise|async\s*/\s*await|callback|hoisting|prototype|fetch\s*api|'
+    r'web\s*page|single[\s-]page|spa|playwright|ui)s?\b', re.I)
+
+
+def is_frontend(question: str) -> bool:
+    """True for a JavaScript / front-end question. Checked before routing:
+    these are answered from FRONTEND_BRIEF, not refused for thin retrieval."""
+    return bool(_FRONTEND_HINTS.search(question or ""))
+
+
 def route(question: str) -> str:
     ai, backend = bool(_AI_HINTS.search(question)), bool(_BACKEND_HINTS.search(question))
     if ai and not backend:
@@ -487,7 +539,7 @@ def route(question: str) -> str:
 # Book -> employer. Verified against the real corpus on 2026-09-27 by counting
 # employer mentions per book rather than assumed: BOOK-01/02 are 97/19 Marsh,
 # BOOK-03/04 are 109/32 BCBSA, BOOK-05/06 are 77/19 NRG. Ordered NRG first
-# (2021-present), then BCBSA, then Marsh -- reverse chronological, which is
+# (2022-present), then BCBSA, then Marsh -- reverse chronological, which is
 # also the order the Owner asked a generic answer to be given in.
 EMPLOYER_BOOKS: tuple[tuple[str, frozenset[str]], ...] = (
     ("NRG Energy", frozenset({"BOOK-05", "BOOK-06"})),
@@ -1142,12 +1194,32 @@ def build_system_prompt(corpus: "Corpus | None") -> str:
     """(A) The frozen rules plus the standing career map, on every generate."""
     career_map = getattr(corpus, "career_map", "") if corpus is not None else ""
     if not career_map:
-        return SYSTEM_PROMPT
+        return SYSTEM_PROMPT + "\n\n" + CURRENT_FACTS
     return (SYSTEM_PROMPT + "\n\nWHO YOU ARE\nYour own standing summary. It is "
             "true and you may draw on it freely for orientation -- who you are, where "
             "you worked, what you did there, what the platform does. The excerpts "
             "remain the authority for specifics; never contradict either.\n\n"
-            + career_map)
+            + career_map + "\n\n" + CURRENT_FACTS)
+
+
+# Deterministic backstop for CURRENT_FACTS. The prompt alone is advisory; an
+# old date that slips through is rewritten, and a sentence about a title is
+# dropped, before anything reaches the person asking.
+_OLD_NRG_START = re.compile(
+    r"\b(since|from|starting in|in)\s+(mid[\s-]?2021|(early|late)\s+2021|"
+    r"(january|february|march|april|may|june|july|august|september|october|"
+    r"november|december)\s+2021|2021)\b", re.I)
+_OLD_NRG_RANGE = re.compile(r"\b2021\s*(-|–|—|to)\s*(present|now|today)\b", re.I)
+_TITLE_SENTENCE = re.compile(
+    r"[^.!?]*\bformal\s+(ai[\s-]+)?(leadership\s+)?title\b[^.!?]*[.!?]\s*", re.I)
+
+
+def correct_current_facts(text: str) -> str:
+    text = _OLD_NRG_START.sub(lambda m: f"{m.group(1)} March 2022"
+                              if m.group(1).lower() != "in" else "in March 2022", text)
+    text = _OLD_NRG_RANGE.sub("2022 to now", text)
+    text = _TITLE_SENTENCE.sub("", text)
+    return text.strip()
 
 
 def build_user_prompt(question: str, hits: list[dict], policy_line: str = "") -> str:
@@ -1207,7 +1279,12 @@ def answer(question: str, corpus: Corpus | None = None, create_fn=None) -> dict:
     # one. Reading the grounding gate off position 0 would have started
     # refusing answerable questions.
     best = max((h["score"] for h in hits), default=0.0)
-    if not hits or best < GROUNDING_THRESHOLD:
+    frontend = is_frontend(question)
+    if frontend:
+        # Only excerpts that genuinely match are passed on; the brief carries
+        # the answer when the books have nothing on the topic.
+        hits = [h for h in hits if h["score"] >= GROUNDING_THRESHOLD]
+    elif not hits or best < GROUNDING_THRESHOLD:
         return {"outcome": "ungrounded", "grounded": False, "answer": REFUSAL,
                 "hits": hits, "best_score": best, "scope": route(question)}
 
@@ -1223,6 +1300,10 @@ def answer(question: str, corpus: Corpus | None = None, create_fn=None) -> dict:
     policy = attribution_for(question, corpus) if route(question) != "ai" else {}
     policy_line = attribution_line(policy, question)
     system_prompt = build_system_prompt(corpus)
+    user_prompt = build_user_prompt(question, hits, policy_line)
+    if frontend:
+        system_prompt += "\n\n" + FRONTEND_BRIEF
+        user_prompt += " For a JavaScript concept, follow FRONT-END AND JAVASCRIPT QUESTIONS."
     policy_summary = ({"lead": policy.get("lead"), "not_used": policy.get("not_used"),
                        "families": policy.get("families")} if policy else None)
 
@@ -1231,7 +1312,7 @@ def answer(question: str, corpus: Corpus | None = None, create_fn=None) -> dict:
         result = reasoning_gateway.call(
             purpose="HUMAN_EXPLANATION",
             system_prompt=system_prompt,
-            user_message=build_user_prompt(question, hits, policy_line),
+            user_message=user_prompt,
             max_tokens=MAX_ANSWER_TOKENS,
             create_fn=create_fn,
             model=os.environ.get("CLAUDE_MODEL", "claude-sonnet-5"),
@@ -1298,7 +1379,7 @@ def answer(question: str, corpus: Corpus | None = None, create_fn=None) -> dict:
         retry = _retry_call(
             purpose="HUMAN_EXPLANATION",
             system_prompt=system_prompt,
-            user_message=(build_user_prompt(question, hits, policy_line)
+            user_message=(user_prompt
                           + "\n\nA previous attempt at this answer named a file or "
                             "module by its filename. Say the same thing again without "
                             "naming any file, path or extension -- describe the "
@@ -1333,7 +1414,7 @@ def answer(question: str, corpus: Corpus | None = None, create_fn=None) -> dict:
         retry = _retry_call(
             purpose="HUMAN_EXPLANATION",
             system_prompt=system_prompt,
-            user_message=(build_user_prompt(question, hits, policy_line)
+            user_message=(user_prompt
                           + "\n\nA previous attempt at this answer was rejected "
                             "because it " + "; ".join(voice)
                           + ". Say the same thing again without that, as a person "
@@ -1379,8 +1460,10 @@ def answer(question: str, corpus: Corpus | None = None, create_fn=None) -> dict:
                     "retry_violations": retry_voice, "policy": policy_summary,
                     "model_reply": retry_text[:600] or text[:600]}
 
+    text = correct_current_facts(text)
     return {"outcome": "answered", "grounded": True, "answer": text,
-            "hits": hits, "best_score": best, "scope": route(question),
+            "hits": hits, "best_score": best,
+            "scope": "frontend" if frontend else route(question),
             "authority": result.get("authority"), "usage": result.get("usage"),
             "policy": policy_summary, "leak_retried": leak_retried}
 

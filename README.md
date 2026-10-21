@@ -1,111 +1,100 @@
-# Agentic Software Delivery System — Week 1 Baseline
+# Agentic Software Delivery
 
-This is the smallest possible baseline for an agentic software delivery
-system built around a real Spring Boot application. It contains:
+An AI agent that makes real changes to a real Java application, with a person
+approving every change before it lands. It reads the codebase, proposes an
+edit, waits for approval, then applies, tests, deploys and checks the result
+in production.
 
-- `app/` — a minimal Spring Boot Customer application.
-- `agent/` — a Python script that turns a natural-language requirement
-  into an implementation plan using the Anthropic API.
-- `requirements/` — sample requirement text used to exercise the agent.
-- `docs/` — architecture and engineering rules for the application
-  (not yet consumed by the agent — reserved for a future RAG stage).
+Live: https://agentic-platform-backend-production.up.railway.app
 
-At this stage the agent only produces a plan. It does not read the
-repository, does not modify files, and does not open pull requests.
+## What is in here
 
-## Running the Spring Boot application
+**An agent that edits files only after a person approves.**
+`agent/write_tools.py` splits a write into propose, approve and apply. A
+proposed edit is a diff; nothing touches disk until a person approves it. The
+approval stores a SHA-256 hash of the exact path and content, and apply checks
+that hash again, so an edit that changes after approval is refused. The model
+can propose; it has no way to approve. On the Workbench page, a change to the
+Customer App is deployed only after the owner approves it.
 
-Prerequisites: Java 17. Maven itself is not required — the project ships
-with the Maven Wrapper, which downloads the correct Maven version on
-first use.
+**A tool-calling loop.** `agent/agent_loop.py` runs Claude with a small set of
+repository tools (list, read, search, semantic search), with a cap on tool
+calls and tokens per run. Every model call goes through one gateway,
+`agent/reasoning_gateway.py`, which checks what the call is for and has an
+off switch; a test fails the build if code calls the SDK directly.
+
+**An MCP server with read-only tools.** `agent/mcp_server.py` exposes the same
+repository tools over the Model Context Protocol, so other AI clients can use
+them. All of them are read-only and share the same path checks as the agent.
+
+**Retrieval with evals.** The repository and a curated set of project docs are
+embedded locally and searched by cosine similarity (`agent/rag_index.py`,
+`agent/backend_rag_index.py`, `agent/ask_codebase.py`). Quality is measured
+against a hand-labelled question set by `agent/eval_runner.py`: Recall@3
+0.833 and MRR 0.868, shown on `/eval`. CI fails the build if a score drops
+below its recorded threshold.
+
+**A LangGraph workflow that survives a crash.** `agent/durable_workflow.py`
+runs a software change as a graph — investigate, propose, wait for approval,
+apply, compile, test, verify — and checkpoints each step to Postgres. It can
+pause for a person, survive a restart and resume without repeating the apply
+step. The crash drill is written up at `/case-study/durable-agent`.
+
+**A Postgres ledger with versioned pricing.** Every meaningful step and every
+model call is written to an event ledger (`agent/event_ledger.py`,
+`infra/event-ledger/schema.sql`) with real token counts. Cost comes from
+`agent/pricing_config.py`, where prices are dated entries that are added, never
+edited, so an old run keeps the price that was true when it ran.
+
+**The Java side.** `app/` is a Spring Boot 4 / Java 21 Customer App — REST and
+GraphQL, Spring Security with JWT, Flyway on Postgres, Redis caching, and an
+outbox for events. `services/` splits the same domain into microservices
+(gateway, Eureka, customer, billing, metering, notification) with distributed
+tracing and a multi-process test that starts them together.
+
+## Pages
+
+| Path | What it shows |
+| --- | --- |
+| `/` | Overview |
+| `/workbench` | Enter a requirement and watch the agent work; a recorded end-to-end run |
+| `/triage` | A contained defect: reproduce, diagnose, patch, test, approve |
+| `/ask-codebase` | Questions answered from retrieval over this repository |
+| `/eval` | Retrieval and routing eval scores and CI status |
+| `/recruiters` | What AI engineering job postings ask for, and where to check it here |
+| `/interviewer` | A short brief for a technical interviewer |
+
+## Running it locally
+
+Python 3.12 and Java 21. The Maven wrapper downloads Maven on first use.
 
 ```bash
-cd app
-./mvnw spring-boot:run
-```
-
-On Windows (Command Prompt or PowerShell):
-
-```powershell
-cd app
-.\mvnw.cmd spring-boot:run
-```
-
-The application starts on `http://localhost:8080` with an in-memory H2
-database seeded with one sample customer.
-
-Try it out:
-
-```bash
-# Fetch the seeded customer (id 1)
-curl http://localhost:8080/customers/1
-
-# Create a new customer
-curl -X POST http://localhost:8080/customers \
-  -H "Content-Type: application/json" \
-  -d '{"name": "Grace Hopper", "email": "grace@example.com"}'
-```
-
-The H2 console is available at `http://localhost:8080/h2-console`
-(JDBC URL: `jdbc:h2:mem:customerdb`, user: `sa`, no password).
-
-## Running the Python planning agent
-
-Prerequisites: Python 3.10+, an Anthropic API key.
-
-```bash
+# Platform (needs ANTHROPIC_API_KEY in the environment or agent/.env)
+pip install -r agent/requirements.txt
 cd agent
-python -m venv venv
-source venv/bin/activate   # on Windows: venv\Scripts\activate
-pip install -r requirements.txt
+python rag_index.py && python backend_rag_index.py   # build the local indexes once
+python web_server.py                                 # http://127.0.0.1:8420
+
+# Customer App
+cd app
+./mvnw spring-boot:run                               # http://localhost:8080
 ```
 
-### Configuring the API key (.env)
-
-The agent loads environment variables from a `.env` file in `agent/`
-(via `python-dotenv`). Create one:
+## Tests
 
 ```bash
-# agent/.env
-ANTHROPIC_API_KEY=your-key-here
+cd agent && python ci_python_tests.py   # hermetic Python suite
+cd agent && python eval_runner.py all   # retrieval and routing evals
+cd app && ./mvnw test                   # Java, including Testcontainers Postgres
+npx playwright test                     # browser tests; starts web_server.py
 ```
 
-`.env` is listed in `.gitignore` and must never be committed. As an
-alternative to `.env`, you can export the variable directly in your
-shell instead:
+CI (`.github/workflows/ci.yml`) runs all of these on every push and pull
+request to `master`, plus each microservice, the Postgres ledger tests and the
+multi-process topology test.
 
-```bash
-export ANTHROPIC_API_KEY=your-key-here   # on Windows: set ANTHROPIC_API_KEY=your-key-here
-```
+## Docs
 
-If `ANTHROPIC_API_KEY` is missing from both `.env` and the environment,
-the agent prints a clear error and exits instead of failing with a raw
-stack trace.
-
-### Optional: overriding the model
-
-By default the agent uses `claude-sonnet-5`. To use a different model,
-set `CLAUDE_MODEL` (in `.env` or the shell environment):
-
-```bash
-# agent/.env
-CLAUDE_MODEL=claude-opus-4-8
-```
-
-### Running it
-
-```bash
-python main.py ../requirements/sample_requirement.txt
-```
-
-The agent reads the requirement file, sends it to Claude, and prints a
-numbered implementation plan to the terminal. It does not touch the
-`app/` source code.
-
-## What's next (not in Week 1)
-
-- Give the agent read access to the repository and `docs/` via RAG.
-- Add MCP-controlled tools for the agent to inspect and modify code.
-- Add implementation, testing, and review agents with self-correction.
-- Add Git/GitHub integration to open pull requests automatically.
-- Add a human approval step before deployment.
+Start at `START_HERE.md`. Architecture decisions are in `docs/DECISIONS.md`,
+lessons learned in `docs/LESSONS.md`, and the security model in
+`docs/CAPABILITY_SECURITY_MODEL.md`.

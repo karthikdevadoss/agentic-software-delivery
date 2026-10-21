@@ -124,10 +124,10 @@ def _non_quote_strings(node, path=""):
         yield path, node
 
 
-# Owner-confirmed date phrases (2026-10-06) that may carry a calendar year.
+# Owner-confirmed date phrases (2026-10-06, 2026-10-21) that may carry a calendar year.
 # Everything else is scanned with them removed, so a degree year, a career
 # start year or any other year still fails.
-OWNER_CONFIRMED_DATE_PHRASES = ("since early 2026",)
+OWNER_CONFIRMED_DATE_PHRASES = ("since early 2026", "since March 2022", "since January 2026")
 
 
 def _without_confirmed_dates(text):
@@ -235,13 +235,15 @@ class PublishedRecruitersDataTestCase(unittest.TestCase):
             with self.subTest(field=field):
                 self.assertNotRegex(p[field].lower(), r"\barchitects?\b")
                 self.assertNotRegex(_without_confirmed_dates(p[field]), r"\b(19|20)\d{2}\b")
-        self.assertEqual(p["headline"], "AI solution architecture and engineering")
+        self.assertEqual(p["headline"], "AI Engineer – Full Stack")
         self.assertIn("since early 2026", p["nrg"].lower())
         self.assertIn("initial core AI team", p["nrg"])
         self.assertNotRegex(p["education"], r"\d")
         self.assertEqual(p["education"], "B.E. Computer Science, Madras University")
         self.assertIn("German A1–A2", p["languages"])
-        self.assertIn("not an NRG product", p["nrg"])
+        self.assertIn("separate from NRG", p["nrg"])
+        self.assertIn("since march 2022", p["nrg"].lower())
+        self.assertNotIn("contract", p["work_mode"].lower())
 
     def test_every_requirement_has_evidence_and_an_honest_limit_and_gaps_exist(self):
         for r in DATA["requirements"]:

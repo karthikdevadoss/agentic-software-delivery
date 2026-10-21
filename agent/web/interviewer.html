@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Karthikeyan Devadoss — Interviewer Brief (Junior AI Architect / AI solutions)</title>
-<meta name="description" content="Short brief for the technical interviewer: live proof on Workbench, Triage, evals, Ask Codebase, honest gaps, and the running platform.">
+<title>Karthikeyan Devadoss — Interviewer Brief (AI Engineer – Full Stack)</title>
+<meta name="description" content="Short brief for the technical interviewer: live proof on Workbench, Triage, evals, Ask Codebase, how the platform runs, and the running platform itself.">
 <link rel="stylesheet" href="/interviewer.css">
 </head>
 <body data-surface="interviewer">
@@ -13,20 +13,20 @@
 <main class="iv-shell">
   <p class="iv-eyebrow">For the technical interviewer</p>
   <h1>Karthikeyan Devadoss</h1>
-  <p class="iv-role">Junior AI Architect / AI solutions — with a backend engineering foundation</p>
+  <p class="iv-role">AI Engineer – Full Stack</p>
   <p class="iv-lede">
     You are past the HR screen. This page is a short map of live proof you can open
-    before or during a technical interview — not a keyword checklist and not a CV rewrite.
+    before or during a technical interview.
   </p>
   <p class="iv-note">
-    Target roles: Junior AI Architect or AI solutions work with an architect.
-    At NRG Energy the job title remains Senior Backend Developer; architecture
-    participation is described in the work, not as a title claim.
+    Since March 2022 I have worked for NRG Energy through Remote, my employer;
+    NRG is the client. Since early 2026 I have been one of a handful of engineers
+    in the initial core AI team at NRG, and since January 2026 I have led AI
+    adoption in my area, cutting routine work time by about 20%.
   </p>
   <p class="iv-note">
-    The platform linked here is my own system, independently designed and built —
-    not an NRG product. For deeper Q&amp;A against recorded engineering knowledge,
-    use <a href="/standing-interview">Standing Interview</a>. HR posting map stays on
+    The platform linked here is my own system, designed and built by me and
+    separate from NRG. The HR posting map is on
     <a href="/recruiters">For Recruiters</a>.
   </p>
   <p class="iv-links">
@@ -40,9 +40,9 @@
     <article class="iv-card">
       <h3>Workbench — approval-gated agent run</h3>
       <p>
-        Watch a recorded end-to-end run: investigate, propose a change, wait for a
-        human approval bound to the exact content, then verify. The model cannot
-        approve its own write.
+        A person approves before anything changes. Watch a recorded end-to-end run:
+        the agent investigates and proposes a change, the owner approves that exact
+        content, and only then is it applied, tested, deployed and verified.
       </p>
       <a class="go" href="/workbench#verified-run-panel">Open Workbench verified run →</a>
     </article>
@@ -60,9 +60,9 @@
     <article class="iv-card">
       <h3>Evals — labelled scores, CI gates</h3>
       <p>
-        Retrieval quality is scored against a hand-labelled question set. Thresholds
-        are written down; CI can fail the build when a score drops. Small sets —
-        measured, not assumed.
+        Retrieval quality is scored against a hand-labelled question set:
+        Recall@3 0.833 and MRR 0.868. Thresholds are written down, and CI fails the
+        build when a score drops below them.
       </p>
       <a class="go" href="/eval">See eval scores and CI status →</a>
       <a class="go2" href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/eval_runner.py">Eval runner source →</a>
@@ -72,29 +72,28 @@
       <h3>Ask Codebase — grounded answers</h3>
       <p>
         Ask technical questions against this repository. Answers come from retrieval
-        over the real code and docs, not a free-form chat persona.
+        over the real code and docs.
       </p>
       <a class="go" href="/ask-codebase">Try Ask Codebase →</a>
       <a class="go2" href="/ask-codebase/examples">Recorded example answers →</a>
     </article>
 
     <article class="iv-card iv-gaps">
-      <h3>Honest gaps — what this does not claim</h3>
+      <h3>How it runs</h3>
       <p>
-        One model provider. Local cosine retrieval over small corpora — not a managed
-        vector database. No multi-agent hand-off between cooperating agents. No
-        production-scale vector DB, reranker, or second provider yet. Script-based
-        Railway deploy, not a multi-cloud ML platform.
+        Anthropic Claude through a single model gateway with a kill switch. Local
+        cosine retrieval over the repository. A LangGraph workflow that checkpoints
+        to Postgres, and a Postgres event ledger with versioned pricing for token
+        and cost telemetry. Deployed to Railway by script.
       </p>
-      <a class="go" href="/#scope">Same boundaries on the home page →</a>
+      <a class="go" href="/#scope">Same summary on the home page →</a>
     </article>
 
     <article class="iv-card iv-live">
       <h3>Live platform — production URL</h3>
       <p>
         Everything above is served from the same production deployment. Open the
-        base URL, use the nav, and verify links yourself rather than taking a slide deck
-        on faith.
+        base URL, use the nav, and check the links yourself.
       </p>
       <a class="go" href="https://agentic-platform-backend-production.up.railway.app/">Open live platform →</a>
       <a class="go2" href="https://github.com/karthikdevadoss">GitHub profile →</a>
@@ -102,9 +101,8 @@
   </section>
 
   <p class="iv-footer">
-    Berlin · English (working language) · German A1–A2.
+    Berlin, Germany · English (working language) · German A1–A2.
     This site sets no cookies and uses no analytics or third-party trackers.
-    No salary or notice period appears here.
   </p>
 </main>
 

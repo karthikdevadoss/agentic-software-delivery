@@ -11,7 +11,9 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.temporal.TemporalAdjusters;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -41,10 +43,14 @@ class AppointmentControllerIntegrationTest {
 
     private RestTemplate restTemplate;
 
-    // A real, fixed weekday and weekend date -- the demo provider's
-    // synthetic rule is "weekdays available, weekends fully booked".
-    private static final LocalDate WEEKDAY = LocalDate.of(2026, 10, 1); // Thursday
-    private static final LocalDate WEEKEND = LocalDate.of(2026, 10, 3); // Saturday
+    // The demo provider's synthetic rule is "weekdays available, weekends
+    // fully booked". Dates are computed from today: fixed calendar dates
+    // (2026-10-01/03) passed into the past and turned this suite red once
+    // the controller rejected them as "before today".
+    private static final LocalDate WEEKDAY =
+            LocalDate.now().plusWeeks(1).with(TemporalAdjusters.nextOrSame(DayOfWeek.WEDNESDAY));
+    private static final LocalDate WEEKEND =
+            LocalDate.now().plusWeeks(1).with(TemporalAdjusters.nextOrSame(DayOfWeek.SATURDAY));
 
     @BeforeEach
     void setUpAuthenticatedClient() {
@@ -64,7 +70,7 @@ class AppointmentControllerIntegrationTest {
     @Test
     void checkAvailability_forNonExistentCustomer_returns404_neverSilently200s() {
         assertThatThrownBy(() -> restTemplate.getForEntity(
-                url("/customers/999999999/appointment-availability?date=2026-10-01"), String.class))
+                url("/customers/999999999/appointment-availability?date=" + WEEKDAY), String.class))
                 .isInstanceOf(HttpClientErrorException.NotFound.class);
     }
 
