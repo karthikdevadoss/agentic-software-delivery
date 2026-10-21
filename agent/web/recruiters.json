@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-21T16:42:50Z",
-  "commit_sha": "21760886df7db00beee430a9f6b1f92468ba60a1",
-  "branch": "mahadeva/platform-today-2026-10-21",
+  "generated_at": "2026-10-21T12:23:33Z",
+  "commit_sha": "2cd0769bdda4f76aafa33dfea761ebadda632276",
+  "branch": "p0-fixes-2026-10-21",
   "working_tree_dirty": false,
   "postings_accessed": "2026-10-06",
   "postings_note": "Thirteen English-language AI engineering job postings that were listed as open on the access date, in this order: remote first, then Berlin hybrid, Berlin on-site and other German cities. Architect-titled roles based in Germany in the same search all required German; the one architect-titled role here is EU-remote.",
@@ -59,8 +59,8 @@
   ],
   "metrics": {
     "eval": {
-      "generated_at": "2026-10-21T16:24:51Z",
-      "commit_sha": "e93881c37f50ac9d4890c4d4861b017233efe667",
+      "generated_at": "2026-10-06T10:07:23Z",
+      "commit_sha": "674958abf3ff8437f7a5b874446fd4377b6a9d41",
       "overall_passed": true,
       "labelled_set": {
         "retrieval_cases": 12,
@@ -102,9 +102,9 @@
         }
       ],
       "ci_eval_step_on_master": {
-        "observed_at": "2026-10-21T16:24:51Z",
-        "latest_status": "success",
-        "last_success_at": "2026-10-21T14:20:33Z"
+        "observed_at": "2026-10-06T10:07:23Z",
+        "latest_status": "skipped",
+        "last_success_at": "2026-09-29T17:07:25Z"
       },
       "agent_decision": {
         "label": "recorded 2026-09-16",
@@ -206,7 +206,7 @@
       ],
       "evidence": [
         {
-          "label": "Workbench: one click runs a change on a sandbox copy; a recorded run is on the page",
+          "label": "Workbench: a recorded end-to-end run (requirement, agent investigation, tests, commit, deploy, production check)",
           "url": "/workbench#verified-run-panel",
           "status": "live"
         },
@@ -221,7 +221,7 @@
           "status": "source"
         }
       ],
-      "limits": "One model provider. On the public site a click runs only small, supported text changes, on a sandbox copy; changing the live app needs the owner's authorization."
+      "limits": "One model provider. One run at a time. In the public preview only small, low-risk requests run on their own; larger ones need the owner's authorization."
     },
     {
       "id": "evals",
@@ -772,11 +772,17 @@
     "offline": "passed",
     "online": null
   },
-  "quotes_verified": null,
+  "quotes_verified": {
+    "quotes": 72,
+    "against": "posting text captured on 2026-10-06",
+    "source_sha256": "fecfc4a66d7d1820a26852b226bac8382385fc413d40af886c1dc20cfee78d59",
+    "carried_from_source_sha256": "14cd40ae4176adab2217ba7d2fb1e3af5291a388438ffa4c2dac55fd6cc43368",
+    "carried_because": "2026-10-21 edit changed profile and limit text only; all 72 posting quotes are byte-identical to the verified source"
+  },
   "inputs": {
-    "agent/recruiters_source.yaml": "ce90274569e8cb1eb14de65a08b80fe27e5855ca009d4861ec404bac886ee831",
-    "agent/web/case-study-durable-agent.html": "d5cdd83064d4487d7559527e63681dc24ff9b4beac0b2247bb13ced978eab304",
-    "agent/web/eval-results.json": "0a3a7f3e473b558575b9e6a01571557c28aef8b9bad27e14ac9a88fa3e07f8d8",
+    "agent/recruiters_source.yaml": "fecfc4a66d7d1820a26852b226bac8382385fc413d40af886c1dc20cfee78d59",
+    "agent/web/case-study-durable-agent.html": "e6eaf381b8b8936d5f90f6fb2f75d774ea842eb5a226fc609495f320db52c6d7",
+    "agent/web/eval-results.json": "cd47e5ae2d3d2037fdb5ec467ea603e9b0a81b3f60e6563e4f11038fc059bd7a",
     "agent/web/triage-evidence.json": "69845e1d9445b44136bc6db1aad2f8518c8889f3e7a9377eb4c6af041c7fb3f7",
     "agent/web/ask-codebase-examples.json": "ef0c201b37bb33e16e2a69b653f8c9dc12955c0d0973b56b4ca4df16724da74d"
   }

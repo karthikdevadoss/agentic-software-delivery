@@ -383,11 +383,15 @@ def main(argv: list) -> int:
             quotes_verified = previous
         elif previous:
             # Only labels/links changed (2026-10-21): the verification still
-            # holds if the source it was made against (taken from git HEAD and
-            # matched by hash) carries exactly the same quotes as this one.
-            old_text = _git("show", f"HEAD:{source_rel}").stdout
-            if (old_text and _sha256_text(old_text.replace("\r\n", "\n")) == previous.get("source_sha256")
-                    and list(iter_quotes(yaml.safe_load(old_text))) == list(iter_quotes(source))):
+            # holds if the source it was made against (found in git history
+            # and matched by hash) carries exactly the same quotes as this one.
+            old_text = None
+            for rev in _git("log", "--format=%H", "-n", "50", "--", source_rel, check=False).stdout.split():
+                text = _git("show", f"{rev}:{source_rel}", check=False).stdout.replace("\r\n", "\n")
+                if text and _sha256_text(text) == previous.get("source_sha256"):
+                    old_text = text
+                    break
+            if old_text and list(iter_quotes(yaml.safe_load(old_text))) == list(iter_quotes(source)):
                 quotes_verified = dict(previous, source_sha256=inputs[source_rel],
                                        carried_forward_from=previous["source_sha256"])
     data = build_page_data(
