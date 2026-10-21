@@ -93,9 +93,11 @@ class FaviconAnd404Test(unittest.TestCase):
 class LinkPreviewMetaTest(unittest.TestCase):
     def test_main_pages_have_og_tags(self):
         for name in ("home.html", "tokens.html", "workbench.html", "triage.html", "ask-codebase.html",
-                     "eval.html", "recruiters.html", "interviewer.html", "case-study-durable-agent.html"):
+                     "eval.html", "recruiters.html", "interviewer.html", "case-study-durable-agent.html",
+                     "ask-codebase-examples.html", "showcase.html", "triage-b.html", "triage-c.html",
+                     "triage-evidence.html", "standing-interview.html"):
             text = (WEB / name).read_text(encoding="utf-8")
-            for prop in ("og:title", "og:description", "og:image"):
+            for prop in ("og:title", "og:description", "og:image", "og:url"):
                 with self.subTest(page=name, prop=prop):
                     self.assertIn(f'property="{prop}"', text)
         self.assertTrue((WEB / "img/tokens/og-token-xray.png").is_file())
