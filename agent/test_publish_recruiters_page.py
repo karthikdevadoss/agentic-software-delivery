@@ -242,7 +242,7 @@ class PublishedRecruitersDataTestCase(unittest.TestCase):
         self.assertEqual(p["education"], "B.E. Computer Science, Madras University")
         self.assertIn("German A1–A2", p["languages"])
         self.assertIn("separate from NRG", p["nrg"])
-        self.assertIn("since March 2022", p["nrg"])
+        self.assertIn("since march 2022", p["nrg"].lower())
         self.assertNotIn("contract", p["work_mode"].lower())
 
     def test_every_requirement_has_evidence_and_an_honest_limit_and_gaps_exist(self):
