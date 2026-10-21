@@ -159,6 +159,25 @@
   .tile span { display: block; font-size: 15px; color: var(--soft); }
   .tele { margin: 16px 0 0; font-size: 14.5px; }
 
+  /* 2026-10-21 live token strip: filled from /token-xray.json (the measured
+     data) and /api/trainer/catalogue (what a Workbench click costs). */
+  .tstrip { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; margin: 18px 0 6px; }
+  .tcell { background: var(--card); border: 1px solid var(--line); padding: 10px 12px; }
+  .tcell b { display: block; font-size: 13.5px; font-weight: 650; margin-bottom: 6px; }
+  .tbar { height: 8px; background: #c0392b; margin: 3px 0; }
+  .tbar.ok { background: #2e8b57; }
+  .tcell span { display: block; font-size: 12.5px; color: var(--soft); }
+  .tcell .x { font-size: 18px; font-weight: 720; color: var(--ink); }
+  .tlive { font-size: 14px; color: var(--soft); margin: 4px 0 26px; }
+  .tlive b { color: var(--ink); }
+  /* principles */
+  .princ { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 0; padding: 0; list-style: none; counter-reset: p; }
+  .princ li { background: var(--card); border: 1px solid var(--line); padding: 16px 18px; counter-increment: p; }
+  .princ li::before { content: counter(p); display: block; font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+  .princ b { display: block; font-size: 16px; margin-bottom: 4px; }
+  .princ span { display: block; font-size: 14.5px; color: var(--soft); margin-bottom: 6px; }
+  .princ a { font-size: 14px; font-weight: 600; }
+
   /* background */
   .emp { margin: 0 0 12px; }
   .emp span { display: inline-block; margin: 0 16px 6px 0; font-weight: 640; }
@@ -177,6 +196,7 @@
 
   @media (max-width: 1100px) {
     .tiles { grid-template-columns: repeat(3, 1fr); }
+    .tstrip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   }
   @media (max-width: 820px) {
     .hero { grid-template-columns: 1fr; gap: 24px; padding-top: 30px; }
@@ -184,10 +204,13 @@
     .proof { grid-template-columns: 1fr; }
     .tiles { grid-template-columns: 1fr 1fr; }
     .cols { grid-template-columns: 1fr; gap: 26px; }
+    .princ { grid-template-columns: 1fr 1fr; }
   }
   @media (max-width: 560px) {
     header { padding-top: 34px; }
     .tiles { grid-template-columns: 1fr; }
+    .tstrip { grid-template-columns: 1fr 1fr; }
+    .princ { grid-template-columns: 1fr; }
     .erow { grid-template-columns: 1fr; gap: 8px; }
     .bottom .btn { flex: 1 1 100%; text-align: center; }
     .hero-cta .btn { flex: 1 1 100%; text-align: center; }
@@ -205,7 +228,7 @@
       <h1 class="hero-name">Karthikeyan Devadoss</h1>
       <p class="role">AI Engineer – Full Stack</p>
       <h2 class="headline">AI Engineer. <em>Same answer, fewer tokens.</em></h2>
-      <p class="proofline"><b>4.5x the tokens and 4.2x the cost</b> for the same output, measured on 6 real tasks (Claude only).</p>
+      <p class="proofline">The wrong way used <b>4.5x the tokens and 4.2x the cost</b> for the same answers. Measured on 6 everyday tasks, 3 runs each, Claude models only.</p>
       <div class="hero-cta">
         <a class="btn" href="/tokens">See the Token X-ray</a>
         <a class="btn ghost" href="/workbench">Try the Workbench (one click)</a>
@@ -218,6 +241,13 @@
     </figure>
   </section>
 
+  <section aria-label="Live token strip">
+    <div class="tstrip" id="token-strip">
+      <noscript><p class="tlive">Per task, the wrong way used 1.9x to 10.5x the tokens. <a href="/tokens">See the numbers</a>.</p></noscript>
+    </div>
+    <p class="tlive" id="token-live">Wrong way vs right way, tokens per task (red vs green). <a href="/tokens">How it was measured →</a></p>
+  </section>
+
   <header>
     <p class="lede">I build AI agents end to end: Java and Python backends, the web front end, retrieval, evaluation, and the controls that keep a person in charge of every change. The platform on this site is one I designed, built and run in production.</p>
     <p class="meta"><b>Berlin, Germany</b> · English</p>
@@ -227,7 +257,7 @@
   <section class="proof" aria-label="Three proof points">
     <article class="pcard">
       <h2>An AI agent that cannot approve its own writes</h2>
-      <p>The model can investigate and propose changes, but deterministic code controls the write boundary. Human approval is bound to the exact approved change.</p>
+      <p>The model can investigate and propose changes, but plain code controls every write. On the public Workbench your click is the human decision; a change to the live app needs the owner's approval of the exact content.</p>
       <!-- #requirement-panel is a real element id in workbench.html. -->
       <a class="go" href="/workbench#requirement-panel">Try it with one click →</a>
     </article>
@@ -243,6 +273,16 @@
       <a class="go2" href="/ask-codebase">Try Ask the Codebase →</a>
     </article>
   </section>
+
+  <h2 class="sec">How I think about AI</h2>
+  <ol class="princ">
+    <li><b>Solved and checked first. Then the fewest tokens.</b><span>A cheap wrong answer is still wrong. Once it is right, waste is the next thing to cut.</span><a href="/tokens">The token test →</a></li>
+    <li><b>Use the model only where code cannot do the job.</b><span>A Workbench click and an Ask the Codebase search make no model call at all.</span><a href="/workbench">Try a click →</a></li>
+    <li><b>Tokens are a cost. Measure them.</b><span>Every model call on this platform is logged with its real token count.</span><a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/event_ledger.py">The ledger →</a></li>
+    <li><b>Small model for small jobs.</b><span>The same spreadsheet formula cost 161x more on the biggest model with maximum thinking.</span><a href="/tokens">See the formula test →</a></li>
+    <li><b>Check AI with tests, not with another AI's opinion.</b><span>Search quality is scored by plain code against hand-labelled answers, and CI fails the build if it drops.</span><a href="/eval">Scores and CI →</a></li>
+    <li><b>A person decides. The model never approves its own work.</b><span>The approve step is code the model cannot call, tied to the exact change.</span><a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/write_tools.py">The boundary →</a></li>
+  </ol>
 
   <h2 class="sec">What I build</h2>
   <div class="cols">
@@ -376,5 +416,6 @@
 </div>
 
 <script src="/nav.js"></script>
+<script src="/home-tokens.js"></script>
 </body>
 </html>

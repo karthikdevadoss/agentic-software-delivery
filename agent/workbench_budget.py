@@ -109,6 +109,7 @@ def limits() -> dict:
     return {
         "daily_usd_budget": WORKBENCH_DAILY_USD_BUDGET,
         "usd_per_click": WORKBENCH_USD_PER_CLICK,
+        "model_calls_per_click": 0,
         "daily_max_clicks": WORKBENCH_DAILY_MAX_CLICKS,
         "per_visitor_min_seconds": WORKBENCH_PER_VISITOR_MIN_SECONDS,
         "per_visitor_daily_max": WORKBENCH_PER_VISITOR_DAILY_MAX,
