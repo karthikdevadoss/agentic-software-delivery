@@ -1261,12 +1261,34 @@ def _assess_public_demo_requirement(requirement: str) -> dict:
     }
 
 
+_PERSON_APPROVES_MESSAGE = (
+    "A person approves every change before anything is changed. This request "
+    "is within scope and has been checked; it runs once the owner approves it."
+)
+
+
+def _require_person_approval(assessment: dict, headers) -> dict:
+    """Owner decision, 2026-10-21: nothing in the Customer App changes until a
+    person has approved it. An in-scope request that arrives without the
+    owner's approval (owner_auth: OWNER_API_TOKEN, fail-closed) is reported as
+    waiting for approval and never starts a run. Before this, an in-scope
+    catalogue request was implemented, committed and deployed with no human
+    step at all."""
+    if assessment.get("decision") != "auto" or owner_auth.is_owner(headers):
+        return assessment
+    waiting = {k: v for k, v in assessment.items() if k != "_normalized"}
+    waiting.update(decision="approval_required", message=_PERSON_APPROVES_MESSAGE,
+                   reason="Waiting for the owner's approval.")
+    return waiting
+
+
 async def assess_trainer_requirement(request: Request):
     """Cheap, synchronous, zero-API-cost — lets the trainer UI preview the
     authorization decision before submitting. Never starts any work."""
     body = await request.json()
     requirement = (body.get("requirement") or "").strip()
-    assessment = _assess_public_demo_requirement(requirement)
+    assessment = _require_person_approval(
+        _assess_public_demo_requirement(requirement), request.headers)
     assessment.pop("_normalized", None)
     return JSONResponse(assessment)
 
@@ -1299,8 +1321,10 @@ async def start_trainer_run(request: Request):
     # Re-derive server-side — never trust a client-displayed assessment
     # as the actual authorization decision. Rejects before any thread/
     # workspace/deploy cost is spent.
-    assessment = _assess_public_demo_requirement(requirement)
+    assessment = _require_person_approval(
+        _assess_public_demo_requirement(requirement), request.headers)
     if assessment["decision"] != "auto":
+        assessment.pop("_normalized", None)
         return JSONResponse({"blocked": True, "assessment": assessment})
     normalized = assessment.pop("_normalized")
 
@@ -1478,7 +1502,10 @@ def _run_reset_thread():
         _release_run_slot()
 
 
+@owner_auth.require_owner
 async def start_demo_reset(request: Request):
+    # A reset redeploys the Customer App, so it is a change like any other:
+    # owner-approved only (2026-10-21).
     if not _reserve_run_slot("demo-reset"):
         return JSONResponse({
             "busy": True,

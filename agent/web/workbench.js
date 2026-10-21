@@ -118,7 +118,7 @@ function renderExampleButtons() {
     const btn = document.createElement("button");
     btn.className = "secondary example-btn one-click-btn";
     btn.textContent = ex;
-    btn.title = "Runs this change through the real pipeline immediately (a real deploy, not a preview)";
+    btn.title = "Sends this change into the real pipeline; it is deployed once the owner approves it";
     btn.addEventListener("click", () => { requirementInput.value = ex; submit(); });
     examplesList.appendChild(btn);
   });
@@ -291,14 +291,23 @@ function renderAssessment(a, blocked) {
   assessmentPanel.hidden = false;
   if (!blocked && run) run.expectedValue = a.new_value;
   let html = "";
+  if (blocked && a.decision === "approval_required") {
+    html += `<p class="owner-auth-notice">${esc(a.message)}</p>`;
+    html += `<div class="kv"><span class="k">Field</span><span class="v">${esc(a.human_name)}</span></div>`;
+    html += `<div class="kv"><span class="k">New value</span><span class="v">"${esc(a.new_value)}"</span></div>`;
+    html += `<div class="kv"><span class="k">Decision</span><span class="v"><strong style="color:var(--amber)">WAITING FOR APPROVAL</strong></span></div>`;
+    html += `<div class="kv"><span class="k">Verification method</span><span class="v">${esc(a.expected_verification_method)}</span></div>`;
+    assessmentBody.innerHTML = html;
+    return;
+  }
   if (blocked) {
-    html += `<p class="owner-auth-notice">${esc(a.message || "Authorization required. This request is outside the autonomous public-demo scope.")}</p>`;
+    html += `<p class="owner-auth-notice">${esc(a.message || "Authorization required. This request is outside the public-demo scope.")}</p>`;
     html += `<div class="kv"><span class="k">Reason</span><span class="v">${esc(a.reason)}</span></div>`;
     html += `<p class="hint" style="margin-top:0.8rem;">Try one of these verified demo changes instead:</p><div id="alt-list"></div>`;
   } else {
     html += `<div class="kv"><span class="k">Field</span><span class="v">${esc(a.human_name)}</span></div>`;
     html += `<div class="kv"><span class="k">New value</span><span class="v">"${esc(a.new_value)}"</span></div>`;
-    html += `<div class="kv"><span class="k">Decision</span><span class="v"><strong style="color:var(--green)">AUTO-EXECUTE</strong></span></div>`;
+    html += `<div class="kv"><span class="k">Decision</span><span class="v"><strong style="color:var(--green)">APPROVED</strong></span></div>`;
     html += `<div class="kv"><span class="k">Verification method</span><span class="v">${esc(a.expected_verification_method)}</span></div>`;
     html += `<div class="kv"><span class="k">Production assertion</span><span class="v">${esc(a.expected_production_assertion)}</span></div>`;
     html += `<div class="kv"><span class="k">Actual cost</span><span class="v">$0.00 — deterministic operation, no AI model call</span></div>`;
@@ -1016,6 +1025,11 @@ resetDemoBtn.addEventListener("click", async () => {
   resetDemoStatus.textContent = "Starting production baseline restore…";
   const resp = await fetch("/api/trainer/reset", { method: "POST" });
   const data = await resp.json();
+  if (resp.status === 401) {
+    resetDemoBtn.disabled = false;
+    resetDemoStatus.textContent = "A person approves before anything changes — a reset runs once the owner approves it.";
+    return;
+  }
   if (data.busy) {
     resetDemoBtn.disabled = false;
     resetDemoStatus.textContent = data.message || "Busy — try again shortly.";
