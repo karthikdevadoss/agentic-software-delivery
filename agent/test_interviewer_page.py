@@ -2,8 +2,9 @@
 
 Static HTML/CSS + route + nav wiring. No network, no model.
 Facts on the page must stay within Owner-confirmed career wording
-(MASTER_CV / recruiters_source): target Junior AI Architect / AI solutions;
-no Architect job title on NRG; honest gaps; personal platform not NRG product.
+(recruiters_source, 2026-10-21): headline "AI Engineer – Full Stack"; NRG since
+March 2022 through Remote; no Architect job title on NRG; the personal platform
+is separate from NRG.
 """
 from __future__ import annotations
 
@@ -22,7 +23,7 @@ FORBIDDEN = [
     (r"(?i)€\s*\d|EUR\s*\d|available (immediately|in \d)", "salary/availability figure"),
     (r"(?i)architect (at|for|title at) NRG|NRG.{0,40}Architect", "Architect title on NRG"),
     (r"(?i)multi-agent orchestration platform", "overclaim multi-agent"),
-    (r"(?i)production-scale vector", "must only appear as a gap, not a claim of having one"),
+    (r"(?i)production-scale vector", "overclaim vector infrastructure"),
 ]
 
 
@@ -51,9 +52,20 @@ class InterviewerPageTestCase(unittest.TestCase):
         self.assertIn('data-surface="interviewer"', HTML)
 
     def test_role_framing(self):
-        self.assertIn("Junior AI Architect / AI solutions", HTML)
-        self.assertIn("Senior Backend Developer", HTML)
+        self.assertIn('<p class="iv-role">AI Engineer – Full Stack</p>', HTML)
+        self.assertNotIn("Junior AI Architect", HTML)
         self.assertRegex(HTML, r"(?i)technical interviewer")
+
+    def test_nrg_facts(self):
+        compact = " ".join(HTML.split())
+        for phrase in ("Since March 2022 I have worked for NRG Energy through Remote, my employer",
+                       "one of a handful of engineers in the initial core AI team at NRG",
+                       "cutting routine work time by about 20%"):
+            self.assertIn(phrase, compact)
+
+    def test_workbench_card_says_a_person_approves_first(self):
+        compact = " ".join(HTML.split())
+        self.assertIn("A person approves before anything changes.", compact)
 
     def test_proof_card_links(self):
         required = [
@@ -65,18 +77,14 @@ class InterviewerPageTestCase(unittest.TestCase):
         ]
         for href in required:
             self.assertIn(f'href="{href}"', HTML, f"missing proof link {href}")
-        # Standing Interview and Recruiters kept as sibling surfaces, not replaced.
-        self.assertIn('href="/standing-interview"', HTML)
+        # Standing Interview left the public surfaces (2026-10-21).
+        self.assertNotIn('href="/standing-interview"', HTML)
         self.assertIn('href="/recruiters"', HTML)
 
-    def test_honest_gaps_present(self):
+    def test_how_it_runs_card(self):
         compact = " ".join(HTML.split())
-        for phrase in (
-            "One model provider",
-            "managed vector database",
-            "multi-agent hand-off",
-            "not an NRG product",
-        ):
+        for phrase in ("single model gateway", "Postgres event ledger with versioned pricing",
+                       "separate from NRG"):
             self.assertIn(phrase, compact)
 
     def test_not_a_job_ad_count_page(self):
@@ -84,21 +92,9 @@ class InterviewerPageTestCase(unittest.TestCase):
         self.assertNotIn("Thirteen", HTML)
         self.assertNotIn("13 real", HTML)
         self.assertNotIn("asked_by", HTML)
-        self.assertIn("No salary or notice period", HTML)
 
     def test_no_forbidden_claims(self):
-        # "production-scale vector" appears only in the gaps card as something NOT claimed.
-        gaps_idx = HTML.lower().find("honest gaps")
-        self.assertGreater(gaps_idx, 0)
         for pat, name in FORBIDDEN:
-            if name.startswith("must only"):
-                # Allowed only after the gaps heading.
-                for m in re.finditer(pat, HTML):
-                    self.assertGreaterEqual(
-                        m.start(), gaps_idx,
-                        f"{name}: {m.group(0)!r} appeared before honest gaps",
-                    )
-                continue
             self.assertIsNone(re.search(pat, HTML), f"forbidden claim: {name}")
 
     def test_workbench_anchor_exists(self):

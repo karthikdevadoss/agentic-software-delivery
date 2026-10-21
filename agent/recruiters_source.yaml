@@ -10,10 +10,12 @@
 # Rules for editing (owner decisions, 2026-10-06):
 # - Never invent a fact, a year, a salary, a skill or a title. No salary and
 #   no notice period appear anywhere on the page. No years-of-experience
-#   figure and no degree year. The only calendar year in the profile is the
-#   owner-confirmed "since early 2026" for the NRG AI team (2026-10-06).
-# - No architect job title, for NRG or anyone else; the headline describes
-#   the work ("AI solution architecture and engineering"), not a title.
+#   figure and no degree year. The only calendar years in the profile are the
+#   owner-confirmed "since March 2022" (NRG, 2026-10-21), "since early 2026"
+#   for the NRG AI team (2026-10-06) and "since January 2026" for leading AI
+#   adoption (2026-10-21).
+# - No architect job title, for NRG or anyone else. Headline (owner decision,
+#   2026-10-21): "AI Engineer – Full Stack".
 # - Posting quotes are the posting's words, not claims about the owner. They
 #   are the only text exempt from the forbidden-claims scan.
 # - Every evidence link must be a live route, a pending-deploy route (served
@@ -21,18 +23,19 @@
 
 profile:
   name: Karthikeyan Devadoss
-  headline: AI solution architecture and engineering
-  location: Berlin
-  work_mode: Remote-first, open to contract work
+  headline: AI Engineer – Full Stack
+  location: Berlin, Germany
+  work_mode: Remote-first
   languages: English (working language); German A1–A2
   education: B.E. Computer Science, Madras University
   nrg: >-
-    Current client engagement: NRG Energy. Since early 2026 I have been one of
-    a handful of engineers in NRG's initial core AI team, designing and
-    building AI solutions hands-on alongside senior backend work, and taking
-    part in architecture discussions and design decisions with the lead. The
-    platform on this page is my own system, not an NRG product.
-  facts_source: Confirmed by me on 2026-10-06 (headline, degree, languages, work mode, NRG wording and NRG AI team role); name, Berlin and the NRG separation also appear on the live home page.
+    Since March 2022 I have worked for NRG Energy through Remote, my employer;
+    NRG is the client. Since early 2026 I have been one of a handful of
+    engineers in the initial core AI team at NRG, designing and building AI
+    solutions hands-on alongside senior backend work. Since January 2026 I
+    have led AI adoption in my area, cutting routine work time by about 20%.
+    The platform on this page is my own system, separate from NRG.
+  facts_source: Confirmed by me on 2026-10-06 (degree, languages, NRG AI team role) and 2026-10-21 (headline, work mode, NRG dates and wording, AI adoption); name, Berlin and the NRG separation also appear on the live home page.
   links:
     - {label: GitHub, url: "https://github.com/karthikdevadoss"}
     - {label: LinkedIn, url: "https://www.linkedin.com/in/karthikeyan-devdoss/"}
@@ -167,9 +170,9 @@ requirements:
       - {label: "Write boundary: the model can propose a file change but cannot approve it", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/write_tools.py"}
       - {label: "Capability and security model", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/CAPABILITY_SECURITY_MODEL.md"}
     limits: >-
-      The approval step covers the model's file-writing tools. Small,
-      low-risk Workbench requests in the public preview are applied without a
-      human approval step.
+      A person approves before anything changes: the model's file edits wait
+      for an approval bound to the exact content, and a Workbench change is
+      deployed only after the owner approves it.
 
   - id: mcp
     title: Model Context Protocol
@@ -182,7 +185,8 @@ requirements:
       - {label: "MCP server exposing the read-only repository tools", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/mcp_server.py"}
     limits: Implemented and tested; it runs locally, not as a hosted service.
 
-# Honest gaps: things these postings ask for that this portfolio does not show.
+# Posting asks kept as data for the build; the page itself does not render
+# this section (Owner wording rule, 2026-10-21).
 gaps:
   - title: Managed cloud AI services (AWS, Azure, GCP)
     detail: The platform runs on Railway and calls one model provider directly.

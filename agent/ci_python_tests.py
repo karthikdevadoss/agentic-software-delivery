@@ -105,16 +105,15 @@ HERMETIC_MODULES = [
     # Hermetic by construction: the model is injected, the corpus is a
     # fixture, and no network or private repo is required.
     "test_public_surface_gate",   # Sprint 14: recruiter-facing release guards
+    "test_public_wording",        # 2026-10-21: Owner wording rules on public pages
     # Sprint 15: spend protection on the public Standing Interview endpoint.
     # Hermetic -- it drives the real route with a mocked answer() and makes no
     # model call. Written after the credit balance was exhausted and every
     # grounded question on the live site returned HTTP 500.
     "test_si_budget",
-    # Sprint 15: answer quality. Hermetic -- it scores an archived JSON capture
-    # of real production answers and calls nothing. The post-fix half of it
-    # stays RED until agent/testdata/si_production_answers_after.json exists,
-    # which is deliberate: the specification change is UNVERIFIED until it has
-    # been measured on production, and a skip would read as green.
+    # Sprint 15: the answer-quality oracle. Hermetic -- synthetic answers only
+    # since 2026-10-21, when the archived production capture left the
+    # repository by Owner decision (see the module docstring).
     "test_si_quality",
     "test_standing_interview",
     "test_state_brief",
@@ -123,6 +122,7 @@ HERMETIC_MODULES = [
     "test_test_impact_analysis",
     "test_tools",
     "test_triage_promotion",
+    "test_workbench_approval",    # 2026-10-21: a person approves before anything changes
     "test_verify_change",
     "test_verify_claude_permissions_config",
     "test_write_tools",
