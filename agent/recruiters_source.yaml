@@ -82,13 +82,13 @@ requirements:
       cortea: "production-grade LLM agents used in complex audit workflows"
       ml6: "autonomous AI agents, advanced work assistants, and Agentic AI platform engineering"
     evidence:
-      - {label: "Workbench: a recorded end-to-end run (requirement, agent investigation, tests, commit, deploy, production check)", url: "/workbench#verified-run-panel"}
+      - {label: "Workbench: one click runs a change on a sandbox copy; a recorded run is on the page", url: "/workbench#verified-run-panel"}
       - {label: "Incident Triage Lab: reproduce, diagnose, patch, real tests", url: "/triage"}
       - {label: "Agent loop source", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/agent_loop.py"}
     limits: >-
-      One model provider. One run at a time. In the public preview only small,
-      low-risk requests run on their own; larger ones need the owner's
-      authorization.
+      One model provider. On the public site a click runs only small,
+      supported text changes, on a sandbox copy; changing the live app needs
+      the owner's authorization.
 
   - id: evals
     title: Evaluations that measure quality

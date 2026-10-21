@@ -378,8 +378,18 @@ def main(argv: list) -> int:
                            "source_sha256": inputs[SOURCE_PATH.relative_to(REPO_ROOT).as_posix()]}
     elif OUTPUT_PATH.exists():
         previous = json.loads(OUTPUT_PATH.read_text(encoding="utf-8")).get("quotes_verified")
-        if previous and previous.get("source_sha256") == inputs[SOURCE_PATH.relative_to(REPO_ROOT).as_posix()]:
+        source_rel = SOURCE_PATH.relative_to(REPO_ROOT).as_posix()
+        if previous and previous.get("source_sha256") == inputs[source_rel]:
             quotes_verified = previous
+        elif previous:
+            # Only labels/links changed (2026-10-21): the verification still
+            # holds if the source it was made against (taken from git HEAD and
+            # matched by hash) carries exactly the same quotes as this one.
+            old_text = _git("show", f"HEAD:{source_rel}").stdout
+            if (old_text and _sha256_text(old_text.replace("\r\n", "\n")) == previous.get("source_sha256")
+                    and list(iter_quotes(yaml.safe_load(old_text))) == list(iter_quotes(source))):
+                quotes_verified = dict(previous, source_sha256=inputs[source_rel],
+                                       carried_forward_from=previous["source_sha256"])
     data = build_page_data(
         source, snapshots=snapshots, case_study_html=CASE_STUDY_PATH.read_text(encoding="utf-8"),
         served=served_routes(), production=production_routes(), branch=current_branch(),
