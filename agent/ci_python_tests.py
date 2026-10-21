@@ -124,6 +124,7 @@ HERMETIC_MODULES = [
     "test_triage_promotion",
     "test_workbench_approval",    # 2026-10-21 18:19: one click runs it on a sandbox; owner-only real deploy
     "test_site_pages_2026_10_21", # internal-pages flag, Token X-ray, favicon, 404, og meta
+    "test_token_xray",            # every token number on home / /tokens comes from docs/evidence data
     "test_verify_change",
     "test_verify_claude_permissions_config",
     "test_write_tools",

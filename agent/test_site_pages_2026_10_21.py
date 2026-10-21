@@ -106,7 +106,7 @@ class HomeHeroTest(unittest.TestCase):
 
     def test_token_hero(self):
         self.assertIn("AI Engineer. <em>Same answer, fewer tokens.</em>", self.HOME)
-        self.assertIn("4.5x the tokens and 4.2x the cost</b> for the same output, measured on 6 real tasks (Claude only).", self.HOME)
+        self.assertIn("<b>4.5x the tokens and 4.2x the cost</b> for the same answers. Measured on 6 everyday tasks, 3 runs each, Claude models only.", self.HOME)
         self.assertIn('href="/tokens">See the Token X-ray</a>', self.HOME)
         self.assertIn('href="/workbench">Try the Workbench (one click)</a>', self.HOME)
         self.assertIn('/img/tokens/wrong-vs-right.webp', self.HOME)

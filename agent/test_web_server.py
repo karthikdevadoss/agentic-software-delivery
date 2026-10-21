@@ -483,13 +483,12 @@ class VerifiedRunLinkTestCase(unittest.TestCase):
         matches = self._RUN_ID_PATTERN.findall(content)
         self.assertEqual(matches, [], f"workbench.html must never embed a literal run_id, found: {matches}")
 
-    def test_verified_run_link_starts_hidden_with_a_loading_state(self):
+    def test_recorded_run_panel_loads_its_data_at_runtime(self):
+        # 2026-10-21: the panel shows a recorded one-click run loaded from
+        # /workbench-recorded-run.json, never a run baked into the HTML.
         content = (ws.WEB_DIR / "workbench.html").read_text(encoding="utf-8")
-        self.assertIn('id="verified-run-link"', content)
-        self.assertIn('id="verified-run-unavailable"', content)
-        # The link itself must not have a real href baked in — only the
-        # live JS lookup may set one.
-        self.assertIn('id="verified-run-link" href="#" hidden', content)
+        self.assertIn('id="verified-run-panel"', content)
+        self.assertIn('id="recorded-run-body"', content)
 
     def test_verified_run_api_route_is_registered(self):
         routes = {r.path: r for r in ws.routes if hasattr(r, "path")}
