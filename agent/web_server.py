@@ -1786,6 +1786,10 @@ async def applications_json(request: Request):
     """Baked pack data for /applications. Same gate as the HTML page."""
     if not _applications_review_authorized(request):
         return PlainTextResponse("404 Not Found", status_code=404)
+    # The pack file is local-only since 2026-10-21 (gitignored, never deployed
+    # from the repository); without it this route is simply absent.
+    if not (WEB_DIR / "applications.json").is_file():
+        return PlainTextResponse("404 Not Found", status_code=404)
     return FileResponse(str(WEB_DIR / "applications.json"), media_type="application/json")
 
 

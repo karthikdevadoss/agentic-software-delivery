@@ -20,6 +20,43 @@ import web_server as ws
 WEB = pathlib.Path(__file__).resolve().parent / "web"
 TOKEN = ws.DEFAULT_APPLICATIONS_REVIEW_TOKEN
 
+# The real application packs and CV/cover-letter PDFs left the repository on
+# 2026-10-21 (Owner decision; gitignored, local-only). The route behaviour is
+# tested against one synthetic pack in a temporary web directory instead.
+_FIXTURE_DIR = None
+_SAVED = {}
+FIXTURE_PACK = {
+    "id": "synthetic-pack", "slug": "synthetic-pack", "rank": 1,
+    "company": "Example Co", "title": "AI Engineer", "location": "Berlin, Germany",
+    "posted": "2026-10-01", "fit_oneliner": "Synthetic test pack.",
+    "cover_letter": "Synthetic cover letter text.", "cv_pdf": "Synthetic_CV.pdf",
+    "url": "https://example.com/job",
+}
+
+
+def setUpModule():
+    import json
+    import shutil
+    import tempfile
+    global _FIXTURE_DIR
+    _FIXTURE_DIR = pathlib.Path(tempfile.mkdtemp(prefix="apps-web-"))
+    shutil.copy(WEB / "applications.html", _FIXTURE_DIR / "applications.html")
+    (_FIXTURE_DIR / "applications.json").write_text(
+        json.dumps({"count": 1, "packs": [FIXTURE_PACK]}), encoding="utf-8")
+    pdf_dir = _FIXTURE_DIR / "applications_pdf"
+    pdf_dir.mkdir()
+    (pdf_dir / FIXTURE_PACK["cv_pdf"]).write_bytes(b"%PDF-1.4\n% synthetic\n")
+    _SAVED.update(WEB_DIR=ws.WEB_DIR, APPLICATIONS_PDF_DIR=ws.APPLICATIONS_PDF_DIR)
+    ws.WEB_DIR = _FIXTURE_DIR
+    ws.APPLICATIONS_PDF_DIR = pdf_dir
+
+
+def tearDownModule():
+    import shutil
+    ws.WEB_DIR = _SAVED["WEB_DIR"]
+    ws.APPLICATIONS_PDF_DIR = _SAVED["APPLICATIONS_PDF_DIR"]
+    shutil.rmtree(_FIXTURE_DIR, ignore_errors=True)
+
 
 class ApplicationsReviewGateTest(unittest.TestCase):
     def setUp(self):
@@ -42,9 +79,7 @@ class ApplicationsReviewGateTest(unittest.TestCase):
         self.assertTrue(TOKEN)
 
     def test_no_key_returns_404_for_page_json_and_pdf(self):
-        pdfs = sorted((WEB / "applications_pdf").glob("*.pdf"))
-        self.assertTrue(pdfs, "expected baked CV PDFs under applications_pdf/")
-        sample = pdfs[0].name
+        sample = FIXTURE_PACK["cv_pdf"]
         for path in (
             "/applications",
             "/applications.json",
@@ -73,7 +108,7 @@ class ApplicationsReviewGateTest(unittest.TestCase):
         data = self.client.get("/applications.json", params={"k": TOKEN})
         self.assertEqual(data.status_code, 200)
         payload = data.json()
-        self.assertEqual(payload.get("count", 0), 15)
+        self.assertEqual(payload.get("count", 0), 1)
         self.assertEqual(len(payload["packs"]), payload["count"])
         first = payload["packs"][0]
         for key in ("rank", "company", "title", "location", "posted", "fit_oneliner",
@@ -119,9 +154,8 @@ class ApplicationsReviewNavTest(unittest.TestCase):
         self.assertIn('{ href: "/recruiters", label: "For Recruiters" }', nav)
         self.assertIn('{ href: "/interviewer", label: "Interviewer Brief" }', nav)
 
-    def test_standing_interview_untouched(self):
-        nav = (WEB / "nav.js").read_text(encoding="utf-8")
-        self.assertIn("/standing-interview", nav)
+    def test_standing_interview_page_still_exists(self):
+        # Out of the public nav since 2026-10-21; the page itself stays.
         self.assertTrue((WEB / "standing-interview.html").is_file())
         # applications page must not load nav.js (private, no public chrome)
         html = (WEB / "applications.html").read_text(encoding="utf-8")
@@ -130,34 +164,21 @@ class ApplicationsReviewNavTest(unittest.TestCase):
 
 
 class ApplicationsReviewDataTest(unittest.TestCase):
-    def test_baked_json_and_pdfs_exist(self):
-        data_path = WEB / "applications.json"
-        self.assertTrue(data_path.is_file())
-        import json
-        data = json.loads(data_path.read_text(encoding="utf-8"))
-        self.assertEqual(data["count"], len(data["packs"]))
-        self.assertEqual(data["count"], 15)
-        # Newest-posted first
-        dates = [p["posted"] for p in data["packs"]]
-        self.assertEqual(dates, sorted(dates, reverse=True))
-        # Location TOP filter (policy v32): no London-only / Munich-only /
-        # Amsterdam / Paris / Stockholm primary rows.
-        # Owner exception 2026-10-07: LangChain Deployed Architect Amsterdam may appear.
-        for pack in data["packs"]:
-            loc = (pack.get("location") or "").lower()
-            slug = pack.get("slug") or ""
-            if slug == "langchain-deployed-architect-amsterdam":
-                continue  # Owner-authorized exception for Review ≤15
-            if "remote" in loc and any(x in loc for x in ("europe", "emea", "germany", "global", "worldwide")):
-                continue  # remote Europe with optional London mention OK (e.g. Tavily)
-            if "berlin" in loc:
-                continue
-            for city in ("london", "stockholm", "munich", "paris", "amsterdam"):
-                self.assertNotIn(city, loc, pack.get("slug"))
-        pdf_dir = WEB / "applications_pdf"
-        for p in data["packs"]:
-            self.assertTrue((pdf_dir / p["cv_pdf"]).is_file(), p["cv_pdf"])
-            self.assertTrue(p.get("cover_letter"))
+    def test_no_application_material_is_tracked_in_git(self):
+        """Owner decision 2026-10-21: tailored CVs, cover letters and the pack
+        file stay out of the repository."""
+        import subprocess
+        root = pathlib.Path(__file__).resolve().parent.parent
+        tracked = subprocess.run(
+            ["git", "ls-files", "agent/web/applications.json", "agent/web/applications_pdf"],
+            cwd=root, capture_output=True, text=True, check=True).stdout.strip()
+        self.assertEqual(tracked, "", f"application material is tracked:\n{tracked}")
+
+    def test_missing_pack_file_is_a_plain_404(self):
+        client = TestClient(ws.app)
+        with mock.patch.object(ws, "WEB_DIR", WEB / "no-such-dir"):
+            r = client.get("/applications.json", params={"k": TOKEN})
+        self.assertEqual(r.status_code, 404)
 
 
 if __name__ == "__main__":
