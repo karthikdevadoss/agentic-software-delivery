@@ -273,3 +273,8 @@
   width: 100%; height: 420px; border: 1px solid var(--border);
   border-radius: 8px; background: #fff;
 }
+
+/* 2026-10-21 recorded run panel */
+#verified-run-panel { border-color: var(--green, #3ecf8e); }
+.recorded-steps { margin: 0.5rem 0; padding-left: 1.2rem; }
+.recorded-steps li { margin: 0.3rem 0; }

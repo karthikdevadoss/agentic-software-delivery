@@ -900,7 +900,15 @@ async function submit() {
   submitBtn.disabled = true;
   setStatus("ASSESSING RISK/SCOPE");
 
-  const a = await assess();
+  let a;
+  try {
+    a = await assess();
+  } catch (_) {
+    setStatus("IDLE");
+    submitBtn.disabled = false;
+    showRecordedRunFallback("The demo could not be reached just now.");
+    return;
+  }
   renderAssessment(a, a.decision !== "auto");
 
   if (a.decision !== "auto") {
@@ -918,17 +926,24 @@ async function submit() {
   rsRunId.textContent = "starting…";
   setStatus("STARTING");
 
-  const resp = await fetch("/api/trainer/runs", {
-    method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ requirement }),
-  });
-  const data = await resp.json();
+  let data;
+  try {
+    const resp = await fetch("/api/trainer/runs", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ requirement }),
+    });
+    data = await resp.json();
+  } catch (_) {
+    data = { busy: true, message: "The demo could not be reached just now." };
+  }
   if (data.busy) {
     assessmentPanel.hidden = false;
     assessmentBody.innerHTML = `<div class="kv"><span class="k">Status</span><span class="v"><strong style="color:var(--amber)">PLEASE WAIT</strong></span></div><p class="hint">${esc(data.message || "The demo is busy. Please try again in a moment.")}</p>`;
     setStatus("IDLE");
     submitBtn.disabled = false;
     runStatusPanel.hidden = true;
+    activityPanel.hidden = true;
+    showRecordedRunFallback(data.message || "The live demo cannot run right now.");
     return;
   }
   if (data.blocked) {
@@ -1006,9 +1021,53 @@ function renderSandboxResult(data) {
   }
   setStatus(ok || r.status === "NO_CHANGE_NEEDED" ? "COMPLETED" : "FAILED");
   submitBtn.disabled = false;
+  if (!ok && r.status !== "NO_CHANGE_NEEDED") showRecordedRunFallback("This run did not complete.");
 }
 
 submitBtn.addEventListener("click", submit);
+
+// ---- Recorded run (2026-10-21) ---------------------------------------------
+// A real one-click run saved from the server (agent/web/workbench-recorded-run.json).
+// Shown on every visit, and pointed to when a live click cannot run.
+const recordedRunBody = document.getElementById("recorded-run-body");
+const recordedRunNote = document.getElementById("recorded-run-note");
+
+async function loadRecordedRun() {
+  if (!recordedRunBody) return;
+  try {
+    const resp = await fetch("/workbench-recorded-run.json");
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const rec = await resp.json();
+    const r = rec.response.result || {};
+    const c = rec.response.cost || {};
+    let html = `<div class="kv"><span class="k">Recorded</span><span class="v">${esc(rec.recorded_at_utc)} · ${esc(rec.recorded_how)}</span></div>`;
+    html += `<div class="kv"><span class="k">Request</span><span class="v">${esc(rec.request.requirement)}</span></div>`;
+    html += `<ul class="recorded-steps">`;
+    (r.steps || []).forEach(st => {
+      const cls = st.result === "PASSED" ? "ok" : (st.result === "FAILED" ? "err" : "hint");
+      html += `<li><strong>${esc(st.step)}</strong> — <span class="${cls}">${esc(st.result)}</span> · ${esc(st.detail)}</li>`;
+    });
+    html += `</ul>`;
+    if (r.old_line && r.new_line) html += `<pre class="sandbox-diff">- ${esc(r.old_line)}\n+ ${esc(r.new_line)}</pre>`;
+    html += `<div class="kv"><span class="k">Result</span><span class="v">${esc(r.status)} · ${esc(r.message)}</span></div>`;
+    html += `<div class="kv"><span class="k">Cost</span><span class="v">$${Number(c.usd || 0).toFixed(2)} · ${esc(c.model_calls || 0)} model calls · ${esc(c.tokens || 0)} tokens</span></div>`;
+    recordedRunBody.innerHTML = html;
+    recordedRunBody.classList.remove("hint");
+  } catch (_) {
+    recordedRunBody.textContent = "The recorded run could not be loaded right now.";
+  }
+}
+
+// Called when a live click could not run: says so plainly and points to the
+// recorded run instead of leaving the visitor at a dead end.
+function showRecordedRunFallback(reason) {
+  if (!recordedRunNote) return;
+  recordedRunNote.innerHTML = `<strong>${esc(reason)}</strong> Here is a real recorded run, so you can still see what a click does.`;
+  const panel = document.getElementById("verified-run-panel");
+  if (panel && panel.scrollIntoView) panel.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+loadRecordedRun();
 
 // ---- Demo lifecycle --------------------------------------------------------
 // The public "RESTORE PRODUCTION BASELINE" button was removed on 2026-10-21:

@@ -102,6 +102,15 @@
     </div>
   </section>
 
+  <!-- 2026-10-21: a real recorded one-click run (agent/web/workbench-recorded-run.json,
+       captured from POST /api/trainer/runs). Always shown, and used as the
+       fallback when a live click cannot run (daily limit, busy, network). -->
+  <section class="panel" id="verified-run-panel">
+    <h2>Recorded run</h2>
+    <p class="hint" id="recorded-run-note">A real one-click run, saved exactly as the server returned it. If the live demo cannot run for you right now, this shows what a click does.</p>
+    <div id="recorded-run-body" class="hint">Loading the recorded run…</div>
+  </section>
+
 </main>
 
 <script src="/nav.js"></script>
