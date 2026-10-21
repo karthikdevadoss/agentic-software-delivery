@@ -53,15 +53,9 @@ const CANONICAL_NAV_DESTINATIONS = [
   // for the technical interviewer (post-HR). /recruiters stays HR-facing;
   // Standing Interview stays deeper Q&A.
   { href: "/interviewer", label: "Interviewer Brief" },
-  // BL-079: gated, not unconditional. The Owner's condition was that Standing
-  // Interview may appear in the live nav ONLY if the production page can
-  // actually answer, and the corpus is delivered at deploy time rather than
-  // committed -- so an instance can legitimately exist without one. Rather
-  // than rely on remembering to add the link after a successful deploy, the
-  // entry asks the server whether a corpus is loaded and removes itself if
-  // not. A nav link to a page that cannot answer is worse than no link.
-  { href: "/standing-interview", label: "Standing Interview",
-    requiresEndpoint: "/api/standing-interview/status", requiresKey: "loaded" },
+  // Standing Interview left the public nav (Owner decision, 2026-10-21). The
+  // page and its API stay reachable by direct link; the gated-entry
+  // mechanism below (requiresEndpoint/requiresKey) is kept for reuse.
 ];
 
 function _isCurrentPage(href, pathname) {
