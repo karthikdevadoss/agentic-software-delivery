@@ -74,8 +74,6 @@ secondary_evidence:
     url: "https://agentic-delivery-customer-app-production.up.railway.app"
   - name: "Token X-ray (the same 6 tasks done the wrong and the right way, measured in tokens and cost)"
     url: "https://agentic-platform-backend-production.up.railway.app/tokens"
-  - name: "Learn (AI/Agentic-AI interview knowledge base, built from this project's own real bugs)"
-    url: "https://agentic-platform-backend-production.up.railway.app/learn"
   - name: "AI Engineering Quality Ledger (structured defect/root-cause/fix records)"
     url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml"
   - name: "Public source repository"
