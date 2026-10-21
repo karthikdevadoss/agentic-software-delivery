@@ -21,6 +21,14 @@ const RECONSTRUCTED_SESSION = "claude-code-session-73e068c1-p0-eventledger-task"
 // especially under parallel test execution.
 const DETAIL_LOAD_TIMEOUT = { timeout: 15_000 };
 
+// The three session-detail tests read specific real sessions from the live
+// event ledger. A local server or a fresh CI runner has no ledger, so there
+// they are SKIPPED with this reason (reported as skipped, never as passed);
+// they run against production (PLAYWRIGHT_BASE_URL) or with a ledger
+// connection (EVENT_LEDGER_DATABASE_URL).
+const HAS_LIVE_LEDGER = Boolean(process.env.PLAYWRIGHT_BASE_URL || process.env.EVENT_LEDGER_DATABASE_URL);
+const NO_LEDGER_REASON = "needs the live event ledger: set PLAYWRIGHT_BASE_URL to production or EVENT_LEDGER_DATABASE_URL";
+
 test.describe("Usage / Session History journey", () => {
   test("historical list shows real sessions and Session History panel", async ({ page }) => {
     await page.goto("/usage");
@@ -29,6 +37,7 @@ test.describe("Usage / Session History journey", () => {
   });
 
   test("known-cost Workbench run: tokens and actual cost are visible, Quality != Evidence Coverage", async ({ page }) => {
+    test.skip(!HAS_LIVE_LEDGER, NO_LEDGER_REASON);
     await page.goto(`/usage/session/${KNOWN_COST_SESSION}`);
     const summary = page.locator(".session-summary-panel");
     await expect(summary).toBeVisible(DETAIL_LOAD_TIMEOUT);
@@ -46,6 +55,7 @@ test.describe("Usage / Session History journey", () => {
   });
 
   test("aggregate-only benchmark session: labeled honestly, no fabricated USD cost", async ({ page }) => {
+    test.skip(!HAS_LIVE_LEDGER, NO_LEDGER_REASON);
     await page.goto(`/usage/session/${AGGREGATE_ONLY_SESSION}`);
     const summary = page.locator(".session-summary-panel");
     await expect(summary).toBeVisible(DETAIL_LOAD_TIMEOUT);
@@ -56,6 +66,7 @@ test.describe("Usage / Session History journey", () => {
   });
 
   test("Claude Code session: NOT CAPTURED, COST UNAVAILABLE, neutral title, prompt text private", async ({ page }) => {
+    test.skip(!HAS_LIVE_LEDGER, NO_LEDGER_REASON);
     await page.goto(`/usage/session/${RECONSTRUCTED_SESSION}`);
     const summary = page.locator(".session-summary-panel");
     await expect(summary).toBeVisible(DETAIL_LOAD_TIMEOUT);

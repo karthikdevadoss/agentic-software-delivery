@@ -1363,7 +1363,16 @@ async def get_verified_workbench_run(request: Request):
     DB query in a thread so it can never block the event loop for other
     requests (see the RELIABILITY P0 incident this exact class of bug
     caused for other handlers)."""
-    run_id = await run_in_threadpool(session_history.get_latest_verified_workbench_run_id)
+    try:
+        run_id = await run_in_threadpool(session_history.get_latest_verified_workbench_run_id)
+    except Exception as exc:  # noqa: BLE001 - reported, never hidden
+        # Ledger unreachable (e.g. no EVENT_LEDGER_DATABASE_URL on a fresh CI
+        # runner). Used to surface as a bare HTTP 500 that the page could not
+        # parse; now a JSON 503 that says what failed, distinct from the
+        # "no verified run yet" 200 below.
+        return JSONResponse({"available": False, "run_id": None,
+                             "error": f"event ledger unreachable ({type(exc).__name__})"},
+                            status_code=503)
     if run_id is None:
         return JSONResponse({"available": False, "run_id": None})
     return JSONResponse({"available": True, "run_id": run_id})

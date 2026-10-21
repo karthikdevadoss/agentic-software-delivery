@@ -456,6 +456,22 @@ jobs:
         run: |
           python rag_index.py
           python backend_rag_index.py
+      # The two Customer App specs drive the real Spring Boot app on :8080
+      # (in-memory H2, no other services needed), so it runs here too.
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Start the Customer App on :8080 (for the Customer App specs)
+        working-directory: app
+        run: |
+          nohup ./mvnw -B -q spring-boot:run > ../customer-app.log 2>&1 &
+          for i in $(seq 1 90); do
+            curl -sf -o /dev/null http://127.0.0.1:8080/ && echo "Customer App up" && exit 0
+            sleep 2
+          done
+          echo "Customer App did not start"; tail -50 ../customer-app.log; exit 1
       - name: Run Playwright specs (config auto-starts web_server.py)
         id: pw
         run: npx playwright test --reporter=list
