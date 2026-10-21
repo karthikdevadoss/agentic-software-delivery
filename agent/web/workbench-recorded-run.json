@@ -1,0 +1,78 @@
+{
+ "recorded_at_utc": "2026-10-21 16:41 UTC",
+ "recorded_how": "one real POST /api/trainer/runs, as a visitor click, on commit b341c02",
+ "request": {
+  "requirement": "Change the footer text to \"Built with care\""
+ },
+ "response": {
+  "blocked": false,
+  "mode": "sandbox",
+  "decided_by": "visitor click",
+  "assessment": {
+   "decision": "auto",
+   "operation_id": "footer_text",
+   "human_name": "the footer text",
+   "new_value": "Built with care",
+   "risk_class": "TINY_TEXT_SUBSTITUTION",
+   "expected_changed_files": [
+    "app/src/main/resources/static/index.html"
+   ],
+   "expected_verification_method": "targeted DOM/text extraction of the footer text from the live production HTML",
+   "expected_production_assertion": "the footer text is live in production with exactly the requested value",
+   "estimated_cost_usd": 0.0,
+   "estimated_cost_note": "This request maps to a deterministic, zero-API-call operation — no model call is made, so the real cost is exactly $0.00, not an estimate.",
+   "mode": "sandbox",
+   "decided_by": "visitor click",
+   "message": "A person decides before any action. Here, that person is you: one click runs this change right away on a safe sandbox copy of the Customer App, and you see the result. The AI model never approves its own work."
+  },
+  "result": {
+   "status": "COMPLETED",
+   "steps": [
+    {
+     "step": "Your decision",
+     "result": "PASSED",
+     "detail": "You clicked run. Your click is the human decision."
+    },
+    {
+     "step": "Safety check",
+     "result": "PASSED",
+     "detail": "The request matches a supported demo change. Only one text field may change."
+    },
+    {
+     "step": "Change",
+     "result": "PASSED",
+     "detail": "Exactly one line changed in the sandbox copy of app/src/main/resources/static/index.html."
+    },
+    {
+     "step": "Check",
+     "result": "PASSED",
+     "detail": "Read the footer text back from the changed page: \"Built with care\"."
+    }
+   ],
+   "file": "app/src/main/resources/static/index.html",
+   "line_changed": 462,
+   "old_line": "<footer class=\"app-footer\">Powered by Agentic Delivery</footer>",
+   "new_line": "<footer class=\"app-footer\">Built with care</footer>",
+   "old_value": "Powered by Agentic Delivery",
+   "new_value": "Built with care",
+   "checked_value": "Built with care",
+   "preview_id": null,
+   "elapsed_ms": 1,
+   "message": "Done. In the sandbox copy, the footer text now says \"Built with care\"."
+  },
+  "cost": {
+   "model_calls": 0,
+   "tokens": 0,
+   "usd": 0.0,
+   "model_key_needed": false
+  },
+  "limits": {
+   "daily_usd_budget": 1.0,
+   "usd_per_click": 0.0,
+   "model_calls_per_click": 0,
+   "daily_max_clicks": 500,
+   "per_visitor_min_seconds": 3,
+   "per_visitor_daily_max": 30
+  }
+ }
+}
