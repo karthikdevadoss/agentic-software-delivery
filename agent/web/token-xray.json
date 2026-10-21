@@ -1,0 +1,91 @@
+{
+ "source": "docs/evidence/token-xray-2026-10-21 (results.json, headline.json)",
+ "measured_on": "2026-10-21",
+ "provider": "Anthropic Claude only",
+ "runs_per_task": 3,
+ "statistic": "median of 3 runs",
+ "model_calls": 117,
+ "cost_basis": "Anthropic list price, no caching",
+ "totals": {
+  "wrong_tokens": 56188,
+  "right_tokens": 12601,
+  "wrong_usd": 0.205,
+  "right_usd": 0.048,
+  "token_multiple": "4.5x",
+  "cost_multiple": "4.2x"
+ },
+ "token_multiple_range": [
+  "1.9x",
+  "10.5x"
+ ],
+ "big_model_small_task_cost_multiple": "161x",
+ "growing_chat_40_tasks_estimate": "5.0x",
+ "tasks": [
+  {
+   "id": "trip",
+   "label": "Plan a family trip",
+   "wrong_tokens": 17148,
+   "right_tokens": 2072,
+   "token_multiple": "8.3x",
+   "cost_multiple": "4.5x",
+   "wrong_model": "claude-sonnet-5-5",
+   "right_model": "claude-sonnet-5-5",
+   "runs": 3
+  },
+  {
+   "id": "reply",
+   "label": "Reply to an unhappy customer",
+   "wrong_tokens": 5607,
+   "right_tokens": 881,
+   "token_multiple": "6.4x",
+   "cost_multiple": "6.1x",
+   "wrong_model": "claude-sonnet-5-5",
+   "right_model": "claude-sonnet-5-5",
+   "runs": 3
+  },
+  {
+   "id": "doc",
+   "label": "Question about a long document",
+   "wrong_tokens": 10892,
+   "right_tokens": 1040,
+   "token_multiple": "10.5x",
+   "cost_multiple": "8.0x",
+   "wrong_model": "claude-sonnet-5-5",
+   "right_model": "claude-sonnet-5-5",
+   "runs": 3
+  },
+  {
+   "id": "suppliers",
+   "label": "Compare 3 supplier offers",
+   "wrong_tokens": 8238,
+   "right_tokens": 1187,
+   "token_multiple": "6.9x",
+   "cost_multiple": "8.5x",
+   "wrong_model": "claude-sonnet-5-5",
+   "right_model": "claude-sonnet-5-5",
+   "runs": 3
+  },
+  {
+   "id": "formula",
+   "label": "Fix a spreadsheet formula",
+   "wrong_tokens": 1287,
+   "right_tokens": 693,
+   "token_multiple": "1.9x",
+   "cost_multiple": "161x",
+   "wrong_model": "claude-opus-5-5",
+   "right_model": "claude-haiku-5-5",
+   "runs": 3
+  },
+  {
+   "id": "longchat",
+   "label": "10 small tasks in one day",
+   "wrong_tokens": 13016,
+   "right_tokens": 6728,
+   "token_multiple": "1.9x",
+   "cost_multiple": "1.5x",
+   "wrong_model": "claude-sonnet-5-5",
+   "right_model": "claude-sonnet-5-5",
+   "runs": 3
+  }
+ ]
+}

@@ -1,0 +1,267 @@
+{
+ "summary": {
+  "reply": {
+   "wrong": {
+    "n": 3,
+    "proc": 5607,
+    "inp": 4601,
+    "out": 1009,
+    "think": 0,
+    "calls": 4,
+    "cli": 0.0184503,
+    "nocache": 0.019262,
+    "proc_range": [
+     5522,
+     5848
+    ],
+    "model": "claude-sonnet-5-5"
+   },
+   "right": {
+    "n": 3,
+    "proc": 881,
+    "inp": 709,
+    "out": 172,
+    "think": 0,
+    "calls": 1,
+    "cli": 0.0018147,
+    "nocache": 0.003138,
+    "proc_range": [
+     880,
+     883
+    ],
+    "model": "claude-sonnet-5-5"
+   },
+   "x_tokens": 6.364358683314415,
+   "x_cli": 10.167135063646883,
+   "x_nocache": 6.138304652644997
+  },
+  "doc": {
+   "wrong": {
+    "n": 3,
+    "proc": 10892,
+    "inp": 10734,
+    "out": 158,
+    "think": 0,
+    "calls": 1,
+    "cli": 0.0028272,
+    "nocache": 0.023048,
+    "proc_range": [
+     10889,
+     10909
+    ],
+    "model": "claude-sonnet-5-5"
+   },
+   "right": {
+    "n": 3,
+    "proc": 1040,
+    "inp": 942,
+    "out": 98,
+    "think": 0,
+    "calls": 1,
+    "cli": 0.001078,
+    "nocache": 0.002864,
+    "proc_range": [
+     1039,
+     1047
+    ],
+    "model": "claude-sonnet-5-5"
+   },
+   "x_tokens": 10.473076923076922,
+   "x_cli": 2.6226345083487943,
+   "x_nocache": 8.047486033519553
+  },
+  "longchat": {
+   "wrong": {
+    "n": 3,
+    "proc": 13016,
+    "inp": 12225,
+    "out": 792,
+    "think": 0,
+    "calls": 10,
+    "cli": 0.017868600000000002,
+    "nocache": 0.032368,
+    "proc_range": [
+     13013,
+     13123
+    ],
+    "model": "claude-sonnet-5-5"
+   },
+   "right": {
+    "n": 3,
+    "proc": 6728,
+    "inp": 5752,
+    "out": 976,
+    "think": 0,
+    "calls": 10,
+    "cli": 0.010903200000000002,
+    "nocache": 0.021263999999999998,
+    "proc_range": [
+     6684,
+     6781
+    ],
+    "model": "claude-sonnet-5-5"
+   },
+   "x_tokens": 1.934601664684899,
+   "x_cli": 1.6388399735857362,
+   "x_nocache": 1.522197140707299
+  },
+  "formula": {
+   "wrong": {
+    "n": 3,
+    "proc": 1287,
+    "inp": 619,
+    "out": 668,
+    "think": 592,
+    "calls": 1,
+    "cli": 0.013491399999999999,
+    "nocache": 0.015836,
+    "proc_range": [
+     1166,
+     1322
+    ],
+    "model": "claude-opus-5-5"
+   },
+   "right": {
+    "n": 3,
+    "proc": 693,
+    "inp": 621,
+    "out": 72,
+    "think": 0,
+    "calls": 1,
+    "cli": 4.239e-05,
+    "nocache": 9.81e-05,
+    "proc_range": [
+     693,
+     693
+    ],
+    "model": "claude-haiku-5-5"
+   },
+   "x_tokens": 1.8571428571428572,
+   "x_cli": 318.2684595423449,
+   "x_nocache": 161.4271151885831
+  },
+  "trip": {
+   "wrong": {
+    "n": 3,
+    "proc": 17148,
+    "inp": 12691,
+    "out": 4457,
+    "think": 752,
+    "calls": 6,
+    "cli": 0.0659059,
+    "nocache": 0.069952,
+    "proc_range": [
+     16975,
+     17923
+    ],
+    "model": "claude-sonnet-5-5"
+   },
+   "right": {
+    "n": 3,
+    "proc": 2072,
+    "inp": 638,
+    "out": 1434,
+    "think": 602,
+    "calls": 1,
+    "cli": 0.016888,
+    "nocache": 0.015616,
+    "proc_range": [
+     1426,
+     2337
+    ],
+    "model": "claude-sonnet-5-5"
+   },
+   "x_tokens": 8.276061776061775,
+   "x_cli": 3.9025284225485555,
+   "x_nocache": 4.479508196721311
+  },
+  "suppliers": {
+   "wrong": {
+    "n": 3,
+    "proc": 8238,
+    "inp": 4790,
+    "out": 3448,
+    "think": 808,
+    "calls": 2,
+    "cli": 0.0505744,
+    "nocache": 0.04406,
+    "proc_range": [
+     5542,
+     8642
+    ],
+    "model": "claude-sonnet-5-5"
+   },
+   "right": {
+    "n": 3,
+    "proc": 1187,
+    "inp": 833,
+    "out": 354,
+    "think": 0,
+    "calls": 1,
+    "cli": 0.0038271,
+    "nocache": 0.005206,
+    "proc_range": [
+     1166,
+     1207
+    ],
+    "model": "claude-sonnet-5-5"
+   },
+   "x_tokens": 6.940185341196293,
+   "x_cli": 13.2148101695801,
+   "x_nocache": 8.463311563580485
+  }
+ },
+ "series": {
+  "longchat_wrong": [
+   719,
+   841,
+   968,
+   1100,
+   1192,
+   1377,
+   1486,
+   1649,
+   1773,
+   1936
+  ],
+  "longchat_right": [
+   694,
+   654,
+   619,
+   686,
+   604,
+   657,
+   636,
+   690,
+   745,
+   750
+  ],
+  "trip_wrong": [
+   956,
+   1351,
+   1930,
+   2911,
+   4789,
+   5337
+  ],
+  "trip_right": [
+   2072
+  ],
+  "reply_wrong": [
+   1045,
+   1231,
+   1504,
+   1830
+  ],
+  "reply_right": [
+   881
+  ]
+ },
+ "runs": [
+  "1",
+  "2",
+  "3"
+ ],
+ "ncalls": 117,
+ "total_cli_cost": null
+}

@@ -43,7 +43,7 @@
       <tbody>
         <tr><td>Plan a family trip</td><td>Vague start, details added over 6 messages</td><td>One complete message</td><td class="num">17,148 / 2,072</td><td class="num">8.3x</td><td class="num">4.5x</td></tr>
         <tr><td>Reply to an unhappy customer</td><td>"Write a reply", then 3 rounds of fixes</td><td>One clear brief</td><td class="num">5,607 / 881</td><td class="num">6.4x</td><td class="num">6.1x</td></tr>
-        <tr><td>Question about a long document</td><td>Paste the whole page (~4,900 words)</td><td>Paste only the part you need (~170 words)</td><td class="num">10,892 / 1,040</td><td class="num">10.5x</td><td class="num">8.0x</td></tr>
+        <tr><td>Question about a long document</td><td>Paste the whole terms page</td><td>Paste only the part you need</td><td class="num">10,892 / 1,040</td><td class="num">10.5x</td><td class="num">8.0x</td></tr>
         <tr><td>Compare 3 supplier offers</td><td>"Tell me everything", then "now a short table"</td><td>Ask for the short table first</td><td class="num">8,238 / 1,187</td><td class="num">6.9x</td><td class="num">8.5x</td></tr>
         <tr><td>Fix a spreadsheet formula</td><td>Biggest model, maximum thinking</td><td>Small model, low effort</td><td class="num">1,287 / 693</td><td class="num">1.9x</td><td class="num">161x</td></tr>
         <tr><td>10 small tasks in one day</td><td>All in one never-ending chat</td><td>A fresh chat for each task</td><td class="num">13,016 / 6,728</td><td class="num">1.9x</td><td class="num">1.5x</td></tr>
@@ -76,7 +76,7 @@
   <h2>What this shows, and what it does not</h2>
   <div class="box">
     <ul>
-      <li><span class="tag yes">Shown</span>Using AI the wrong way costs many more tokens for the same answer. This test shows it, and published studies agree (for example, agent runs on the same task can differ a lot in tokens without being more accurate).</li>
+      <li><span class="tag yes">Shown</span>Using AI the wrong way costs many more tokens for the same answer. This test shows it on six tasks.</li>
       <li><span class="tag part">Partly shown</span>Tokens are becoming a real cost line in software work, and "minimal AI" is a useful habit. But minimal means <em>no waste</em>, not "as few tokens as possible": on hard tasks, more tokens can still give a better answer.</li>
       <li><span class="tag no">Not claimed</span>That only the token count matters. The task must be solved and checked first.</li>
     </ul>
@@ -93,9 +93,10 @@
     <ul>
       <li>Claude Code command line in print mode with JSON output, which reports the real token use and cost of every call. A minimal system prompt, all tools off.</li>
       <li>Claude Sonnet 5.5 for five tasks. The formula task compared Opus 5.5 (maximum thinking) with Haiku 5.5 (low effort).</li>
-      <li>Every task done the wrong way and the right way, 3 runs each, median shown. 117 calls in total, about $0.66 spent.</li>
+      <li>Every task done the wrong way and the right way, 3 runs each, median shown. 117 model calls in total.</li>
       <li>Cost = Anthropic list price without caching, so caching does not hide the effect. With caching, money changes but the tokens processed do not.</li>
-      <li>About 575 tokens per message are fixed overhead, which makes the multiple smaller for tiny tasks.</li>
+      <li>Each message carries a small fixed overhead (the system prompt), which makes the multiple smaller for tiny tasks.</li>
+      <li>The raw call logs, the analysis script and the chart script are in the repository: <a href="https://github.com/karthikdevadoss/agentic-software-delivery/tree/master/docs/evidence/token-xray-2026-10-21">docs/evidence/token-xray-2026-10-21</a>.</li>
     </ul>
   </div>
 
