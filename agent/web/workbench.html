@@ -3,17 +3,26 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Pick a change and click once. It runs right away on a safe sandbox copy of the Customer App, and you see the result. No AI model call, $0.00.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Workbench — one click runs a real agent change">
+<meta property="og:description" content="Pick a change and click once. It runs right away on a safe sandbox copy of the Customer App, and you see the result. No AI model call, $0.00.">
+<meta property="og:url" content="https://agentic-platform-backend-production.up.railway.app/workbench">
+<meta property="og:image" content="https://agentic-platform-backend-production.up.railway.app/img/tokens/og-token-xray.png">
+<meta name="twitter:card" content="summary_large_image">
 <title>Agentic Software Delivery — Workbench</title>
 <link rel="stylesheet" href="/fonts/fonts.css">
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/dashboard.css">
 <link rel="stylesheet" href="/workbench.css">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="any">
 </head>
 <body data-surface="workbench">
 
 <header>
   <h1>Agentic Software Delivery <span class="sub">— Workbench</span></h1>
-  <p class="tagline">Enter a real requirement. A person approves before anything changes: the agent checks the request and shows exactly what it would change, and the change is implemented, tested and deployed to the Customer App only after the owner approves it.</p>
+  <p class="tagline">A person decides before any action. Here, that person is you. Pick a change and click once: it runs right away on a safe sandbox copy of the Customer App, and you see the result. The AI model never approves its own work.</p>
   <nav class="top-nav" id="top-nav"></nav>
 </header>
 
@@ -24,21 +33,22 @@
     <div id="target-app-body" class="hint">Loading target application…</div>
   </section>
 
-  <section class="panel" id="verified-run-panel">
-    <h2>Not ready to submit a change yet?</h2>
-    <p class="hint">See a real, already-completed end-to-end run — requirement, live agent investigation, tests, Git commit, deployment, and production verification, all real.</p>
-    <a class="verified-run-link" id="verified-run-link" href="#" hidden>SEE A VERIFIED RUN &rarr;</a>
-    <p class="hint" id="verified-run-unavailable" hidden>No verified run available yet.</p>
-    <p class="hint" id="verified-run-loading">Looking up the most recent verified run…</p>
+  <section class="panel" id="how-it-works-panel">
+    <h2>How a click works</h2>
+    <ul class="hint how-list">
+      <li><strong>You decide.</strong> Your click is the human decision. There is no waiting and no approval queue.</li>
+      <li><strong>Safe sandbox.</strong> The change runs on a copy of the Customer App page. The live app and the code on GitHub are never changed by a visitor click.</li>
+      <li><strong>Free.</strong> A click makes no AI model call, so it costs $0.00. A daily limit and a per-visitor limit keep the demo fair for everyone.</li>
+    </ul>
   </section>
 
   <section class="panel" id="requirement-panel">
     <h2>1. What would you like to change?</h2>
-    <textarea id="requirement-input" rows="3" placeholder="e.g. Add a small status badge near the page title"></textarea>
-    <button id="submit-btn">SUBMIT REQUIREMENT</button>
+    <textarea id="requirement-input" rows="3" placeholder="e.g. Change the footer text to &quot;Built with care&quot;"></textarea>
+    <button id="submit-btn">RUN THIS CHANGE</button>
     <span id="status-badge" class="status-badge status-idle">IDLE</span>
     <div id="examples-box">
-      <p class="hint">Or skip typing — click one below to see exactly what it would change and send it for approval:</p>
+      <p class="hint">Or skip typing. Click one below and it runs right away:</p>
       <div id="examples-list"></div>
     </div>
   </section>
@@ -86,10 +96,9 @@
     <div id="result-evidence"></div>
     <div id="usage-summary-box"></div>
     <pre id="result-text"></pre>
-    <div id="reset-demo-box">
-      <p class="hint">Because this is a shared public demo, an operator can restore the Customer App to its canonical baseline at any time below — your result stays live in production until then. This is a real software operation (source restored, redeployed, and independently re-verified live), not a local reset.</p>
-      <button id="reset-demo-btn" class="secondary">RESTORE PRODUCTION BASELINE</button>
-      <div id="reset-demo-status" class="hint"></div>
+    <div id="sandbox-preview-box" hidden>
+      <p class="hint">The changed sandbox page (scripts switched off):</p>
+      <iframe id="sandbox-preview" title="Changed sandbox page" sandbox="" loading="lazy"></iframe>
     </div>
   </section>
 

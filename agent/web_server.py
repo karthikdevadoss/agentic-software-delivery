@@ -62,6 +62,7 @@ import interview_walkthrough_data
 import ask_codebase
 import functools
 import si_budget
+import workbench_budget
 import owner_auth
 import triage_budget
 import standing_interview
@@ -95,6 +96,36 @@ WEB_DIR = Path(__file__).resolve().parent / "web"
 PRIVATE_SURFACES_ENABLED = os.environ.get("PRIVATE_SURFACES_ENABLED", "").strip().lower() in (
     "1", "true", "yes", "on",
 )
+
+# 2026-10-21 (Owner decision): /usage, /usage/session/*, /dashboard and their
+# data APIs are internal pages. They are hidden unless SHOW_INTERNAL_PAGES is
+# set (off by default), and they are not in the nav. Read on every request so
+# a test (or the Owner, locally) can switch them on without a re-import.
+def _internal_pages_enabled() -> bool:
+    return os.environ.get("SHOW_INTERNAL_PAGES", "").strip().lower() in ("1", "true", "yes", "on")
+
+
+def _not_found_page(request=None, status_code: int = 404):
+    """The friendly 404 page for browsers; plain JSON for API paths."""
+    path = getattr(getattr(request, "url", None), "path", "") or ""
+    if path.startswith("/api/"):
+        return JSONResponse({"detail": "Not Found"}, status_code=status_code)
+    page = WEB_DIR / "not-found.html"
+    if page.is_file():
+        return FileResponse(str(page), status_code=status_code, media_type="text/html")
+    return PlainTextResponse("404 Not Found", status_code=status_code)
+
+
+def _internal_page(handler):
+    """Decorator: 404 unless SHOW_INTERNAL_PAGES is on."""
+    @functools.wraps(handler)
+    async def gated(request):
+        if not _internal_pages_enabled():
+            return _not_found_page(request)
+        return await handler(request)
+    gated.internal_page = True
+    return gated
+
 
 # Automation Sprint 11: owner-facing Applications Review at /applications.
 # Gated by query ?k=<token>. Default token is for local tests only; production
@@ -1202,10 +1233,8 @@ async def start_mock_run(request: Request):
 
 
 _AUTHORIZATION_REQUIRED_MESSAGE = (
-    "Authorization required. This request is outside the autonomous "
-    "public-demo scope and would require owner approval because of its "
-    "size or impact. Without approval, you can try one of these verified "
-    "demo changes:"
+    "Authorization required. This request is outside what the public demo "
+    "can run, so nothing ran. Try one of these supported demo changes:"
 )
 
 
@@ -1261,33 +1290,108 @@ def _assess_public_demo_requirement(requirement: str) -> dict:
     }
 
 
-_PERSON_APPROVES_MESSAGE = (
-    "A person approves every change before anything is changed. This request "
-    "is within scope and has been checked; it runs once the owner approves it."
+# --- Public Workbench: one click runs it (Owner rule, 2026-10-21 18:19) -------
+#
+# A person decides before any action. On the public Workbench that person is
+# the visitor: their click IS the human decision, so there is no approval
+# queue and no "waiting for approval" state for visitors. The model never
+# approves its own work (it is not even called on this path).
+#
+# Safety for a public site:
+#   * The click runs on a SANDBOX copy of the Customer App page
+#     (agent/demo_baseline/index.html read into memory). No git clone, commit,
+#     push or Railway deploy happens, and the live Customer App never changes.
+#   * Only the deterministic catalogue operations can run (same
+#     _assess_public_demo_requirement gate as before).
+#   * workbench_budget: per-IP gap + daily ceiling, a global daily click cap
+#     and a $1/day budget. A click makes no model call, so it costs $0.00.
+#   * No model key is needed: the sandbox run is deterministic, so it always
+#     completes, with or without ANTHROPIC_API_KEY.
+# The owner (OWNER_API_TOKEN) still gets the real pipeline: isolated clone,
+# commit, deploy and production check.
+
+_VISITOR_DECISION_MESSAGE = (
+    "A person decides before any action. Here, that person is you: one click "
+    "runs this change right away on a safe sandbox copy of the Customer App, "
+    "and you see the result. The AI model never approves its own work."
 )
 
+_SANDBOX_PREVIEWS: dict = {}
+_SANDBOX_PREVIEWS_MAX = 50
 
-def _require_person_approval(assessment: dict, headers) -> dict:
-    """Owner decision, 2026-10-21: nothing in the Customer App changes until a
-    person has approved it. An in-scope request that arrives without the
-    owner's approval (owner_auth: OWNER_API_TOKEN, fail-closed) is reported as
-    waiting for approval and never starts a run. Before this, an in-scope
-    catalogue request was implemented, committed and deployed with no human
-    step at all."""
+
+def _visitor_assessment(assessment: dict, headers) -> dict:
+    """Marks an in-scope visitor request as a one-click sandbox run. Blocked
+    requests and the owner's requests pass through unchanged."""
     if assessment.get("decision") != "auto" or owner_auth.is_owner(headers):
         return assessment
-    waiting = {k: v for k, v in assessment.items() if k != "_normalized"}
-    waiting.update(decision="approval_required", message=_PERSON_APPROVES_MESSAGE,
-                   reason="Waiting for the owner's approval.")
-    return waiting
+    out = dict(assessment)
+    out.update(mode="sandbox", decided_by="visitor click", message=_VISITOR_DECISION_MESSAGE)
+    return out
+
+
+def _run_visitor_sandbox(normalized) -> dict:
+    """Runs one catalogue edit on an in-memory copy of the demo baseline page.
+    Pure and fast: no network, no git, no deploy, no model call."""
+    started = time.monotonic()
+    baseline = _read_demo_baseline()
+    steps = [{"step": "Your decision", "result": "PASSED",
+              "detail": "You clicked run. Your click is the human decision."}]
+    if baseline is None:
+        return {"status": "FAILED", "steps": steps,
+                "message": "The sandbox copy of the page could not be read, so nothing ran."}
+    old_value = demo_catalogue.extract_current_value(baseline, normalized.operation_id)
+    steps.append({"step": "Safety check", "result": "PASSED",
+                  "detail": "The request matches a supported demo change. Only one text field may change."})
+    if old_value == normalized.new_value:
+        steps.append({"step": "Change", "result": "NOT NEEDED",
+                      "detail": f"{normalized.human_name} already says \"{normalized.new_value}\"."})
+        return {"status": "NO_CHANGE_NEEDED", "steps": steps, "old_value": old_value,
+                "new_value": normalized.new_value, "file": normalized.target_file,
+                "elapsed_ms": int((time.monotonic() - started) * 1000),
+                "message": f"No change needed: {normalized.human_name} already says \"{normalized.new_value}\"."}
+    try:
+        new_content = demo_catalogue.apply_operation(baseline, normalized.operation_id, normalized.new_value)
+        line_idx, old_line, new_line = demo_catalogue.compute_single_line_diff(baseline, new_content)
+    except RuntimeError as exc:
+        steps.append({"step": "Change", "result": "FAILED", "detail": str(exc)})
+        return {"status": "FAILED", "steps": steps,
+                "message": "The change was refused by the safety rules, so nothing ran."}
+    steps.append({"step": "Change", "result": "PASSED",
+                  "detail": f"Exactly one line changed in the sandbox copy of {normalized.target_file}."})
+    after_value = demo_catalogue.extract_current_value(new_content, normalized.operation_id)
+    check_ok = after_value == normalized.new_value
+    steps.append({"step": "Check", "result": "PASSED" if check_ok else "FAILED",
+                  "detail": f"Read {normalized.human_name} back from the changed page: \"{after_value}\"."})
+    preview_id = None
+    if check_ok:
+        preview_id = "sandbox-" + uuid.uuid4().hex[:8]
+        _SANDBOX_PREVIEWS[preview_id] = new_content
+        while len(_SANDBOX_PREVIEWS) > _SANDBOX_PREVIEWS_MAX:
+            _SANDBOX_PREVIEWS.pop(next(iter(_SANDBOX_PREVIEWS)))
+    return {
+        "status": "COMPLETED" if check_ok else "FAILED",
+        "steps": steps,
+        "file": normalized.target_file,
+        "line_changed": line_idx + 1,
+        "old_line": old_line.strip(),
+        "new_line": new_line.strip(),
+        "old_value": old_value,
+        "new_value": normalized.new_value,
+        "checked_value": after_value,
+        "preview_id": preview_id,
+        "elapsed_ms": int((time.monotonic() - started) * 1000),
+        "message": (f"Done. In the sandbox copy, {normalized.human_name} now says \"{normalized.new_value}\"."
+                    if check_ok else "The check after the change did not match, so the run failed."),
+    }
 
 
 async def assess_trainer_requirement(request: Request):
     """Cheap, synchronous, zero-API-cost — lets the trainer UI preview the
-    authorization decision before submitting. Never starts any work."""
+    decision before submitting. Never starts any work."""
     body = await request.json()
     requirement = (body.get("requirement") or "").strip()
-    assessment = _require_person_approval(
+    assessment = _visitor_assessment(
         _assess_public_demo_requirement(requirement), request.headers)
     assessment.pop("_normalized", None)
     return JSONResponse(assessment)
@@ -1297,7 +1401,20 @@ async def get_demo_catalogue(request: Request):
     """Exposes the exact 5 supported example requirements so the frontend
     never hardcodes a second copy that could drift from the real
     deterministic contract."""
-    return JSONResponse({"examples": demo_catalogue.SUGGESTED_EXAMPLES})
+    return JSONResponse({"examples": demo_catalogue.SUGGESTED_EXAMPLES,
+                         "limits": workbench_budget.limits()})
+
+
+async def get_sandbox_preview(request: Request):
+    """The changed sandbox page, for the result panel's preview frame. Served
+    with a CSP that blocks all scripts and network calls from the page."""
+    content = _SANDBOX_PREVIEWS.get(request.path_params.get("preview_id", ""))
+    if content is None:
+        return PlainTextResponse("404 Not Found", status_code=404)
+    return Response(content, media_type="text/html", headers={
+        "Content-Security-Policy": "sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:",
+        "X-Robots-Tag": "noindex",
+    })
 
 
 async def start_trainer_run(request: Request):
@@ -1306,10 +1423,39 @@ async def start_trainer_run(request: Request):
     if not requirement:
         return JSONResponse({"error": "requirement is required"}, status_code=400)
 
+    # Re-derive server-side — never trust a client-displayed assessment
+    # as the actual authorization decision. Rejects before any work.
+    assessment = _visitor_assessment(
+        _assess_public_demo_requirement(requirement), request.headers)
+    if assessment["decision"] != "auto":
+        assessment.pop("_normalized", None)
+        return JSONResponse({"blocked": True, "assessment": assessment})
+    normalized = assessment.pop("_normalized")
+
+    if assessment.get("mode") == "sandbox":
+        # Visitor path: the click is the decision; run now, on the sandbox.
+        visitor = _visitor_key(request)
+        gate = workbench_budget.check(visitor)
+        if not gate["allowed"]:
+            return JSONResponse({"busy": True, "status": gate["status"], "message": gate["message"],
+                                 "retry_after": gate["retry_after"]}, status_code=429)
+        result = _run_visitor_sandbox(normalized)
+        workbench_budget.record_click(visitor, workbench_budget.WORKBENCH_USD_PER_CLICK)
+        return JSONResponse({
+            "blocked": False,
+            "mode": "sandbox",
+            "decided_by": "visitor click",
+            "assessment": assessment,
+            "result": result,
+            "cost": {"model_calls": 0, "tokens": 0, "usd": workbench_budget.WORKBENCH_USD_PER_CLICK,
+                     "model_key_needed": False},
+            "limits": workbench_budget.limits(),
+        })
+
+    # Owner path (OWNER_API_TOKEN): the real pipeline — isolated clone,
+    # commit, Railway deploy and production check.
     # Cooldown: a short mandatory gap after the previous trainer run
-    # finished, before another may start — cheap abuse/cost protection
-    # distinct from the one-at-a-time lock below (which only prevents
-    # true overlap, not rapid-fire sequential submissions).
+    # finished, before another may start.
     cooldown_remaining = TRAINER_COOLDOWN_SECONDS - (time.monotonic() - _LAST_TRAINER_RUN_FINISHED_AT)
     if cooldown_remaining > 0:
         return JSONResponse({
@@ -1318,21 +1464,11 @@ async def start_trainer_run(request: Request):
             "cooldown_seconds": int(cooldown_remaining) + 1,
         }, status_code=429)
 
-    # Re-derive server-side — never trust a client-displayed assessment
-    # as the actual authorization decision. Rejects before any thread/
-    # workspace/deploy cost is spent.
-    assessment = _require_person_approval(
-        _assess_public_demo_requirement(requirement), request.headers)
-    if assessment["decision"] != "auto":
-        assessment.pop("_normalized", None)
-        return JSONResponse({"blocked": True, "assessment": assessment})
-    normalized = assessment.pop("_normalized")
-
     run_id = "trainer-" + uuid.uuid4().hex[:8]
     # Reserve the single global run slot SYNCHRONOUSLY, before the
     # background thread starts — a real production Git/Railway pipeline
-    # runs behind this, so two overlapping public submissions could
-    # otherwise race on the same isolated workspace/deployment.
+    # runs behind this, so two overlapping submissions could otherwise
+    # race on the same isolated workspace/deployment.
     if not _reserve_run_slot(run_id):
         return JSONResponse({
             "busy": True,
@@ -1578,6 +1714,7 @@ async def redirect_trainer_to_workbench(request: Request):
     return RedirectResponse(url="/workbench", status_code=308)
 
 
+@_internal_page
 async def redirect_sessions_to_usage(request: Request):
     return RedirectResponse(url="/usage", status_code=308)
 
@@ -1714,19 +1851,23 @@ async def decide(request: Request):
 # pool (run_in_threadpool) so a slow/stuck DB call can only ever block
 # ITS OWN request, never the whole service.
 
+@_internal_page
 async def get_dashboard_data(request: Request):
     return JSONResponse(await run_in_threadpool(dashboard_data.build_dashboard_snapshot))
 
 
+@_internal_page
 async def dashboard_page(request: Request):
     return FileResponse(str(WEB_DIR / "dashboard.html"))
 
 
+@_internal_page
 async def get_sessions_data(request: Request):
     include_test_data = request.query_params.get("include_test_data") == "1"
     return JSONResponse(await run_in_threadpool(sessions_data.build_sessions_snapshot, include_test_data))
 
 
+@_internal_page
 async def usage_page(request: Request):
     """Serves the Usage SPA shell for both the main history view (/usage)
     and a dedicated session detail route (/usage/session/{id}) — the
@@ -1763,6 +1904,16 @@ async def get_interview_walkthrough_data(request: Request):
     see AEQ-010."""
     walkthrough = await run_in_threadpool(interview_walkthrough_data.load_interview_walkthrough)
     return JSONResponse(walkthrough)
+
+
+async def tokens_page(request: Request):
+    """Token X-ray: a static page with the 21 Oct 2026 wrong-way vs right-way
+    token measurements. No API, no model call."""
+    return FileResponse(str(WEB_DIR / "tokens.html"))
+
+
+async def favicon(request: Request):
+    return FileResponse(str(WEB_DIR / "favicon.ico"), media_type="image/x-icon")
 
 
 async def eval_page(request: Request):
@@ -2396,6 +2547,7 @@ async def triage_promote_c(request: Request):
         return JSONResponse({"error": str(e)}, status_code=409)
 
 
+@_internal_page
 async def get_session_history(request: Request):
     limit = int(request.query_params.get("limit", "20"))
     before = request.query_params.get("before")
@@ -2411,6 +2563,7 @@ async def get_session_history(request: Request):
     return JSONResponse(result, status_code=status_code)
 
 
+@_internal_page
 async def get_session_detail(request: Request):
     session_id = request.path_params["session_id"]
     detail = await run_in_threadpool(session_history.get_session_detail, session_id)
@@ -2550,6 +2703,7 @@ routes = [
     Route("/api/trainer/assess", assess_trainer_requirement, methods=["POST"]),
     Route("/api/trainer/catalogue", get_demo_catalogue, methods=["GET"]),
     Route("/api/trainer/runs", start_trainer_run, methods=["POST"]),
+    Route("/api/trainer/sandbox/{preview_id}", get_sandbox_preview, methods=["GET"]),
     Route("/api/runs/{run_id}", get_run, methods=["GET"]),
     Route("/api/runs/{run_id}/events", stream_events, methods=["GET"]),
     Route("/api/runs/{run_id}/decide", decide, methods=["POST"]),
@@ -2625,6 +2779,8 @@ routes = [
     Route("/ask-codebase", ask_codebase_page, methods=["GET"]),
     Route("/ask-codebase/examples", ask_codebase_examples_page, methods=["GET"]),
     Route("/eval", eval_page, methods=["GET"]),
+    Route("/tokens", tokens_page, methods=["GET"]),
+    Route("/favicon.ico", favicon, methods=["GET"]),
     Route("/recruiters", recruiters_page, methods=["GET"]),
     Route("/interviewer", interviewer_page, methods=["GET"]),
     Route("/applications", applications_page, methods=["GET"]),
@@ -2682,6 +2838,9 @@ routes = [
     # /applications, /applications.json and /applications_pdf/{name} are
     # handled above; these catch raw static fall-through.
     Route("/applications.html", private_surface_not_found, methods=["GET"]),
+    # Internal pages' raw HTML files must not bypass SHOW_INTERNAL_PAGES.
+    Route("/usage.html", _internal_page(usage_page), methods=["GET"]),
+    Route("/dashboard.html", _internal_page(dashboard_page), methods=["GET"]),
     Mount("/", app=StaticFiles(directory=str(WEB_DIR), html=True), name="static"),
 ]
 
@@ -2712,7 +2871,12 @@ class ForceRevalidateStaticAssets(BaseHTTPMiddleware):
         return response
 
 
-app = Starlette(routes=routes, middleware=[Middleware(ForceRevalidateStaticAssets)])
+async def _http_404_handler(request, exc):
+    return _not_found_page(request)
+
+
+app = Starlette(routes=routes, middleware=[Middleware(ForceRevalidateStaticAssets)],
+                exception_handlers={404: _http_404_handler})
 
 
 if __name__ == "__main__":

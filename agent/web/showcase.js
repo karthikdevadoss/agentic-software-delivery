@@ -316,8 +316,9 @@ function renderNav(main, showcase) {
     ["OPEN CUSTOMER APP", (showcase.production_urls || {}).customer_app],
     ["OPEN WORKBENCH", (showcase.primary_demo || {}).url],
     ["ASK THE CODEBASE", "/ask-codebase"],
-    ["VIEW DASHBOARD", "/dashboard"],
-    ["VIEW USAGE", "/usage"],
+    // 2026-10-21: Dashboard and Usage are behind SHOW_INTERNAL_PAGES (off by
+    // default), so their buttons were removed rather than left as dead links.
+    ["TOKEN X-RAY", "/tokens"],
     // Sprint 14: "VIEW LEARN" removed. /learn is no longer a public route
     // (Owner decision), so this button would have become a dead link.
   ];

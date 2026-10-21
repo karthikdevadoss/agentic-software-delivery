@@ -39,21 +39,13 @@ test.describe("Workbench — verified run access without submitting", () => {
   // destination must come from the live backend selection (GET
   // /api/workbench/verified-run), not a value baked into the page.
 
-  test("SEE A VERIFIED RUN resolves live to the backend's current selection, not a hard-coded id", async ({ page }) => {
-    // Ask the backend directly first — this is the ground truth the
-    // rendered link must match, whatever real run happens to be
-    // selected at test time (this must never assume a fixed id).
-    const apiResp = await page.request.get("/api/workbench/verified-run");
-    const apiData = await apiResp.json();
-    test.skip(!apiData.available, "no verified run currently available — honest empty state, not a failure of this test");
-
+  // 2026-10-21: the "SEE A VERIFIED RUN" panel left the Workbench. It linked
+  // to /usage/session/<id>, which is now behind SHOW_INTERNAL_PAGES, and a
+  // visitor now gets a real result from one click instead.
+  test("Workbench explains the one-click run instead of linking to a verified run", async ({ page }) => {
     await page.goto("/workbench");
-    const link = page.getByRole("link", { name: /SEE A VERIFIED RUN/ });
-    await expect(link).toBeVisible();
-    await expect(link).toHaveAttribute("href", `/usage/session/${apiData.run_id}`);
-
-    await link.click();
-    await expect(page).toHaveURL(`/usage/session/${apiData.run_id}`);
+    await expect(page.getByRole("link", { name: /SEE A VERIFIED RUN/ })).toHaveCount(0);
+    await expect(page.locator("#how-it-works-panel")).toContainText("Your click is the human decision");
   });
 
   test("the verified-run page clearly identifies itself as a real production run with full evidence", async ({ page }) => {

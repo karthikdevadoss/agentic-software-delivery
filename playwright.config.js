@@ -44,6 +44,11 @@ module.exports = defineConfig({
     ? undefined
     : {
         command: "python agent/web_server.py",
+        // 2026-10-21: /usage and /dashboard are behind SHOW_INTERNAL_PAGES
+        // (off by default in production). The e2e suite still checks those
+        // pages, so the test server switches them on. The default-off
+        // behaviour is covered by agent/test_site_pages_2026_10_21.py.
+        env: { ...process.env, SHOW_INTERNAL_PAGES: process.env.SHOW_INTERNAL_PAGES || "1" },
         url: baseURL,
         reuseExistingServer: true,
         timeout: 30_000,

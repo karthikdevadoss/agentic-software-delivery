@@ -67,15 +67,13 @@ selected_capabilities:
 primary_demo:
   name: "Watch a real requirement travel through the full agentic delivery pipeline"
   url: "https://agentic-platform-backend-production.up.railway.app/workbench"
-  what_to_expect: "Submit a small, safe requirement; watch it move through deterministic eligibility, context retrieval, LLM analysis, real Maven compile/test, git commit, Railway deploy, and independent production verification, live, stage by stage."
+  what_to_expect: "Pick a small, safe change and click once. Your click is the human decision: the change runs right away on a sandbox copy of the Customer App, is checked, and you see the result. A visitor click never changes the live app."
 
 secondary_evidence:
   - name: "Live Customer App (the real Spring Boot backend under all of this)"
     url: "https://agentic-delivery-customer-app-production.up.railway.app"
-  - name: "Engineering Dashboard (capability status, quality metrics, AI engineering learning)"
-    url: "https://agentic-platform-backend-production.up.railway.app/dashboard"
-  - name: "Usage / AI economics (real token/cost/time accounting, honestly labeled ACTUAL vs ESTIMATED)"
-    url: "https://agentic-platform-backend-production.up.railway.app/usage"
+  - name: "Token X-ray (the same 6 tasks done the wrong and the right way, measured in tokens and cost)"
+    url: "https://agentic-platform-backend-production.up.railway.app/tokens"
   - name: "Learn (AI/Agentic-AI interview knowledge base, built from this project's own real bugs)"
     url: "https://agentic-platform-backend-production.up.railway.app/learn"
   - name: "AI Engineering Quality Ledger (structured defect/root-cause/fix records)"
@@ -118,4 +116,4 @@ production_urls:
 # Changes since the previous 2026-09-17 verification were additive only
 # (+90/-2 across PORTFOLIO_CAPABILITIES.yaml and INTERVIEW_WALKTHROUGH.yaml);
 # this file itself was unchanged.
-last_verified: "2026-09-29"
+last_verified: "2026-10-21"

@@ -66,9 +66,18 @@ class Headline(unittest.TestCase):
 
 
 class WorkbenchApprovalWording(unittest.TestCase):
-    def test_workbench_says_a_person_approves_first(self):
+    # Owner rule 2026-10-21 18:19: one click runs it; the visitor's click is
+    # the human decision. No approval queue or waiting state for visitors.
+    def test_workbench_says_a_person_decides_first(self):
         html = (WEB / "workbench.html").read_text(encoding="utf-8")
-        self.assertIn("A person approves before anything changes", html)
+        self.assertIn("A person decides before any action. Here, that person is you.", html)
+
+    def test_no_waiting_for_approval_copy_for_visitors(self):
+        for name in ("workbench.html", "workbench.js"):
+            text = (WEB / name).read_text(encoding="utf-8")
+            with self.subTest(file=name):
+                self.assertNotIn("WAITING FOR APPROVAL", text)
+                self.assertNotIn("once the owner approves", text)
 
 
 class StandingInterviewNav(unittest.TestCase):

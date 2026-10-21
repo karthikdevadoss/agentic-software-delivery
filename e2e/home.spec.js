@@ -24,7 +24,7 @@ const VIEWPORTS = [
 
 // Automation Sprint 4 (Owner decision): Showcase and Usage out, For Recruiters in.
 // Automation Sprint 14: Interviewer Brief joined. 2026-10-21: Standing Interview left.
-const CANONICAL_NAV = ["Home", "Workbench", "Triage", "Ask Codebase", "For Recruiters", "Interviewer Brief"];
+const CANONICAL_NAV = ["Home", "Workbench", "Triage", "Ask Codebase", "For Recruiters", "Interviewer Brief", "Token X-ray"];
 
 test.describe("Home page — identity and claims", () => {
   test("the first screen names the person, the role and the separation", async ({ page }) => {
@@ -75,7 +75,7 @@ test.describe("Home page — identity and claims", () => {
     const scope = page.locator(".scope");
     await expect(scope).toBeVisible();
     await expect(scope).toContainText("One model provider, Anthropic Claude");
-    await expect(scope).toContainText("once the owner approves it");
+    await expect(scope).toContainText("Only the owner can deploy a change to the live app");
   });
 
   test("employers are exactly the three approved, with no dates", async ({ page }) => {

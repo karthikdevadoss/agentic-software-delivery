@@ -63,13 +63,13 @@ class InterviewerPageTestCase(unittest.TestCase):
                        "cutting routine work time by about 20%"):
             self.assertIn(phrase, compact)
 
-    def test_workbench_card_says_a_person_approves_first(self):
+    def test_workbench_card_says_a_person_decides_first(self):
         compact = " ".join(HTML.split())
-        self.assertIn("A person approves before anything changes.", compact)
+        self.assertIn("A person decides before any action.", compact)
 
     def test_proof_card_links(self):
         required = [
-            "/workbench#verified-run-panel",
+            "/workbench#requirement-panel",
             "/triage",
             "/eval",
             "/ask-codebase",
@@ -99,7 +99,7 @@ class InterviewerPageTestCase(unittest.TestCase):
 
     def test_workbench_anchor_exists(self):
         wb = (WEB / "workbench.html").read_text(encoding="utf-8")
-        self.assertIn('id="verified-run-panel"', wb)
+        self.assertIn('id="requirement-panel"', wb)
 
     def test_home_scope_anchor_exists(self):
         home = (WEB / "home.html").read_text(encoding="utf-8")

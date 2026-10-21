@@ -7,6 +7,7 @@ fake ledger connection whose prompt rows contain a sentinel string. If any
 query reads prompt text, or any field carries it, the sentinel shows up in
 the HTTP response and the test fails. Hermetic: no database, no network.
 """
+import os
 import json
 import pathlib
 import re
@@ -86,6 +87,11 @@ class SessionHistoryNeverPublishesPromptTextTestCase(unittest.TestCase):
     def setUp(self):
         self.conn = _fake_ledger(self)
         self.client = TestClient(web_server.app)
+        # 2026-10-21: these routes are internal pages, hidden unless
+        # SHOW_INTERNAL_PAGES is on. The privacy rule must hold when on.
+        env = mock.patch.dict(os.environ, {"SHOW_INTERNAL_PAGES": "1"})
+        env.start()
+        self.addCleanup(env.stop)
 
     def _assert_clean(self, body_text):
         self.assertNotIn("SENTINEL", body_text)

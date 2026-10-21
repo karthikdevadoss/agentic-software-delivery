@@ -49,16 +49,22 @@ class HomeCiClaimTestCase(unittest.TestCase):
 class DeployClaimsAgreeTestCase(unittest.TestCase):
     def test_home_scope_names_both_deploy_paths(self):
         self.assertIn("The platform is deployed to Railway by a script", HOME)
-        self.assertIn("a Workbench change reaches the Customer App through the same deploy step once the owner approves it", HOME)
+        # 2026-10-21 18:19: a visitor click runs on a sandbox copy; only the
+        # owner deploys to the live app.
+        self.assertIn("on the public Workbench a visitor's click runs a change at once on a sandbox copy of the Customer App", HOME)
+        self.assertIn("Only the owner can deploy a change to the live app", HOME)
 
     def test_workbench_says_what_it_deploys(self):
-        self.assertIn("deployed to the Customer App only after the owner approves it", WORKBENCH)
+        self.assertIn("runs right away on a safe sandbox copy of the Customer App", WORKBENCH)
+        self.assertIn("The live app and the code on GitHub are never changed by a visitor click", WORKBENCH)
 
     def test_the_workbench_claim_is_backed_by_code(self):
         src = (ROOT / "agent/web_server.py").read_text(encoding="utf-8")
         self.assertIn("demo_execution.trigger_deploy(", src)
-        # 2026-10-21: the run only starts behind the owner's approval.
-        self.assertIn("_require_person_approval(", src)
+        # 2026-10-21 18:19: visitors get the sandbox run; the real deploy
+        # path is only reachable for the owner.
+        self.assertIn("_run_visitor_sandbox(", src)
+        self.assertIn("owner_auth.is_owner(headers)", src)
         self.assertIn("railway up", (ROOT / "agent/demo_execution.py").read_text(encoding="utf-8"))
 
 

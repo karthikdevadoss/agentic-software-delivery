@@ -5,6 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Karthikeyan Devadoss — AI Engineer – Full Stack</title>
 <meta name="description" content="AI Engineer – Full Stack. I build AI agents end to end: Java and Python backends, the web front end, retrieval, evaluation, and the controls that keep a person in charge of every change.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Karthikeyan Devadoss — AI Engineer. Same answer, fewer tokens.">
+<meta property="og:description" content="AI Engineer – Full Stack in Berlin. 4.5x the tokens and 4.2x the cost for the same output, measured on 6 real tasks (Claude only). Try the one-click Workbench.">
+<meta property="og:url" content="https://agentic-platform-backend-production.up.railway.app/">
+<meta property="og:image" content="https://agentic-platform-backend-production.up.railway.app/img/tokens/og-token-xray.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="stylesheet" href="/fonts/fonts.css">
 <style>
   /* Sprint 14: this page deliberately does NOT load /style.css. That sheet is
@@ -69,7 +78,7 @@
   .navwrap { border-bottom: 1px solid var(--line); }
 
   /* hero */
-  header { padding: 52px 0 6px; }
+  header { padding: 22px 0 6px; }
   /* Sprint 15: capped at 38px so a page title is the same size everywhere
      (dark pages cap at 34px). It was 44 against their 26.4. */
   h1 { font-size: clamp(30px, 5.6vw, 38px); line-height: 1.12; letter-spacing: -.025em;
@@ -79,6 +88,25 @@
   .lede { font-size: 18px; color: var(--soft); margin: 0 0 20px; max-width: 54ch; }
   .meta { font-size: 15px; color: var(--soft); margin: 0 0 14px; }
   .meta b { color: var(--ink); font-weight: 600; }
+
+  /* 2026-10-21 token hero: text left, measured chart right; stacks on phones. */
+  html, body { overflow-x: hidden; }
+  .hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 36px;
+          align-items: center; padding: 46px 0 34px; border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+  .hero-name { margin: 0 0 4px; font-size: 15px; font-weight: 700; color: var(--ink); }
+  .hero .role { font-size: 15px; margin: 0 0 18px; }
+  .hero h2.headline { font-size: clamp(32px, 5vw, 50px); line-height: 1.06; letter-spacing: -.03em;
+                      margin: 0 0 16px; font-weight: 720; max-width: 15ch; }
+  .hero h2.headline em { font-style: normal; color: var(--accent); }
+  .proofline { font-size: 18px; color: var(--soft); margin: 0 0 22px; max-width: 44ch; }
+  .proofline b { color: var(--ink); }
+  .hero-cta { display: flex; flex-wrap: wrap; gap: 12px; }
+  .hero-cta .btn.ghost { background: transparent; color: var(--accent); }
+  .hero-cta .btn.ghost:hover { background: #eef4f1; }
+  .hero-fig { margin: 0; background: var(--card); border: 1px solid var(--line); padding: 10px;
+              box-shadow: 0 10px 30px rgba(20, 22, 26, .06); }
+  .hero-fig img { display: block; width: 100%; height: auto; }
+  .hero-fig figcaption { font-size: 13px; color: var(--soft); margin-top: 6px; }
   .sep { font-size: 15px; color: var(--soft); border-left: 3px solid var(--line);
          padding: 6px 0 6px 14px; margin: 0 0 8px; max-width: 62ch; }
 
@@ -151,6 +179,8 @@
     .tiles { grid-template-columns: repeat(3, 1fr); }
   }
   @media (max-width: 820px) {
+    .hero { grid-template-columns: 1fr; gap: 24px; padding-top: 30px; }
+    .hero h2.headline { max-width: none; }
     .proof { grid-template-columns: 1fr; }
     .tiles { grid-template-columns: 1fr 1fr; }
     .cols { grid-template-columns: 1fr; gap: 26px; }
@@ -160,6 +190,7 @@
     .tiles { grid-template-columns: 1fr; }
     .erow { grid-template-columns: 1fr; gap: 8px; }
     .bottom .btn { flex: 1 1 100%; text-align: center; }
+    .hero-cta .btn { flex: 1 1 100%; text-align: center; }
   }
 </style>
 </head>
@@ -169,9 +200,25 @@
 
 <div class="wrap">
 
+  <section class="hero" aria-label="Same answer, fewer tokens">
+    <div>
+      <h1 class="hero-name">Karthikeyan Devadoss</h1>
+      <p class="role">AI Engineer – Full Stack</p>
+      <h2 class="headline">AI Engineer. <em>Same answer, fewer tokens.</em></h2>
+      <p class="proofline"><b>4.5x the tokens and 4.2x the cost</b> for the same output, measured on 6 real tasks (Claude only).</p>
+      <div class="hero-cta">
+        <a class="btn" href="/tokens">See the Token X-ray</a>
+        <a class="btn ghost" href="/workbench">Try the Workbench (one click)</a>
+      </div>
+    </div>
+    <figure class="hero-fig">
+      <img src="/img/tokens/wrong-vs-right.webp" width="1950" height="1125" fetchpriority="high"
+           alt="Bar chart: tokens per task, wrong way vs right way, for 6 everyday tasks. The wrong way used 1.9x to 10.5x the tokens for the same answer.">
+      <figcaption>Wrong way (red) vs right way (green), tokens per task. Measured 21 Oct 2026, median of 3 runs.</figcaption>
+    </figure>
+  </section>
+
   <header>
-    <h1>Karthikeyan Devadoss</h1>
-    <p class="role">AI Engineer – Full Stack</p>
     <p class="lede">I build AI agents end to end: Java and Python backends, the web front end, retrieval, evaluation, and the controls that keep a person in charge of every change. The platform on this site is one I designed, built and run in production.</p>
     <p class="meta"><b>Berlin, Germany</b> · English</p>
     <p class="sep">Since March 2022 I have worked for NRG Energy through Remote, my employer; NRG is the client. Since early 2026 I have been one of a handful of engineers in the initial core AI team at NRG, and since January 2026 I have led AI adoption in my area, cutting routine work time by about 20%. The AI platform shown here is my own system, separate from NRG.</p>
@@ -181,10 +228,8 @@
     <article class="pcard">
       <h2>An AI agent that cannot approve its own writes</h2>
       <p>The model can investigate and propose changes, but deterministic code controls the write boundary. Human approval is bound to the exact approved change.</p>
-      <!-- #verified-run-panel is a real element id in workbench.html; the link
-           inside it is resolved client-side from /api/workbench/verified-run.
-           An earlier draft used #verified-run, which does not exist. -->
-      <a class="go" href="/workbench#verified-run-panel">See the verified workflow →</a>
+      <!-- #requirement-panel is a real element id in workbench.html. -->
+      <a class="go" href="/workbench#requirement-panel">Try it with one click →</a>
     </article>
     <article class="pcard">
       <h2>A workflow that survives a crash</h2>
@@ -289,25 +334,25 @@
         <h3>Durable event ledger with token and cost telemetry</h3>
         <p>Every meaningful step and every model call is written to a durable log, including real token counts. If the log's database is unreachable the events are held locally and sent later rather than lost.</p>
       </div>
-      <div class="side"><a href="/usage">Open the telemetry view →</a></div>
+      <div class="side"><a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/event_ledger.py">See the ledger code →</a></div>
     </div>
 
   </div>
 
   <h2 class="sec">How it runs</h2>
   <div class="scope" id="scope">
-    <p>One model provider, Anthropic Claude, reached through a single gateway. Retrieval is local cosine search over the repository and its documents. The platform is deployed to Railway by a script, and a Workbench change reaches the Customer App through the same deploy step once the owner approves it.</p>
+    <p>One model provider, Anthropic Claude, reached through a single gateway. Retrieval is local cosine search over the repository and its documents. The platform is deployed to Railway by a script, and on the public Workbench a visitor's click runs a change at once on a sandbox copy of the Customer App. Only the owner can deploy a change to the live app.</p>
   </div>
 
   <h2 class="sec">Explore the live system</h2>
   <div class="tiles">
-    <a class="tile" href="/workbench"><b>Workbench</b><span>See the agent investigate, propose, wait for human authority and verify a change.</span></a>
+    <a class="tile" href="/workbench"><b>Workbench</b><span>Pick a change and click once: it runs right away on a sandbox copy, and you see the result.</span></a>
     <a class="tile" href="/ask-codebase"><b>Ask the Codebase</b><span>Ask technical questions against the actual repository with grounded retrieval.</span></a>
     <a class="tile" href="/triage"><b>Triage</b><span>Work through a contained software defect: reproduction, AI diagnosis, a proposed patch, real tests and a human approval step.</span></a>
     <a class="tile" href="/showcase/senior-java-ai-transformation"><b>Role Showcase</b><span>See how the backend and AI work maps to real engineering responsibilities.</span></a>
     <a class="tile" href="https://agentic-delivery-customer-app-production.up.railway.app"><b>Java App</b><span>Open the Java/Spring application the platform operates against.</span></a>
   </div>
-  <p class="tele"><a href="/usage">Usage / telemetry →</a></p>
+  <p class="tele"><a href="/tokens">Token X-ray: same answers, 4.5x the tokens →</a></p>
 
   <h2 class="sec">Enterprise engineering background</h2>
   <div class="bg">

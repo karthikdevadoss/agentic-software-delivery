@@ -37,6 +37,7 @@ const EXPECTED_DESTINATIONS = [
   { href: "/ask-codebase", label: "Ask Codebase" },
   { href: "/recruiters", label: "For Recruiters" },
   { href: "/interviewer", label: "Interviewer Brief" },
+  { href: "/tokens", label: "Token X-ray" },
 ];
 // BL-079 added a GATED entry (Standing Interview, shown only when the server
 // reports a loaded corpus). The unconditional set is what this guard pins;
@@ -46,8 +47,8 @@ assertDeepEqual(unconditional, EXPECTED_DESTINATIONS,
   "canonical unconditional nav destination set must be exactly the intended public engineering surfaces");
 const gated = nav.CANONICAL_NAV_DESTINATIONS.filter((d) => d.requiresEndpoint);
 assertDeepEqual(gated.map((d) => [d.href, d.label, d.requiresEndpoint, d.requiresKey]),
-  [["/standing-interview", "Standing Interview", "/api/standing-interview/status", "loaded"]],
-  "the only gated destination is Standing Interview, gated on the corpus-status endpoint");
+  [],
+  "no gated destination: Standing Interview left the public nav (Owner decision, 2026-10-21)");
 
 // Automation Sprint 4 (Owner decision, 2026-10-06): Showcase and Usage left
 // the public nav (their routes stay reachable by direct link) and "For

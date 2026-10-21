@@ -53,6 +53,10 @@ const CANONICAL_NAV_DESTINATIONS = [
   // for the technical interviewer (post-HR). /recruiters stays HR-facing;
   // Standing Interview stays deeper Q&A.
   { href: "/interviewer", label: "Interviewer Brief" },
+  // Token X-ray joined the nav (Owner decision, 2026-10-21): the measured
+  // wrong-way vs right-way token numbers. Usage and Dashboard stay out of the
+  // nav and are behind SHOW_INTERNAL_PAGES (off by default).
+  { href: "/tokens", label: "Token X-ray" },
   // Standing Interview left the public nav (Owner decision, 2026-10-21). The
   // page and its API stay reachable by direct link; the gated-entry
   // mechanism below (requiresEndpoint/requiresKey) is kept for reuse.

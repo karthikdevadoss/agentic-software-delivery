@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Token X-ray — Same answers, 4.5x the tokens</title>
+<meta name="description" content="Six everyday tasks done the wrong way and the right way, with the same answers: 4.5x the tokens and 4.2x the cost. Measured on 21 Oct 2026, Claude models only.">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Token X-ray — Same answers, 4.5x the tokens">
+<meta property="og:description" content="Six everyday tasks done the wrong way and the right way, with the same answers: 4.5x the tokens and 4.2x the cost. Measured on Claude only.">
+<meta property="og:url" content="https://agentic-platform-backend-production.up.railway.app/tokens">
+<meta property="og:image" content="https://agentic-platform-backend-production.up.railway.app/img/tokens/og-token-xray.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="stylesheet" href="/tokens.css">
+</head>
+<body data-surface="tokens">
+<div class="navwrap"><nav class="top-nav" id="top-nav" aria-label="Main"></nav></div>
+
+<main class="tx">
+  <p class="eyebrow">Token X-ray</p>
+  <h1>Same answers. <span class="bad">4.5x the tokens.</span> <span class="warn">4.2x the cost.</span></h1>
+  <p class="lede">I gave an AI model six everyday tasks twice: once the wrong way (a vague start, a huge paste, one never-ending chat, the biggest model for a small job) and once the right way. The final answers were the same. The wrong way used 56,188 tokens. The right way used 12,601.</p>
+  <p class="caveat"><strong>Honest limits:</strong> 6 tasks, Claude models only, median of 3 runs, measured on 21 Oct 2026. Cost uses Anthropic list prices without caching. Other AI models were not measured, and their numbers will differ.</p>
+
+  <section class="stats" aria-label="Headline numbers">
+    <div class="stat bad"><b>56,188</b><span>tokens, wrong way (6 tasks)</span></div>
+    <div class="stat good"><b>12,601</b><span>tokens, right way (same 6 tasks)</span></div>
+    <div class="stat"><b>$0.205 vs $0.048</b><span>cost at list price, no caching</span></div>
+  </section>
+
+  <figure>
+    <img src="/img/tokens/wrong-vs-right.webp" width="1950" height="1125" alt="Bar chart: tokens per task, wrong way vs right way. Trip 17,148 vs 2,072; customer reply 5,607 vs 881; long document 10,892 vs 1,040; supplier offers 8,238 vs 1,187; spreadsheet formula 1,287 vs 693; 10 small tasks 13,016 vs 6,728.">
+    <figcaption>Each task, wrong way (red) vs right way (green). From 1.9x to 10.5x the tokens.</figcaption>
+  </figure>
+
+  <h2>The six tasks</h2>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Task</th><th>Wrong way</th><th>Right way</th><th class="num">Tokens (wrong / right)</th><th class="num">Token multiple</th><th class="num">Cost multiple</th></tr></thead>
+      <tbody>
+        <tr><td>Plan a family trip</td><td>Vague start, details added over 6 messages</td><td>One complete message</td><td class="num">17,148 / 2,072</td><td class="num">8.3x</td><td class="num">4.5x</td></tr>
+        <tr><td>Reply to an unhappy customer</td><td>"Write a reply", then 3 rounds of fixes</td><td>One clear brief</td><td class="num">5,607 / 881</td><td class="num">6.4x</td><td class="num">6.1x</td></tr>
+        <tr><td>Question about a long document</td><td>Paste the whole page (~4,900 words)</td><td>Paste only the part you need (~170 words)</td><td class="num">10,892 / 1,040</td><td class="num">10.5x</td><td class="num">8.0x</td></tr>
+        <tr><td>Compare 3 supplier offers</td><td>"Tell me everything", then "now a short table"</td><td>Ask for the short table first</td><td class="num">8,238 / 1,187</td><td class="num">6.9x</td><td class="num">8.5x</td></tr>
+        <tr><td>Fix a spreadsheet formula</td><td>Biggest model, maximum thinking</td><td>Small model, low effort</td><td class="num">1,287 / 693</td><td class="num">1.9x</td><td class="num">161x</td></tr>
+        <tr><td>10 small tasks in one day</td><td>All in one never-ending chat</td><td>A fresh chat for each task</td><td class="num">13,016 / 6,728</td><td class="num">1.9x</td><td class="num">1.5x</td></tr>
+        <tr class="total"><td>All 6 together</td><td></td><td></td><td class="num">56,188 / 12,601</td><td class="num">4.5x</td><td class="num">4.2x</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="small">Tokens = everything the model read plus everything it wrote, across all messages of the task, including hidden thinking. Each row is the median of 3 runs.</p>
+
+  <h2>Why it happens</h2>
+  <div class="grid2">
+    <figure>
+      <img src="/img/tokens/growing-chat.webp" width="2100" height="930" loading="lazy" alt="Left: tokens per message rise in one long chat but stay flat with a fresh chat per task. Right: total tokens; 1.9x after 10 tasks, about 5x after 40 tasks (estimate).">
+      <figcaption>Every new message carries the whole chat with it. Tasks 1 to 10 are measured; the line to 40 tasks is an estimate, not a measurement.</figcaption>
+    </figure>
+    <figure>
+      <img src="/img/tokens/big-model-small-task.webp" width="1650" height="825" loading="lazy" alt="Bar chart: the same spreadsheet formula cost $0.01584 on the biggest model with maximum thinking and $0.00010 on a small model.">
+      <figcaption>Same formula, 161x the cost: the biggest model with maximum thinking vs a small model. Both answers were correct.</figcaption>
+    </figure>
+    <figure>
+      <img src="/img/tokens/receipt.webp" width="1950" height="1125" loading="lazy" alt="Two receipts: wrong way 56,188 tokens, $0.205; right way 12,601 tokens, $0.048.">
+      <figcaption>The same six tasks as a receipt. The monthly line (20 tasks a day, 22 days) is an estimate.</figcaption>
+    </figure>
+    <figure>
+      <img src="/img/tokens/fuel-gauge.webp" width="1950" height="930" loading="lazy" alt="Two fuel gauges: the wrong way uses the whole tank, the right way uses less than a quarter.">
+      <figcaption>Think of your AI allowance as a fuel tank. How you ask decides how fast it empties.</figcaption>
+    </figure>
+  </div>
+
+  <h2>What this shows, and what it does not</h2>
+  <div class="box">
+    <ul>
+      <li><span class="tag yes">Shown</span>Using AI the wrong way costs many more tokens for the same answer. This test shows it, and published studies agree (for example, agent runs on the same task can differ a lot in tokens without being more accurate).</li>
+      <li><span class="tag part">Partly shown</span>Tokens are becoming a real cost line in software work, and "minimal AI" is a useful habit. But minimal means <em>no waste</em>, not "as few tokens as possible": on hard tasks, more tokens can still give a better answer.</li>
+      <li><span class="tag no">Not claimed</span>That only the token count matters. The task must be solved and checked first.</li>
+    </ul>
+  </div>
+
+  <h2>The rule I work by</h2>
+  <div class="box">
+    <p class="rule">Solved. Checked. Then the fewest tokens.</p>
+    <p>On this site: a Workbench click runs plain code and makes no model call ($0.00). Ask the Codebase answers from local search over the repository, with no model call. The model is used only where code cannot do the job.</p>
+  </div>
+
+  <h2>How it was measured</h2>
+  <div class="box">
+    <ul>
+      <li>Claude Code command line in print mode with JSON output, which reports the real token use and cost of every call. A minimal system prompt, all tools off.</li>
+      <li>Claude Sonnet 5.5 for five tasks. The formula task compared Opus 5.5 (maximum thinking) with Haiku 5.5 (low effort).</li>
+      <li>Every task done the wrong way and the right way, 3 runs each, median shown. 117 calls in total, about $0.66 spent.</li>
+      <li>Cost = Anthropic list price without caching, so caching does not hide the effect. With caching, money changes but the tokens processed do not.</li>
+      <li>About 575 tokens per message are fixed overhead, which makes the multiple smaller for tiny tasks.</li>
+    </ul>
+  </div>
+
+  <div class="cta">
+    <a class="btn" href="/workbench">Try the Workbench (one click)</a>
+    <a class="btn ghost" href="/">Back to home</a>
+  </div>
+</main>
+
+<script src="/nav.js"></script>
+</body>
+</html>

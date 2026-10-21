@@ -123,7 +123,7 @@ class ForbiddenClaimTestCase(unittest.TestCase):
         deploy path, so a reader never has to infer them."""
         text = _visible_text(HOME.read_text(encoding="utf-8")).lower()
         for needle in ("one model provider, anthropic claude", "local cosine search",
-                       "deployed to railway by a script", "once the owner approves it"):
+                       "deployed to railway by a script", "only the owner can deploy a change to the live app"):
             self.assertIn(needle, text,
                           f"the how-it-runs block must still state {needle!r}")
 
@@ -365,8 +365,8 @@ class PrivateSurfaceGateTestCase(unittest.TestCase):
     def test_public_pages_are_still_served(self):
         client = self._client_without_flag()
         for path in ("/", "/workbench", "/case-study/durable-agent", "/triage",
-                     "/ask-codebase", "/usage", "/standing-interview",
-                     "/showcase/senior-java-ai-transformation", "/dashboard"):
+                     "/ask-codebase", "/standing-interview", "/tokens",
+                     "/showcase/senior-java-ai-transformation"):
             with self.subTest(path=path):
                 self.assertEqual(client.get(path).status_code, 200, f"{path} must still serve")
 

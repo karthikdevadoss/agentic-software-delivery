@@ -118,7 +118,7 @@ function renderExampleButtons() {
     const btn = document.createElement("button");
     btn.className = "secondary example-btn one-click-btn";
     btn.textContent = ex;
-    btn.title = "Sends this change into the real pipeline; it is deployed once the owner approves it";
+    btn.title = "Runs this change right away on a safe sandbox copy of the Customer App";
     btn.addEventListener("click", () => { requirementInput.value = ex; submit(); });
     examplesList.appendChild(btn);
   });
@@ -191,50 +191,9 @@ const PUBLIC_CUSTOMER_APP_FALLBACK_URL = "https://agentic-delivery-customer-app-
 
 loadTargetApp();
 
-// RECRUITER-FACING VERIFIED-RUN P0 (2026-09-13): real incident — this
-// link used to be a bare hard-coded href to one specific run_id in
-// workbench.html, which silently went stale the moment a newer real run
-// completed (the Owner clicked it and landed on a two-day-old example
-// with no explanation). The destination is now looked up live from
-// agent/web_server.py's GET /api/workbench/verified-run, which runs a
-// real, deterministic "most recent genuinely COMPLETED trainer run"
-// query on every request — never a client-side guess, never cached
-// past this page load.
-const verifiedRunLink = document.getElementById("verified-run-link");
-const verifiedRunUnavailable = document.getElementById("verified-run-unavailable");
-const verifiedRunLoading = document.getElementById("verified-run-loading");
-const VERIFIED_RUN_TIMEOUT_MS = 8000;
-
-async function loadVerifiedRun() {
-  let timeoutId;
-  const timeout = new Promise((_, reject) => {
-    timeoutId = setTimeout(() => reject(new Error("verified-run fetch timed out")), VERIFIED_RUN_TIMEOUT_MS);
-  });
-  try {
-    const resp = await Promise.race([fetch("/api/workbench/verified-run"), timeout]);
-    clearTimeout(timeoutId);
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const data = await resp.json();
-    verifiedRunLoading.hidden = true;
-    if (data.available && data.run_id) {
-      verifiedRunLink.href = `/usage/session/${encodeURIComponent(data.run_id)}`;
-      verifiedRunLink.hidden = false;
-      verifiedRunUnavailable.hidden = true;
-    } else {
-      // Honest empty state — never a broken link, never a stale fallback.
-      verifiedRunLink.hidden = true;
-      verifiedRunUnavailable.hidden = false;
-    }
-  } catch (_) {
-    clearTimeout(timeoutId);
-    verifiedRunLoading.hidden = true;
-    verifiedRunLink.hidden = true;
-    verifiedRunUnavailable.hidden = false;
-    verifiedRunUnavailable.textContent = "Could not check for a verified run right now.";
-  }
-}
-
-loadVerifiedRun();
+// The "SEE A VERIFIED RUN" panel was removed on 2026-10-21: it linked to
+// /usage/session/<id>, which is now behind SHOW_INTERNAL_PAGES (off by
+// default), and with one-click runs a visitor sees a real result directly.
 
 function currentAppUrl() {
   return (targetApp && targetApp.url) || (run && run.deploymentInfo && run.deploymentInfo.public_url) || "#";
@@ -291,12 +250,13 @@ function renderAssessment(a, blocked) {
   assessmentPanel.hidden = false;
   if (!blocked && run) run.expectedValue = a.new_value;
   let html = "";
-  if (blocked && a.decision === "approval_required") {
-    html += `<p class="owner-auth-notice">${esc(a.message)}</p>`;
+  if (!blocked && a.mode === "sandbox") {
+    html += `<p class="hint">${esc(a.message)}</p>`;
     html += `<div class="kv"><span class="k">Field</span><span class="v">${esc(a.human_name)}</span></div>`;
     html += `<div class="kv"><span class="k">New value</span><span class="v">"${esc(a.new_value)}"</span></div>`;
-    html += `<div class="kv"><span class="k">Decision</span><span class="v"><strong style="color:var(--amber)">WAITING FOR APPROVAL</strong></span></div>`;
-    html += `<div class="kv"><span class="k">Verification method</span><span class="v">${esc(a.expected_verification_method)}</span></div>`;
+    html += `<div class="kv"><span class="k">Decided by</span><span class="v"><strong style="color:var(--green)">YOU (your click)</strong></span></div>`;
+    html += `<div class="kv"><span class="k">Where it runs</span><span class="v">A safe sandbox copy of the Customer App page. The live app is not changed.</span></div>`;
+    html += `<div class="kv"><span class="k">Cost</span><span class="v">$0.00 (no AI model call)</span></div>`;
     assessmentBody.innerHTML = html;
     return;
   }
@@ -307,7 +267,7 @@ function renderAssessment(a, blocked) {
   } else {
     html += `<div class="kv"><span class="k">Field</span><span class="v">${esc(a.human_name)}</span></div>`;
     html += `<div class="kv"><span class="k">New value</span><span class="v">"${esc(a.new_value)}"</span></div>`;
-    html += `<div class="kv"><span class="k">Decision</span><span class="v"><strong style="color:var(--green)">APPROVED</strong></span></div>`;
+    html += `<div class="kv"><span class="k">Decision</span><span class="v"><strong style="color:var(--green)">IN SCOPE</strong></span></div>`;
     html += `<div class="kv"><span class="k">Verification method</span><span class="v">${esc(a.expected_verification_method)}</span></div>`;
     html += `<div class="kv"><span class="k">Production assertion</span><span class="v">${esc(a.expected_production_assertion)}</span></div>`;
     html += `<div class="kv"><span class="k">Actual cost</span><span class="v">$0.00 — deterministic operation, no AI model call</span></div>`;
@@ -739,9 +699,6 @@ function renderTerminalOutcome() {
   let evidenceHtml = `<div class="production-verified-box ${outcome.cls}-box">`;
   evidenceHtml += `<div class="terminal-cta-row">`;
   evidenceHtml += `<a class="open-production-btn" href="${esc(buttonUrl)}" target="_blank" rel="noopener">[ ${esc(outcome.buttonLabel)} ]</a>`;
-  evidenceHtml += `<a class="secondary-cta-btn" href="/usage/session/${esc(run.id)}" target="_blank" rel="noopener">[ VIEW EVIDENCE ]</a>`;
-  evidenceHtml += `<a class="secondary-cta-btn" href="/dashboard" target="_blank" rel="noopener">[ VIEW DASHBOARD ]</a>`;
-  evidenceHtml += `<a class="secondary-cta-btn" href="/usage" target="_blank" rel="noopener">[ VIEW USAGE ]</a>`;
   evidenceHtml += `</div>`;
   evidenceHtml += `<div class="kv"><span class="k">Run ID</span><span class="v"><code>${esc(run.id)}</code></span></div>`;
   if (run.status === "COMPLETED") {
@@ -968,7 +925,7 @@ async function submit() {
   const data = await resp.json();
   if (data.busy) {
     assessmentPanel.hidden = false;
-    assessmentBody.innerHTML = `<div class="kv"><span class="k">Status</span><span class="v"><strong style="color:var(--amber)">BUSY</strong></span></div><p class="hint">${esc(data.message || "A demo deployment is currently running. Try again shortly.")}</p>`;
+    assessmentBody.innerHTML = `<div class="kv"><span class="k">Status</span><span class="v"><strong style="color:var(--amber)">PLEASE WAIT</strong></span></div><p class="hint">${esc(data.message || "The demo is busy. Please try again in a moment.")}</p>`;
     setStatus("IDLE");
     submitBtn.disabled = false;
     runStatusPanel.hidden = true;
@@ -979,6 +936,10 @@ async function submit() {
     setStatus("IDLE");
     submitBtn.disabled = false;
     runStatusPanel.hidden = true;
+    return;
+  }
+  if (data.mode === "sandbox") {
+    renderSandboxResult(data);
     return;
   }
 
@@ -1001,39 +962,56 @@ async function submit() {
   tick();
 }
 
-submitBtn.addEventListener("click", submit);
-
-// ---- Demo lifecycle: Reset Demo -------------------------------------------
-
-const resetDemoBtn = document.getElementById("reset-demo-btn");
-const resetDemoStatus = document.getElementById("reset-demo-status");
-
-async function pollResetStatus() {
-  const resp = await fetch("/api/trainer/reset");
-  const data = await resp.json();
-  if (data.status === "running") {
-    resetDemoStatus.textContent = data.message || "Restoring production baseline…";
-    setTimeout(pollResetStatus, 3000);
-  } else {
-    resetDemoBtn.disabled = false;
-    resetDemoStatus.textContent = data.message || "";
+// One-click visitor run (2026-10-21): the server ran the change on the
+// sandbox copy already; this only shows what happened. Nothing is waiting.
+function renderSandboxResult(data) {
+  const r = data.result || {};
+  activityPanel.hidden = true;
+  runStatusPanel.hidden = true;
+  verificationPanel.hidden = false;
+  verificationList.innerHTML = "";
+  (r.steps || []).forEach(st => {
+    const li = document.createElement("li");
+    const cls = st.result === "PASSED" ? "ok" : (st.result === "FAILED" ? "err" : "hint");
+    li.innerHTML = `<strong>${esc(st.step)}</strong> — <span class="${cls}">${esc(st.result)}</span> · ${esc(st.detail)}`;
+    verificationList.appendChild(li);
+  });
+  resultPanel.hidden = false;
+  const ok = r.status === "COMPLETED";
+  resultBanner.textContent = ok ? "DONE: CHANGE RUN IN THE SANDBOX" : (r.status === "NO_CHANGE_NEEDED" ? "NO CHANGE NEEDED" : "THE RUN DID NOT COMPLETE");
+  resultBanner.className = ok ? "success" : (r.status === "NO_CHANGE_NEEDED" ? "neutral" : "failed");
+  let html = `<div class="production-verified-box ${ok ? "success" : "neutral"}-box">`;
+  html += `<div class="kv"><span class="k">Decided by</span><span class="v">You (your click)</span></div>`;
+  if (r.file) html += `<div class="kv"><span class="k">File (sandbox copy)</span><span class="v"><code>${esc(r.file)}</code>${r.line_changed ? " · line " + esc(r.line_changed) : ""}</span></div>`;
+  if (r.old_value != null) html += `<div class="kv"><span class="k">Before</span><span class="v">"${esc(r.old_value)}"</span></div>`;
+  if (r.checked_value != null) html += `<div class="kv"><span class="k">After (read back)</span><span class="v">"${esc(r.checked_value)}"</span></div>`;
+  if (r.old_line && r.new_line) html += `<pre class="sandbox-diff">- ${esc(r.old_line)}\n+ ${esc(r.new_line)}</pre>`;
+  const c = data.cost || {};
+  html += `<div class="kv"><span class="k">Cost of this click</span><span class="v">$${Number(c.usd || 0).toFixed(2)} · ${esc(c.model_calls || 0)} model calls · ${esc(c.tokens || 0)} tokens</span></div>`;
+  if (r.elapsed_ms != null) html += `<div class="kv"><span class="k">Time</span><span class="v">${esc(r.elapsed_ms)} ms</span></div>`;
+  html += `<p class="hint">The live Customer App and the code on GitHub were not changed. A click from the public site always runs on the sandbox copy.</p>`;
+  html += `</div>`;
+  document.getElementById("result-evidence").innerHTML = html;
+  resultText.textContent = r.message || "";
+  usageSummaryBox.innerHTML = "";
+  const previewBox = document.getElementById("sandbox-preview-box");
+  const preview = document.getElementById("sandbox-preview");
+  if (previewBox && preview) {
+    if (r.preview_id) {
+      preview.src = `/api/trainer/sandbox/${encodeURIComponent(r.preview_id)}`;
+      previewBox.hidden = false;
+    } else {
+      previewBox.hidden = true;
+    }
   }
+  setStatus(ok || r.status === "NO_CHANGE_NEEDED" ? "COMPLETED" : "FAILED");
+  submitBtn.disabled = false;
 }
 
-resetDemoBtn.addEventListener("click", async () => {
-  resetDemoBtn.disabled = true;
-  resetDemoStatus.textContent = "Starting production baseline restore…";
-  const resp = await fetch("/api/trainer/reset", { method: "POST" });
-  const data = await resp.json();
-  if (resp.status === 401) {
-    resetDemoBtn.disabled = false;
-    resetDemoStatus.textContent = "A person approves before anything changes — a reset runs once the owner approves it.";
-    return;
-  }
-  if (data.busy) {
-    resetDemoBtn.disabled = false;
-    resetDemoStatus.textContent = data.message || "Busy — try again shortly.";
-    return;
-  }
-  setTimeout(pollResetStatus, 1500);
-});
+submitBtn.addEventListener("click", submit);
+
+// ---- Demo lifecycle --------------------------------------------------------
+// The public "RESTORE PRODUCTION BASELINE" button was removed on 2026-10-21:
+// visitor clicks run on a sandbox copy and never change production, so there
+// is nothing for a visitor to restore. POST /api/trainer/reset stays
+// owner-only on the server.
