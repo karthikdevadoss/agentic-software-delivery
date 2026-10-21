@@ -1,10 +1,19 @@
 name: CI
 
+# The daily AI-intelligence digest commits one markdown file under
+# docs/ai-intelligence/ to master every morning. It changes no code, so it no
+# longer starts this workflow (it used to add a red run each morning while
+# the suites below were red for unrelated reasons). A push that touches
+# anything else still runs everything.
 on:
   push:
     branches: [master]
+    paths-ignore:
+      - 'docs/ai-intelligence/**'
   pull_request:
     branches: [master]
+    paths-ignore:
+      - 'docs/ai-intelligence/**'
 
 jobs:
   backend-java:
@@ -420,6 +429,12 @@ jobs:
     name: Playwright E2E (non-blocking, stability observation)
     runs-on: ubuntu-latest
     continue-on-error: true
+    # web_server.py refuses to start without ANTHROPIC_API_KEY, which is why
+    # every run of this job ended with "Process from config.webServer was not
+    # able to start" before a single spec ran. The specs make no model call,
+    # so a placeholder is enough; it is not a secret and grants nothing.
+    env:
+      ANTHROPIC_API_KEY: ci-placeholder-no-model-calls
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v5
