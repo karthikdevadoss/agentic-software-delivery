@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-21T12:23:33Z",
-  "commit_sha": "2cd0769bdda4f76aafa33dfea761ebadda632276",
-  "branch": "p0-fixes-2026-10-21",
-  "working_tree_dirty": false,
+  "generated_at": "2026-10-23T15:29:48Z",
+  "commit_sha": "034647f59c1d31c37ad9c0d88a2848f286c8cf76",
+  "branch": "mahadeva/title-ai-roles-2026-10-23",
+  "working_tree_dirty": true,
   "postings_accessed": "2026-10-06",
   "postings_note": "Thirteen English-language AI engineering job postings that were listed as open on the access date, in this order: remote first, then Berlin hybrid, Berlin on-site and other German cities. Architect-titled roles based in Germany in the same search all required German; the one architect-titled role here is EU-remote.",
   "postings_total": 13,
   "profile": {
     "name": "Karthikeyan Devadoss",
-    "headline": "AI Engineer – Full Stack",
+    "headline": "AI Engineer · Forward Deployed Engineer · AI Solutions",
     "location": "Berlin, Germany",
     "work_mode": "Remote-first",
     "languages": "English (working language); German A1–A2",
@@ -775,12 +775,12 @@
   "quotes_verified": {
     "quotes": 72,
     "against": "posting text captured on 2026-10-06",
-    "source_sha256": "fecfc4a66d7d1820a26852b226bac8382385fc413d40af886c1dc20cfee78d59",
-    "carried_from_source_sha256": "14cd40ae4176adab2217ba7d2fb1e3af5291a388438ffa4c2dac55fd6cc43368",
-    "carried_because": "2026-10-21 edit changed profile and limit text only; all 72 posting quotes are byte-identical to the verified source"
+    "source_sha256": "9f0e2ee7db81e06fd527a327092df3f9da38a5520c5fdecd026aa9cab2b1b90b",
+    "carried_from_source_sha256": "fecfc4a66d7d1820a26852b226bac8382385fc413d40af886c1dc20cfee78d59",
+    "carried_because": "2026-10-23 edit changed profile.headline only; all 72 posting quotes are byte-identical to the previous source, which itself carried the 2026-10-06 verification (from 14cd40ae4176adab2217ba7d2fb1e3af5291a388438ffa4c2dac55fd6cc43368)"
   },
   "inputs": {
-    "agent/recruiters_source.yaml": "fecfc4a66d7d1820a26852b226bac8382385fc413d40af886c1dc20cfee78d59",
+    "agent/recruiters_source.yaml": "9f0e2ee7db81e06fd527a327092df3f9da38a5520c5fdecd026aa9cab2b1b90b",
     "agent/web/case-study-durable-agent.html": "e6eaf381b8b8936d5f90f6fb2f75d774ea842eb5a226fc609495f320db52c6d7",
     "agent/web/eval-results.json": "cd47e5ae2d3d2037fdb5ec467ea603e9b0a81b3f60e6563e4f11038fc059bd7a",
     "agent/web/triage-evidence.json": "69845e1d9445b44136bc6db1aad2f8518c8889f3e7a9377eb4c6af041c7fb3f7",

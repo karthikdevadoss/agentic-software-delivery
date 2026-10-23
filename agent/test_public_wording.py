@@ -27,6 +27,7 @@ PAGES = {
 BANNED = [
     (r"Junior AI Architect", "retired headline"),
     (r"Senior Backend / Software Engineer", "retired headline"),
+    (r"AI Engineer – Full Stack", "retired headline (2026-10-23)"),
     (r"open to contract", "retired work-mode wording"),
     (r"since (mid-|July )2021", "wrong NRG start date"),
     (r"no formal AI-leadership title", "retired title wording"),
@@ -38,7 +39,7 @@ BANNED = [
     (r"Not in this portfolio|Honest gaps", "gap section"),
 ]
 
-HEADLINE = "AI Engineer – Full Stack"
+HEADLINE = "AI Engineer · Forward Deployed Engineer · AI Solutions"
 
 
 class BannedWording(unittest.TestCase):

@@ -30,7 +30,7 @@ test.describe("Home page — identity and claims", () => {
   test("the first screen names the person, the role and the separation", async ({ page }) => {
     await page.goto("/");
     await expect(page.locator("h1")).toHaveText("Karthikeyan Devadoss");
-    await expect(page.locator(".role")).toHaveText("AI Engineer – Full Stack");
+    await expect(page.locator(".role")).toHaveText("AI Engineer · Forward Deployed Engineer · AI Solutions");
     await expect(page.locator(".meta")).toContainText("Berlin, Germany");
     // The NRG separation is the single most important truthfulness sentence
     // on the page: the platform must never read as an employer's product.

@@ -15,7 +15,7 @@
 #   for the NRG AI team (2026-10-06) and "since January 2026" for leading AI
 #   adoption (2026-10-21).
 # - No architect job title, for NRG or anyone else. Headline (owner decision,
-#   2026-10-21): "AI Engineer – Full Stack".
+#   2026-10-23): "AI Engineer · Forward Deployed Engineer · AI Solutions".
 # - Posting quotes are the posting's words, not claims about the owner. They
 #   are the only text exempt from the forbidden-claims scan.
 # - Every evidence link must be a live route, a pending-deploy route (served
@@ -23,7 +23,7 @@
 
 profile:
   name: Karthikeyan Devadoss
-  headline: AI Engineer – Full Stack
+  headline: AI Engineer · Forward Deployed Engineer · AI Solutions
   location: Berlin, Germany
   work_mode: Remote-first
   languages: English (working language); German A1–A2

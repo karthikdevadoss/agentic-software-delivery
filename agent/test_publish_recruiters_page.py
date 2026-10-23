@@ -235,7 +235,7 @@ class PublishedRecruitersDataTestCase(unittest.TestCase):
             with self.subTest(field=field):
                 self.assertNotRegex(p[field].lower(), r"\barchitects?\b")
                 self.assertNotRegex(_without_confirmed_dates(p[field]), r"\b(19|20)\d{2}\b")
-        self.assertEqual(p["headline"], "AI Engineer – Full Stack")
+        self.assertEqual(p["headline"], "AI Engineer · Forward Deployed Engineer · AI Solutions")
         self.assertIn("since early 2026", p["nrg"].lower())
         self.assertIn("initial core AI team", p["nrg"])
         self.assertNotRegex(p["education"], r"\d")
