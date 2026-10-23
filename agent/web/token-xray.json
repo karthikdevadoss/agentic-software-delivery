@@ -24,6 +24,7 @@
   {
    "id": "trip",
    "label": "Plan a family trip",
+   "short_label": "Family trip",
    "wrong_tokens": 17148,
    "right_tokens": 2072,
    "token_multiple": "8.3x",
@@ -35,6 +36,7 @@
   {
    "id": "reply",
    "label": "Reply to an unhappy customer",
+   "short_label": "Customer reply",
    "wrong_tokens": 5607,
    "right_tokens": 881,
    "token_multiple": "6.4x",
@@ -46,6 +48,7 @@
   {
    "id": "doc",
    "label": "Question about a long document",
+   "short_label": "Long document",
    "wrong_tokens": 10892,
    "right_tokens": 1040,
    "token_multiple": "10.5x",
@@ -57,6 +60,7 @@
   {
    "id": "suppliers",
    "label": "Compare 3 supplier offers",
+   "short_label": "Supplier offers",
    "wrong_tokens": 8238,
    "right_tokens": 1187,
    "token_multiple": "6.9x",
@@ -68,6 +72,7 @@
   {
    "id": "formula",
    "label": "Fix a spreadsheet formula",
+   "short_label": "Spreadsheet formula",
    "wrong_tokens": 1287,
    "right_tokens": 693,
    "token_multiple": "1.9x",
@@ -79,6 +84,7 @@
   {
    "id": "longchat",
    "label": "10 small tasks in one day",
+   "short_label": "10 small tasks",
    "wrong_tokens": 13016,
    "right_tokens": 6728,
    "token_multiple": "1.9x",

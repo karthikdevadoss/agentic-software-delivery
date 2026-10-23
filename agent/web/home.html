@@ -78,7 +78,7 @@
   .navwrap { border-bottom: 1px solid var(--line); }
 
   /* hero */
-  header { padding: 22px 0 6px; }
+  header { padding: 38px 0 6px; }
   /* Sprint 15: capped at 38px so a page title is the same size everywhere
      (dark pages cap at 34px). It was 44 against their 26.4. */
   h1 { font-size: clamp(30px, 5.6vw, 38px); line-height: 1.12; letter-spacing: -.025em;
@@ -91,14 +91,14 @@
 
   /* 2026-10-21 token hero: text left, measured chart right; stacks on phones. */
   html, body { overflow-x: hidden; }
-  .hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 36px;
-          align-items: center; padding: 46px 0 34px; border-bottom: 1px solid var(--line); margin-bottom: 8px; }
-  .hero-name { margin: 0 0 4px; font-size: 15px; font-weight: 700; color: var(--ink); }
-  .hero .role { font-size: 15px; margin: 0 0 18px; }
-  .hero h2.headline { font-size: clamp(32px, 5vw, 50px); line-height: 1.06; letter-spacing: -.03em;
-                      margin: 0 0 16px; font-weight: 720; max-width: 15ch; }
+  .hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 36px;
+          align-items: center; padding: 26px 0 18px; }
+  .hero h1.hero-name { margin: 0 0 2px; font-size: clamp(30px, 4vw, 34px); }
+  .hero .role { font-size: 16px; margin: 0 0 14px; }
+  .hero h2.headline { font-size: clamp(30px, 4.2vw, 44px); line-height: 1.06; letter-spacing: -.03em;
+                      margin: 0 0 12px; font-weight: 720; max-width: 16ch; }
   .hero h2.headline em { font-style: normal; color: var(--accent); }
-  .proofline { font-size: 18px; color: var(--soft); margin: 0 0 22px; max-width: 44ch; }
+  .proofline { font-size: 17px; color: var(--soft); margin: 0 0 18px; max-width: 46ch; }
   .proofline b { color: var(--ink); }
   .hero-cta { display: flex; flex-wrap: wrap; gap: 12px; }
   .hero-cta .btn.ghost { background: transparent; color: var(--accent); }
@@ -111,7 +111,7 @@
          padding: 6px 0 6px 14px; margin: 0 0 8px; max-width: 62ch; }
 
   /* proof cards */
-  .proof { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin: 40px 0 0; }
+  .proof { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin: 14px 0 0; }
   .pcard { background: var(--card); border: 1px solid var(--line); padding: 22px 20px;
            display: flex; flex-direction: column; }
   .pcard h2 { font-size: 18px; line-height: 1.3; margin: 0 0 10px; font-weight: 650; letter-spacing: -.01em; }
@@ -161,14 +161,12 @@
 
   /* 2026-10-21 live token strip: filled from /token-xray.json (the measured
      data) and /api/trainer/catalogue (what a Workbench click costs). */
-  .tstrip { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; margin: 18px 0 6px; }
-  .tcell { background: var(--card); border: 1px solid var(--line); padding: 10px 12px; }
-  .tcell b { display: block; font-size: 13.5px; font-weight: 650; margin-bottom: 6px; }
-  .tbar { height: 8px; background: #c0392b; margin: 3px 0; }
-  .tbar.ok { background: #2e8b57; }
-  .tcell span { display: block; font-size: 12.5px; color: var(--soft); }
-  .tcell .x { font-size: 18px; font-weight: 720; color: var(--ink); }
-  .tlive { font-size: 14px; color: var(--soft); margin: 4px 0 26px; }
+  .tstrip { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; margin: 6px 0 4px; min-height: 58px; }
+  .tcell { background: var(--card); border: 1px solid var(--line); border-top: 3px solid #c0392b; padding: 7px 12px; }
+  .tcell b { display: block; font-size: 13.5px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tcell span { display: block; font-size: 13px; color: var(--soft); }
+  .tcell .x { display: inline; font-size: 17px; font-weight: 720; color: var(--ink); }
+  .tlive { font-size: 14px; color: var(--soft); margin: 2px 0 6px; max-width: none; }
   .tlive b { color: var(--ink); }
   /* principles */
   .princ { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 0; padding: 0; list-style: none; counter-reset: p; }
@@ -245,19 +243,13 @@
     <div class="tstrip" id="token-strip">
       <noscript><p class="tlive">Per task, the wrong way used 1.9x to 10.5x the tokens. <a href="/tokens">See the numbers</a>.</p></noscript>
     </div>
-    <p class="tlive" id="token-live">Wrong way vs right way, tokens per task (red vs green). <a href="/tokens">How it was measured →</a></p>
+    <p class="tlive" id="token-live">Each box: how many times more tokens the wrong way used. <a href="/tokens">How it was measured →</a></p>
   </section>
-
-  <header>
-    <p class="lede">I build AI agents end to end: Java and Python backends, the web front end, retrieval, evaluation, and the controls that keep a person in charge of every change. The platform on this site is one I designed, built and run in production.</p>
-    <p class="meta"><b>Berlin, Germany</b> · English</p>
-    <p class="sep">Since March 2022 I have worked for NRG Energy through Remote, my employer; NRG is the client. Since early 2026 I have been one of a handful of engineers in the initial core AI team at NRG, and since January 2026 I have led AI adoption in my area, cutting routine work time by about 20%. The AI platform shown here is my own system, separate from NRG.</p>
-  </header>
 
   <section class="proof" aria-label="Three proof points">
     <article class="pcard">
       <h2>An AI agent that cannot approve its own writes</h2>
-      <p>The model can investigate and propose changes, but plain code controls every write. On the public Workbench your click is the human decision; a change to the live app needs the owner's approval of the exact content.</p>
+      <p>The model can propose changes, but plain code controls every write. On the public Workbench your click is the human decision; the live app needs the owner's approval of the exact change.</p>
       <!-- #requirement-panel is a real element id in workbench.html. -->
       <a class="go" href="/workbench#requirement-panel">Try it with one click →</a>
     </article>
@@ -273,6 +265,12 @@
       <a class="go2" href="/ask-codebase">Try Ask the Codebase →</a>
     </article>
   </section>
+
+  <header>
+    <p class="lede">I build AI agents end to end: Java and Python backends, the web front end, retrieval, evaluation, and the controls that keep a person in charge of every change. The platform on this site is one I designed, built and run in production.</p>
+    <p class="meta"><b>Berlin, Germany</b> · English</p>
+    <p class="sep">Since March 2022 I have worked for NRG Energy through Remote, my employer; NRG is the client. Since early 2026 I have been one of a handful of engineers in the initial core AI team at NRG, and since January 2026 I have led AI adoption in my area, cutting routine work time by about 20%. The AI platform shown here is my own system, separate from NRG.</p>
+  </header>
 
   <h2 class="sec">How I think about AI</h2>
   <ol class="princ">

@@ -11,15 +11,12 @@
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
   fetch("/token-xray.json").then(r => (r.ok ? r.json() : Promise.reject(r.status))).then(d => {
-    const max = Math.max(...d.tasks.map(t => t.wrong_tokens));
     strip.innerHTML = d.tasks.map(t => `
       <div class="tcell" title="${esc(t.label)}: ${fmt(t.wrong_tokens)} vs ${fmt(t.right_tokens)} tokens">
-        <b>${esc(t.label)}</b>
-        <div class="tbar" style="width:${(100 * t.wrong_tokens / max).toFixed(1)}%"></div>
-        <div class="tbar ok" style="width:${Math.max(2, 100 * t.right_tokens / max).toFixed(1)}%"></div>
-        <span><span class="x">${esc(t.token_multiple)}</span>${fmt(t.wrong_tokens)} vs ${fmt(t.right_tokens)} tokens</span>
+        <b>${esc(t.short_label)}</b>
+        <span><span class="x">${esc(t.token_multiple)}</span> ${fmt(t.wrong_tokens)} vs ${fmt(t.right_tokens)}</span>
       </div>`).join("");
-    const base = `Wrong way (red) vs right way (green), tokens per task. Total ${fmt(d.totals.wrong_tokens)} vs ${fmt(d.totals.right_tokens)}, ${esc(d.statistic)}, ${esc(d.provider)}.`;
+    const base = `Each box: how many times more tokens the wrong way used, then wrong vs right tokens. Total ${fmt(d.totals.wrong_tokens)} vs ${fmt(d.totals.right_tokens)}, ${esc(d.statistic)}, ${esc(d.provider)}.`;
     live.innerHTML = `${base} <a href="/tokens">How it was measured →</a>`;
     return fetch("/api/trainer/catalogue").then(r => (r.ok ? r.json() : null)).then(c => {
       if (!c || !c.limits) return;

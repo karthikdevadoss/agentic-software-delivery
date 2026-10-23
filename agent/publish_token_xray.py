@@ -24,12 +24,12 @@ OUT = Path(__file__).resolve().parent / "web" / "token-xray.json"
 
 # Display order and plain-English labels for the six measured tasks.
 TASKS = [
-    ("trip", "Plan a family trip"),
-    ("reply", "Reply to an unhappy customer"),
-    ("doc", "Question about a long document"),
-    ("suppliers", "Compare 3 supplier offers"),
-    ("formula", "Fix a spreadsheet formula"),
-    ("longchat", "10 small tasks in one day"),
+    ("trip", "Plan a family trip", "Family trip"),
+    ("reply", "Reply to an unhappy customer", "Customer reply"),
+    ("doc", "Question about a long document", "Long document"),
+    ("suppliers", "Compare 3 supplier offers", "Supplier offers"),
+    ("formula", "Fix a spreadsheet formula", "Spreadsheet formula"),
+    ("longchat", "10 small tasks in one day", "10 small tasks"),
 ]
 
 
@@ -43,11 +43,12 @@ def build() -> dict:
     head = json.loads((EVIDENCE / "headline.json").read_text(encoding="utf-8"))
     summary = results["summary"]
     tasks = []
-    for key, label in TASKS:
+    for key, label, short in TASKS:
         s = summary[key]
         tasks.append({
             "id": key,
             "label": label,
+            "short_label": short,
             "wrong_tokens": int(s["wrong"]["proc"]),
             "right_tokens": int(s["right"]["proc"]),
             "token_multiple": multiple(s["x_tokens"]),
@@ -58,7 +59,7 @@ def build() -> dict:
         })
     if sum(t["wrong_tokens"] for t in tasks) != head["TW"] or sum(t["right_tokens"] for t in tasks) != head["TR"]:
         raise SystemExit("headline.json totals do not match the per-task results")
-    token_multiples = [summary[k]["x_tokens"] for k, _ in TASKS]
+    token_multiples = [summary[k]["x_tokens"] for k, _, _ in TASKS]
     return {
         "source": "docs/evidence/token-xray-2026-10-21 (results.json, headline.json)",
         "measured_on": "2026-10-21",
