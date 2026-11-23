@@ -289,6 +289,25 @@ class AnalyzeWithLlmTestCase(unittest.TestCase):
         self.assertIn("ANTHROPIC_API_KEY", result["explanation"])
 
 
+    def test_analysis_goes_through_the_gateway_with_an_allowed_purpose(self):
+        import reasoning_gateway
+        resp = SimpleNamespace(content=[SimpleNamespace(type="text", text="{}")], usage=None)
+        ctx = bp.RagContext("USED", "q", [], "some context", 5.0)
+        with mock.patch.object(reasoning_gateway, "converse", wraps=reasoning_gateway.converse) as spy:
+            bp.analyze_with_llm("req", ctx, create_fn=lambda **kw: resp)
+        spy.assert_called_once()
+        self.assertIn(spy.call_args.kwargs["purpose"], reasoning_gateway.ADVISORY_PURPOSES)
+
+    def test_kill_switch_means_zero_anthropic_calls(self):
+        ctx = bp.RagContext("USED", "q", [], "some context", 5.0)
+        with mock.patch.dict("os.environ", {"LLM_MODE": "DISABLED", "ANTHROPIC_API_KEY": "k"}), \
+                mock.patch("anthropic.Anthropic") as cls:
+            result = bp.analyze_with_llm("req", ctx)
+        cls.assert_not_called()
+        self.assertFalse(result["model_called"])
+        self.assertIn("LLM_MODE=DISABLED", result["explanation"])
+
+
 class EndToEndOrchestrationTestCase(unittest.TestCase):
     def test_deterministic_only_route_never_touches_retrieval_or_model(self):
         with mock.patch.object(bp, "retrieve_context") as retrieve:

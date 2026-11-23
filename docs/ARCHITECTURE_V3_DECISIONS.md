@@ -68,6 +68,19 @@ advisory call sites (`agent/triage_execution.py`'s `diagnose()`/
 This is a documented scope decision, not an oversight — tracked as real
 future work in `docs/ACTION_QUEUE.json`, not silently dropped.
 
+**Update (gateway-all-calls change): the "not yet wired" list above is now
+closed.** `reasoning_gateway.converse()` makes one request per call and
+returns the raw response, so `agent_loop.py` keeps its own tool loop (thinking
+and tool_use blocks replayed intact) and `backend_planning.py` keeps its own
+JSON parsing, while every request still passes the purpose check, the
+`LLM_MODE=DISABLED` kill switch, the key check and usage recording. Purposes
+used: `NOVEL_IMPLEMENTATION_PROPOSAL` (agent_loop),
+`SEMANTIC_REQUIREMENT_INTERPRETATION` (backend_planning) -- no new purpose
+was needed. The enforcement test's allowlist is `reasoning_gateway.py` only.
+Honest limits: Anthropic only (no second provider, no LiteLLM), budgets are
+not durable, and the scan covers Python/shell files under `agent/` and
+`scripts/` only.
+
 ## D6: No mutation/property testing or AST/symbol-graph tooling added this session
 
 Both are real, audit-identified gaps (LOW and LOW-MEDIUM priority

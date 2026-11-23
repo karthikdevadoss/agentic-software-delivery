@@ -192,5 +192,62 @@ class UsageRecordingTestCase(unittest.TestCase):
         self.assertEqual(metrics.get_model_usage_events(), [])
 
 
+class ConverseTestCase(unittest.TestCase):
+    """reasoning_gateway.converse(): the multi-turn / tool / structured entry point."""
+
+    def test_unlisted_purpose_is_denied_before_any_request(self):
+        create_fn = mock.Mock()
+        r = rg.converse("NOT_A_PURPOSE", "s", [{"role": "user", "content": "u"}], 10, create_fn=create_fn)
+        create_fn.assert_not_called()
+        self.assertFalse(r["model_called"])
+        self.assertIsNone(r["response"])
+        self.assertIn("ADVISORY_PURPOSES", r["denial_reason"])
+
+    def test_kill_switch_makes_zero_requests_even_with_a_key_and_no_create_fn(self):
+        with mock.patch.dict(os.environ, {"LLM_MODE": "DISABLED", "ANTHROPIC_API_KEY": "k"}), \
+                mock.patch("anthropic.Anthropic") as cls:
+            r = rg.converse("HUMAN_EXPLANATION", "s", [], 10)
+        cls.assert_not_called()
+        self.assertFalse(r["model_called"])
+        self.assertIn("LLM_MODE=DISABLED", r["denial_reason"])
+        self.assertEqual(r["authority"], "ADVISORY")
+
+    def test_missing_key_is_an_honest_denial(self):
+        with mock.patch.dict(os.environ, {}, clear=True):
+            r = rg.converse("HUMAN_EXPLANATION", "s", [], 10)
+        self.assertFalse(r["model_called"])
+        self.assertIn("ANTHROPIC_API_KEY", r["denial_reason"])
+
+    def test_returns_the_raw_response_and_forwards_tools_and_messages(self):
+        resp = _FakeResponse("ok")
+        create_fn = mock.Mock(return_value=resp)
+        msgs = [{"role": "user", "content": "u"}]
+        r = rg.converse("HUMAN_EXPLANATION", "sys", msgs, 50, tools=[{"name": "t"}], create_fn=create_fn)
+        self.assertIs(r["response"], resp)
+        kw = create_fn.call_args.kwargs
+        self.assertEqual(kw["tools"], [{"name": "t"}])
+        self.assertIs(kw["messages"], msgs)
+        self.assertEqual(kw["system"], "sys")
+        self.assertTrue(r["model_called"])
+        self.assertEqual(r["usage"]["input_tokens"], 10)
+
+    def test_tools_key_is_omitted_when_none(self):
+        create_fn = mock.Mock(return_value=_FakeResponse("ok"))
+        rg.converse("HUMAN_EXPLANATION", "s", [], 5, create_fn=create_fn)
+        self.assertNotIn("tools", create_fn.call_args.kwargs)
+
+    def test_a_real_client_call_records_usage_but_an_injected_one_does_not(self):
+        import metrics
+        metrics.reset()
+        rg.converse("HUMAN_EXPLANATION", "s", [], 5, create_fn=mock.Mock(return_value=_FakeResponse("ok")))
+        self.assertEqual(metrics.get_model_usage_events(), [])
+        with mock.patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key-not-real"}), \
+                mock.patch("anthropic.Anthropic") as cls:
+            cls.return_value.messages.create.return_value = _FakeResponse("ok")
+            rg.converse("HUMAN_EXPLANATION", "s", [], 5)
+        self.assertEqual(len(metrics.get_model_usage_events()), 1)
+        metrics.reset()
+
+
 if __name__ == "__main__":
     unittest.main()
