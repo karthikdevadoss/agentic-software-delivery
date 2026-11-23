@@ -10,17 +10,23 @@ no single structural boundary enforcing the directive's Phase 3 policy:
 every model call must be purpose-gated, advisory-only, and independently
 verified by the caller -- never trusted as authority.
 
-Scope decision (documented, not an oversight): only agent/triage_execution.py's
-single-shot advisory calls (diagnose/generate_candidate_patch) are wired
-through this gateway so far -- see call site there. agent/backend_planning.py's
-analyze_with_llm has a materially different response contract (structured
-JSON fields, not a stripped text blob) and agent/main.py (V1 CLI)/
-agent/agent_loop.py (V3's multi-turn TOOL-CALLING loop, not a single-shot
-request) are a genuinely different category -- a multi-turn agentic loop
-cannot be flattened into this gateway's single-call shape without a much
-larger, riskier redesign than this phase's bounded scope justifies. Wiring
-those in is real future work, tracked in docs/ACTION_QUEUE.json, not
-silently dropped.
+Scope (updated by the gateway-all-calls change): EVERY billed model call
+in agent/ now goes through this module, through one of two entry points:
+  - call(): single-shot advisory text (triage_execution, jd_match,
+    standing_interview, main.py, ...).
+  - converse(): a caller-owned multi-turn / tool-calling / structured-output
+    conversation. The gateway performs ONE request per converse() call and
+    returns the raw, unmodified response (thinking + tool_use blocks intact);
+    the caller keeps its own loop and message history. Used by
+    agent_loop.run_agent_loop (tool loop) and
+    backend_planning.analyze_with_llm (structured JSON contract).
+Both run the same purpose check, LLM_MODE kill switch, API-key check and
+usage/cost recording. agent/test_reasoning_gateway_enforcement.py fails the
+build if any other agent/ or scripts/ file imports a provider SDK, constructs
+a client, or calls .messages.create. Honest limits: only Anthropic is
+supported (no second provider, no LiteLLM); budgets are not durable; the scan
+covers agent/ and scripts/ Python files, not code outside the repo or
+non-Python services.
 
 Non-negotiable rules enforced here (Phase 3 of the directive):
   - DEFAULT DENIED: `purpose` must be one of ADVISORY_PURPOSES or the call
@@ -68,6 +74,90 @@ def llm_mode_disabled() -> bool:
     return os.environ.get("LLM_MODE", "").strip().upper() == "DISABLED"
 
 
+def _denied(reason: str, **extra) -> dict:
+    return {"text": None, "authority": "ADVISORY", "model_called": False,
+            "denial_reason": reason, "usage": None, **extra}
+
+
+def _pre_flight(purpose, api_key, create_fn):
+    """Purpose check -> kill switch -> API key -> client. Returns
+    (denial_reason | None, create_fn, real_client_call, resolved_key)."""
+    if purpose not in ADVISORY_PURPOSES:
+        return (f"purpose {purpose!r} is not in ADVISORY_PURPOSES -- "
+                f"default-denied per this gateway's Phase 3 model-access policy"), None, False
+    if llm_mode_disabled():
+        return "LLM_MODE=DISABLED -- zero-LLM mode active, no network call made", None, False
+    real_client_call = create_fn is None
+    if create_fn is None:
+        api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
+        if not api_key:
+            return "ANTHROPIC_API_KEY not set -- cannot run a live model call", None, False
+        from anthropic import Anthropic
+        create_fn = Anthropic(api_key=api_key).messages.create
+    return None, create_fn, real_client_call
+
+
+def _summarize_and_record(response, model, duration_ms, real_client_call):
+    usage = getattr(response, "usage", None)
+    if usage is None:
+        return None
+    cache_write = getattr(usage, "cache_creation_input_tokens", None)
+    cache_read = getattr(usage, "cache_read_input_tokens", None)
+    cost = pricing_config.calculate_cost(
+        "anthropic", model,
+        input_tokens=usage.input_tokens, output_tokens=usage.output_tokens,
+        cache_write_tokens=cache_write or 0, cache_read_tokens=cache_read or 0,
+    )
+    if real_client_call:
+        import metrics
+        metrics.record_model_usage(
+            provider="anthropic", model=model,
+            input_tokens=usage.input_tokens, output_tokens=usage.output_tokens,
+            cache_creation_input_tokens=cache_write, cache_read_input_tokens=cache_read,
+        )
+    return {
+        "input_tokens": usage.input_tokens, "output_tokens": usage.output_tokens,
+        "cache_creation_input_tokens": cache_write, "cache_read_input_tokens": cache_read,
+        "duration_ms": duration_ms, **cost,
+    }
+
+
+def converse(
+    purpose: str,
+    system_prompt: str,
+    messages: list,
+    max_tokens: int,
+    tools=None,
+    api_key: str | None = None,
+    create_fn=None,
+    model: str = "claude-sonnet-5",
+) -> dict:
+    """Gateway entry point for caller-owned multi-turn / tool-calling /
+    structured-output conversations. Makes exactly ONE request per call and
+    returns the RAW response unmodified (so thinking and tool_use blocks can
+    be replayed to the API by the caller); no fence-stripping, no text
+    extraction. Same purpose check, kill switch, key check and usage/cost
+    recording as call().
+
+    Returns {response, authority="ADVISORY", model_called, denial_reason,
+    usage}; response is None on every denial path (zero network calls)."""
+    denial, create_fn, real_client_call = _pre_flight(purpose, api_key, create_fn)
+    if denial:
+        return _denied(denial, response=None)
+    kwargs = {"model": model, "max_tokens": max_tokens, "system": system_prompt,
+              "messages": messages}
+    if tools is not None:
+        kwargs["tools"] = tools
+    call_start = time.monotonic()
+    response = create_fn(**kwargs)
+    duration_ms = round((time.monotonic() - call_start) * 1000, 1)
+    return {
+        "response": response, "authority": "ADVISORY", "model_called": True,
+        "denial_reason": None, "text": None,
+        "usage": _summarize_and_record(response, model, duration_ms, real_client_call),
+    }
+
+
 def call(
     purpose: str,
     system_prompt: str,
@@ -109,47 +199,9 @@ def call(
     messages=...) -> an object with .content (blocks with .type/.text) and
     .usage. Never omitted in a real automated test, so tests never make a
     real, billed Anthropic API call."""
-    if purpose not in ADVISORY_PURPOSES:
-        return {
-            "text": None, "authority": "ADVISORY", "model_called": False,
-            "denial_reason": (
-                f"purpose {purpose!r} is not in ADVISORY_PURPOSES -- "
-                f"default-denied per this gateway's Phase 3 model-access policy"
-            ),
-            "usage": None,
-        }
-    if llm_mode_disabled():
-        return {
-            "text": None, "authority": "ADVISORY", "model_called": False,
-            "denial_reason": "LLM_MODE=DISABLED -- zero-LLM mode active, no network call made",
-            "usage": None,
-        }
-
-    # AEQ-028: whether THIS call goes through the real Anthropic client is
-    # decided here, before create_fn is reassigned below -- an injected
-    # create_fn is, by this gateway's own documented contract ("Never
-    # omitted in a real automated test"), always a test double standing in
-    # for a real network call. Usage must only ever be recorded for the
-    # former: metrics.record_model_usage() bridges into the real, shared,
-    # durable production event ledger (see web_server.py's
-    # metrics.set_usage_sink(_on_model_usage)) whenever web_server has been
-    # imported anywhere in the current process -- which a full
-    # `python -m unittest discover` run does incidentally, via
-    # test_web_server.py's own import, regardless of which test file
-    # actually calls this function. Recording a test double's fake .usage
-    # here previously wrote real rows (fake 10/20 token counts, no run_id)
-    # into real production Usage/Dashboard economics on every such run.
-    real_client_call = create_fn is None
-    if create_fn is None:
-        api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
-        if not api_key:
-            return {
-                "text": None, "authority": "ADVISORY", "model_called": False,
-                "denial_reason": "ANTHROPIC_API_KEY not set -- cannot run a live model call",
-                "usage": None,
-            }
-        from anthropic import Anthropic
-        create_fn = Anthropic(api_key=api_key).messages.create
+    denial, create_fn, real_client_call = _pre_flight(purpose, api_key, create_fn)
+    if denial:
+        return _denied(denial)
 
     kwargs = {}
     if effort is not None:
@@ -161,33 +213,9 @@ def call(
         **kwargs,
     )
     duration_ms = round((time.monotonic() - call_start) * 1000, 1)
-
-    usage = getattr(response, "usage", None)
-    usage_summary = None
-    if usage is not None:
-        cache_write = getattr(usage, "cache_creation_input_tokens", None)
-        cache_read = getattr(usage, "cache_read_input_tokens", None)
-        cost = pricing_config.calculate_cost(
-            "anthropic", model,
-            input_tokens=usage.input_tokens, output_tokens=usage.output_tokens,
-            cache_write_tokens=cache_write or 0, cache_read_tokens=cache_read or 0,
-        )
-        usage_summary = {
-            "input_tokens": usage.input_tokens,
-            "output_tokens": usage.output_tokens,
-            "cache_creation_input_tokens": cache_write,
-            "cache_read_input_tokens": cache_read,
-            "duration_ms": duration_ms,
-            **cost,
-        }
-        if real_client_call:
-            import metrics
-            metrics.record_model_usage(
-                provider="anthropic", model=model,
-                input_tokens=usage.input_tokens, output_tokens=usage.output_tokens,
-                cache_creation_input_tokens=cache_write,
-                cache_read_input_tokens=cache_read,
-            )
+    # AEQ-028: usage is only recorded to metrics for a real client call, never
+    # for an injected test double (see _pre_flight / _summarize_and_record).
+    usage_summary = _summarize_and_record(response, model, duration_ms, real_client_call)
 
     text = "".join(b.text for b in response.content if getattr(b, "type", None) == "text")
     stripped = text.strip()

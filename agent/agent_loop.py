@@ -18,8 +18,7 @@ import os
 import sys
 import time
 
-from anthropic import Anthropic
-
+import reasoning_gateway
 from tools import TOOL_SCHEMAS, dispatch_tool_call
 import metrics
 
@@ -32,6 +31,9 @@ MODEL = os.environ.get("CLAUDE_MODEL", DEFAULT_MODEL)
 # call beyond the cap within the same turn is skipped, not executed.
 MAX_TOOL_CALLS = 8
 MAX_TOKENS = 6000
+
+# Gateway purpose: the loop plans an implementation for a ticket.
+GATEWAY_PURPOSE = "NOVEL_IMPLEMENTATION_PROPOSAL"
 
 SYSTEM_PROMPT = """You are a senior software engineer helping plan a change to an \
 existing Spring Boot (Java 17) application.
@@ -160,6 +162,7 @@ def run_agent_loop(
     tool_schemas=None,
     dispatch_fn=None,
     system_prompt_suffix: str = "",
+    create_fn=None,
 ) -> str:
     """tool_schemas/dispatch_fn default to the read-only V3 tool set (safe,
     unchanged behavior for existing callers). Passing an expanded schema
@@ -171,33 +174,26 @@ def run_agent_loop(
     dispatch_fn = dispatch_fn if dispatch_fn is not None else dispatch_tool_call
     system_prompt = SYSTEM_PROMPT + system_prompt_suffix
 
-    client = Anthropic(api_key=api_key)
     messages = [{"role": "user", "content": f"Ticket:\n{ticket}"}]
     tool_call_count = 0
 
     while True:
         tools_enabled = tool_call_count < MAX_TOOL_CALLS
 
-        create_kwargs = {
-            "model": MODEL,
-            "max_tokens": MAX_TOKENS,
-            "system": system_prompt,
-            "messages": messages,
-        }
-        if tools_enabled:
-            create_kwargs["tools"] = tool_schemas
-
-        response = client.messages.create(**create_kwargs)
-
-        # Real usage straight from the API response's own `.usage` field —
-        # never estimated, never scraped from a UI counter.
-        metrics.record_model_usage(
-            provider="anthropic", model=MODEL,
-            input_tokens=response.usage.input_tokens,
-            output_tokens=response.usage.output_tokens,
-            cache_creation_input_tokens=getattr(response.usage, "cache_creation_input_tokens", None),
-            cache_read_input_tokens=getattr(response.usage, "cache_read_input_tokens", None),
+        # Every request goes through the central gateway (purpose check,
+        # LLM_MODE kill switch, key check, usage/cost recording). The loop
+        # itself stays here; the gateway makes one request per converse().
+        result = reasoning_gateway.converse(
+            purpose=GATEWAY_PURPOSE, system_prompt=system_prompt,
+            messages=messages, max_tokens=MAX_TOKENS,
+            tools=tool_schemas if tools_enabled else None,
+            api_key=api_key, create_fn=create_fn, model=MODEL,
         )
+        if not result["model_called"]:
+            reason = result["denial_reason"]
+            print(f"Model call not made: {reason}", file=sys.stderr)
+            return f"Unable to produce a plan — model call not made: {reason}"
+        response = result["response"]
 
         # Preserve the assistant turn EXACTLY as returned by Anthropic.
         # Do not filter thinking blocks, reconstruct them, reorder them,
