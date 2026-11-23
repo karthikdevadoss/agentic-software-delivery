@@ -80,6 +80,7 @@ import ai_intelligence
 import learn_pdf
 import learn_tree
 import metrics
+import tracing
 import pricing_config
 import risk_policy
 import session_history
@@ -647,6 +648,7 @@ def _web_approval_prompt_factory(run: Run):
 
 def _run_agent_thread(run: Run) -> None:
     global _CURRENT_RUN_ID
+    tracing.bind_run_id(run.id)  # thread-local context: spans below carry run_id
     execution_tools.set_approval_prompt(_web_approval_prompt_factory(run))
     usage_start_index = len(metrics.get_model_usage_events())
     _CURRENT_RUN_ID = run.id
@@ -713,7 +715,10 @@ def _run_mock_thread(run: Run) -> None:
                     "@@ -0,0 +1,4 @@\n+package com.example.customer;\n+\n+public class MockDemoTest {\n+}\n",
             "is_new_file": True,
         })
-        decision = decision_queue.get()  # still a REAL blocking wait on a REAL browser click
+        tracing.bind_run_id(run.id)
+        with tracing.span("approval.gate", edit_id=edit_id, mock=True) as _sp:
+            decision = decision_queue.get()  # still a REAL blocking wait on a REAL browser click
+            _sp.set_attribute("approval.decision", "approved" if decision == "approve" else "rejected")
         run.emit("approval_decision", {"edit_id": edit_id, "decision": decision})
 
         if decision != "approve":
@@ -1694,6 +1699,13 @@ async def decide(request: Request):
     return JSONResponse({"ok": True})
 
 
+async def get_run_traces(request: Request):
+    """Local/dev: spans recorded in this process for one run (in-memory
+    buffer, lost on restart -- not a production APM)."""
+    return JSONResponse({"run_id": request.path_params["run_id"],
+                         "spans": tracing.spans_for_run(request.path_params["run_id"])})
+
+
 # RELIABILITY P0 INCIDENT (2026-09-13): build_dashboard_snapshot()/
 # build_sessions_snapshot()/session_history.list_sessions()/
 # get_session_detail() all make real synchronous psycopg2 queries against
@@ -2565,6 +2577,7 @@ async def jd_match_sample(request: Request):
 routes = [
     Route("/api/runs", start_run, methods=["POST"]),
     Route("/api/runs/mock", start_mock_run, methods=["POST"]),
+    Route("/traces/{run_id}", get_run_traces, methods=["GET"]),
     Route("/api/dashboard", get_dashboard_data, methods=["GET"]),
     Route("/api/sessions", get_sessions_data, methods=["GET"]),
     Route("/api/budget", budget_status, methods=["GET"]),

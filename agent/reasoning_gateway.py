@@ -49,6 +49,7 @@ import time
 import gateway_budget
 import litellm_route
 import pricing_config
+import tracing
 
 # The 6 categories the directive names as POSSIBLE candidates for real
 # semantic/generative value -- listed, not automatically allowed; every
@@ -164,7 +165,7 @@ def _tools_text(tools) -> str:
     return _messages_text(tools) if tools else ""
 
 
-def converse(
+def _converse_impl(
     purpose: str,
     system_prompt: str,
     messages: list,
@@ -209,7 +210,7 @@ def converse(
     }
 
 
-def call(
+def _call_impl(
     purpose: str,
     system_prompt: str,
     user_message: str,
@@ -298,3 +299,101 @@ def call(
         "text": stripped, "authority": "ADVISORY", "model_called": True, "denial_reason": None,
         "usage": usage_summary,
     }
+
+
+def call(purpose, system_prompt, user_message, max_tokens, api_key=None,
+         create_fn=None, effort=None, model="claude-sonnet-5") -> dict:
+    """Traced wrapper: every call through the gateway -- including denials --
+    is one `gateway.model_call` span. Contract/doc: see _call_impl."""
+    with tracing.span(
+        "gateway.model_call", purpose=str(purpose), model=model,
+        max_tokens=max_tokens, effort=effort,
+    ) as sp:
+        try:
+            result = _call_impl(purpose, system_prompt, user_message, max_tokens,
+                                api_key=api_key, create_fn=create_fn, effort=effort, model=model)
+        except Exception as exc:  # noqa: BLE001 - recorded then re-raised unchanged
+            sp.set_attribute("gateway.outcome", "error")
+            sp.set_attribute("error.type", type(exc).__name__)
+            sp.record_exception(exc)
+            raise
+        usage = result.get("usage")
+        if not result.get("model_called"):
+            sp.set_attribute("gateway.outcome", "denied")
+            sp.set_attribute("gateway.denial_reason", str(result.get("denial_reason"))[:200])
+        else:
+            sp.set_attribute("gateway.outcome", "ok" if result.get("text") else "error")
+            if not result.get("text"):
+                sp.set_attribute("gateway.denial_reason", str(result.get("denial_reason"))[:200])
+        if usage:
+            sp.set_attribute("llm.input_tokens", usage["input_tokens"])
+            sp.set_attribute("llm.output_tokens", usage["output_tokens"])
+            sp.set_attribute("llm.duration_ms", usage["duration_ms"])
+            if usage.get("available") and usage.get("total_usd") is not None:
+                sp.set_attribute("llm.cost_usd", float(usage["total_usd"]))
+        return result
+
+
+def _annotate_span(sp, result, *, converse_mode=False):
+    """Attach outcome/model/token/cost attributes to a gateway span. Shared
+    by call() and converse() so every billed path emits the same span family
+    (`gateway.model_call`); budget refusals are outcome=denied with the
+    BUDGET_* reason, so a refusal is visible in the trace, not just absent."""
+    usage = result.get("usage")
+    if not result.get("model_called"):
+        sp.set_attribute("gateway.outcome", "denied")
+        sp.set_attribute("gateway.denial_reason", str(result.get("denial_reason"))[:200])
+    else:
+        ok = (result.get("response") is not None) if converse_mode else bool(result.get("text"))
+        sp.set_attribute("gateway.outcome", "ok" if ok else "error")
+        if not ok:
+            sp.set_attribute("gateway.denial_reason", str(result.get("denial_reason"))[:200])
+    if usage:
+        sp.set_attribute("llm.input_tokens", usage["input_tokens"])
+        sp.set_attribute("llm.output_tokens", usage["output_tokens"])
+        sp.set_attribute("llm.duration_ms", usage["duration_ms"])
+        if usage.get("available") and usage.get("total_usd") is not None:
+            sp.set_attribute("llm.cost_usd", float(usage["total_usd"]))
+
+
+def _traced(entry, fn, *, purpose, model, max_tokens, effort=None, run_id=None):
+    with tracing.span(
+        "gateway.model_call", purpose=str(purpose), model=model,
+        max_tokens=max_tokens, effort=effort, entry=entry,
+    ) as sp:
+        try:
+            result = fn()
+        except Exception as exc:  # noqa: BLE001 - recorded then re-raised unchanged
+            sp.set_attribute("gateway.outcome", "error")
+            sp.set_attribute("error.type", type(exc).__name__)
+            sp.record_exception(exc)
+            raise
+        _annotate_span(sp, result, converse_mode=(entry == "converse"))
+        return result
+
+
+def call(purpose, system_prompt, user_message, max_tokens, api_key=None,
+         create_fn=None, effort=None, model="claude-sonnet-5", run_id=None,
+         enforce_budget=None) -> dict:
+    """Traced wrapper: every call through the gateway -- including denials --
+    is one `gateway.model_call` span. Contract/doc: see _call_impl."""
+    return _traced(
+        "call",
+        lambda: _call_impl(purpose, system_prompt, user_message, max_tokens,
+                           api_key=api_key, create_fn=create_fn, effort=effort,
+                           model=model, run_id=run_id, enforce_budget=enforce_budget),
+        purpose=purpose, model=model, max_tokens=max_tokens, effort=effort)
+
+
+def converse(purpose, system_prompt, messages, max_tokens, tools=None, api_key=None,
+             create_fn=None, model="claude-sonnet-5", run_id=None,
+             enforce_budget=None) -> dict:
+    """Traced wrapper for the multi-turn / tool-calling entry point: same
+    `gateway.model_call` span (entry="converse") with model, tokens, cost and
+    outcome as call(). Contract/doc: see _converse_impl."""
+    return _traced(
+        "converse",
+        lambda: _converse_impl(purpose, system_prompt, messages, max_tokens, tools=tools,
+                               api_key=api_key, create_fn=create_fn, model=model,
+                               run_id=run_id, enforce_budget=enforce_budget),
+        purpose=purpose, model=model, max_tokens=max_tokens)

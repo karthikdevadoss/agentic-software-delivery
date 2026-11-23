@@ -431,6 +431,17 @@ def invalidate_cache():
 
 
 def semantic_search(query: str, top_k: int = 5, source_type: str | None = None) -> list[dict]:
+    """Traced wrapper around _semantic_search_impl (span `retrieval.semantic_search`;
+    query is recorded as length + short hash only, never raw text)."""
+    import tracing
+    with tracing.span("retrieval.semantic_search", top_k=top_k, source_type=source_type,
+                      **tracing.query_fingerprint(query)) as sp:
+        results = _semantic_search_impl(query, top_k, source_type)
+        sp.set_attribute("retrieval.hit_count", len(results))
+        return results
+
+
+def _semantic_search_impl(query: str, top_k: int = 5, source_type: str | None = None) -> list[dict]:
     """Returns up to top_k structured candidates, ranked by cosine
     similarity, each carrying full provenance metadata. This is
     retrieval only — evidence to be cited, never asserted as ground
