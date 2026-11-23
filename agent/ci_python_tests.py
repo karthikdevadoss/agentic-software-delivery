@@ -85,6 +85,7 @@ HERMETIC_MODULES = [
     "test_learn_tree",
     "test_main",
     "test_mcp_server",
+    "test_mcp_auth",  # MCP HTTP bearer auth: real loopback uvicorn, per-run JWT key, no network/IdP
     "test_non_llm_intelligence_metrics",
     "test_pricing_config",
     # Promoted from the live-infra list 2026-09-25 once it was isolated: it now
