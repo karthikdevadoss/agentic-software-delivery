@@ -39,6 +39,8 @@ Non-negotiable rules enforced here (Phase 3 of the directive):
 import os
 import time
 
+import gateway_budget
+import litellm_route
 import pricing_config
 
 # The 6 categories the directive names as POSSIBLE candidates for real
@@ -77,6 +79,8 @@ def call(
     create_fn=None,
     effort: str | None = None,
     model: str = "claude-sonnet-5",
+    run_id: str | None = None,
+    enforce_budget: bool | None = None,
 ) -> dict:
     """The one sanctioned boundary for a single-shot advisory model call.
 
@@ -141,15 +145,42 @@ def call(
     # into real production Usage/Dashboard economics on every such run.
     real_client_call = create_fn is None
     if create_fn is None:
-        api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
-        if not api_key:
+        if litellm_route.enabled():
+            # Proxy mode: the key the gateway holds is the proxy's virtual/
+            # master key; the Anthropic key lives in the proxy. There is
+            # deliberately NO fallback to a direct call if this fails.
+            try:
+                from anthropic import Anthropic
+                create_fn = Anthropic(**litellm_route.client_settings(api_key)).messages.create
+            except litellm_route.LiteLLMConfigError as exc:
+                return {
+                    "text": None, "authority": "ADVISORY", "model_called": False,
+                    "denial_reason": f"LiteLLM proxy mode misconfigured: {exc}",
+                    "usage": None,
+                }
+        else:
+            api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
+            if not api_key:
+                return {
+                    "text": None, "authority": "ADVISORY", "model_called": False,
+                    "denial_reason": "ANTHROPIC_API_KEY not set -- cannot run a live model call",
+                    "usage": None,
+                }
+            from anthropic import Anthropic
+            create_fn = Anthropic(api_key=api_key).messages.create
+
+    # Durable budget gate -- BEFORE the provider is contacted.
+    reservation = None
+    if enforce_budget is True or (enforce_budget is None and real_client_call):
+        verdict = gateway_budget.reserve(
+            "anthropic", model, system_prompt, user_message, max_tokens, run_id=run_id)
+        if not verdict["allowed"]:
             return {
                 "text": None, "authority": "ADVISORY", "model_called": False,
-                "denial_reason": "ANTHROPIC_API_KEY not set -- cannot run a live model call",
+                "denial_reason": f"BUDGET_{verdict['status']}: {verdict['message']}",
                 "usage": None,
             }
-        from anthropic import Anthropic
-        create_fn = Anthropic(api_key=api_key).messages.create
+        reservation = verdict["reservation_id"]
 
     kwargs = {}
     if effort is not None:
@@ -180,6 +211,8 @@ def call(
             "duration_ms": duration_ms,
             **cost,
         }
+        if reservation is not None and cost.get("available"):
+            gateway_budget.settle(reservation, cost["total_usd"])
         if real_client_call:
             import metrics
             metrics.record_model_usage(

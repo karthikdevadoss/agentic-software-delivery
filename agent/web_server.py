@@ -61,6 +61,9 @@ import showcase_data
 import interview_walkthrough_data
 import ask_codebase
 import functools
+import budget_store  # noqa: F401  (durable counters, see agent/budget_store.py)
+import gateway_budget
+import litellm_route
 import si_budget
 import owner_auth
 import triage_budget
@@ -1727,6 +1730,25 @@ async def get_sessions_data(request: Request):
     return JSONResponse(await run_in_threadpool(sessions_data.build_sessions_snapshot, include_test_data))
 
 
+async def budget_status(request: Request):
+    """Remaining durable budget for the Usage page. Read-only, counts and caps
+    only -- no visitor identities. Gateway dollars are reserved worst-case
+    estimates until a call settles to its measured cost."""
+    def build():
+        tri, si = triage_budget.status(), si_budget.status()
+        return {
+            "gateway": gateway_budget.status(),
+            "triage": {**tri, "calls_remaining": max(tri["daily_max"] - tri["calls_today"], 0)},
+            "standing_interview": {
+                "answers_today": si["answers_today"],
+                "daily_max_answers": si["daily_max_answers"],
+                "answers_remaining": max(si["daily_max_answers"] - si["answers_today"], 0)},
+            "proxy_mode": "litellm-proxy" if litellm_route.enabled() else "direct-anthropic",
+            "durable": True,
+        }
+    return JSONResponse(await run_in_threadpool(build))
+
+
 async def usage_page(request: Request):
     """Serves the Usage SPA shell for both the main history view (/usage)
     and a dedicated session detail route (/usage/session/{id}) — the
@@ -2541,6 +2563,7 @@ routes = [
     Route("/api/runs/mock", start_mock_run, methods=["POST"]),
     Route("/api/dashboard", get_dashboard_data, methods=["GET"]),
     Route("/api/sessions", get_sessions_data, methods=["GET"]),
+    Route("/api/budget", budget_status, methods=["GET"]),
     Route("/api/dev-sessions/start", start_dev_session_route, methods=["POST"]),
     Route("/api/dev-sessions/stop", stop_dev_session_route, methods=["POST"]),
     Route("/api/target-app", get_target_app, methods=["GET"]),

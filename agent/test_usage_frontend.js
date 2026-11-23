@@ -345,6 +345,16 @@ const FIXTURE_DETAIL = {
   assertIncludes(incidentHtml, "not the whole session's own total", "the card explicitly disambiguates itself from the whole-session total shown elsewhere on the page");
   assert(sandbox.svgBarChart([]) === "", "svgBarChart with no bars renders nothing, not an empty/broken SVG shell");
 
+  const budgetHtml = sandbox.renderBudgetPanel({
+    gateway: { remaining_usd: 4.25, daily_usd_cap: 5, spent_or_reserved_usd: 0.75, calls_today: 3, rate_calls_remaining: 17, rate_limit_calls: 20, rate_window_seconds: 60, per_run_usd_cap: 1, per_request_usd_cap: 0.5, figures_are: "reserved worst-case estimates until a call settles to its measured cost" },
+    triage: { calls_remaining: 30, daily_max: 40 }, standing_interview: { answers_remaining: 40, daily_max_answers: 43 }, proxy_mode: "direct-anthropic", durable: true });
+  assertIncludes(budgetHtml, "Remaining budget", "the budget panel has its own heading");
+  assertIncludes(budgetHtml, "$4.25", "remaining gateway dollars are shown");
+  assertIncludes(budgetHtml, "survive a restart", "the panel states counters are durable");
+  assertIncludes(budgetHtml, "worst-case estimates", "dollar figures are labelled as estimates until settled");
+  assertIncludes(budgetHtml, "not covered", "the panel states that direct SDK calls are not capped");
+  assertIncludes(sandbox.renderBudgetPanel(null), "unavailable", "a failed budget fetch is reported, not rendered as zeros");
+
   console.log(`${passed} passed, ${failures} failed`);
   process.exit(failures ? 1 : 0);
 })();

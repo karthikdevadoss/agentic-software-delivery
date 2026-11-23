@@ -19,6 +19,29 @@ function fmtUsd(n) {
   return "$" + n.toFixed(n < 0.01 ? 4 : 2);
 }
 
+// REMAINING BUDGET: durable caps (agent/budget_store.py) read from
+// /api/budget. Counters survive a process restart. Dollar figures are
+// reserved worst-case estimates until a call settles to its measured cost,
+// and only calls routed through reasoning_gateway are counted.
+function renderBudgetPanel(b) {
+  if (!b || !b.gateway) {
+    return section("Remaining budget", `<div class="econ-note">Budget status unavailable — the caps are still enforced, this panel just could not read them.</div>`);
+  }
+  const g = b.gateway;
+  const tiles = [
+    ["Gateway $ remaining today", fmtUsd(g.remaining_usd), `of ${fmtUsd(g.daily_usd_cap)} daily cap · ${fmtUsd(g.spent_or_reserved_usd)} spent or reserved (${g.calls_today} call(s))`],
+    ["Gateway calls this minute", `${g.rate_calls_remaining} left`, `rate limit ${g.rate_limit_calls} per ${g.rate_window_seconds}s`],
+    ["Per-run / per-request cap", `${fmtUsd(g.per_run_usd_cap)} / ${fmtUsd(g.per_request_usd_cap)}`, "worst-case estimate checked before each call"],
+    ["Triage Lab calls left today", String(b.triage.calls_remaining), `of ${b.triage.daily_max} (per-endpoint request-count cap)`],
+    ["Standing Interview answers left today", String(b.standing_interview.answers_remaining), `of ${b.standing_interview.daily_max_answers}`],
+  ];
+  const html = `<div class="exec-grid">` + tiles.map(([label, value, note]) =>
+    `<div class="exec-stat"><div class="exec-value">${esc(value)}</div><div class="exec-label">${esc(label)}</div><div class="exec-note">${esc(note)}</div></div>`
+  ).join("") + `</div>` +
+  `<div class="econ-note">Counters are stored durably and survive a restart (on this host's disk). Dollar figures are ${esc(g.figures_are)}. Only calls through the reasoning gateway are capped here; calls that still use the Anthropic SDK directly are not covered. Model route: ${esc(b.proxy_mode)}${b.proxy_mode === "litellm-proxy" ? " (local personal proxy, not a company gateway)" : ""}.</div>`;
+  return section("Remaining budget", html);
+}
+
 // AI DELIVERY EFFICIENCY (Priority 1, flagship-completion redesign): this
 // page used to open directly on a plain session log with no headline
 // efficiency framing anywhere on it. This leads the page instead with the
@@ -850,7 +873,11 @@ async function load() {
     return;
   }
 
+  let budget = null;
+  try { budget = await (await fetch("/api/budget")).json(); } catch (e) { budget = null; }
+
   main.innerHTML = [
+    renderBudgetPanel(budget),
     renderEfficiencySummary(data),
     renderDevSessionCostSummary(data),
     renderEventLedger(data),
