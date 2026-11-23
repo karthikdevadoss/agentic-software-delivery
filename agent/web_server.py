@@ -2574,7 +2574,28 @@ async def jd_match_sample(request: Request):
     return JSONResponse({"jd": jd_match.SAMPLE_JD})
 
 
+async def healthz(request: Request):
+    """Liveness probe: the process is up and the event loop answers. Does no
+    I/O and touches no dependency, so a slow/absent database can never make
+    the cluster restart a healthy process."""
+    return JSONResponse({"status": "ok"})
+
+
+async def readyz(request: Request):
+    """Readiness probe: the app can serve traffic. Cheap, no network I/O.
+    The event ledger (Postgres) is OPTIONAL and spool-backed, so it never
+    makes the pod unready; we only report whether it is configured."""
+    configured = bool(os.environ.get("EVENT_LEDGER_DATABASE_URL"))
+    return JSONResponse({
+        "status": "ready",
+        "ledger": "configured" if configured else "not_configured",
+        "ledger_affects_readiness": False,
+    })
+
+
 routes = [
+    Route("/healthz", healthz, methods=["GET"]),
+    Route("/readyz", readyz, methods=["GET"]),
     Route("/api/runs", start_run, methods=["POST"]),
     Route("/api/runs/mock", start_mock_run, methods=["POST"]),
     Route("/traces/{run_id}", get_run_traces, methods=["GET"]),

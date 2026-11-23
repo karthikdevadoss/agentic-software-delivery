@@ -244,6 +244,17 @@ jobs:
           EVENT_LEDGER_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ledger_ci
         run: python -m unittest -v test_knowledge_candidates test_claude_code_hook test_workflow_checkpointer
 
+  k8s-manifests:
+    name: Kubernetes manifests (kubeconform, static validation only -- no cluster, no deploy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install kubeconform
+        run: |
+          curl -fsSL https://github.com/yannh/kubeconform/releases/download/v0.8.0/kubeconform-linux-amd64.tar.gz | tar xz kubeconform
+      - name: Validate infra/k8s
+        run: ./kubeconform -strict -summary -ignore-filename-pattern 'kustomization.yaml|kind-config.yaml' infra/k8s
+
   agentic-platform-frontend:
     name: Agentic platform frontend (Node)
     runs-on: ubuntu-latest

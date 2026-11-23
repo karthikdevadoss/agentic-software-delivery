@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: asd-platform
+  namespace: asd
+  labels: {app: asd-platform}
+spec:
+  type: ClusterIP
+  selector: {app: asd-platform}
+  ports:
+    - {name: http, port: 80, targetPort: http}
