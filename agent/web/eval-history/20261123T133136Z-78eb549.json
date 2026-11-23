@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-23T13:30:57Z",
-  "commit_sha": "b19c9e15569d20edcade3acdffa2fb5189eabcbb",
-  "working_tree_dirty": false,
+  "generated_at": "2026-11-23T13:31:36Z",
+  "commit_sha": "78eb549d7b70bbc6524443edc0bce0d1e2199f1f",
+  "working_tree_dirty": true,
   "embedding_model": "local:BAAI/bge-small-en-v1.5",
   "overall_passed": true,
-  "reproducibility_hash": "91fb439656b3c8b863c0fd5a2eb0f7036bf1c192e01d2d66534245d9c96ea417",
+  "reproducibility_hash": "93e950846dd275b27b036bf2bc8481c3136715b4380dcfe709fb69c7fb9ca0f3",
   "source": "publish_eval_results.py",
   "suites": [
     {
@@ -16,8 +16,8 @@
       "comparator": ">=",
       "passed": true,
       "dataset_hash": "3193e6b70c35178f79a4cbb4a2adeb47055ad43e32f9401e526485da8ec9e058",
-      "commit_sha": "b19c9e15569d20edcade3acdffa2fb5189eabcbb",
-      "run_at": "2026-11-23T13:30:57Z",
+      "commit_sha": "78eb549d7b70bbc6524443edc0bce0d1e2199f1f",
+      "run_at": "2026-11-23T13:31:36Z",
       "cases": 12,
       "metrics": {
         "recall_at_3": 0.833,
@@ -32,8 +32,8 @@
       "comparator": ">=",
       "passed": true,
       "dataset_hash": "8a4cf82bcfff0b4a99f9de61c094d4be613fb141037da11d1476f8812d4b39c5",
-      "commit_sha": "b19c9e15569d20edcade3acdffa2fb5189eabcbb",
-      "run_at": "2026-11-23T13:30:57Z",
+      "commit_sha": "78eb549d7b70bbc6524443edc0bce0d1e2199f1f",
+      "run_at": "2026-11-23T13:31:36Z",
       "cases": 14,
       "metrics": {
         "routing_accuracy": 1.0
@@ -47,8 +47,8 @@
       "comparator": "==",
       "passed": true,
       "dataset_hash": "8a4cf82bcfff0b4a99f9de61c094d4be613fb141037da11d1476f8812d4b39c5",
-      "commit_sha": "b19c9e15569d20edcade3acdffa2fb5189eabcbb",
-      "run_at": "2026-11-23T13:30:57Z",
+      "commit_sha": "78eb549d7b70bbc6524443edc0bce0d1e2199f1f",
+      "run_at": "2026-11-23T13:31:36Z",
       "cases": 7,
       "metrics": {
         "security_case_accuracy": 1.0
@@ -77,8 +77,8 @@
       "comparator": "==",
       "passed": true,
       "dataset_hash": "e6bfd2ec00af48fbb962e328334afb62f29618c69bb8e93196569e213c60960e",
-      "commit_sha": "b19c9e15569d20edcade3acdffa2fb5189eabcbb",
-      "run_at": "2026-11-23T13:30:57Z",
+      "commit_sha": "78eb549d7b70bbc6524443edc0bce0d1e2199f1f",
+      "run_at": "2026-11-23T13:31:36Z",
       "cases": 11,
       "metrics": {
         "permission_pass_rate": 1.0
@@ -92,8 +92,8 @@
       "comparator": ">=",
       "passed": true,
       "dataset_hash": "db5996fc86b48fe4a7a860029e562731163880a2950c9c6186ae9b608ef77af6",
-      "commit_sha": "b19c9e15569d20edcade3acdffa2fb5189eabcbb",
-      "run_at": "2026-11-23T13:30:57Z",
+      "commit_sha": "78eb549d7b70bbc6524443edc0bce0d1e2199f1f",
+      "run_at": "2026-11-23T13:31:36Z",
       "cases": 12,
       "metrics": {
         "self_eval_catch_rate": 1.0,
