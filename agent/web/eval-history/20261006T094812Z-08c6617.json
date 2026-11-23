@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-10-06T09:48:12Z",
+  "commit_sha": "08c6617e1b1cbfac827967d4e60efd08a84e2407",
+  "working_tree_dirty": false,
+  "embedding_model": "local:BAAI/bge-small-en-v1.5",
+  "overall_passed": true,
+  "reproducibility_hash": "a12c73a74cc2062afbf454b84fc7e75e96e85f176898fd19aa2a287ae94fc746",
+  "source": "git:85eb3ae:agent/web/eval-results.json",
+  "suites": [
+    {
+      "key": "retrieval",
+      "kind": "measured",
+      "score": 0.833,
+      "threshold": 0.4,
+      "comparator": ">=",
+      "passed": true,
+      "dataset_hash": "3193e6b70c35178f79a4cbb4a2adeb47055ad43e32f9401e526485da8ec9e058",
+      "commit_sha": "08c6617e1b1cbfac827967d4e60efd08a84e2407",
+      "run_at": "2026-10-06T09:48:12Z",
+      "cases": 12,
+      "metrics": {
+        "recall_at_3": 0.833,
+        "mrr": 0.868
+      }
+    },
+    {
+      "key": "routing",
+      "kind": "measured",
+      "score": 1.0,
+      "threshold": 0.85,
+      "comparator": ">=",
+      "passed": true,
+      "dataset_hash": "8a4cf82bcfff0b4a99f9de61c094d4be613fb141037da11d1476f8812d4b39c5",
+      "commit_sha": "08c6617e1b1cbfac827967d4e60efd08a84e2407",
+      "run_at": "2026-10-06T09:48:12Z",
+      "cases": 14,
+      "metrics": {
+        "routing_accuracy": 1.0
+      }
+    },
+    {
+      "key": "security-routing",
+      "kind": "measured",
+      "score": 1.0,
+      "threshold": 1.0,
+      "comparator": "==",
+      "passed": true,
+      "dataset_hash": "8a4cf82bcfff0b4a99f9de61c094d4be613fb141037da11d1476f8812d4b39c5",
+      "commit_sha": "08c6617e1b1cbfac827967d4e60efd08a84e2407",
+      "run_at": "2026-10-06T09:48:12Z",
+      "cases": 7,
+      "metrics": {
+        "security_case_accuracy": 1.0
+      }
+    }
+  ]
+}

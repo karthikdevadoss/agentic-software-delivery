@@ -24,7 +24,7 @@ CI = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
 
 
 def _eval_step():
-    m = re.search(r"- name: RAG/MCP retrieval \+ routing evals.*?(?=\n      - |\n  \S|\Z)", CI, re.S)
+    m = re.search(r"- name: RAG/MCP retrieval \+ routing[^\n]*evals.*?(?=\n      - |\n  \S|\Z)", CI, re.S)
     assert m, "eval step not found in ci.yml"
     return m.group(0)
 

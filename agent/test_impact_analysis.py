@@ -157,6 +157,12 @@ FRONTEND_PATH_TO_SPECS = {
     "agent/web/workbench.html": ["e2e/workbench-catalogue.spec.js", _UI_STANDARDS],
     "agent/web/workbench.js": ["e2e/workbench-catalogue.spec.js"],
     "agent/web/workbench.css": ["e2e/workbench-catalogue.spec.js", _UI_STANDARDS],
+    # The /eval dashboard: page files plus the published data it renders.
+    "agent/web/eval.html": ["e2e/eval.spec.js", _UI_STANDARDS],
+    "agent/web/eval.js": ["e2e/eval.spec.js"],
+    "agent/web/eval.css": ["e2e/eval.spec.js"],
+    "agent/web/eval-results.json": ["e2e/eval.spec.js"],
+    "agent/web/eval-history/index.json": ["e2e/eval.spec.js"],
     "agent/web/usage.html": ["e2e/usage.spec.js", _UI_STANDARDS],
     "agent/web/usage.js": ["e2e/usage.spec.js", _UI_STANDARDS],
     # Automation Sprint 3: the /recruiters page (not in the nav). Its data file
