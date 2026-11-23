@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-06T10:07:23Z",
-  "commit_sha": "674958abf3ff8437f7a5b874446fd4377b6a9d41",
+  "generated_at": "2026-11-23T13:18:21Z",
+  "commit_sha": "61db81d0a681304e01bf269a1b85287bf07ea269",
   "working_tree_dirty": false,
   "embedding_model": "local:BAAI/bge-small-en-v1.5",
   "overall_passed": true,
   "eval_inputs": {
     "files": {
-      "agent/eval_runner.py": "7fc32cc28d1f761ef3a65b20cd5bfbe7de46ffba059c754432e4f12c0c75453d",
+      "agent/eval_runner.py": "7400a92847b62e2dfdb3043c75735dc226e15ee9c6c73b5c47914ac5a3caebaa",
       "agent/evals/retrieval_dataset.json": "3193e6b70c35178f79a4cbb4a2adeb47055ad43e32f9401e526485da8ec9e058",
       "agent/evals/routing_dataset.json": "8a4cf82bcfff0b4a99f9de61c094d4be613fb141037da11d1476f8812d4b39c5",
       "agent/evals/agent_decision_dataset.json": "27c22fde174720d01dedbc2d6bb4ed33b3a7f82ca424672a81ab259355e1fbb1",
