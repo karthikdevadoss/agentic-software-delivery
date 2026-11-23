@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: asd-platform-config
+  namespace: asd
+data:
+  # web_server.py binds 0.0.0.0 only when PORT is set, so PORT must be set here.
+  PORT: "8420"

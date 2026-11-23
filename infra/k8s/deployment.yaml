@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: asd-platform
+  namespace: asd
+  labels: {app: asd-platform}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: asd-platform}
+  template:
+    metadata:
+      labels: {app: asd-platform}
+    spec:
+      containers:
+        - name: platform
+          # Built from the repo-root Dockerfile (the same image as Railway).
+          # Locally: docker build -t asd-platform:local . && kind load docker-image asd-platform:local --name asd
+          image: asd-platform:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - {name: http, containerPort: 8420}
+          envFrom:
+            - configMapRef: {name: asd-platform-config}
+          env:
+            - name: ANTHROPIC_API_KEY
+              valueFrom: {secretKeyRef: {name: asd-platform-secrets, key: ANTHROPIC_API_KEY, optional: true}}
+            - name: OWNER_API_TOKEN
+              valueFrom: {secretKeyRef: {name: asd-platform-secrets, key: OWNER_API_TOKEN, optional: true}}
+            - name: EVENT_LEDGER_DATABASE_URL
+              valueFrom: {secretKeyRef: {name: asd-platform-secrets, key: EVENT_LEDGER_DATABASE_URL, optional: true}}
+          startupProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 5
+            failureThreshold: 30
+          livenessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          readinessProbe:
+            httpGet: {path: /readyz, port: http}
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          resources:
+            requests: {cpu: 100m, memory: 512Mi}
+            limits: {memory: 1Gi}

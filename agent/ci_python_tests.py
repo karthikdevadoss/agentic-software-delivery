@@ -49,6 +49,7 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 HERMETIC_MODULES = [
     "test_acceptance_contract",
+    "test_health_endpoints",          # /healthz + /readyz k8s probes: no DB, no network
     "test_durable_workflow",          # BL-093/094: MemorySaver + a local git repo, no network
     "test_jd_match",                  # BL-097: injected model + injected embedder, no network
     "test_agent_decision_eval_runner",
