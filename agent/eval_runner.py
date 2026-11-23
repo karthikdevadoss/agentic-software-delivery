@@ -193,6 +193,14 @@ SELF_EVAL_THRESHOLDS = {"catch_rate": 0.85, "good_pass_rate": 0.85}
 # run_permission_eval's leaks_or_failures == 0), expressed as a rate for the dashboard.
 PERMISSION_THRESHOLDS = {"permission_pass_rate": 1.0}
 
+# Every published metric key -> its gating threshold (what the dashboard shows).
+# THRESHOLDS itself is unchanged; the integration suites are merged in by metric key.
+ALL_METRIC_THRESHOLDS = {
+    **THRESHOLDS, **PERMISSION_THRESHOLDS,
+    "self_eval_catch_rate": SELF_EVAL_THRESHOLDS["catch_rate"],
+    "self_eval_good_pass_rate": SELF_EVAL_THRESHOLDS["good_pass_rate"],
+}
+
 
 def run_self_eval() -> dict:
     """Replays committed, hand-labelled FIXTURES through the deterministic rubric

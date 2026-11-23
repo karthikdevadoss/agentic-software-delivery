@@ -55,7 +55,7 @@ class BuildEvalResultsTestCase(unittest.TestCase):
         keys = [m["key"] for m in out["metrics"]]
         self.assertEqual(keys, ["recall_at_3", "mrr", "routing_accuracy", "security_case_accuracy"])
         for m in out["metrics"]:
-            self.assertEqual(m["threshold"], eval_runner.THRESHOLDS[m["key"]])
+            self.assertEqual(m["threshold"], eval_runner.ALL_METRIC_THRESHOLDS[m["key"]])
             self.assertTrue(m["passed"])
         self.assertEqual(out["informational"]["recall_at_5"], 0.917)
         self.assertEqual(out["retrieval_cases"][1]["reciprocal_rank"], 0.167)
@@ -488,7 +488,7 @@ class PublishedArtifactTestCase(unittest.TestCase):
 
     def test_published_thresholds_match_eval_runner(self):
         for m in self.data["metrics"]:
-            self.assertEqual(m["threshold"], eval_runner.THRESHOLDS[m["key"]])
+            self.assertEqual(m["threshold"], eval_runner.ALL_METRIC_THRESHOLDS[m["key"]])
 
     def test_published_verdicts_are_internally_consistent(self):
         for m in self.data["metrics"]:
