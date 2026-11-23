@@ -170,7 +170,7 @@ jobs:
         run: python ci_python_tests.py
       - name: RAG/MCP retrieval + routing + agent-decision evals (must meet recorded thresholds)
         working-directory: agent
-        run: python eval_runner.py all
+        run: python eval_runner.py all   # includes Eval 3 self-eval (replay, no API key)
       # ADDITIVE ANNOTATION ONLY (docs/TESTING_ARCHITECTURE_V1.md's own
       # stated plan, tracked in docs/ACTION_QUEUE.json's TESTING-ARCH-V1-GAPS
       # item 3: wire verify_change.py in as an informational step first,

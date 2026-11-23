@@ -14,7 +14,12 @@ Run:
     python agent/eval_runner.py security-routing -> the zero-tolerance subset of routing
     python agent/eval_runner.py agent-decision   -> Eval 3 (agent decisions, REPLAYED
                                                     from the committed recorded results)
+    python agent/eval_runner.py self-eval   -> agent self-evaluation catch rate (replay of
+                                               committed fixtures, deterministic rubric checker,
+                                               NO model / API key needed)
     python agent/eval_runner.py all         -> every suite, plus the combined report
+                                               (--skip-retrieval-if-no-index: report retrieval
+                                               as SKIPPED/UNVERIFIED when no RAG index is built)
 
 Agent-decision is first-class here but is never re-run by this module: a
 real run makes billed model API calls (agent/agent_decision_eval_runner.py,
@@ -32,6 +37,7 @@ from pathlib import Path
 import backend_rag_index
 import permission_retrieval
 from backend_planning import classify_backend_routing
+import self_eval
 
 EVALS_DIR = Path(__file__).resolve().parent / "evals"
 EVAL_DIR_RESULTS = EVALS_DIR / "agent_decision_results.json"
@@ -180,6 +186,53 @@ THRESHOLDS = {
     "agent_decision_pass_rate": 1.0,
 }
 
+# Eval 3 thresholds are kept separate from THRESHOLDS on purpose: THRESHOLDS is
+# hashed into published eval results (publish_eval_results.py).
+SELF_EVAL_THRESHOLDS = {"catch_rate": 0.85, "good_pass_rate": 0.85}
+
+
+def run_self_eval() -> dict:
+    """Replays committed, hand-labelled FIXTURES through the deterministic rubric
+    checker (self_eval.deterministic_scorer). No model call, no API key.
+    catch_rate     = labelled-FAIL cases the step failed (known-miss cases excluded, reported apart)
+    good_pass_rate = labelled-PASS cases the step passed (false rejects hurt this)"""
+    dataset = _load_dataset("self_eval_dataset.json")
+    per_case = []
+    for case in dataset["cases"]:
+        ev = self_eval.self_evaluate(case["question"], case["evidence"], case["output"])
+        actual = "PASS" if ev["passed"] else "FAIL"
+        per_case.append({"id": case["id"], "kind": case["kind"], "expected": case["expected_verdict"],
+                         "actual": actual, "correct": actual == case["expected_verdict"],
+                         "overall": ev["overall"], "hard_failed": ev["hard_failed"], "reason": ev["reason"]})
+    bad = [c for c in per_case if c["expected"] == "FAIL" and c["kind"] != "semantic_unfaithful_known_miss"]
+    known = [c for c in per_case if c["kind"] == "semantic_unfaithful_known_miss"]
+    good = [c for c in per_case if c["expected"] == "PASS"]
+    rate = lambda xs: round(sum(c["correct"] for c in xs) / len(xs), 3) if xs else None
+    return {"summary": {"cases": len(per_case), "bad_cases": len(bad), "good_cases": len(good),
+                        "catch_rate": rate(bad), "good_pass_rate": rate(good),
+                        "known_miss_cases": len(known),
+                        "known_miss_caught": sum(c["correct"] for c in known),
+                        "scorer": "deterministic_stand_in (fixtures; not a model)"},
+            "per_case": per_case}
+
+
+def self_eval_passed(res: dict) -> bool:
+    s = res["summary"]
+    return (s["catch_rate"] is not None and s["good_pass_rate"] is not None
+            and s["catch_rate"] >= SELF_EVAL_THRESHOLDS["catch_rate"]
+            and s["good_pass_rate"] >= SELF_EVAL_THRESHOLDS["good_pass_rate"])
+
+
+def _print_self_eval(res: dict) -> bool:
+    print("\n=== EVAL 3: AGENT SELF-EVALUATION (replay, deterministic stand-in) ===")
+    print(json.dumps(res["summary"], indent=2))
+    for c in res["per_case"]:
+        if not c["correct"]:
+            print(f"  [MISS] {c['id']} ({c['kind']}): expected={c['expected']} actual={c['actual']} {c['reason']}")
+    ok = self_eval_passed(res)
+    print(f"=== SELF-EVAL THRESHOLDS {'PASSED' if ok else 'NOT MET'} === {SELF_EVAL_THRESHOLDS}")
+    return ok
+
 
 def _print_report(retrieval: dict, routing: dict, agent_decision: dict = None,
                   permission: dict | None = None) -> bool:
@@ -226,7 +279,9 @@ def _print_report(retrieval: dict, routing: dict, agent_decision: dict = None,
 
 
 if __name__ == "__main__":
-    which = sys.argv[1] if len(sys.argv) > 1 else "all"
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    which = args[0] if args else "all"
+    skip_ok = "--skip-retrieval-if-no-index" in sys.argv
     if which == "retrieval":
         print(json.dumps(run_retrieval_eval(), indent=2))
     elif which == "permission":
@@ -247,9 +302,30 @@ if __name__ == "__main__":
         print(json.dumps(a, indent=2))
         rate = a["summary"]["agent_decision_pass_rate"]
         sys.exit(0 if rate is not None and rate >= THRESHOLDS["agent_decision_pass_rate"] else 1)
+    elif which == "self-eval":
+        sys.exit(0 if _print_self_eval(run_self_eval()) else 1)
     elif which == "all":
-        ok = _print_report(run_retrieval_eval(), run_routing_eval(), run_agent_decision_eval(),
+        try:
+            retrieval = run_retrieval_eval()
+        except RuntimeError as e:
+            if not skip_ok:
+                raise
+            print(f"=== EVAL 1: RETRIEVAL SKIPPED (UNVERIFIED, not passed): {e}")
+            routing = run_routing_eval()
+            print("\n=== EVAL 2: TOOL ROUTING ===")
+            print(json.dumps(routing["summary"], indent=2))
+            ok = routing["summary"]["routing_accuracy"] >= THRESHOLDS["routing_accuracy"] \
+                and routing["summary"]["security_case_accuracy"] == THRESHOLDS["security_case_accuracy"]
+            perm = run_permission_eval()
+            print("\n=== PERMISSION LEAKS ===")
+            print(json.dumps(perm["summary"], indent=2))
+            ok = ok and perm["summary"]["leaks_or_failures"] == 0
+            ok = _print_self_eval(run_self_eval()) and ok
+            print("RETRIEVAL NOT VERIFIED in this run; exit code reflects the other suites only.")
+            sys.exit(0 if ok else 1)
+        ok = _print_report(retrieval, run_routing_eval(), run_agent_decision_eval(),
                            run_permission_eval())
+        ok = _print_self_eval(run_self_eval()) and ok
         sys.exit(0 if ok else 1)
     else:
         print(f"unknown suite {which!r}; use retrieval|routing|security-routing|agent-decision|permission|all", file=sys.stderr)

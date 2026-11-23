@@ -71,6 +71,7 @@ HERMETIC_MODULES = [
     "test_dev_check",
     "test_estimation",
     "test_eval_runner",
+    "test_self_eval",                 # agent self-eval rubric + replay suite; fixtures only, no model/network
     "test_publish_eval_results",      # synthetic eval output only, no index/model/network
     "test_eval_results_fresh",        # hashes eval inputs on disk vs eval-results.json, no network
     "test_publish_triage_results",    # synthetic inputs + hashes vs triage-evidence.json; no Java/network
