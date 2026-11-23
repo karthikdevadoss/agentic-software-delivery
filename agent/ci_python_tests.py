@@ -97,6 +97,7 @@ HERMETIC_MODULES = [
     "test_reasoning_gateway_enforcement",
     "test_gateway_budget",            # durable caps, restart, rate limit, LiteLLM routing; hermetic
     "test_tracing",
+    "test_pydantic_ai_gateway",   # item 8: fake model only; typed output + gateway routing
     "test_risk_policy",
     # Promoted out of PENDING_OWNER_DECISION 2026-09-25 after a real content
     # re-verification (capabilities resolve, evidence paths exist, 8/9 URLs
