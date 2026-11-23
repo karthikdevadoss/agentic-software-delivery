@@ -42,9 +42,12 @@ Non-negotiable rules enforced here (Phase 3 of the directive):
     structured, honest denial, not a crash or a silent fallback.
 """
 
+import json
 import os
 import time
 
+import gateway_budget
+import litellm_route
 import pricing_config
 
 # The 6 categories the directive names as POSSIBLE candidates for real
@@ -89,15 +92,39 @@ def _pre_flight(purpose, api_key, create_fn):
         return "LLM_MODE=DISABLED -- zero-LLM mode active, no network call made", None, False
     real_client_call = create_fn is None
     if create_fn is None:
-        api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
-        if not api_key:
-            return "ANTHROPIC_API_KEY not set -- cannot run a live model call", None, False
-        from anthropic import Anthropic
-        create_fn = Anthropic(api_key=api_key).messages.create
+        if litellm_route.enabled():
+            # Proxy mode (PR 53): the key held here is the proxy's virtual/
+            # master key; the Anthropic key lives in the proxy. There is
+            # deliberately NO fallback to a direct call if this fails.
+            try:
+                from anthropic import Anthropic
+                create_fn = Anthropic(**litellm_route.client_settings(api_key)).messages.create
+            except litellm_route.LiteLLMConfigError as exc:
+                return f"LiteLLM proxy mode misconfigured: {exc}", None, False
+        else:
+            api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
+            if not api_key:
+                return "ANTHROPIC_API_KEY not set -- cannot run a live model call", None, False
+            from anthropic import Anthropic
+            create_fn = Anthropic(api_key=api_key).messages.create
     return None, create_fn, real_client_call
 
 
-def _summarize_and_record(response, model, duration_ms, real_client_call):
+def _reserve_budget(enforce_budget, real_client_call, model, system_prompt, user_text,
+                    max_tokens, run_id):
+    """Durable budget/rate gate, run BEFORE the provider is contacted.
+    Returns (denial_reason | None, reservation_id | None). Shared by call()
+    and converse() so both are refused before they are billed."""
+    if not (enforce_budget is True or (enforce_budget is None and real_client_call)):
+        return None, None
+    verdict = gateway_budget.reserve(
+        "anthropic", model, system_prompt, user_text, max_tokens, run_id=run_id)
+    if not verdict["allowed"]:
+        return f"BUDGET_{verdict['status']}: {verdict['message']}", None
+    return None, verdict["reservation_id"]
+
+
+def _summarize_and_record(response, model, duration_ms, real_client_call, reservation=None):
     usage = getattr(response, "usage", None)
     if usage is None:
         return None
@@ -108,6 +135,8 @@ def _summarize_and_record(response, model, duration_ms, real_client_call):
         input_tokens=usage.input_tokens, output_tokens=usage.output_tokens,
         cache_write_tokens=cache_write or 0, cache_read_tokens=cache_read or 0,
     )
+    if reservation is not None and cost.get("available"):
+        gateway_budget.settle(reservation, cost["total_usd"])
     if real_client_call:
         import metrics
         metrics.record_model_usage(
@@ -122,6 +151,19 @@ def _summarize_and_record(response, model, duration_ms, real_client_call):
     }
 
 
+def _messages_text(messages) -> str:
+    """Characters of a conversation, for the worst-case input estimate only
+    (over-counting is the safe direction for a budget reservation)."""
+    try:
+        return json.dumps(messages, default=lambda o: getattr(o, "__dict__", str(o)))
+    except (TypeError, ValueError):
+        return str(messages)
+
+
+def _tools_text(tools) -> str:
+    return _messages_text(tools) if tools else ""
+
+
 def converse(
     purpose: str,
     system_prompt: str,
@@ -131,6 +173,8 @@ def converse(
     api_key: str | None = None,
     create_fn=None,
     model: str = "claude-sonnet-5",
+    run_id: str | None = None,
+    enforce_budget: bool | None = None,
 ) -> dict:
     """Gateway entry point for caller-owned multi-turn / tool-calling /
     structured-output conversations. Makes exactly ONE request per call and
@@ -144,6 +188,13 @@ def converse(
     denial, create_fn, real_client_call = _pre_flight(purpose, api_key, create_fn)
     if denial:
         return _denied(denial, response=None)
+    # Same durable budget/rate gate as call(): refused BEFORE it is billed.
+    # The estimate is built from the whole conversation (system + messages).
+    denial, reservation = _reserve_budget(
+        enforce_budget, real_client_call, model, system_prompt,
+        _messages_text(messages) + _tools_text(tools), max_tokens, run_id)
+    if denial:
+        return _denied(denial, response=None)
     kwargs = {"model": model, "max_tokens": max_tokens, "system": system_prompt,
               "messages": messages}
     if tools is not None:
@@ -154,7 +205,7 @@ def converse(
     return {
         "response": response, "authority": "ADVISORY", "model_called": True,
         "denial_reason": None, "text": None,
-        "usage": _summarize_and_record(response, model, duration_ms, real_client_call),
+        "usage": _summarize_and_record(response, model, duration_ms, real_client_call, reservation),
     }
 
 
@@ -167,6 +218,8 @@ def call(
     create_fn=None,
     effort: str | None = None,
     model: str = "claude-sonnet-5",
+    run_id: str | None = None,
+    enforce_budget: bool | None = None,
 ) -> dict:
     """The one sanctioned boundary for a single-shot advisory model call.
 
@@ -202,6 +255,10 @@ def call(
     denial, create_fn, real_client_call = _pre_flight(purpose, api_key, create_fn)
     if denial:
         return _denied(denial)
+    denial, reservation = _reserve_budget(
+        enforce_budget, real_client_call, model, system_prompt, user_message, max_tokens, run_id)
+    if denial:
+        return _denied(denial)
 
     kwargs = {}
     if effort is not None:
@@ -215,7 +272,7 @@ def call(
     duration_ms = round((time.monotonic() - call_start) * 1000, 1)
     # AEQ-028: usage is only recorded to metrics for a real client call, never
     # for an injected test double (see _pre_flight / _summarize_and_record).
-    usage_summary = _summarize_and_record(response, model, duration_ms, real_client_call)
+    usage_summary = _summarize_and_record(response, model, duration_ms, real_client_call, reservation)
 
     text = "".join(b.text for b in response.content if getattr(b, "type", None) == "text")
     stripped = text.strip()

@@ -15,13 +15,23 @@ A call is counted when it is reserved, not when it succeeds, because a model
 call that fails half-way can still be billed. Setting the daily maximum to 0
 switches the model steps off entirely.
 
-Honest limits: counters are in process memory, so a restart or a second
-replica starts from zero. The daily cap bounds spend per process per day; it
-is not an accounting system.
+Counters live in the durable SQLite store (agent/budget_store.py, scope
+'triage'), so a restart no longer resets them. Relationship to the gateway
+policy (agent/gateway_budget.py): this is the per-endpoint, per-visitor
+request-count policy; the gateway applies a platform-wide dollar/rate cap to
+the same call afterwards. They use separate scopes and never share a counter.
+
+Honest limits: durable on one host's filesystem only (a replica with its own
+disk, or a host whose disk is replaced on deploy without BUDGET_DB_PATH on a
+persistent volume, starts empty). The daily cap bounds call count; it is not
+an accounting system.
 """
 import os
-import threading
 import time
+
+import budget_store
+
+SCOPE = "triage"
 
 DEFAULT_DAILY_MAX = 40
 DEFAULT_PER_VISITOR_DAILY_MAX = 10
@@ -52,15 +62,12 @@ def limits() -> dict:
     }
 
 
-_lock = threading.Lock()
-_day = None
-_total = 0
-_per_visitor: dict = {}
-_last_at: dict = {}
-
-
 def _today() -> str:
     return time.strftime("%Y-%m-%d", time.gmtime())
+
+
+def _now() -> float:
+    return budget_store.now()
 
 
 def _seconds_until_utc_midnight() -> int:
@@ -68,54 +75,40 @@ def _seconds_until_utc_midnight() -> int:
     return int(86400 - (now % 86400)) + 1
 
 
-def _roll_day_locked() -> None:
-    global _day, _total
-    today = _today()
-    if _day != today:
-        _day, _total = today, 0
-        _per_visitor.clear()
-        _last_at.clear()
-
-
 def check_and_reserve(visitor: str, *, exempt_from_visitor_limits: bool = False) -> dict:
     """Reserve one model call or refuse. Returns
-    {"allowed": True} or {"allowed": False, "status", "message", "retry_after"}."""
-    global _total
+    {"allowed": True} or {"allowed": False, "status", "message", "retry_after"}.
+    The check and the reservation are one atomic transaction."""
     lim = limits()
-    with _lock:
-        _roll_day_locked()
-        if _total >= lim["daily_max"]:
+    day, now = _today(), _now()
+    with budget_store.transaction() as tx:
+        if tx.count(SCOPE, day) >= lim["daily_max"]:
             return {"allowed": False, "status": "DAILY_CAP_REACHED",
                     "message": "The Triage Lab's model steps have reached today's limit. "
                                "The recorded evidence page shows a full run; please try again tomorrow.",
                     "retry_after": _seconds_until_utc_midnight()}
-        if not exempt_from_visitor_limits:
-            now = time.monotonic()
-            last = _last_at.get(visitor)
-            if last is not None and now - last < lim["per_visitor_min_seconds"]:
-                wait = int(lim["per_visitor_min_seconds"] - (now - last)) + 1
-                return {"allowed": False, "status": "COOLDOWN",
-                        "message": f"Please wait {wait}s before running another model step.",
-                        "retry_after": wait}
-            if _per_visitor.get(visitor, 0) >= lim["per_visitor_daily_max"]:
-                return {"allowed": False, "status": "VISITOR_DAILY_CAP_REACHED",
-                        "message": "You have reached today's limit for model steps in the Triage Lab.",
-                        "retry_after": _seconds_until_utc_midnight()}
-            _last_at[visitor] = now
-            _per_visitor[visitor] = _per_visitor.get(visitor, 0) + 1
-        _total += 1
+        if exempt_from_visitor_limits:
+            tx.insert(SCOPE, day, now)          # counted globally, not per visitor
+            return {"allowed": True}
+        last = tx.last_ts(SCOPE, visitor)
+        if last is not None and now - last < lim["per_visitor_min_seconds"]:
+            wait = int(lim["per_visitor_min_seconds"] - (now - last)) + 1
+            return {"allowed": False, "status": "COOLDOWN",
+                    "message": f"Please wait {wait}s before running another model step.",
+                    "retry_after": wait}
+        if tx.count(SCOPE, day, visitor) >= lim["per_visitor_daily_max"]:
+            return {"allowed": False, "status": "VISITOR_DAILY_CAP_REACHED",
+                    "message": "You have reached today's limit for model steps in the Triage Lab.",
+                    "retry_after": _seconds_until_utc_midnight()}
+        tx.insert(SCOPE, day, now, visitor=visitor)
         return {"allowed": True}
 
 
 def status() -> dict:
-    with _lock:
-        _roll_day_locked()
-        return {"day_utc": _day, "calls_today": _total, **limits()}
+    day = _today()
+    with budget_store.transaction() as tx:
+        return {"day_utc": day, "calls_today": tx.count(SCOPE, day), **limits()}
 
 
 def _reset_for_tests() -> None:
-    global _day, _total
-    with _lock:
-        _day, _total = None, 0
-        _per_visitor.clear()
-        _last_at.clear()
+    budget_store.clear_scope(SCOPE)

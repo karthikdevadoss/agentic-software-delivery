@@ -104,3 +104,7 @@ agent/web/applications_pdf/
 agent/testdata/si_production_answers*.json
 docs/audits/SI_AUDIT_2026-09-29.md
 P0_PROMPT.txt
+
+# Durable budget/rate-limit counters (agent/budget_store.py) -- local state, not source
+agent/.budget/
+infra/litellm/.env

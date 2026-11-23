@@ -21,12 +21,15 @@ Two independent limits, because they stop different things:
 Both are checked BEFORE the model call, never after.
 
 HONEST LIMITATIONS, stated rather than discovered later
-  1. State is in-process memory. A container restart resets both counters, so
-     the daily budget is "per container-day", not a hard ledger-backed cap.
-     That is the same tradeoff the existing trainer cooldown makes. It is a
-     large improvement on nothing and it is NOT a guarantee -- a crash-looping
-     container could exceed the budget. The durable version would count
-     against the event ledger; that is a bigger change and is not this.
+  1. State is in the durable SQLite store (agent/budget_store.py, scope 'si'),
+     so a restart does NOT reset the counters (it used to). It is durable on
+     one host's filesystem only: a replica with its own disk, or a host whose
+     disk is replaced on deploy without BUDGET_DB_PATH on a persistent volume,
+     starts empty. check() and record_answer() are separate transactions, so
+     two simultaneous requests can both pass check() and overshoot by the
+     number in flight. The platform-wide dollar/rate cap in the gateway
+     (agent/gateway_budget.py, scope 'gateway') applies to the same model call
+     as an independent backstop; the two never share a counter.
   2. The visitor key is the client IP as the platform reports it. Behind a
      proxy that rewrites it, or for a determined attacker rotating addresses,
      the per-visitor limit degrades. The DAILY BUDGET is the limit that still
@@ -41,8 +44,11 @@ from __future__ import annotations
 
 import hmac
 import os
-import threading
 import time
+
+import budget_store
+
+SCOPE = "si"
 
 # --- the knobs, in one place so they can be changed without reading code ----
 
@@ -95,26 +101,13 @@ def is_operator(headers) -> bool:
     return bool(supplied) and hmac.compare_digest(supplied, expected)
 
 
-# --- state ------------------------------------------------------------------
-_lock = threading.Lock()
-_day: str | None = None
-_answers_today = 0
-_visitor_count: dict[str, int] = {}
-_visitor_last_at: dict[str, float] = {}
-
-
+# --- state: durable, see budget_store.py ------------------------------------
 def _today() -> str:
     return time.strftime("%Y-%m-%d", time.gmtime())
 
 
-def _roll_day_locked() -> None:
-    global _day, _answers_today
-    now = _today()
-    if _day != now:
-        _day = now
-        _answers_today = 0
-        _visitor_count.clear()
-        _visitor_last_at.clear()
+def _now() -> float:
+    return budget_store.now()
 
 
 def check(visitor: str) -> dict:
@@ -125,10 +118,9 @@ def check(visitor: str) -> dict:
     read; it never mentions dollars, budgets or the Owner's account.
     """
     visitor = visitor or "unknown"
-    with _lock:
-        _roll_day_locked()
-
-        if _answers_today >= SI_DAILY_MAX_ANSWERS:
+    day = _today()
+    with budget_store.transaction() as tx:
+        if tx.count(SCOPE, day) >= SI_DAILY_MAX_ANSWERS:
             return {
                 "allowed": False,
                 "status": "DAILY_CAP",
@@ -139,9 +131,9 @@ def check(visitor: str) -> dict:
                     "then, or reach me directly in the meantime."),
             }
 
-        last = _visitor_last_at.get(visitor)
+        last = tx.last_ts(SCOPE, visitor)
         if last is not None:
-            gap = time.monotonic() - last
+            gap = _now() - last
             if gap < SI_PER_VISITOR_MIN_SECONDS:
                 return {
                     "allowed": False,
@@ -152,7 +144,7 @@ def check(visitor: str) -> dict:
                         "the last one."),
                 }
 
-        if _visitor_count.get(visitor, 0) >= SI_PER_VISITOR_DAILY_MAX:
+        if tx.count(SCOPE, day, visitor) >= SI_PER_VISITOR_DAILY_MAX:
             return {
                 "allowed": False,
                 "status": "VISITOR_CAP",
@@ -174,12 +166,8 @@ def record_answer(visitor: str) -> None:
     two private questions would lock a real recruiter out.
     """
     visitor = visitor or "unknown"
-    with _lock:
-        _roll_day_locked()
-        global _answers_today
-        _answers_today += 1
-        _visitor_count[visitor] = _visitor_count.get(visitor, 0) + 1
-        _visitor_last_at[visitor] = time.monotonic()
+    with budget_store.transaction() as tx:
+        tx.insert(SCOPE, _today(), _now(), visitor=visitor)
 
 
 def _seconds_until_utc_midnight() -> int:
@@ -190,23 +178,20 @@ def _seconds_until_utc_midnight() -> int:
 def status() -> dict:
     """For the Owner, not for visitors. Real counts, and the dollar figure
     labelled as the estimate it is."""
-    with _lock:
-        _roll_day_locked()
-        return {
-            "day_utc": _day,
-            "answers_today": _answers_today,
-            "daily_max_answers": SI_DAILY_MAX_ANSWERS,
-            "daily_usd_budget": SI_DAILY_USD_BUDGET,
-            "estimated_spend_today_usd": round(_answers_today * SI_USD_PER_ANSWER, 4),
-            "estimate_basis": "measured average $1.4353/63 real requests 2026-09-29",
-            "distinct_visitors_today": len(_visitor_count),
-        }
+    day = _today()
+    with budget_store.transaction() as tx:
+        answers = tx.count(SCOPE, day)
+        visitors = tx.distinct_visitors(SCOPE, day)
+    return {
+        "day_utc": day,
+        "answers_today": answers,
+        "daily_max_answers": SI_DAILY_MAX_ANSWERS,
+        "daily_usd_budget": SI_DAILY_USD_BUDGET,
+        "estimated_spend_today_usd": round(answers * SI_USD_PER_ANSWER, 4),
+        "estimate_basis": "measured average $1.4353/63 real requests 2026-09-29",
+        "distinct_visitors_today": visitors,
+    }
 
 
 def _reset_for_tests() -> None:
-    global _day, _answers_today
-    with _lock:
-        _day = None
-        _answers_today = 0
-        _visitor_count.clear()
-        _visitor_last_at.clear()
+    budget_store.clear_scope(SCOPE)

@@ -1,0 +1,21 @@
+# Local LiteLLM proxy for reasoning_gateway. NOT deployed anywhere; production
+# (Railway) is unchanged. Run from this directory:
+#
+#   cp .env.example .env      # then fill in the two keys
+#   docker compose up -d
+#   export LITELLM_PROXY_URL=http://127.0.0.1:4000
+#   export LITELLM_API_KEY=<the LITELLM_MASTER_KEY value>
+#
+# Image tag is pinned to a major-stable channel; bump deliberately.
+services:
+  litellm:
+    image: ghcr.io/berriai/litellm:main-stable
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    ports:
+      - "127.0.0.1:4000:4000"      # loopback only: not reachable from the network
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?set ANTHROPIC_API_KEY in .env}
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:?set LITELLM_MASTER_KEY in .env}
+    restart: unless-stopped

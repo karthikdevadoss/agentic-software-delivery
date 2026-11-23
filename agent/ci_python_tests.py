@@ -93,6 +93,7 @@ HERMETIC_MODULES = [
     "test_rag_index",
     "test_reasoning_gateway",
     "test_reasoning_gateway_enforcement",
+    "test_gateway_budget",            # durable caps, restart, rate limit, LiteLLM routing; hermetic
     "test_risk_policy",
     # Promoted out of PENDING_OWNER_DECISION 2026-09-25 after a real content
     # re-verification (capabilities resolve, evidence paths exist, 8/9 URLs
@@ -250,6 +251,12 @@ def main() -> int:
     print("weakened. They still need to run where the real dependency exists.")
     print("=" * 72)
 
+    # Budget counters are durable now (agent/budget_store.py); keep a CI/dev
+    # run from reading or writing the real local budget file.
+    import os
+    import tempfile
+    os.environ.setdefault("BUDGET_DB_PATH", os.path.join(
+        tempfile.mkdtemp(prefix="asd-budget-"), "budget.sqlite3"))
     suite = unittest.defaultTestLoader.loadTestsFromNames(HERMETIC_MODULES)
     result = unittest.TextTestRunner(verbosity=2).run(suite)
 

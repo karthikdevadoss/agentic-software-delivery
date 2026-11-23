@@ -1,0 +1,25 @@
+# LiteLLM proxy config -- LOCAL / PERSONAL use. See docs/LITELLM_GATEWAY.md.
+# Real provider: Anthropic. The key is read from the proxy container's
+# environment; it is never written in this file.
+model_list:
+  # The alias the platform already uses (reasoning_gateway default model).
+  - model_name: claude-sonnet-5
+    litellm_params:
+      model: anthropic/claude-sonnet-5
+      api_key: os.environ/ANTHROPIC_API_KEY
+
+  # Second route, a STUB for routing tests only: LiteLLM returns mock_response
+  # without contacting any provider, so it needs no key and costs nothing.
+  # It is not a production provider and is not wired into the platform.
+  - model_name: stub-echo
+    litellm_params:
+      model: openai/stub-echo
+      mock_response: "stub-echo: routed through the LiteLLM proxy"
+
+general_settings:
+  # Clients (reasoning_gateway via LITELLM_API_KEY) must present this key.
+  master_key: os.environ/LITELLM_MASTER_KEY
+
+litellm_settings:
+  drop_params: true
+  num_retries: 0        # the platform's own budget gate counts one attempt as one reservation
