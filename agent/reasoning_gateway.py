@@ -40,6 +40,7 @@ import os
 import time
 
 import pricing_config
+import tracing
 
 # The 6 categories the directive names as POSSIBLE candidates for real
 # semantic/generative value -- listed, not automatically allowed; every
@@ -68,7 +69,7 @@ def llm_mode_disabled() -> bool:
     return os.environ.get("LLM_MODE", "").strip().upper() == "DISABLED"
 
 
-def call(
+def _call_impl(
     purpose: str,
     system_prompt: str,
     user_message: str,
@@ -213,3 +214,36 @@ def call(
         "text": stripped, "authority": "ADVISORY", "model_called": True, "denial_reason": None,
         "usage": usage_summary,
     }
+
+
+def call(purpose, system_prompt, user_message, max_tokens, api_key=None,
+         create_fn=None, effort=None, model="claude-sonnet-5") -> dict:
+    """Traced wrapper: every call through the gateway -- including denials --
+    is one `gateway.model_call` span. Contract/doc: see _call_impl."""
+    with tracing.span(
+        "gateway.model_call", purpose=str(purpose), model=model,
+        max_tokens=max_tokens, effort=effort,
+    ) as sp:
+        try:
+            result = _call_impl(purpose, system_prompt, user_message, max_tokens,
+                                api_key=api_key, create_fn=create_fn, effort=effort, model=model)
+        except Exception as exc:  # noqa: BLE001 - recorded then re-raised unchanged
+            sp.set_attribute("gateway.outcome", "error")
+            sp.set_attribute("error.type", type(exc).__name__)
+            sp.record_exception(exc)
+            raise
+        usage = result.get("usage")
+        if not result.get("model_called"):
+            sp.set_attribute("gateway.outcome", "denied")
+            sp.set_attribute("gateway.denial_reason", str(result.get("denial_reason"))[:200])
+        else:
+            sp.set_attribute("gateway.outcome", "ok" if result.get("text") else "error")
+            if not result.get("text"):
+                sp.set_attribute("gateway.denial_reason", str(result.get("denial_reason"))[:200])
+        if usage:
+            sp.set_attribute("llm.input_tokens", usage["input_tokens"])
+            sp.set_attribute("llm.output_tokens", usage["output_tokens"])
+            sp.set_attribute("llm.duration_ms", usage["duration_ms"])
+            if usage.get("available") and usage.get("total_usd") is not None:
+                sp.set_attribute("llm.cost_usd", float(usage["total_usd"]))
+        return result

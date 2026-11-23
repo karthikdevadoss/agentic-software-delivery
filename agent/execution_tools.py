@@ -28,6 +28,7 @@ import tools
 import write_tools
 import build_tools
 import metrics
+import tracing
 
 
 def _default_approval_prompt(edit) -> bool:
@@ -70,13 +71,27 @@ def set_approval_prompt(fn) -> None:
     _approval_prompt_fn = fn
 
 
+def traced_approval(prompt_fn, edit) -> bool:
+    """Span `approval.gate` around the human wait + decision. Records the
+    edit id and the path/content binding hash (never any owner token)."""
+    binding = write_tools._binding_hash(edit.path, edit.new_content) if getattr(edit, "new_content", None) is not None else None
+    with tracing.span("approval.gate", edit_id=getattr(edit, "id", None), binding_hash=binding) as sp:
+        try:
+            approved = bool(prompt_fn(edit))
+        except Exception as exc:  # noqa: BLE001
+            sp.set_attribute("approval.decision", "timeout" if isinstance(exc, TimeoutError) else "error")
+            raise
+        sp.set_attribute("approval.decision", "approved" if approved else "rejected")
+        return approved
+
+
 def _tool_propose_source_change(path, new_content):
     try:
         edit = write_tools.propose_edit(path, new_content)
     except write_tools.WriteToolError as exc:
         return str(exc), True
 
-    approved = _approval_prompt_fn(edit)
+    approved = traced_approval(_approval_prompt_fn, edit)
     if approved:
         write_tools.approve_edit(edit.id)
         metrics.record_tool_call(
