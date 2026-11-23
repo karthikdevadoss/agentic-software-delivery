@@ -168,7 +168,7 @@ jobs:
       - name: Python hermetic test suite (BLOCKING -- asserts tests really ran)
         working-directory: agent
         run: python ci_python_tests.py
-      - name: RAG/MCP retrieval + routing evals (must meet recorded thresholds)
+      - name: RAG/MCP retrieval + routing + agent-decision evals (must meet recorded thresholds)
         working-directory: agent
         run: python eval_runner.py all
       # ADDITIVE ANNOTATION ONLY (docs/TESTING_ARCHITECTURE_V1.md's own

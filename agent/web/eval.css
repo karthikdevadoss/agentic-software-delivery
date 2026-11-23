@@ -55,3 +55,19 @@
 .ace-ev { border-top: 1px solid var(--border); padding: 0.75rem 0; }
 .ace-ev a { color: var(--accent); overflow-wrap: anywhere; }
 .ace-excerpt { margin: 0.5rem 0 0; padding: 0.6rem 0.75rem; background: #0d0f14; border: 1px solid var(--border); border-radius: 6px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; max-height: 180px; overflow-y: auto; }
+
+/* Eval dashboard (suite cards, history, trend lines, reproduce box) */
+.suite-card .m-extra { color: var(--muted); font-size: 0.85rem; margin: 0.25rem 0; }
+.suite-meta { display: grid; grid-template-columns: auto 1fr; gap: 0.2rem 0.75rem; margin: 0.8rem 0 0; font-size: 0.85rem; }
+.suite-meta dt { color: var(--muted); }
+.suite-meta dd { margin: 0; overflow-wrap: anywhere; }
+.trend-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.9rem; margin-bottom: 0.9rem; }
+.trend-box { border: 1px solid var(--border); border-radius: 10px; padding: 0.8rem 1rem; }
+.trend { width: 100%; height: auto; display: block; margin: 0.4rem 0; }
+.trend-line { stroke: var(--accent); stroke-width: 2; }
+.trend-thr { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 4 3; }
+.trend-dot { fill: var(--accent); }
+.trend-dot.bad { fill: var(--red); }
+.eval-history .cap-table { display: block; overflow-x: auto; table-layout: auto; white-space: nowrap; }
+.repro-cmd { margin: 0 0 0.8rem; padding: 0.7rem 0.9rem; background: #0d0f14; border: 1px solid var(--border); border-radius: 6px; overflow-x: auto; font-size: 13px; }
+#reproduce code { overflow-wrap: anywhere; word-break: break-all; }

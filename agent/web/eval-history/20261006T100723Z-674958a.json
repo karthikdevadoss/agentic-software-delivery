@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-10-06T10:07:23Z",
+  "commit_sha": "674958abf3ff8437f7a5b874446fd4377b6a9d41",
+  "working_tree_dirty": false,
+  "embedding_model": "local:BAAI/bge-small-en-v1.5",
+  "overall_passed": true,
+  "reproducibility_hash": "bf70489ef4d5ffdd329879bf82d4fde1686a9a7ddd4cda8347ce1947affdf656",
+  "source": "git:b69c83d:agent/web/eval-results.json",
+  "suites": [
+    {
+      "key": "retrieval",
+      "kind": "measured",
+      "score": 0.833,
+      "threshold": 0.4,
+      "comparator": ">=",
+      "passed": true,
+      "dataset_hash": "3193e6b70c35178f79a4cbb4a2adeb47055ad43e32f9401e526485da8ec9e058",
+      "commit_sha": "674958abf3ff8437f7a5b874446fd4377b6a9d41",
+      "run_at": "2026-10-06T10:07:23Z",
+      "cases": 12,
+      "metrics": {
+        "recall_at_3": 0.833,
+        "mrr": 0.868
+      }
+    },
+    {
+      "key": "routing",
+      "kind": "measured",
+      "score": 1.0,
+      "threshold": 0.85,
+      "comparator": ">=",
+      "passed": true,
+      "dataset_hash": "8a4cf82bcfff0b4a99f9de61c094d4be613fb141037da11d1476f8812d4b39c5",
+      "commit_sha": "674958abf3ff8437f7a5b874446fd4377b6a9d41",
+      "run_at": "2026-10-06T10:07:23Z",
+      "cases": 14,
+      "metrics": {
+        "routing_accuracy": 1.0
+      }
+    },
+    {
+      "key": "security-routing",
+      "kind": "measured",
+      "score": 1.0,
+      "threshold": 1.0,
+      "comparator": "==",
+      "passed": true,
+      "dataset_hash": "8a4cf82bcfff0b4a99f9de61c094d4be613fb141037da11d1476f8812d4b39c5",
+      "commit_sha": "674958abf3ff8437f7a5b874446fd4377b6a9d41",
+      "run_at": "2026-10-06T10:07:23Z",
+      "cases": 7,
+      "metrics": {
+        "security_case_accuracy": 1.0
+      }
+    },
+    {
+      "key": "agent-decision",
+      "kind": "recorded",
+      "score": 1.0,
+      "threshold": null,
+      "comparator": ">=",
+      "passed": null,
+      "dataset_hash": "27c22fde174720d01dedbc2d6bb4ed33b3a7f82ca424672a81ab259355e1fbb1",
+      "commit_sha": "983161fa7d684c496c1501b0dc14a1a8062a281a",
+      "run_at": "2026-09-16T09:46:39.181896+00:00",
+      "cases": 6,
+      "metrics": {
+        "agent_decision_pass_rate": 1.0
+      }
+    }
+  ]
+}

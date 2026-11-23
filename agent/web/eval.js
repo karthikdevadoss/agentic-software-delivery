@@ -41,18 +41,48 @@ function renderVerdict(d) {
   </section>`;
 }
 
+function shortSha(x) {
+  return x ? `<code>${esc(String(x).slice(0, 7))}</code>` : "n/a";
+}
+
+function shortHash(x) {
+  return x ? `<code title="${esc(x)}">${esc(String(x).slice(0, 12))}</code>` : "n/a";
+}
+
+function runTime(iso) {
+  return iso ? esc(shortDate(iso)) : "n/a";
+}
+
+// Pass/fail badge that never turns "not recorded" into a pass or a fail.
+function suiteBadge(passed) {
+  return passed === true || passed === false ? passBadge(passed) : '<span class="badge st-gap">NOT GATED</span>';
+}
+
+function renderSuiteCard(s) {
+  const failed = s.passed === false;
+  const extra = (s.metrics || []).slice(1).map((m) =>
+    `<div class="m-extra" data-metric="${esc(m.key)}">${esc(m.key)}: ${fmt(m.score)} (threshold ${comparatorText(m.comparator)} ${fmt(m.threshold)}) ${suiteBadge(m.passed)}</div>`).join("");
+  return `<div class="metric-card suite-card ${failed ? "failed" : ""}" data-suite="${esc(s.key)}">
+      <div class="m-label">${esc(s.label)} <span class="badge st-gap">${s.kind === "recorded" ? "RECORDED" : "MEASURED"}</span></div>
+      <div class="m-score" data-field="score">${fmt(s.score)}</div>
+      <div class="bar"><div class="fill" style="width:${pct(s.score)}%"></div><div class="tick" style="left:${pct(s.threshold)}%" title="threshold"></div></div>
+      <div class="m-threshold" data-field="threshold">Threshold: ${comparatorText(s.comparator)} ${fmt(s.threshold)} &nbsp; <span data-field="status">${suiteBadge(s.passed)}</span></div>
+      ${extra}
+      <dl class="suite-meta">
+        <dt>Cases</dt><dd>${esc(s.cases == null ? "n/a" : s.cases)}</dd>
+        <dt>Dataset hash</dt><dd data-field="dataset-hash">${shortHash(s.dataset_hash)}</dd>
+        <dt>Commit</dt><dd data-field="commit">${shortSha(s.commit_sha)}</dd>
+        <dt>Run time</dt><dd data-field="run-time">${runTime(s.run_at)}</dd>
+      </dl>
+    </div>`;
+}
+
 function renderCards(d) {
-  const cards = d.metrics.map((m) => `
-    <div class="metric-card ${m.passed ? "" : "failed"}" data-metric="${esc(m.key)}">
-      <div class="m-label">${esc(m.label)}</div>
-      <div class="m-score">${fmt(m.score)}</div>
-      <div class="bar"><div class="fill" style="width:${pct(m.score)}%"></div><div class="tick" style="left:${pct(m.threshold)}%" title="threshold"></div></div>
-      <div class="m-threshold">Threshold: ${comparatorText(m.comparator)} ${fmt(m.threshold)} &nbsp; ${passBadge(m.passed)}</div>
-    </div>`).join("");
+  const suites = d.suites || [];
   const r5 = d.informational && d.informational.recall_at_5;
-  return `<section class="panel"><h2>Score vs threshold</h2>
-    <div class="metric-grid">${cards}</div>
-    <p class="hint" style="margin-top:0.9rem">White tick = threshold. Recall@5 (not gated): ${fmt(r5)}.</p>
+  return `<section class="panel" id="suites"><h2>Suites: score vs threshold</h2>
+    <div class="metric-grid">${suites.map(renderSuiteCard).join("")}</div>
+    <p class="hint" style="margin-top:0.9rem">White tick = threshold. Recall@5 (not gated): ${fmt(r5)}. <strong>Measured</strong> = this publish ran the suite; <strong>recorded</strong> = replayed from the committed results file (agent-decision needs a billed model API key to re-record, so it is never re-run here). Security routing is zero tolerance: one miss fails the build. Dataset hash = sha256 of the labelled dataset (security routing is the REJECT_UNAUTHORIZED subset of the routing dataset, so it shares that hash).</p>
   </section>`;
 }
 
@@ -122,14 +152,77 @@ function renderAgentDecision(d) {
   </section>`;
 }
 
-function renderEval(d) {
-  evalMain.innerHTML = renderVerdict(d) + renderCards(d) + renderExplain(d) + renderCiStatus(d) + renderCases(d) + renderAgentDecision(d);
+
+// ---- history: table + trend lines, from eval-history/index.json ----------
+// Every row/point is a committed record in eval-history/; nothing is
+// interpolated, smoothed or filled in. A suite absent from a run is a gap.
+const SUITE_ORDER = ["retrieval", "routing", "security-routing", "agent-decision"];
+const SUITE_LABEL = { "retrieval": "Retrieval Recall@3", "routing": "Routing accuracy", "security-routing": "Security routing", "agent-decision": "Agent decision pass rate" };
+
+function suiteOf(entry, key) {
+  return (entry.suites || []).find((s) => s.key === key);
+}
+
+function trendSvg(entries, key) {
+  const pts = entries.map((e, i) => ({ i, s: suiteOf(e, key) })).filter((p) => p.s && typeof p.s.score === "number");
+  const W = 260, H = 70, pad = 6;
+  const n = Math.max(entries.length - 1, 1);
+  const x = (i) => pad + (i / n) * (W - 2 * pad);
+  const y = (v) => H - pad - Math.max(0, Math.min(1, v)) * (H - 2 * pad);
+  const line = pts.map((p, k) => `${k ? "L" : "M"}${x(p.i).toFixed(1)},${y(p.s.score).toFixed(1)}`).join(" ");
+  const thr = pts.length && typeof pts[pts.length - 1].s.threshold === "number" ? pts[pts.length - 1].s.threshold : null;
+  const dots = pts.map((p) => `<circle cx="${x(p.i).toFixed(1)}" cy="${y(p.s.score).toFixed(1)}" r="3" class="trend-dot ${p.s.passed === false ? "bad" : ""}"><title>${esc(shortDate(p.s.run_at || entries[p.i].generated_at))}: ${fmt(p.s.score)}</title></circle>`).join("");
+  return `<svg class="trend" data-trend="${esc(key)}" data-points="${pts.length}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(SUITE_LABEL[key] || key)} trend over ${pts.length} recorded runs">
+    ${thr == null ? "" : `<line x1="${pad}" x2="${W - pad}" y1="${y(thr).toFixed(1)}" y2="${y(thr).toFixed(1)}" class="trend-thr"><title>latest threshold ${fmt(thr)}</title></line>`}
+    <path d="${line}" class="trend-line" fill="none"/>${dots}</svg>`;
+}
+
+function renderHistory(index) {
+  const entries = (index && index.entries) || [];
+  if (!entries.length) {
+    return `<section class="panel" id="history"><h2>History</h2><p>No history records were published. Nothing is shown rather than invented.</p></section>`;
+  }
+  const trends = SUITE_ORDER.map((k) => `<div class="trend-box"><div class="m-label">${esc(SUITE_LABEL[k])}</div>${trendSvg(entries, k)}<div class="hint">${entries.filter((e) => suiteOf(e, k)).length} of ${entries.length} runs include this suite; y-axis 0 to 1; dashed = threshold.</div></div>`).join("");
+  const cell = (e, k) => {
+    const s = suiteOf(e, k);
+    if (!s) return "<td>—</td>";
+    return `<td>${fmt(s.score)} ${s.passed === true ? '<span class="badge st-ok">PASS</span>' : s.passed === false ? '<span class="badge st-fail">FAIL</span>' : '<span class="badge st-gap">n/a</span>'}</td>`;
+  };
+  const rows = entries.slice().reverse().map((e) => `<tr data-history-file="${esc(e.file)}">
+      <td>${esc(shortDate(e.generated_at))}</td><td>${shortSha(e.commit_sha)}${e.working_tree_dirty ? " (dirty)" : ""}</td>
+      ${SUITE_ORDER.map((k) => cell(e, k)).join("")}
+      <td>${shortHash(e.reproducibility_hash)}</td>
+      <td><a href="/eval-history/${esc(e.file)}" target="_blank" rel="noopener">${esc(e.file)}</a></td></tr>`).join("");
+  return `<section class="panel eval-history" id="history"><h2>History (${entries.length} recorded runs)</h2>
+    <div class="trend-grid">${trends}</div>
+    <p class="hint">Each record is a committed file under <code>eval-history/</code>, named <code>&lt;UTC timestamp&gt;-&lt;commit&gt;.json</code>. History was seeded only from results already committed in this repository (git history of <code>eval-results.json</code> and of the recorded agent-decision results). A dash means that run did not include the suite; <em>n/a</em> means no threshold was recorded for it at that time. Early runs are few and nearly flat, so the trend shows stability across those runs, not improvement.</p>
+    <table class="cap-table"><thead><tr><th>Run time</th><th>Commit</th><th>Retrieval Recall@3</th><th>Routing</th><th>Security routing</th><th>Agent decision</th><th>Repro hash</th><th>Record</th></tr></thead><tbody>${rows}</tbody></table>
+  </section>`;
+}
+
+function renderReproduce(d) {
+  const r = d.reproducibility;
+  if (!r) return "";
+  return `<section class="panel" id="reproduce"><h2>How to reproduce</h2>
+    <pre class="repro-cmd" data-field="repro-command">cd agent
+${esc(r.setup.join("\n"))}
+${esc(r.command)}</pre>
+    <p>Reproducibility hash: <code data-field="repro-hash">${esc(r.inputs_hash || "n/a")}</code></p>
+    <p class="hint">sha256 of the canonical JSON of the content hashes of: ${(r.hash_covers || []).map((x) => `<code>${esc(x)}</code>`).join(", ") || "n/a"}. If your checkout produces a different hash, you are not running the same inputs. <code>${esc(r.command)}</code> exits 1 if any threshold is missed. ${esc(r.agent_decision_note)} Not covered by the hash: ${((d.eval_inputs && d.eval_inputs.not_covered) || []).map(esc).join("; ") || "n/a"}.</p>
+  </section>`;
+}
+
+function renderEval(d, index) {
+  evalMain.innerHTML = renderVerdict(d) + renderCards(d) + renderExplain(d) + renderCiStatus(d) + renderHistory(index) + renderReproduce(d) + renderCases(d) + renderAgentDecision(d);
 }
 
 if (typeof document !== "undefined" && evalMain) {
-  fetch("/eval-results.json", { cache: "no-cache" })
-    .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
-    .then(renderEval)
+  const getJson = (url) => fetch(url, { cache: "no-cache" })
+    .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });
+  getJson("/eval-results.json")
+    .then((d) => getJson("/eval-history/index.json")
+      .catch(() => null)  // history missing is shown as "no history", not as an error
+      .then((index) => renderEval(d, index)))
     .catch((err) => {
       evalMain.innerHTML = `<section class="panel"><h2>Eval results unavailable</h2><p>Could not load eval-results.json (${esc(err.message)}). No numbers are shown rather than invented ones.</p></section>`;
     });
