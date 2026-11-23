@@ -56,6 +56,7 @@ HERMETIC_MODULES = [
     "test_aggregate_evidence",
     "test_ai_intelligence",
     "test_ask_codebase",
+    "test_permission_retrieval",
     "test_backend_catalogue",
     "test_backend_planning",
     "test_backend_rag_index",
@@ -179,7 +180,7 @@ LIVE_INFRA_MODULES = {
 # before invoking this runner, which is why they belong in the blocking set
 # despite needing state that is absent on a fresh checkout. Locally they fail
 # until those two commands have been run at least once.
-REQUIRES_PREBUILT_RAG_INDEX = ("test_mcp_server", "test_backend_rag_index", "test_ask_codebase")
+REQUIRES_PREBUILT_RAG_INDEX = ("test_mcp_server", "test_backend_rag_index", "test_ask_codebase", "test_permission_retrieval")
 
 # HELD BACK PENDING AN OWNER DECISION -- not excluded, not skipped, not
 # forgotten. Empty is the healthy state, and it is empty right now: the one

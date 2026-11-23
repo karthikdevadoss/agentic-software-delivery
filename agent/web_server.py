@@ -2115,7 +2115,11 @@ async def ask_codebase_api(request: Request):
     handler in this file (see AEQ-010 -- a sync call left on the loop
     froze the entire service under real load)."""
     query = request.query_params.get("q", "")
-    result = await run_in_threadpool(ask_codebase.ask, query)
+    # The role is NOT client-controllable here: this endpoint is public and
+    # unauthenticated, so any role/header/param a caller sends is ignored and
+    # the role is hard-wired to `public`. Elevated roles exist only as a
+    # function argument (tests/evals) until real authentication exists.
+    result = await run_in_threadpool(ask_codebase.ask, query, "public")
     return JSONResponse(result)
 
 

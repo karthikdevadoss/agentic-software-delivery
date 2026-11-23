@@ -73,6 +73,8 @@
       <dd>~28 curated files: core Customer-app Java source/tests for the topics below, plus this project's own real interview-scenario write-ups. Explicitly curated (a code-reviewed list), never the whole repository, never anything private.</dd>
       <dt>Security boundary</dt>
       <dd>Structural, not a promise a model might ignore: there is no code path from any query to any file outside that curated list — no read/write/execute tool is reachable from this page at all.</dd>
+      <dt>Permission filter</dt>
+      <dd>Retrieval now filters by document access level (<code>public</code>, <code>eng-internal</code>, <code>private</code>) in code, before ranking — not in a prompt. This page always queries as <code>public</code>, so it can only return public documents (one fake public fixture page is labeled as such) even if a restricted document would be the closest match; a missing or unknown role is denied. The restricted levels are exercised only against a handful of clearly fake fixture pages standing in for Notion/Slack docs, in tests and evals. There are no real roles or logins here, and this is still not a company knowledge pipeline: no live Notion, Slack or GitHub ingestion and no source ACL sync.</dd>
       <dt>Evidence quality</dt>
       <dd>Real cosine similarity scores shown per result, using the same confidence threshold (0.45) already used elsewhere in this codebase's own internal RAG pipeline.</dd>
     </dl>

@@ -37,6 +37,7 @@ it is only ever embedded into a vector and compared by cosine similarity.
 import dataclasses
 
 import backend_rag_index
+import permission_retrieval
 
 GITHUB_REPO_URL = "https://github.com/karthikdevadoss/agentic-software-delivery"
 
@@ -66,10 +67,14 @@ class EvidenceItem:
     start_line: int | None
     end_line: int | None
     excerpt: str
-    source_url: str
+    source_url: str | None
+    source: str = "github-public"
+    access_level: str = "public"
 
 
-def _source_url(source_path: str, start_line: int | None, end_line: int | None) -> str:
+def _source_url(source_path: str, start_line: int | None, end_line: int | None) -> str | None:
+    if source_path.startswith("agent/fixtures/"):
+        return None  # fake fixture doc: no public GitHub link to claim
     url = f"{GITHUB_REPO_URL}/blob/master/{source_path}"
     if start_line:
         url += f"#L{start_line}" + (f"-L{end_line}" if end_line and end_line != start_line else "")
@@ -88,11 +93,21 @@ def validate_query(raw_query: str) -> str:
     return query
 
 
-def ask(raw_query: str) -> dict:
+def ask(raw_query: str, role: str | None = permission_retrieval.DEFAULT_PUBLIC_ROLE) -> dict:
     """Top-level entry point. Returns a JSON-ready dict; never raises for
     a genuinely bad/adversarial query -- validation failures and
     insufficient-evidence cases are both real, honest OUTCOMES, not
-    exceptions the caller must handle specially."""
+    exceptions the caller must handle specially.
+
+    `role` is the caller's role (explicit, testable). It defaults to `public`;
+    a missing (None) or unknown role is DENIED, not downgraded. Filtering
+    happens in code in agent/permission_retrieval.py, before ranking."""
+    if not permission_retrieval.allowed_levels(role):
+        return {
+            "query": raw_query, "status": "ROLE_DENIED",
+            "message": "Caller role is missing or unknown; access is denied by default.",
+            "evidence": [],
+        }
     try:
         query = validate_query(raw_query)
     except InvalidQuery as exc:
@@ -104,7 +119,7 @@ def ask(raw_query: str) -> dict:
         }
 
     try:
-        raw_results = backend_rag_index.semantic_search(query, top_k=RESULT_COUNT)
+        raw_results = permission_retrieval.search(query, role, top_k=RESULT_COUNT)
     except RuntimeError as exc:
         # The index genuinely doesn't exist / needs rebuilding -- a real,
         # honest operational state, never silently swallowed into "no
@@ -124,6 +139,7 @@ def ask(raw_query: str) -> dict:
             start_line=r["start_line"], end_line=r["end_line"],
             excerpt=r["content"],
             source_url=_source_url(r["source_path"], r["start_line"], r["end_line"]),
+            source=r["source"], access_level=r["access_level"],
         )
         for r in raw_results
     ]
