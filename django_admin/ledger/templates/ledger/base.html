@@ -1,0 +1,5 @@
+<!doctype html><html><head><meta charset="utf-8"><title>{% block title %}ASD local admin{% endblock %}</title>
+<style>body{font:15px system-ui;margin:2rem;max-width:60rem}table{border-collapse:collapse}td,th{border:1px solid #ccc;padding:.3rem .6rem;text-align:left}.honest{background:#fff8e1;border-left:4px solid #e0a800;padding:.6rem 1rem}</style></head><body>
+<nav><a href="{% url 'index' %}">Home</a> · <a href="{% url 'spend' %}">Spend</a> · <a href="{% url 'budgets' %}">Budgets</a> · <a href="{% url 'evals' %}">Evals</a> · <a href="{% url 'admin:index' %}">Admin</a></nav>
+<p class="honest">Local, read-only admin slice beside the Starlette API. Not the product, not a production IAM/SSO admin.</p>
+{% block content %}{% endblock %}</body></html>

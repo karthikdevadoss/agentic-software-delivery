@@ -1,0 +1,10 @@
+{% extends "ledger/base.html" %}{% block content %}<h1>Budget state</h1>
+<h2>In-memory caps (configured limits)</h2>
+<p class="honest">These caps are in-memory in the Starlette process and <b>reset on restart</b>. This Django process cannot see their live counters, so only the configured limits are shown, never usage.</p>
+{% for b in in_memory %}<h3>{{ b.name }}</h3><table>{% for k, v in b.limits.items %}<tr><th>{{ k }}</th><td>{{ v }}</td></tr>{% endfor %}</table><p><small>{{ b.note }}</small></p>{% endfor %}
+<h2>Durable budget store (optional)</h2>
+{% if durable.present %}<p>Found <code>{{ durable.path }}</code> (opened read-only; schema not assumed).</p>
+{% if durable.error %}<p class="honest">Could not read it: {{ durable.error }}</p>{% endif %}
+<table>{% for t, n in durable.tables.items %}<tr><th>{{ t }}</th><td>{{ n }} row(s)</td></tr>{% endfor %}</table>
+{% else %}<p class="honest">No durable budget store file at <code>{{ durable.path }}</code>. Budgets are in-memory only here; nothing durable to show.</p>{% endif %}
+{% endblock %}

@@ -1,0 +1,2 @@
+{% extends "ledger/base.html" %}{% block content %}<h1>ASD local admin</h1>
+<ul><li><a href="{% url 'spend' %}">Ledger spend summary</a></li><li><a href="{% url 'budgets' %}">Budget state</a></li><li><a href="{% url 'evals' %}">Eval snapshot</a></li></ul>{% endblock %}
