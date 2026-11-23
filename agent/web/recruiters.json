@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-23T13:31:05Z",
-  "commit_sha": "44c642983d2ed6283e551b4de711640b8b1d161b",
+  "generated_at": "2026-11-23T13:31:38Z",
+  "commit_sha": "b907a94984aab257f30f5a5bdfb5d54a4a578618",
   "branch": "integration/kraken-showcase",
   "working_tree_dirty": false,
   "postings_accessed": "2026-10-06",
@@ -59,8 +59,8 @@
   ],
   "metrics": {
     "eval": {
-      "generated_at": "2026-11-23T13:30:57Z",
-      "commit_sha": "b19c9e15569d20edcade3acdffa2fb5189eabcbb",
+      "generated_at": "2026-11-23T13:31:36Z",
+      "commit_sha": "78eb549d7b70bbc6524443edc0bce0d1e2199f1f",
       "overall_passed": true,
       "labelled_set": {
         "retrieval_cases": 12,
@@ -816,7 +816,7 @@
   "inputs": {
     "agent/recruiters_source.yaml": "fecfc4a66d7d1820a26852b226bac8382385fc413d40af886c1dc20cfee78d59",
     "agent/web/case-study-durable-agent.html": "e6eaf381b8b8936d5f90f6fb2f75d774ea842eb5a226fc609495f320db52c6d7",
-    "agent/web/eval-results.json": "a9c1f14632cb43d724f986f660080b6bcc216d5eb55975626d74d6cbe31fd38e",
+    "agent/web/eval-results.json": "f942551d5df9b5a73ff1b088d50cd27dac73ec4cb7f230c5c8fc0a64c96ce374",
     "agent/web/triage-evidence.json": "73a4d9acefb2a5cd7f27f7ca9a39b10a30fca17b2d9dd0ba49a80d54b217c5dd",
     "agent/web/ask-codebase-examples.json": "34eab056324d1e58d3b3d6c65e875af613a3779983890614966d14d0c06de0bb"
   }
