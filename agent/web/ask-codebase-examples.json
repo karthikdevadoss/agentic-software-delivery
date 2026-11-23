@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-06T10:09:27Z",
-  "commit_sha": "9afcc1cdf5c3ebd5f3a219d49e879f66a1c50e08",
-  "working_tree_dirty": false,
+  "generated_at": "2026-11-23T12:36:44Z",
+  "commit_sha": "9534530829a4fe305fc2599a784876a5ec7f3da5",
+  "working_tree_dirty": true,
   "embedding_model": "local:BAAI/bge-small-en-v1.5",
   "llm_calls": 0,
   "min_strong_score": 0.45,
@@ -75,7 +75,7 @@
         },
         {
           "rank": 3,
-          "score": 0.7234,
+          "score": 0.7233,
           "source_path": "app/src/main/java/com/example/customer/outbox/OutboxPublisher.java",
           "symbol": "class_header",
           "start_line": 1,
@@ -103,7 +103,7 @@
         },
         {
           "rank": 2,
-          "score": 0.6381,
+          "score": 0.638,
           "source_path": "docs/LESSONS.md",
           "symbol": "Lessons::part8",
           "start_line": 225,
@@ -241,7 +241,7 @@
   ],
   "inputs": {
     "files": {
-      "agent/ask_codebase.py": "781f5c727086162bd95b7c3bf4f7423edf4c279a6d843fed62e905e3f29796e2",
+      "agent/ask_codebase.py": "17955005672fa7a486b8d54dd3aa3bc0d744070c1f5492b5a6ee559e3a4ec203",
       "agent/backend_rag_corpus.py": "43d7d3b1f50bdca42964a2a4bba0569b97c143974879d9d2c1a8b33d6d0d70b8"
     },
     "examples": "f3b09bee54f6b2cdc127212c76f2d3dd56b70ff6c73c932d887dc314c18aa2c8",

@@ -87,13 +87,13 @@ class AskEndToEndTestCase(unittest.TestCase):
 
 class IndexUnavailableTestCase(unittest.TestCase):
     def test_index_error_is_reported_honestly_not_as_empty_results(self):
-        with mock.patch("ask_codebase.backend_rag_index.semantic_search", side_effect=RuntimeError("no index found")):
+        with mock.patch("ask_codebase.permission_retrieval.search", side_effect=RuntimeError("no index found")):
             result = ac.ask("a valid question")
         self.assertEqual(result["status"], "INDEX_UNAVAILABLE")
         self.assertIn("no index found", result["message"])
 
     def test_no_matches_at_all_is_reported_honestly(self):
-        with mock.patch("ask_codebase.backend_rag_index.semantic_search", return_value=[]):
+        with mock.patch("ask_codebase.permission_retrieval.search", return_value=[]):
             result = ac.ask("a valid question")
         self.assertEqual(result["status"], "NO_EVIDENCE")
 
@@ -101,9 +101,9 @@ class IndexUnavailableTestCase(unittest.TestCase):
         weak_result = {
             "rank": 1, "score": ac.MIN_STRONG_SCORE - 0.1, "source_path": "docs/LESSONS.md",
             "source_type": "INCIDENT_LESSON", "symbol": "x", "start_line": 1, "end_line": 2,
-            "content": "irrelevant content",
+            "content": "irrelevant content", "source": "github-public", "access_level": "public",
         }
-        with mock.patch("ask_codebase.backend_rag_index.semantic_search", return_value=[weak_result]):
+        with mock.patch("ask_codebase.permission_retrieval.search", return_value=[weak_result]):
             result = ac.ask("a valid question")
         self.assertEqual(result["status"], "WEAK_EVIDENCE")
         self.assertEqual(len(result["evidence"]), 1)  # shown, not hidden

@@ -80,5 +80,58 @@ class RunRetrievalEvalIntegrationTestCase(unittest.TestCase):
         self.assertEqual(result["summary"]["security_case_accuracy"], er.THRESHOLDS["security_case_accuracy"])
 
 
+
+class AgentDecisionReplayTestCase(unittest.TestCase):
+    """The agent-decision suite is a deterministic REPLAY of the committed
+    results (no API key, no network) and never drops a case from the
+    denominator."""
+
+    def _replay(self, results):
+        import json, tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as tmp:
+            f = Path(tmp) / "r.json"
+            f.write_text(json.dumps({"run_at_utc": "t", "results": results}), encoding="utf-8")
+            orig = er.EVAL_DIR_RESULTS
+            er.EVAL_DIR_RESULTS = f
+            try:
+                return er.run_agent_decision_eval()
+            finally:
+                er.EVAL_DIR_RESULTS = orig
+
+    def _ids(self):
+        return [c["eval_id"] for c in er._load_dataset("agent_decision_dataset.json")["cases"]]
+
+    def test_committed_results_replay(self):
+        out = er.run_agent_decision_eval()
+        self.assertEqual(out["summary"]["cases"], len(self._ids()))
+        self.assertTrue(out["summary"]["replayed_from_recorded_results"])
+
+    def test_not_executed_counts_as_not_passed(self):
+        ids = self._ids()
+        out = self._replay([{"eval_id": i, "verdict": "NOT_EXECUTED"} for i in ids])
+        self.assertEqual(out["summary"]["agent_decision_pass_rate"], 0.0)
+
+    def test_missing_recorded_case_is_unknown_not_dropped(self):
+        ids = self._ids()
+        out = self._replay([{"eval_id": i, "verdict": "PASS"} for i in ids[:-1]])
+        self.assertEqual(out["summary"]["cases"], len(ids))
+        self.assertEqual(out["per_case"][-1]["verdict"], "UNKNOWN")
+        self.assertLess(out["summary"]["agent_decision_pass_rate"], er.THRESHOLDS["agent_decision_pass_rate"])
+
+    def test_threshold_is_all_cases_must_pass(self):
+        self.assertEqual(er.THRESHOLDS["agent_decision_pass_rate"], 1.0)
+
+    def test_all_gate_fails_when_agent_decision_misses(self):
+        import contextlib, io
+        retrieval = {"summary": {"recall_at_3": 0.9, "mrr": 0.9}, "per_case": []}
+        routing = {"summary": {"routing_accuracy": 1.0, "security_case_accuracy": 1.0}, "per_case": []}
+        ok = {"summary": {"agent_decision_pass_rate": 1.0}, "per_case": []}
+        bad = {"summary": {"agent_decision_pass_rate": 0.833}, "per_case": [{"id": "x", "verdict": "FAIL", "passed": False}]}
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertTrue(er._print_report(retrieval, routing, ok))
+            self.assertFalse(er._print_report(retrieval, routing, bad))
+
+
 if __name__ == "__main__":
     unittest.main()

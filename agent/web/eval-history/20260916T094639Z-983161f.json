@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-16T09:46:39.181896+00:00",
+  "commit_sha": "983161fa7d684c496c1501b0dc14a1a8062a281a",
+  "working_tree_dirty": null,
+  "embedding_model": null,
+  "overall_passed": null,
+  "reproducibility_hash": null,
+  "source": "git:983161f:agent/evals/agent_decision_results.json",
+  "suites": [
+    {
+      "key": "agent-decision",
+      "kind": "recorded",
+      "cases": 6,
+      "score": 1.0,
+      "threshold": null,
+      "comparator": ">=",
+      "passed": null,
+      "dataset_hash": "90fc0fc55f428ee876cd344b0312f18f04993fe44d228c9f9c94875966a1c246",
+      "commit_sha": "983161fa7d684c496c1501b0dc14a1a8062a281a",
+      "run_at": "2026-09-16T09:46:39.181896+00:00",
+      "metrics": {
+        "agent_decision_pass_rate": 1.0
+      },
+      "verdict_counts": {
+        "PASS": 6
+      }
+    }
+  ]
+}

@@ -49,6 +49,7 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 HERMETIC_MODULES = [
     "test_acceptance_contract",
+    "test_health_endpoints",          # /healthz + /readyz k8s probes: no DB, no network
     "test_durable_workflow",          # BL-093/094: MemorySaver + a local git repo, no network
     "test_jd_match",                  # BL-097: injected model + injected embedder, no network
     "test_agent_decision_eval_runner",
@@ -56,6 +57,7 @@ HERMETIC_MODULES = [
     "test_aggregate_evidence",
     "test_ai_intelligence",
     "test_ask_codebase",
+    "test_permission_retrieval",
     "test_backend_catalogue",
     "test_backend_planning",
     "test_backend_rag_index",
@@ -69,6 +71,7 @@ HERMETIC_MODULES = [
     "test_dev_check",
     "test_estimation",
     "test_eval_runner",
+    "test_self_eval",                 # agent self-eval rubric + replay suite; fixtures only, no model/network
     "test_publish_eval_results",      # synthetic eval output only, no index/model/network
     "test_eval_results_fresh",        # hashes eval inputs on disk vs eval-results.json, no network
     "test_publish_triage_results",    # synthetic inputs + hashes vs triage-evidence.json; no Java/network
@@ -85,6 +88,7 @@ HERMETIC_MODULES = [
     "test_learn_tree",
     "test_main",
     "test_mcp_server",
+    "test_mcp_auth",  # MCP HTTP bearer auth: real loopback uvicorn, per-run JWT key, no network/IdP
     "test_non_llm_intelligence_metrics",
     "test_pricing_config",
     # Promoted from the live-infra list 2026-09-25 once it was isolated: it now
@@ -93,6 +97,11 @@ HERMETIC_MODULES = [
     "test_rag_index",
     "test_reasoning_gateway",
     "test_reasoning_gateway_enforcement",
+    "test_gateway_budget",            # durable caps, restart, rate limit, LiteLLM routing; hermetic
+    "test_tracing",
+    "test_integration_gateway_converse",   # converse() budget + spans, callers metered (hermetic)
+    "test_integration_self_eval_loop",     # SELF_EVAL_ENABLED flag off/on in agent_loop (hermetic)
+    "test_pydantic_ai_gateway",   # item 8: fake model only; typed output + gateway routing
     "test_risk_policy",
     # Promoted out of PENDING_OWNER_DECISION 2026-09-25 after a real content
     # re-verification (capabilities resolve, evidence paths exist, 8/9 URLs
@@ -178,7 +187,7 @@ LIVE_INFRA_MODULES = {
 # before invoking this runner, which is why they belong in the blocking set
 # despite needing state that is absent on a fresh checkout. Locally they fail
 # until those two commands have been run at least once.
-REQUIRES_PREBUILT_RAG_INDEX = ("test_mcp_server", "test_backend_rag_index", "test_ask_codebase")
+REQUIRES_PREBUILT_RAG_INDEX = ("test_mcp_server", "test_backend_rag_index", "test_ask_codebase", "test_permission_retrieval")
 
 # HELD BACK PENDING AN OWNER DECISION -- not excluded, not skipped, not
 # forgotten. Empty is the healthy state, and it is empty right now: the one
@@ -250,6 +259,12 @@ def main() -> int:
     print("weakened. They still need to run where the real dependency exists.")
     print("=" * 72)
 
+    # Budget counters are durable now (agent/budget_store.py); keep a CI/dev
+    # run from reading or writing the real local budget file.
+    import os
+    import tempfile
+    os.environ.setdefault("BUDGET_DB_PATH", os.path.join(
+        tempfile.mkdtemp(prefix="asd-budget-"), "budget.sqlite3"))
     suite = unittest.defaultTestLoader.loadTestsFromNames(HERMETIC_MODULES)
     result = unittest.TextTestRunner(verbosity=2).run(suite)
 

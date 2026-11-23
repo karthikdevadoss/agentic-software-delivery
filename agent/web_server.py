@@ -61,6 +61,9 @@ import showcase_data
 import interview_walkthrough_data
 import ask_codebase
 import functools
+import budget_store  # noqa: F401  (durable counters, see agent/budget_store.py)
+import gateway_budget
+import litellm_route
 import si_budget
 import owner_auth
 import triage_budget
@@ -77,6 +80,7 @@ import ai_intelligence
 import learn_pdf
 import learn_tree
 import metrics
+import tracing
 import pricing_config
 import risk_policy
 import session_history
@@ -644,6 +648,7 @@ def _web_approval_prompt_factory(run: Run):
 
 def _run_agent_thread(run: Run) -> None:
     global _CURRENT_RUN_ID
+    tracing.bind_run_id(run.id)  # thread-local context: spans below carry run_id
     execution_tools.set_approval_prompt(_web_approval_prompt_factory(run))
     usage_start_index = len(metrics.get_model_usage_events())
     _CURRENT_RUN_ID = run.id
@@ -710,7 +715,10 @@ def _run_mock_thread(run: Run) -> None:
                     "@@ -0,0 +1,4 @@\n+package com.example.customer;\n+\n+public class MockDemoTest {\n+}\n",
             "is_new_file": True,
         })
-        decision = decision_queue.get()  # still a REAL blocking wait on a REAL browser click
+        tracing.bind_run_id(run.id)
+        with tracing.span("approval.gate", edit_id=edit_id, mock=True) as _sp:
+            decision = decision_queue.get()  # still a REAL blocking wait on a REAL browser click
+            _sp.set_attribute("approval.decision", "approved" if decision == "approve" else "rejected")
         run.emit("approval_decision", {"edit_id": edit_id, "decision": decision})
 
         if decision != "approve":
@@ -1691,6 +1699,13 @@ async def decide(request: Request):
     return JSONResponse({"ok": True})
 
 
+async def get_run_traces(request: Request):
+    """Local/dev: spans recorded in this process for one run (in-memory
+    buffer, lost on restart -- not a production APM)."""
+    return JSONResponse({"run_id": request.path_params["run_id"],
+                         "spans": tracing.spans_for_run(request.path_params["run_id"])})
+
+
 # RELIABILITY P0 INCIDENT (2026-09-13): build_dashboard_snapshot()/
 # build_sessions_snapshot()/session_history.list_sessions()/
 # get_session_detail() all make real synchronous psycopg2 queries against
@@ -1725,6 +1740,25 @@ async def dashboard_page(request: Request):
 async def get_sessions_data(request: Request):
     include_test_data = request.query_params.get("include_test_data") == "1"
     return JSONResponse(await run_in_threadpool(sessions_data.build_sessions_snapshot, include_test_data))
+
+
+async def budget_status(request: Request):
+    """Remaining durable budget for the Usage page. Read-only, counts and caps
+    only -- no visitor identities. Gateway dollars are reserved worst-case
+    estimates until a call settles to its measured cost."""
+    def build():
+        tri, si = triage_budget.status(), si_budget.status()
+        return {
+            "gateway": gateway_budget.status(),
+            "triage": {**tri, "calls_remaining": max(tri["daily_max"] - tri["calls_today"], 0)},
+            "standing_interview": {
+                "answers_today": si["answers_today"],
+                "daily_max_answers": si["daily_max_answers"],
+                "answers_remaining": max(si["daily_max_answers"] - si["answers_today"], 0)},
+            "proxy_mode": "litellm-proxy" if litellm_route.enabled() else "direct-anthropic",
+            "durable": True,
+        }
+    return JSONResponse(await run_in_threadpool(build))
 
 
 async def usage_page(request: Request):
@@ -2093,7 +2127,11 @@ async def ask_codebase_api(request: Request):
     handler in this file (see AEQ-010 -- a sync call left on the loop
     froze the entire service under real load)."""
     query = request.query_params.get("q", "")
-    result = await run_in_threadpool(ask_codebase.ask, query)
+    # The role is NOT client-controllable here: this endpoint is public and
+    # unauthenticated, so any role/header/param a caller sends is ignored and
+    # the role is hard-wired to `public`. Elevated roles exist only as a
+    # function argument (tests/evals) until real authentication exists.
+    result = await run_in_threadpool(ask_codebase.ask, query, "public")
     return JSONResponse(result)
 
 
@@ -2536,11 +2574,34 @@ async def jd_match_sample(request: Request):
     return JSONResponse({"jd": jd_match.SAMPLE_JD})
 
 
+async def healthz(request: Request):
+    """Liveness probe: the process is up and the event loop answers. Does no
+    I/O and touches no dependency, so a slow/absent database can never make
+    the cluster restart a healthy process."""
+    return JSONResponse({"status": "ok"})
+
+
+async def readyz(request: Request):
+    """Readiness probe: the app can serve traffic. Cheap, no network I/O.
+    The event ledger (Postgres) is OPTIONAL and spool-backed, so it never
+    makes the pod unready; we only report whether it is configured."""
+    configured = bool(os.environ.get("EVENT_LEDGER_DATABASE_URL"))
+    return JSONResponse({
+        "status": "ready",
+        "ledger": "configured" if configured else "not_configured",
+        "ledger_affects_readiness": False,
+    })
+
+
 routes = [
+    Route("/healthz", healthz, methods=["GET"]),
+    Route("/readyz", readyz, methods=["GET"]),
     Route("/api/runs", start_run, methods=["POST"]),
     Route("/api/runs/mock", start_mock_run, methods=["POST"]),
+    Route("/traces/{run_id}", get_run_traces, methods=["GET"]),
     Route("/api/dashboard", get_dashboard_data, methods=["GET"]),
     Route("/api/sessions", get_sessions_data, methods=["GET"]),
+    Route("/api/budget", budget_status, methods=["GET"]),
     Route("/api/dev-sessions/start", start_dev_session_route, methods=["POST"]),
     Route("/api/dev-sessions/stop", stop_dev_session_route, methods=["POST"]),
     Route("/api/target-app", get_target_app, methods=["GET"]),

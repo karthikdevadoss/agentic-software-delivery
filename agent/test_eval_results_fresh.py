@@ -41,7 +41,7 @@ class EvalResultsFreshTestCase(unittest.TestCase):
         self.assertEqual(self.recorded["thresholds"], self.current["thresholds"],
                          f"eval_runner.THRESHOLDS changed since publish; {REGENERATE}")
         for m in self.published["metrics"]:
-            self.assertEqual(m["threshold"], pub.eval_runner.THRESHOLDS[m["key"]])
+            self.assertEqual(m["threshold"], pub.eval_runner.ALL_METRIC_THRESHOLDS[m["key"]])
 
 
 if __name__ == "__main__":

@@ -24,7 +24,7 @@ Phase 24 Technology Decision Rule ("what happens if we do nothing?").
 | **knowledge** | `agent/tools.py` (read-only repo access + path security), `agent/rag_index.py`/`agent/backend_rag_index.py` (embeddings) | Partially — `tools.py`'s path-security boundary (`_resolve_safe_path`) is fully generic; the RAG corpus content is project-specific |
 | **execution** | `agent/demo_execution.py`/`agent/backend_execution.py` (isolated-workspace clone → commit → push → deploy, timestamp-verified) | Partially — the isolated-workspace/dedicated-branch pattern is generic; the deploy target (Railway/this app) is not |
 | **learning** | `docs/ai/AI_ENGINEERING_QUALITY_LEDGER.yaml` (structured defect schema with `recurrence_status`/`analysis_confidence`), `docs/LESSONS.md` | No — the schema itself is generic; the entries are this project's history |
-| **reasoning** | 4 direct Anthropic call sites (`agent/main.py`, `agent/agent_loop.py`, `agent/backend_planning.py`, `agent/triage_execution.py`) — see Phase 3 | This is the one area Phase 1's audit and this phase found genuinely under-consolidated |
+| **reasoning** | Historically 4 direct Anthropic call sites; ALL are now routed through `agent/reasoning_gateway.py` (`call()` / `converse()`), enforced by `agent/test_reasoning_gateway_enforcement.py` — see Phase 3 | This is the one area Phase 1's audit and this phase found genuinely under-consolidated |
 
 ## Decision: do NOT physically restructure into `kernel/`/`domains/` folders now
 

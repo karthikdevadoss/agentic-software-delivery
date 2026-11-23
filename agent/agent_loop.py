@@ -18,8 +18,9 @@ import os
 import sys
 import time
 
-from anthropic import Anthropic
-
+import reasoning_gateway
+import self_eval
+import tracing
 from tools import TOOL_SCHEMAS, dispatch_tool_call
 import metrics
 
@@ -32,6 +33,9 @@ MODEL = os.environ.get("CLAUDE_MODEL", DEFAULT_MODEL)
 # call beyond the cap within the same turn is skipped, not executed.
 MAX_TOOL_CALLS = 8
 MAX_TOKENS = 6000
+
+# Gateway purpose: the loop plans an implementation for a ticket.
+GATEWAY_PURPOSE = "NOVEL_IMPLEMENTATION_PROPOSAL"
 
 SYSTEM_PROMPT = """You are a senior software engineer helping plan a change to an \
 existing Spring Boot (Java 17) application.
@@ -160,44 +164,51 @@ def run_agent_loop(
     tool_schemas=None,
     dispatch_fn=None,
     system_prompt_suffix: str = "",
+    create_fn=None,
+    self_eval_enabled: bool | None = None,
 ) -> str:
     """tool_schemas/dispatch_fn default to the read-only V3 tool set (safe,
     unchanged behavior for existing callers). Passing an expanded schema
     list + dispatcher (e.g. execution_tools.EXECUTION_TOOL_SCHEMAS /
     dispatch_execution_tool_call) is how V4.1 grants write/build capability
     — this loop has no idea which tools it's running and never hardcodes
-    their names beyond the cosmetic trace-formatting helpers above."""
+    their names beyond the cosmetic trace-formatting helpers above.
+
+    self_eval_enabled (default None -> env SELF_EVAL_ENABLED, default OFF):
+    when ON, the FINAL answer text is scored against the self_eval rubric
+    before being returned. A low score retries once with the failure reason
+    fed back; a second low score returns an explicit ESCALATE_TO_HUMAN notice
+    instead of the plan (refuses to auto-continue). This is an extra quality
+    check on output content by the same system -- it grants nothing, replaces
+    neither the human approval gate nor the deterministic write checks (those
+    run inside dispatch_fn, untouched), and OFF means zero behaviour change."""
     tool_schemas = tool_schemas if tool_schemas is not None else TOOL_SCHEMAS
     dispatch_fn = dispatch_fn if dispatch_fn is not None else dispatch_tool_call
     system_prompt = SYSTEM_PROMPT + system_prompt_suffix
 
-    client = Anthropic(api_key=api_key)
     messages = [{"role": "user", "content": f"Ticket:\n{ticket}"}]
     tool_call_count = 0
+    use_self_eval = self_eval.enabled() if self_eval_enabled is None else bool(self_eval_enabled)
+    self_eval_retries = 0
+    evidence_corpus = [system_prompt, ticket]   # text the agent was actually shown, plus tool inputs/results
 
     while True:
         tools_enabled = tool_call_count < MAX_TOOL_CALLS
 
-        create_kwargs = {
-            "model": MODEL,
-            "max_tokens": MAX_TOKENS,
-            "system": system_prompt,
-            "messages": messages,
-        }
-        if tools_enabled:
-            create_kwargs["tools"] = tool_schemas
-
-        response = client.messages.create(**create_kwargs)
-
-        # Real usage straight from the API response's own `.usage` field —
-        # never estimated, never scraped from a UI counter.
-        metrics.record_model_usage(
-            provider="anthropic", model=MODEL,
-            input_tokens=response.usage.input_tokens,
-            output_tokens=response.usage.output_tokens,
-            cache_creation_input_tokens=getattr(response.usage, "cache_creation_input_tokens", None),
-            cache_read_input_tokens=getattr(response.usage, "cache_read_input_tokens", None),
+        # Every request goes through the central gateway (purpose check,
+        # LLM_MODE kill switch, key check, usage/cost recording). The loop
+        # itself stays here; the gateway makes one request per converse().
+        result = reasoning_gateway.converse(
+            purpose=GATEWAY_PURPOSE, system_prompt=system_prompt,
+            messages=messages, max_tokens=MAX_TOKENS,
+            tools=tool_schemas if tools_enabled else None,
+            api_key=api_key, create_fn=create_fn, model=MODEL,
         )
+        if not result["model_called"]:
+            reason = result["denial_reason"]
+            print(f"Model call not made: {reason}", file=sys.stderr)
+            return f"Unable to produce a plan — model call not made: {reason}"
+        response = result["response"]
 
         # Preserve the assistant turn EXACTLY as returned by Anthropic.
         # Do not filter thinking blocks, reconstruct them, reorder them,
@@ -227,6 +238,28 @@ def run_agent_loop(
                     "Unable to produce a plan — no final text was returned "
                     f"(stop_reason={response.stop_reason!r})."
                 )
+            if use_self_eval and text_blocks:
+                evidence = [{"path": p, "text": ""}
+                            for p in self_eval.extract_paths("\n".join(evidence_corpus))]
+                with tracing.span("self_eval.gate", retries_used=self_eval_retries) as sp:
+                    gate = self_eval.gate_step(ticket, evidence, plan, self_eval_retries)
+                    sp.set_attribute("self_eval.action", gate["action"])
+                    sp.set_attribute("self_eval.overall", gate["eval"]["overall"])
+                print(f"Self-eval: {gate['action']} (overall={gate['eval']['overall']}, "
+                      f"hard_failed={gate['eval']['hard_failed']})", file=sys.stderr)
+                if gate["action"] == "RETRY":
+                    self_eval_retries += 1
+                    messages.append({"role": "user", "content": (
+                        f"{gate['feedback']}. Revise your final answer: cite only file paths you "
+                        f"actually saw, address the question, and do not suggest skipping approval.")})
+                    continue
+                if gate["action"] == "ESCALATE_TO_HUMAN":
+                    return (
+                        "ESCALATE_TO_HUMAN: automatic continuation refused -- the agent's answer "
+                        f"failed self-evaluation after {self_eval_retries} retry "
+                        f"({gate['eval']['reason']}). Nothing was approved or written by this step; "
+                        "a human must review.\n\n--- UNVERIFIED DRAFT (not self-eval approved) ---\n"
+                        + plan)
             print(f"Final answer after {tool_call_count} tool call(s)", file=sys.stderr)
             return plan
 
@@ -251,6 +284,8 @@ def run_agent_loop(
             tool_call_count += 1
             call_start = time.monotonic()
             result_text, is_error = dispatch_fn(block.name, block.input)
+            if use_self_eval:
+                evidence_corpus.append(f"{block.input}\n{result_text}")
             duration_ms = round((time.monotonic() - call_start) * 1000, 1)
             status = "ERROR" if is_error else "OK"
             note = _result_note(block.name, result_text, is_error)

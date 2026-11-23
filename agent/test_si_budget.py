@@ -15,6 +15,7 @@ import time
 import unittest
 from unittest import mock
 
+import budget_store
 import si_budget
 
 
@@ -80,7 +81,7 @@ class PerVisitorLimitTestCase(unittest.TestCase):
     def test_one_visitor_cannot_consume_the_whole_day(self):
         """The real protection: after this visitor's ceiling, someone else can
         still ask."""
-        with mock.patch.object(si_budget.time, "monotonic",
+        with mock.patch.object(si_budget, "_now",
                                side_effect=lambda c=[0]: c.__setitem__(0, c[0] + 1000) or c[0]):
             for _ in range(si_budget.SI_PER_VISITOR_DAILY_MAX):
                 si_budget.record_answer("greedy")
@@ -302,7 +303,7 @@ class OperatorExemptionTestCase(unittest.TestCase):
             calls.append(question)
             return {"answer": "an answer", "grounded": True, "outcome": "answered"}
 
-        with mock.patch.object(web_server.standing_interview, "answer", fake_answer),              mock.patch.dict(si_budget.os.environ, {"SI_OPERATOR_TOKEN": "tok"}, clear=True):
+        with mock.patch.object(web_server.standing_interview, "answer", fake_answer),              mock.patch.dict(si_budget.os.environ, {"SI_OPERATOR_TOKEN": "tok", "BUDGET_DB_PATH": budget_store.db_path()}, clear=True):
             client = TestClient(web_server.app)
             hdr = {"x-si-operator": "tok"}
             for _ in range(3):      # far inside the 5s cooldown

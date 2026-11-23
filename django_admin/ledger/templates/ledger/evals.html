@@ -1,0 +1,14 @@
+{% extends "ledger/base.html" %}{% block content %}<h1>Eval snapshot</h1>
+{% if snapshot.present %}{% with d=snapshot.data %}
+<p>Committed snapshot <code>{{ snapshot.path }}</code>: generated {{ d.generated_at }}, commit {{ d.commit_sha }}, overall passed: {{ d.overall_passed }}. A point-in-time snapshot, not a live run.</p>
+<table><tr><th>metric</th><th>score</th><th>threshold</th><th>passed</th></tr>
+{% for m in d.metrics %}<tr><td>{{ m.label }}</td><td>{{ m.score }}</td><td>{{ m.comparator }} {{ m.threshold }}</td><td>{{ m.passed }}</td></tr>{% endfor %}</table>{% endwith %}
+{% else %}<p class="honest">No eval snapshot at <code>{{ snapshot.path }}</code>.</p>{% endif %}
+<h2>History</h2>
+{% if history.present %}<p>Read from <code>{{ history.path }}</code> (<code>index.json</code>; rows are the committed publish history, not generated here). Entries with a null score/pass flag are recorded-only or have no recorded value; null is shown as n/a, never as 0.</p>
+{% if history.index_error %}<p class="honest">Could not parse index.json: {{ history.index_error }}</p>{% endif %}
+{% if history.entries %}<table><tr><th>generated</th><th>commit</th><th>overall passed</th><th>suites (score / passed)</th></tr>
+{% for e in history.entries %}<tr><td>{{ e.generated_at }}</td><td>{{ e.commit_sha }}</td><td>{{ e.overall_passed|default_if_none:"n/a" }}</td><td>{% for s in e.suites %}{{ s.key }}: {{ s.score|default_if_none:"n/a" }} / {{ s.passed|default_if_none:"n/a" }}{% if not forloop.last %}; {% endif %}{% endfor %}</td></tr>{% endfor %}</table>
+{% else %}<ul>{% for f in history.files %}<li>{{ f }}</li>{% empty %}<li>Directory exists but is empty.</li>{% endfor %}</ul>{% endif %}
+{% else %}<p class="honest">No eval-history directory at <code>{{ history.path }}</code>; no history exists here and none is invented.</p>{% endif %}
+{% endblock %}

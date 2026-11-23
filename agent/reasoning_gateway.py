@@ -10,17 +10,30 @@ no single structural boundary enforcing the directive's Phase 3 policy:
 every model call must be purpose-gated, advisory-only, and independently
 verified by the caller -- never trusted as authority.
 
-Scope decision (documented, not an oversight): only agent/triage_execution.py's
-single-shot advisory calls (diagnose/generate_candidate_patch) are wired
-through this gateway so far -- see call site there. agent/backend_planning.py's
-analyze_with_llm has a materially different response contract (structured
-JSON fields, not a stripped text blob) and agent/main.py (V1 CLI)/
-agent/agent_loop.py (V3's multi-turn TOOL-CALLING loop, not a single-shot
-request) are a genuinely different category -- a multi-turn agentic loop
-cannot be flattened into this gateway's single-call shape without a much
-larger, riskier redesign than this phase's bounded scope justifies. Wiring
-those in is real future work, tracked in docs/ACTION_QUEUE.json, not
-silently dropped.
+Scope (updated by the gateway-all-calls change): EVERY billed model call
+in agent/ now goes through this module, through one of two entry points:
+  - call(): single-shot advisory text (triage_execution, jd_match,
+    standing_interview, main.py, ...).
+  - converse(): a caller-owned multi-turn / tool-calling / structured-output
+    conversation. The gateway performs ONE request per converse() call and
+    returns the raw, unmodified response (thinking + tool_use blocks intact);
+    the caller keeps its own loop and message history. Used by
+    agent_loop.run_agent_loop (tool loop) and
+    backend_planning.analyze_with_llm (structured JSON contract).
+Both run the same purpose check, LLM_MODE kill switch, API-key check, durable
+budget/rate gate (agent/gateway_budget.py; refused BEFORE the provider is
+contacted and before anything is billed), usage/cost recording and one
+`gateway.model_call` OpenTelemetry span (entry="call"|"converse": model,
+tokens, cost, outcome; budget refusals are outcome=denied). With
+LITELLM_PROXY_URL set the real client is pointed at a local LiteLLM proxy
+(opt-in; no silent fallback to a direct call).
+agent/test_reasoning_gateway_enforcement.py fails the build if any other
+agent/ or scripts/ file imports a provider SDK, constructs a client, or calls
+.messages.create. Honest limits: only Anthropic is supported (LiteLLM is an
+opt-in local proxy, not a second provider); budgets are durable on ONE host's
+SQLite file only; calls with an injected create_fn test double are not metered
+unless enforce_budget=True; the scan covers agent/ and scripts/ Python files,
+not code outside the repo or non-Python services.
 
 Non-negotiable rules enforced here (Phase 3 of the directive):
   - DEFAULT DENIED: `purpose` must be one of ADVISORY_PURPOSES or the call
@@ -36,10 +49,14 @@ Non-negotiable rules enforced here (Phase 3 of the directive):
     structured, honest denial, not a crash or a silent fallback.
 """
 
+import json
 import os
 import time
 
+import gateway_budget
+import litellm_route
 import pricing_config
+import tracing
 
 # The 6 categories the directive names as POSSIBLE candidates for real
 # semantic/generative value -- listed, not automatically allowed; every
@@ -68,7 +85,139 @@ def llm_mode_disabled() -> bool:
     return os.environ.get("LLM_MODE", "").strip().upper() == "DISABLED"
 
 
-def call(
+def _denied(reason: str, **extra) -> dict:
+    return {"text": None, "authority": "ADVISORY", "model_called": False,
+            "denial_reason": reason, "usage": None, **extra}
+
+
+def _pre_flight(purpose, api_key, create_fn):
+    """Purpose check -> kill switch -> API key -> client. Returns
+    (denial_reason | None, create_fn, real_client_call, resolved_key)."""
+    if purpose not in ADVISORY_PURPOSES:
+        return (f"purpose {purpose!r} is not in ADVISORY_PURPOSES -- "
+                f"default-denied per this gateway's Phase 3 model-access policy"), None, False
+    if llm_mode_disabled():
+        return "LLM_MODE=DISABLED -- zero-LLM mode active, no network call made", None, False
+    real_client_call = create_fn is None
+    if create_fn is None:
+        if litellm_route.enabled():
+            # Proxy mode (PR 53): the key held here is the proxy's virtual/
+            # master key; the Anthropic key lives in the proxy. There is
+            # deliberately NO fallback to a direct call if this fails.
+            try:
+                from anthropic import Anthropic
+                create_fn = Anthropic(**litellm_route.client_settings(api_key)).messages.create
+            except litellm_route.LiteLLMConfigError as exc:
+                return f"LiteLLM proxy mode misconfigured: {exc}", None, False
+        else:
+            api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
+            if not api_key:
+                return "ANTHROPIC_API_KEY not set -- cannot run a live model call", None, False
+            from anthropic import Anthropic
+            create_fn = Anthropic(api_key=api_key).messages.create
+    return None, create_fn, real_client_call
+
+
+def _reserve_budget(enforce_budget, real_client_call, model, system_prompt, user_text,
+                    max_tokens, run_id):
+    """Durable budget/rate gate, run BEFORE the provider is contacted.
+    Returns (denial_reason | None, reservation_id | None). Shared by call()
+    and converse() so both are refused before they are billed."""
+    if not (enforce_budget is True or (enforce_budget is None and real_client_call)):
+        return None, None
+    verdict = gateway_budget.reserve(
+        "anthropic", model, system_prompt, user_text, max_tokens, run_id=run_id)
+    if not verdict["allowed"]:
+        return f"BUDGET_{verdict['status']}: {verdict['message']}", None
+    return None, verdict["reservation_id"]
+
+
+def _summarize_and_record(response, model, duration_ms, real_client_call, reservation=None):
+    usage = getattr(response, "usage", None)
+    if usage is None:
+        return None
+    cache_write = getattr(usage, "cache_creation_input_tokens", None)
+    cache_read = getattr(usage, "cache_read_input_tokens", None)
+    cost = pricing_config.calculate_cost(
+        "anthropic", model,
+        input_tokens=usage.input_tokens, output_tokens=usage.output_tokens,
+        cache_write_tokens=cache_write or 0, cache_read_tokens=cache_read or 0,
+    )
+    if reservation is not None and cost.get("available"):
+        gateway_budget.settle(reservation, cost["total_usd"])
+    if real_client_call:
+        import metrics
+        metrics.record_model_usage(
+            provider="anthropic", model=model,
+            input_tokens=usage.input_tokens, output_tokens=usage.output_tokens,
+            cache_creation_input_tokens=cache_write, cache_read_input_tokens=cache_read,
+        )
+    return {
+        "input_tokens": usage.input_tokens, "output_tokens": usage.output_tokens,
+        "cache_creation_input_tokens": cache_write, "cache_read_input_tokens": cache_read,
+        "duration_ms": duration_ms, **cost,
+    }
+
+
+def _messages_text(messages) -> str:
+    """Characters of a conversation, for the worst-case input estimate only
+    (over-counting is the safe direction for a budget reservation)."""
+    try:
+        return json.dumps(messages, default=lambda o: getattr(o, "__dict__", str(o)))
+    except (TypeError, ValueError):
+        return str(messages)
+
+
+def _tools_text(tools) -> str:
+    return _messages_text(tools) if tools else ""
+
+
+def _converse_impl(
+    purpose: str,
+    system_prompt: str,
+    messages: list,
+    max_tokens: int,
+    tools=None,
+    api_key: str | None = None,
+    create_fn=None,
+    model: str = "claude-sonnet-5",
+    run_id: str | None = None,
+    enforce_budget: bool | None = None,
+) -> dict:
+    """Gateway entry point for caller-owned multi-turn / tool-calling /
+    structured-output conversations. Makes exactly ONE request per call and
+    returns the RAW response unmodified (so thinking and tool_use blocks can
+    be replayed to the API by the caller); no fence-stripping, no text
+    extraction. Same purpose check, kill switch, key check and usage/cost
+    recording as call().
+
+    Returns {response, authority="ADVISORY", model_called, denial_reason,
+    usage}; response is None on every denial path (zero network calls)."""
+    denial, create_fn, real_client_call = _pre_flight(purpose, api_key, create_fn)
+    if denial:
+        return _denied(denial, response=None)
+    # Same durable budget/rate gate as call(): refused BEFORE it is billed.
+    # The estimate is built from the whole conversation (system + messages).
+    denial, reservation = _reserve_budget(
+        enforce_budget, real_client_call, model, system_prompt,
+        _messages_text(messages) + _tools_text(tools), max_tokens, run_id)
+    if denial:
+        return _denied(denial, response=None)
+    kwargs = {"model": model, "max_tokens": max_tokens, "system": system_prompt,
+              "messages": messages}
+    if tools is not None:
+        kwargs["tools"] = tools
+    call_start = time.monotonic()
+    response = create_fn(**kwargs)
+    duration_ms = round((time.monotonic() - call_start) * 1000, 1)
+    return {
+        "response": response, "authority": "ADVISORY", "model_called": True,
+        "denial_reason": None, "text": None,
+        "usage": _summarize_and_record(response, model, duration_ms, real_client_call, reservation),
+    }
+
+
+def _call_impl(
     purpose: str,
     system_prompt: str,
     user_message: str,
@@ -77,6 +226,8 @@ def call(
     create_fn=None,
     effort: str | None = None,
     model: str = "claude-sonnet-5",
+    run_id: str | None = None,
+    enforce_budget: bool | None = None,
 ) -> dict:
     """The one sanctioned boundary for a single-shot advisory model call.
 
@@ -109,47 +260,13 @@ def call(
     messages=...) -> an object with .content (blocks with .type/.text) and
     .usage. Never omitted in a real automated test, so tests never make a
     real, billed Anthropic API call."""
-    if purpose not in ADVISORY_PURPOSES:
-        return {
-            "text": None, "authority": "ADVISORY", "model_called": False,
-            "denial_reason": (
-                f"purpose {purpose!r} is not in ADVISORY_PURPOSES -- "
-                f"default-denied per this gateway's Phase 3 model-access policy"
-            ),
-            "usage": None,
-        }
-    if llm_mode_disabled():
-        return {
-            "text": None, "authority": "ADVISORY", "model_called": False,
-            "denial_reason": "LLM_MODE=DISABLED -- zero-LLM mode active, no network call made",
-            "usage": None,
-        }
-
-    # AEQ-028: whether THIS call goes through the real Anthropic client is
-    # decided here, before create_fn is reassigned below -- an injected
-    # create_fn is, by this gateway's own documented contract ("Never
-    # omitted in a real automated test"), always a test double standing in
-    # for a real network call. Usage must only ever be recorded for the
-    # former: metrics.record_model_usage() bridges into the real, shared,
-    # durable production event ledger (see web_server.py's
-    # metrics.set_usage_sink(_on_model_usage)) whenever web_server has been
-    # imported anywhere in the current process -- which a full
-    # `python -m unittest discover` run does incidentally, via
-    # test_web_server.py's own import, regardless of which test file
-    # actually calls this function. Recording a test double's fake .usage
-    # here previously wrote real rows (fake 10/20 token counts, no run_id)
-    # into real production Usage/Dashboard economics on every such run.
-    real_client_call = create_fn is None
-    if create_fn is None:
-        api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
-        if not api_key:
-            return {
-                "text": None, "authority": "ADVISORY", "model_called": False,
-                "denial_reason": "ANTHROPIC_API_KEY not set -- cannot run a live model call",
-                "usage": None,
-            }
-        from anthropic import Anthropic
-        create_fn = Anthropic(api_key=api_key).messages.create
+    denial, create_fn, real_client_call = _pre_flight(purpose, api_key, create_fn)
+    if denial:
+        return _denied(denial)
+    denial, reservation = _reserve_budget(
+        enforce_budget, real_client_call, model, system_prompt, user_message, max_tokens, run_id)
+    if denial:
+        return _denied(denial)
 
     kwargs = {}
     if effort is not None:
@@ -161,33 +278,9 @@ def call(
         **kwargs,
     )
     duration_ms = round((time.monotonic() - call_start) * 1000, 1)
-
-    usage = getattr(response, "usage", None)
-    usage_summary = None
-    if usage is not None:
-        cache_write = getattr(usage, "cache_creation_input_tokens", None)
-        cache_read = getattr(usage, "cache_read_input_tokens", None)
-        cost = pricing_config.calculate_cost(
-            "anthropic", model,
-            input_tokens=usage.input_tokens, output_tokens=usage.output_tokens,
-            cache_write_tokens=cache_write or 0, cache_read_tokens=cache_read or 0,
-        )
-        usage_summary = {
-            "input_tokens": usage.input_tokens,
-            "output_tokens": usage.output_tokens,
-            "cache_creation_input_tokens": cache_write,
-            "cache_read_input_tokens": cache_read,
-            "duration_ms": duration_ms,
-            **cost,
-        }
-        if real_client_call:
-            import metrics
-            metrics.record_model_usage(
-                provider="anthropic", model=model,
-                input_tokens=usage.input_tokens, output_tokens=usage.output_tokens,
-                cache_creation_input_tokens=cache_write,
-                cache_read_input_tokens=cache_read,
-            )
+    # AEQ-028: usage is only recorded to metrics for a real client call, never
+    # for an injected test double (see _pre_flight / _summarize_and_record).
+    usage_summary = _summarize_and_record(response, model, duration_ms, real_client_call, reservation)
 
     text = "".join(b.text for b in response.content if getattr(b, "type", None) == "text")
     stripped = text.strip()
@@ -213,3 +306,101 @@ def call(
         "text": stripped, "authority": "ADVISORY", "model_called": True, "denial_reason": None,
         "usage": usage_summary,
     }
+
+
+def call(purpose, system_prompt, user_message, max_tokens, api_key=None,
+         create_fn=None, effort=None, model="claude-sonnet-5") -> dict:
+    """Traced wrapper: every call through the gateway -- including denials --
+    is one `gateway.model_call` span. Contract/doc: see _call_impl."""
+    with tracing.span(
+        "gateway.model_call", purpose=str(purpose), model=model,
+        max_tokens=max_tokens, effort=effort,
+    ) as sp:
+        try:
+            result = _call_impl(purpose, system_prompt, user_message, max_tokens,
+                                api_key=api_key, create_fn=create_fn, effort=effort, model=model)
+        except Exception as exc:  # noqa: BLE001 - recorded then re-raised unchanged
+            sp.set_attribute("gateway.outcome", "error")
+            sp.set_attribute("error.type", type(exc).__name__)
+            sp.record_exception(exc)
+            raise
+        usage = result.get("usage")
+        if not result.get("model_called"):
+            sp.set_attribute("gateway.outcome", "denied")
+            sp.set_attribute("gateway.denial_reason", str(result.get("denial_reason"))[:200])
+        else:
+            sp.set_attribute("gateway.outcome", "ok" if result.get("text") else "error")
+            if not result.get("text"):
+                sp.set_attribute("gateway.denial_reason", str(result.get("denial_reason"))[:200])
+        if usage:
+            sp.set_attribute("llm.input_tokens", usage["input_tokens"])
+            sp.set_attribute("llm.output_tokens", usage["output_tokens"])
+            sp.set_attribute("llm.duration_ms", usage["duration_ms"])
+            if usage.get("available") and usage.get("total_usd") is not None:
+                sp.set_attribute("llm.cost_usd", float(usage["total_usd"]))
+        return result
+
+
+def _annotate_span(sp, result, *, converse_mode=False):
+    """Attach outcome/model/token/cost attributes to a gateway span. Shared
+    by call() and converse() so every billed path emits the same span family
+    (`gateway.model_call`); budget refusals are outcome=denied with the
+    BUDGET_* reason, so a refusal is visible in the trace, not just absent."""
+    usage = result.get("usage")
+    if not result.get("model_called"):
+        sp.set_attribute("gateway.outcome", "denied")
+        sp.set_attribute("gateway.denial_reason", str(result.get("denial_reason"))[:200])
+    else:
+        ok = (result.get("response") is not None) if converse_mode else bool(result.get("text"))
+        sp.set_attribute("gateway.outcome", "ok" if ok else "error")
+        if not ok:
+            sp.set_attribute("gateway.denial_reason", str(result.get("denial_reason"))[:200])
+    if usage:
+        sp.set_attribute("llm.input_tokens", usage["input_tokens"])
+        sp.set_attribute("llm.output_tokens", usage["output_tokens"])
+        sp.set_attribute("llm.duration_ms", usage["duration_ms"])
+        if usage.get("available") and usage.get("total_usd") is not None:
+            sp.set_attribute("llm.cost_usd", float(usage["total_usd"]))
+
+
+def _traced(entry, fn, *, purpose, model, max_tokens, effort=None, run_id=None):
+    with tracing.span(
+        "gateway.model_call", purpose=str(purpose), model=model,
+        max_tokens=max_tokens, effort=effort, entry=entry,
+    ) as sp:
+        try:
+            result = fn()
+        except Exception as exc:  # noqa: BLE001 - recorded then re-raised unchanged
+            sp.set_attribute("gateway.outcome", "error")
+            sp.set_attribute("error.type", type(exc).__name__)
+            sp.record_exception(exc)
+            raise
+        _annotate_span(sp, result, converse_mode=(entry == "converse"))
+        return result
+
+
+def call(purpose, system_prompt, user_message, max_tokens, api_key=None,
+         create_fn=None, effort=None, model="claude-sonnet-5", run_id=None,
+         enforce_budget=None) -> dict:
+    """Traced wrapper: every call through the gateway -- including denials --
+    is one `gateway.model_call` span. Contract/doc: see _call_impl."""
+    return _traced(
+        "call",
+        lambda: _call_impl(purpose, system_prompt, user_message, max_tokens,
+                           api_key=api_key, create_fn=create_fn, effort=effort,
+                           model=model, run_id=run_id, enforce_budget=enforce_budget),
+        purpose=purpose, model=model, max_tokens=max_tokens, effort=effort)
+
+
+def converse(purpose, system_prompt, messages, max_tokens, tools=None, api_key=None,
+             create_fn=None, model="claude-sonnet-5", run_id=None,
+             enforce_budget=None) -> dict:
+    """Traced wrapper for the multi-turn / tool-calling entry point: same
+    `gateway.model_call` span (entry="converse") with model, tokens, cost and
+    outcome as call(). Contract/doc: see _converse_impl."""
+    return _traced(
+        "converse",
+        lambda: _converse_impl(purpose, system_prompt, messages, max_tokens, tools=tools,
+                               api_key=api_key, create_fn=create_fn, model=model,
+                               run_id=run_id, enforce_budget=enforce_budget),
+        purpose=purpose, model=model, max_tokens=max_tokens)

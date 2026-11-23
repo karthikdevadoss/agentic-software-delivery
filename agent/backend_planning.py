@@ -58,8 +58,8 @@ load_dotenv()  # same pattern as agent/main.py/event_ledger.py -- loads
 # call gets it, not just backend_acceptance.py specifically.
 
 import demo_catalogue
+import reasoning_gateway
 import risk_policy
-import metrics
 
 ROUTE_DETERMINISTIC_ONLY = "DETERMINISTIC_ONLY"
 ROUTE_USE_RAG_MCP = "USE_RAG_MCP"
@@ -256,44 +256,26 @@ def analyze_with_llm(requirement: str, rag_context: RagContext, api_key: str | N
             "model_called": False,
         }
 
-    # AEQ-028 (see reasoning_gateway.py's identical comment/fix): whether
-    # THIS call goes through the real Anthropic client is decided here,
-    # before create_fn is reassigned below -- an injected create_fn is,
-    # per this function's own docstring ("injectable so the automated
-    # test suite never makes a real, billed Anthropic API call"), always
-    # a test double. Usage must only ever be recorded for a real call:
-    # metrics.record_model_usage() bridges into the real, shared,
-    # durable production event ledger whenever web_server has been
-    # imported anywhere in the current process, which a full
-    # `python -m unittest discover` run does incidentally regardless of
-    # which test file actually calls this function.
-    real_client_call = create_fn is None
-    if create_fn is None:
-        api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
-        if not api_key:
-            return {
-                "affected_components": [], "expected_files": [], "verification_plan": None,
-                "explanation": "ANTHROPIC_API_KEY not set -- cannot run LLM impact analysis",
-                "missing_context": None, "model_called": False,
-            }
-        from anthropic import Anthropic
-        create_fn = Anthropic(api_key=api_key).messages.create
-
+    # Routed through the central gateway (purpose check, LLM_MODE kill switch,
+    # key check, usage recording -- incl. the AEQ-028 rule that an injected
+    # create_fn test double never records usage). converse() returns the raw
+    # response so this module keeps its own structured-JSON parsing.
     user_message = f"{rag_context.context_text}\n\nAnalyze the requirement above."
-    response = create_fn(
-        model="claude-sonnet-5", max_tokens=1024,
-        system=ANALYSIS_SYSTEM_PROMPT,
+    result = reasoning_gateway.converse(
+        purpose="SEMANTIC_REQUIREMENT_INTERPRETATION",
+        system_prompt=ANALYSIS_SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_message}],
+        max_tokens=1024, api_key=api_key, create_fn=create_fn,
+        model="claude-sonnet-5",
     )
-
-    usage = getattr(response, "usage", None)
-    if usage is not None and real_client_call:
-        metrics.record_model_usage(
-            provider="anthropic", model="claude-sonnet-5",
-            input_tokens=usage.input_tokens, output_tokens=usage.output_tokens,
-            cache_creation_input_tokens=getattr(usage, "cache_creation_input_tokens", None),
-            cache_read_input_tokens=getattr(usage, "cache_read_input_tokens", None),
-        )
+    if not result["model_called"]:
+        reason = result["denial_reason"]
+        return {
+            "affected_components": [], "expected_files": [], "verification_plan": None,
+            "explanation": f"{reason} -- cannot run LLM impact analysis",
+            "missing_context": None, "model_called": False,
+        }
+    response = result["response"]
 
     text = "".join(b.text for b in response.content if getattr(b, "type", None) == "text")
     try:

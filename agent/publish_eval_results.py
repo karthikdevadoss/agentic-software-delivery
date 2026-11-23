@@ -21,8 +21,23 @@ Run (from agent/, after building the curated index):
 It also records what CI actually did with the eval step on master (via the
 gh CLI, read-only): the latest run's eval-step conclusion and when the step
 last passed. If gh is unavailable that field is null, never guessed.
+
+Schema 2 adds, on top of the unchanged v1 fields:
+  suites[]          one first-class card per suite (retrieval, routing,
+                    security-routing, agent-decision): score, threshold,
+                    pass/fail, dataset hash, commit hash, run time
+  reproducibility   the exact command + a hash of the inputs that produced
+                    the numbers (runner + datasets + thresholds)
+and every publish also appends one record to agent/web/eval-history/
+(<UTC timestamp>-<commit7>.json) and rebuilds eval-history/index.json, which
+the page loads for the history table and trend lines. History can be seeded,
+once, from the REAL git history of the committed results files:
+    python publish_eval_results.py --seed-history
+Nothing in history is ever computed or estimated: a field that cannot be read
+from a real committed artifact is null and the page says "n/a".
 """
 
+import hashlib
 import json
 import subprocess
 import sys
@@ -34,6 +49,8 @@ import eval_runner
 AGENT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = AGENT_DIR.parent
 OUTPUT_PATH = AGENT_DIR / "web" / "eval-results.json"
+HISTORY_DIR = AGENT_DIR / "web" / "eval-history"
+HISTORY_INDEX = HISTORY_DIR / "index.json"
 
 REPO_URL = "https://github.com/karthikdevadoss/agentic-software-delivery"
 
@@ -48,6 +65,33 @@ METRIC_SPECS = [
 ]
 
 
+AGENT_DECISION_KEY = "agent_decision_pass_rate"
+PERMISSION_KEY = "permission_pass_rate"
+
+# suite key -> (label, primary metric key, other metrics shown on the card,
+# dataset file that defines it). security-routing is the REJECT_UNAUTHORIZED
+# subset of the routing dataset, so it shares that dataset's hash.
+SUITE_SPECS = [
+    ("retrieval", "Retrieval", "recall_at_3", ["mrr"], "agent/evals/retrieval_dataset.json"),
+    ("routing", "Tool routing", "routing_accuracy", [], "agent/evals/routing_dataset.json"),
+    ("security-routing", "Security routing (zero tolerance)", "security_case_accuracy", [],
+     "agent/evals/routing_dataset.json"),
+    ("agent-decision", "Agent decisions", AGENT_DECISION_KEY, [], "agent/evals/agent_decision_dataset.json"),
+    ("permission", "Permission-aware retrieval (zero leaks)", PERMISSION_KEY, [],
+     "agent/evals/permission_dataset.json"),
+    ("self-eval", "Agent self-evaluation (replay)", "self_eval_catch_rate", ["self_eval_good_pass_rate"],
+     "agent/evals/self_eval_dataset.json"),
+]
+
+# Honest limits carried on the suite card itself (only the suites that need one).
+SUITE_NOTES = {
+    "permission": "Fixture pipeline: clearly fake docs tagged with access levels, not live Notion/Slack, "
+                  "no OAuth or source ACL sync. Filtering is code, not a prompt; judged by code from real retrieval output.",
+    "self-eval": "The system grading itself: a deterministic stand-in scorer replaying hand-labelled "
+                 "fixtures (no model, no API key). Not independent QA, and it cannot judge semantics.",
+}
+
+
 def metric_passes(score, threshold, comparator: str) -> bool:
     if score is None:
         return False
@@ -58,14 +102,108 @@ def metric_passes(score, threshold, comparator: str) -> bool:
     raise ValueError(f"unknown comparator: {comparator}")
 
 
+def _dataset_hash(eval_inputs, rel):
+    return ((eval_inputs or {}).get("files") or {}).get(rel)
+
+
+def build_suites(metrics, labelled, eval_inputs, commit_sha, generated_at, agent_decision):
+    """Pure: one record per suite, derived ONLY from the already-computed
+    metrics list + recorded facts. Used for live publishes and, with the
+    metrics of an older snapshot, for history seeding. A suite whose metric is
+    absent (e.g. agent-decision in a snapshot that predates its threshold) has
+    threshold/passed = None, never a guess."""
+    by_key = {m["key"]: m for m in metrics}
+    cases = {"retrieval": labelled.get("retrieval_cases"), "routing": labelled.get("routing_cases"),
+             "security-routing": labelled.get("security_routing_cases"),
+             "agent-decision": agent_decision["cases_total"] if agent_decision else None,
+             "permission": labelled.get("permission_cases"),
+             "self-eval": labelled.get("self_eval_cases")}
+    suites = []
+    for key, label, primary, others, dataset in SUITE_SPECS:
+        if key == "agent-decision":
+            if agent_decision is None:
+                continue
+            total = agent_decision["cases_total"]
+            m = by_key.get(primary) or {
+                "score": round(agent_decision["summary"]["PASS"] / total, 3) if total else None,
+                "threshold": None, "comparator": ">=", "passed": None}
+            run_at, run_commit, kind = (agent_decision.get("run_at_utc") or None,
+                                        agent_decision.get("recorded_commit"), "recorded")
+        else:
+            m = by_key.get(primary)
+            if m is None:
+                continue
+            run_at, run_commit, kind = generated_at, commit_sha, "measured"
+        suite_metrics = [{"key": k, "score": by_key[k]["score"], "threshold": by_key[k]["threshold"],
+                          "comparator": by_key[k]["comparator"], "passed": by_key[k]["passed"]}
+                         for k in [primary] + others if k in by_key]
+        if not suite_metrics:
+            suite_metrics = [{"key": primary, "score": m["score"], "threshold": m["threshold"],
+                              "comparator": m["comparator"], "passed": m["passed"]}]
+        passes = [x["passed"] for x in suite_metrics]
+        extra = {"note": SUITE_NOTES[key]} if key in SUITE_NOTES else {}
+        suites.append({
+            **extra,
+            "key": key,
+            "label": label,
+            "kind": kind,  # measured = this publish ran it; recorded = replayed from committed results
+            "cases": cases[key],
+            "primary_metric": primary,
+            "score": m["score"],
+            "threshold": m["threshold"],
+            "comparator": m["comparator"],
+            "passed": None if any(p is None for p in passes) else all(passes),
+            "metrics": suite_metrics,
+            "dataset_file": dataset,
+            "dataset_hash": _dataset_hash(eval_inputs, dataset),
+            "commit_sha": run_commit,
+            "run_at": run_at,
+        })
+    return suites
+
+
+def build_reproducibility(eval_inputs):
+    """The command, and a single hash over exactly the inputs hashed in
+    eval_inputs (runner + datasets + recorded agent-decision results +
+    thresholds). Same bytes in, same hash out; None when inputs are unknown."""
+    base = {
+        "command": "python eval_runner.py all",
+        "working_directory": "agent",
+        "setup": ["pip install -r requirements.txt", "python backend_rag_index.py"],
+        "single_suite_commands": [
+            "python eval_runner.py retrieval", "python eval_runner.py routing",
+            "python eval_runner.py security-routing", "python eval_runner.py agent-decision",
+            "python eval_runner.py permission", "python eval_runner.py self-eval"],
+        "agent_decision_note": "agent-decision is replayed from the committed recorded results "
+                               "(no API key, no network); re-recording it needs agent_decision_eval_runner.py "
+                               "and a billed ANTHROPIC_API_KEY.",
+    }
+    if not eval_inputs:
+        return dict(base, inputs_hash=None, hash_covers=[])
+    return dict(base, inputs_hash=inputs_hash(eval_inputs),
+                hash_covers=sorted(eval_inputs["files"]) + ["eval_runner.THRESHOLDS"])
+
+
+def inputs_hash(eval_inputs):
+    """sha256 over the canonical JSON of {files, thresholds} hashes."""
+    canon = json.dumps({"files": eval_inputs["files"], "thresholds": eval_inputs["thresholds"]},
+                       sort_keys=True)
+    return hashlib.sha256(canon.encode("utf-8")).hexdigest()
+
+
 def build_eval_results(retrieval: dict, routing: dict, *, commit_sha: str,
                        generated_at: str, embedding_model: str,
                        working_tree_dirty: bool = False,
                        thresholds: dict = None,
                        ci_observation: dict = None,
                        eval_inputs: dict = None,
-                       agent_decision: dict = None) -> dict:
-    """Pure function: eval_runner output in, publishable dict out."""
+                       agent_decision: dict = None,
+                       permission: dict = None,
+                       self_eval_result: dict = None) -> dict:
+    """Pure function: eval_runner output in, publishable dict out. `permission`
+    / `self_eval_result` are the unmodified eval_runner.run_permission_eval() /
+    run_self_eval() results; when None the suite is simply absent (never a
+    guessed number)."""
     thresholds = eval_runner.THRESHOLDS if thresholds is None else thresholds
     summaries = {"retrieval": retrieval["summary"], "routing": routing["summary"]}
 
@@ -83,8 +221,54 @@ def build_eval_results(retrieval: dict, routing: dict, *, commit_sha: str,
             "passed": metric_passes(score, threshold, comparator),
         })
 
+    if agent_decision is not None:
+        total = agent_decision["cases_total"]
+        ad_score = round(agent_decision["summary"]["PASS"] / total, 3) if total else None
+        metrics.append({
+            "key": AGENT_DECISION_KEY,
+            "label": "Agent-decision pass rate (recorded results, zero tolerance)",
+            "eval": "agent_decision",
+            "score": ad_score,
+            "threshold": thresholds[AGENT_DECISION_KEY],
+            "comparator": ">=",
+            "passed": metric_passes(ad_score, thresholds[AGENT_DECISION_KEY], ">="),
+        })
+
+    if permission is not None:
+        ps = permission["summary"]
+        p_score = round(ps["passed"] / ps["cases"], 3) if ps["cases"] else None
+        p_thr = eval_runner.PERMISSION_THRESHOLDS[PERMISSION_KEY]
+        metrics.append({
+            "key": PERMISSION_KEY,
+            "label": "Permission-retrieval pass rate (zero leaks, fixtures)",
+            "eval": "permission",
+            "score": p_score, "threshold": p_thr, "comparator": "==",
+            "passed": metric_passes(p_score, p_thr, "=="),
+        })
+    if self_eval_result is not None:
+        ss = self_eval_result["summary"]
+        for key, label, field in (
+                ("self_eval_catch_rate", "Self-eval catch rate (replay, deterministic stand-in)", "catch_rate"),
+                ("self_eval_good_pass_rate", "Self-eval good-answer pass rate (replay)", "good_pass_rate")):
+            thr = eval_runner.SELF_EVAL_THRESHOLDS[field]
+            metrics.append({"key": key, "label": label, "eval": "self_eval", "score": ss[field],
+                            "threshold": thr, "comparator": ">=",
+                            "passed": metric_passes(ss[field], thr, ">=")})
+
+    labelled = {
+        "retrieval_cases": retrieval["summary"]["cases"],
+        "routing_cases": routing["summary"]["cases"],
+        "security_routing_cases": sum(
+            1 for c in routing["per_case"] if c["expected_route"] == "REJECT_UNAUTHORIZED"),
+    }
+    if permission is not None:
+        labelled["permission_cases"] = permission["summary"]["cases"]
+    if self_eval_result is not None:
+        labelled["self_eval_cases"] = self_eval_result["summary"]["cases"]
+    suites = build_suites(metrics, labelled, eval_inputs, commit_sha, generated_at, agent_decision)
+
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "generated_at": generated_at,
         "commit_sha": commit_sha,
         "working_tree_dirty": working_tree_dirty,
@@ -94,12 +278,9 @@ def build_eval_results(retrieval: dict, routing: dict, *, commit_sha: str,
         # test_eval_results_fresh.py. None only in synthetic unit tests.
         "eval_inputs": (
             dict(eval_inputs, not_covered=EVAL_INPUTS_NOT_COVERED) if eval_inputs else None),
-        "labelled_set": {
-            "retrieval_cases": retrieval["summary"]["cases"],
-            "routing_cases": routing["summary"]["cases"],
-            "security_routing_cases": sum(
-                1 for c in routing["per_case"] if c["expected_route"] == "REJECT_UNAUTHORIZED"),
-        },
+        "labelled_set": labelled,
+        "suites": suites,
+        "reproducibility": build_reproducibility(eval_inputs),
         "metrics": metrics,
         "informational": {
             # Reported by eval_runner but not gated by a threshold.
@@ -118,7 +299,7 @@ def build_eval_results(retrieval: dict, routing: dict, *, commit_sha: str,
         "agent_decision": agent_decision,
         "ci_gate": {
             "workflow": ".github/workflows/ci.yml",
-            "step": "RAG/MCP retrieval + routing evals (must meet recorded thresholds)",
+            "step": EVAL_STEP_NAME,
             "command": "python eval_runner.py all",
             "behaviour": "exits 1 (fails the build) if any threshold is not met",
             "runs_on": "every pull request to master and every push to master",
@@ -147,6 +328,9 @@ EVAL_INPUT_FILES = [
     # paid model API key), so the recorded results file is itself the input.
     "agent/evals/agent_decision_dataset.json",
     "agent/evals/agent_decision_results.json",
+    # Integration-branch suites (permission-aware retrieval, agent self-eval).
+    "agent/evals/permission_dataset.json",
+    "agent/evals/self_eval_dataset.json",
 ]
 AGENT_DECISION_RESULTS = "agent/evals/agent_decision_results.json"
 AGENT_DECISION_DATASET = "agent/evals/agent_decision_dataset.json"
@@ -161,7 +345,6 @@ EVAL_INPUTS_NOT_COVERED = [
 
 
 def _sha256_text(text: str) -> str:
-    import hashlib
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
@@ -181,7 +364,10 @@ def compute_eval_input_hashes(repo_root: Path = None, thresholds: dict = None) -
     }
 
 
-EVAL_STEP_NAME = "RAG/MCP retrieval + routing evals (must meet recorded thresholds)"
+EVAL_STEP_NAME = "RAG/MCP retrieval + routing + agent-decision evals (must meet recorded thresholds)"
+# Runs recorded before the agent-decision suite joined the gate used the old
+# step name; keep matching it so the CI observation still finds them.
+EVAL_STEP_NAMES = (EVAL_STEP_NAME, "RAG/MCP retrieval + routing evals (must meet recorded thresholds)")
 GH_REPO = "karthikdevadoss/agentic-software-delivery"
 
 
@@ -278,8 +464,8 @@ def fetch_ci_runs(limit: int = 40) -> list:
             conclusion, failed = None, []
             for job in jobs:
                 steps = job.get("steps") or []
-                if any(st["name"] == EVAL_STEP_NAME for st in steps):
-                    conclusion = next(st["conclusion"] for st in steps if st["name"] == EVAL_STEP_NAME)
+                if any(st["name"] in EVAL_STEP_NAMES for st in steps):
+                    conclusion = next(st["conclusion"] for st in steps if st["name"] in EVAL_STEP_NAMES)
                     failed = [st["name"] for st in steps if st["conclusion"] == "failure"]
             runs.append({"created_at": item["createdAt"], "head_sha": item["headSha"],
                          "eval_step": conclusion, "failed_steps": failed})
@@ -302,11 +488,138 @@ def _working_tree_dirty() -> bool:
     return any(not l.endswith(out_rel) for l in lines)
 
 
+def history_entry(d: dict, source: str = None) -> dict:
+    """Pure: the slim history record for one published snapshot (v1 or v2).
+    Everything is read from the snapshot itself; v1 snapshots simply have
+    fewer hashes and null for what they never recorded."""
+    suites = d.get("suites")
+    if suites is None:  # schema 1: derive from the recorded metrics only
+        suites = build_suites(d["metrics"], d["labelled_set"], d.get("eval_inputs"),
+                              d["commit_sha"], d["generated_at"], d.get("agent_decision"))
+    return {
+        "schema_version": 1,
+        "generated_at": d["generated_at"],
+        "commit_sha": d["commit_sha"],
+        "working_tree_dirty": d.get("working_tree_dirty"),
+        "embedding_model": d.get("embedding_model"),
+        "overall_passed": d.get("overall_passed"),
+        "reproducibility_hash": (inputs_hash(d["eval_inputs"]) if d.get("eval_inputs") else None),
+        "source": source or "publish_eval_results.py",
+        "suites": [
+            {k: s[k] for k in ("key", "kind", "score", "threshold", "comparator", "passed",
+                                "dataset_hash", "commit_sha", "run_at", "cases")}
+            | {"metrics": {m["key"]: m["score"] for m in s["metrics"]}}
+            for s in suites],
+    }
+
+
+def history_filename(entry: dict) -> str:
+    ts = entry["generated_at"].replace("-", "").replace(":", "")
+    ts = ts.split(".")[0].rstrip("Z").split("+")[0] + "Z"
+    return f"{ts}-{entry['commit_sha'][:7]}.json"
+
+
+def agent_decision_history_entry(results: dict, dataset_text, commit: str) -> dict:
+    """Pure: history record for one committed agent-decision results file
+    (an agent-decision-only run -- no retrieval/routing was measured then).
+    Threshold/pass are null: no threshold existed when it was recorded."""
+    verdicts = [r.get("verdict") for r in results.get("results", [])]
+    n = len(verdicts)
+    return {
+        "schema_version": 1,
+        "generated_at": results["run_at_utc"],
+        "commit_sha": commit,
+        "working_tree_dirty": None,
+        "embedding_model": None,
+        "overall_passed": None,
+        "reproducibility_hash": None,
+        "source": f"git:{commit[:7]}:{AGENT_DECISION_RESULTS}",
+        "suites": [{
+            "key": "agent-decision", "kind": "recorded", "cases": n,
+            "score": round(verdicts.count("PASS") / n, 3) if n else None,
+            "threshold": None, "comparator": ">=", "passed": None,
+            "dataset_hash": _sha256_text(dataset_text.replace("\r\n", "\n")) if dataset_text else None,
+            "commit_sha": commit, "run_at": results["run_at_utc"],
+            "metrics": {AGENT_DECISION_KEY: round(verdicts.count("PASS") / n, 3) if n else None},
+            "verdict_counts": {v: verdicts.count(v) for v in sorted(set(verdicts))},
+        }],
+    }
+
+
+def write_history_entry(entry: dict, history_dir: Path = None) -> Path:
+    history_dir = HISTORY_DIR if history_dir is None else history_dir
+    history_dir.mkdir(parents=True, exist_ok=True)
+    path = history_dir / history_filename(entry)
+    path.write_text(json.dumps(entry, indent=2) + "\n", encoding="utf-8")
+    return path
+
+
+def rebuild_history_index(history_dir: Path = None) -> dict:
+    """index.json = every history file, oldest first, so the static page needs
+    one fetch. The per-run files stay the canonical records."""
+    history_dir = HISTORY_DIR if history_dir is None else history_dir
+    entries = []
+    for f in sorted(history_dir.glob("*.json")):
+        if f.name == "index.json":
+            continue
+        entries.append(dict(json.loads(f.read_text(encoding="utf-8")), file=f.name))
+    entries.sort(key=lambda e: (e["generated_at"], e["file"]))
+    index = {"schema_version": 1, "entries": entries}
+    (history_dir / "index.json").write_text(json.dumps(index, indent=2) + "\n", encoding="utf-8")
+    return index
+
+
+def _git_show(rev: str, rel: str):
+    try:
+        return _git("show", f"{rev}:{rel}")
+    except subprocess.CalledProcessError:
+        return None
+
+
+def seed_history_from_git(history_dir: Path = None) -> list:
+    """Seed history ONLY from real committed artifacts: every committed
+    version of web/eval-results.json, plus every committed version of
+    evals/agent_decision_results.json (agent-decision-only runs). Idempotent:
+    a record whose file already exists is left untouched."""
+    history_dir = HISTORY_DIR if history_dir is None else history_dir
+    written = []
+    snap_rel = OUTPUT_PATH.relative_to(REPO_ROOT).as_posix()
+    for commit in _git("log", "--reverse", "--format=%H", "--", snap_rel).splitlines():
+        text = _git_show(commit, snap_rel)
+        if text is None:
+            continue
+        entry = history_entry(json.loads(text), source=f"git:{commit[:7]}:{snap_rel}")
+        path = history_dir / history_filename(entry)
+        if not path.exists():
+            written.append(write_history_entry(entry, history_dir))
+    for commit in _git("log", "--reverse", "--format=%H", "--", AGENT_DECISION_RESULTS).splitlines():
+        text = _git_show(commit, AGENT_DECISION_RESULTS)
+        if text is None:
+            continue
+        results = json.loads(text)
+        if not results.get("run_at_utc"):
+            continue
+        entry = agent_decision_history_entry(
+            results, _git_show(commit, AGENT_DECISION_DATASET), commit)
+        path = history_dir / history_filename(entry)
+        if not path.exists():
+            written.append(write_history_entry(entry, history_dir))
+    rebuild_history_index(history_dir)
+    return written
+
+
 def main(argv: list) -> int:
+    if "--seed-history" in argv:
+        written = seed_history_from_git()
+        print(f"seeded {len(written)} history record(s) from git into "
+              f"{HISTORY_DIR.relative_to(REPO_ROOT)}")
+        return 0
     from embeddings import model_id
 
     retrieval = eval_runner.run_retrieval_eval()
     routing = eval_runner.run_routing_eval()
+    permission = eval_runner.run_permission_eval()
+    self_eval_result = eval_runner.run_self_eval()
     now = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
     ci_runs = None if "--no-ci" in argv else fetch_ci_runs()
     results = build_eval_results(
@@ -317,6 +630,7 @@ def main(argv: list) -> int:
         working_tree_dirty=_working_tree_dirty(),
         ci_observation=summarise_ci_runs(ci_runs, now) if ci_runs else None,
         eval_inputs=compute_eval_input_hashes(),
+        permission=permission, self_eval_result=self_eval_result,
         agent_decision=build_agent_decision_section(
             json.loads((REPO_ROOT / AGENT_DECISION_RESULTS).read_text(encoding="utf-8")),
             json.loads((REPO_ROOT / AGENT_DECISION_DATASET).read_text(encoding="utf-8")),
@@ -329,6 +643,10 @@ def main(argv: list) -> int:
         OUTPUT_PATH.write_text(text, encoding="utf-8")
         print(f"wrote {OUTPUT_PATH.relative_to(REPO_ROOT)} "
               f"(overall_passed={results['overall_passed']}, commit={results['commit_sha'][:7]})")
+        if "--no-history" not in argv:
+            path = write_history_entry(history_entry(results))
+            rebuild_history_index()
+            print(f"history: {path.relative_to(REPO_ROOT)}")
     return 0
 
 

@@ -168,9 +168,9 @@ jobs:
       - name: Python hermetic test suite (BLOCKING -- asserts tests really ran)
         working-directory: agent
         run: python ci_python_tests.py
-      - name: RAG/MCP retrieval + routing evals (must meet recorded thresholds)
+      - name: RAG/MCP retrieval + routing + agent-decision evals (must meet recorded thresholds)
         working-directory: agent
-        run: python eval_runner.py all
+        run: python eval_runner.py all   # includes Eval 3 self-eval (replay, no API key)
       # ADDITIVE ANNOTATION ONLY (docs/TESTING_ARCHITECTURE_V1.md's own
       # stated plan, tracked in docs/ACTION_QUEUE.json's TESTING-ARCH-V1-GAPS
       # item 3: wire verify_change.py in as an informational step first,
@@ -243,6 +243,17 @@ jobs:
         env:
           EVENT_LEDGER_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ledger_ci
         run: python -m unittest -v test_knowledge_candidates test_claude_code_hook test_workflow_checkpointer
+
+  k8s-manifests:
+    name: Kubernetes manifests (kubeconform, static validation only -- no cluster, no deploy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install kubeconform
+        run: |
+          curl -fsSL https://github.com/yannh/kubeconform/releases/download/v0.8.0/kubeconform-linux-amd64.tar.gz | tar xz kubeconform
+      - name: Validate infra/k8s
+        run: ./kubeconform -strict -summary -ignore-filename-pattern 'kustomization.yaml|kind-config.yaml' infra/k8s
 
   agentic-platform-frontend:
     name: Agentic platform frontend (Node)

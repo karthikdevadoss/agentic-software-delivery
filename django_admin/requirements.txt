@@ -1,0 +1,5 @@
+# Local admin slice only -- NOT added to agent/requirements.txt (the Starlette product).
+Django>=5.2,<5.3
+psycopg2-binary>=2.9   # only needed when pointing at the Postgres ledger
+pytest>=8
+pytest-django>=4.9

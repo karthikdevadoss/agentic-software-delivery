@@ -20,12 +20,24 @@ import time
 import urllib.error
 import urllib.request
 
+import httpx2
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 
 HOST = "127.0.0.1"
-PORT = 8791
+def _free_port() -> int:
+    import socket
+    with socket.socket() as s:
+        s.bind((HOST, 0))
+        return s.getsockname()[1]
+
+
+PORT = _free_port()  # was a fixed 8791, which collides with any other local server
 URL = f"http://{HOST}:{PORT}/mcp"
+# Throwaway demo credential, generated per run; the server refuses to start
+# over HTTP without one (docs/MCP_AUTH.md).
+import secrets
+DEMO_TOKEN = secrets.token_urlsafe(32)
 
 
 def _wait_for_server(timeout_s: float = 15.0) -> bool:
@@ -45,7 +57,8 @@ def _wait_for_server(timeout_s: float = 15.0) -> bool:
 
 
 async def _run_over_real_http():
-    async with streamable_http_client(URL) as (read_stream, write_stream):
+    client = httpx2.AsyncClient(headers={"Authorization": f"Bearer {DEMO_TOKEN}"})
+    async with client, streamable_http_client(URL, http_client=client) as (read_stream, write_stream):
         async with ClientSession(read_stream, write_stream) as session:
             init_result = await session.initialize()
             print(f"Real MCP handshake over real HTTP succeeded: server={init_result.server_info.name!r} "
@@ -75,6 +88,9 @@ def main():
     env["MCP_TRANSPORT"] = "streamable-http"
     env["MCP_HOST"] = HOST
     env["MCP_PORT"] = str(PORT)
+    env["MCP_BEARER_TOKEN"] = DEMO_TOKEN
+    env["MCP_BEARER_SCOPES"] = "repo:read repo:search"
+    env["MCP_RESOURCE_URL"] = URL
 
     server_proc = subprocess.Popen(
         [sys.executable, "mcp_server.py"],

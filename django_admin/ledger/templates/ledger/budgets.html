@@ -1,0 +1,21 @@
+{% extends "ledger/base.html" %}{% block content %}<h1>Budget state</h1>
+<h2>Durable budget store (agent/budget_store.py)</h2>
+{% if durable.present %}<p>Reading <code>{{ durable.path }}</code> read-only (<code>mode=ro</code>; this page never writes). UTC day {{ durable.day_utc }}.</p>
+{% if durable.error %}<p class="honest">Could not read it: {{ durable.error }}</p>{% endif %}
+{% if durable.has_ledger_table %}
+{% if durable.gateway %}<h3>Platform gateway budget (scope <code>gateway</code>)</h3>
+<table><tr><th>daily cap (USD)</th><td>{{ durable.gateway.daily_usd_cap }}</td></tr>
+<tr><th>spent or reserved today (USD)</th><td>{{ durable.gateway.spent_or_reserved_usd }}</td></tr>
+<tr><th>remaining (USD)</th><td>{{ durable.gateway.remaining_usd }}</td></tr></table>
+<p class="honest">Spent is settled measured cost plus worst-case reservations of calls not yet settled (or that failed), so it never under-reports. The cap is read from <code>GATEWAY_DAILY_USD_CAP</code>/defaults in <em>this</em> process; if the API process uses a different value, remaining here is computed against this process's cap. Defaults are policy values, not measured spend.</p>
+{% else %}<p>No <code>gateway</code>-scope rows today, so no gateway spend is recorded for this UTC day (full cap remaining: {{ gateway_limits.daily_usd_cap }} USD per this process's config).</p>{% endif %}
+<h3>All scopes today</h3>
+<table><tr><th>scope</th><th>calls</th><th>USD</th><th>settled</th><th>reserved only</th></tr>
+{% for s in durable.scopes %}<tr><td>{{ s.scope }}</td><td>{{ s.calls }}</td><td>{{ s.usd }}</td><td>{{ s.settled_calls }}</td><td>{{ s.reserved_only_calls }}</td></tr>{% empty %}<tr><td colspan="5">No rows for today.</td></tr>{% endfor %}</table>
+{% else %}<p class="honest">The file exists but has no <code>budget_ledger</code> table, so no budget figures are shown (nothing is guessed).</p>{% endif %}
+<h3>Tables</h3><table>{% for t, n in durable.tables.items %}<tr><th>{{ t }}</th><td>{{ n }} row(s)</td></tr>{% endfor %}</table>
+{% else %}<p class="honest">No durable budget store file at <code>{{ durable.path }}</code>. It is created by the first budgeted call in the API process (set <code>BUDGET_DB_PATH</code> identically for both processes). Nothing is invented: no remaining-budget figure is shown.</p>{% endif %}
+<h2>Per-endpoint policies (configured limits)</h2>
+<p class="honest">Triage and the strategy interviewer keep their counters in the same durable store (scopes <code>triage</code>, <code>si</code>), shown above when present. Only their configured limits are listed here.</p>
+{% for b in endpoint_limits %}<h3>{{ b.name }}</h3><table>{% for k, v in b.limits.items %}<tr><th>{{ k }}</th><td>{{ v }}</td></tr>{% endfor %}</table><p><small>{{ b.note }}</small></p>{% endfor %}
+{% endblock %}

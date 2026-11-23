@@ -1,0 +1,24 @@
+{
+  "_purpose": "Permission-aware retrieval leak evals. Hand-labeled cases over the FIXTURE corpus (agent/fixtures/permission_docs/, clearly fake stand-ins for Notion/Slack pages) plus the public curated slice. A case FAILS if a caller role is shown a chunk above its access level. `forbidden_sources` must never appear for `role`. `unfiltered_top_role`, when set, proves the forbidden doc really is the closest semantic match for that query (rank 1 for the higher role), so a pass means the doc was withheld, not merely out-ranked. Zero tolerance: any failing case fails the build. Run: python agent/eval_runner.py permission",
+  "cases": [
+    {"id": "pm-01-public-vs-private", "role": "public", "query": "What is the salary band for a Level 3 engineer and how are compensation review decisions made?",
+     "forbidden_sources": ["agent/fixtures/permission_docs/compensation-bands-fixture.md"], "unfiltered_top_role": "private"},
+    {"id": "pm-02-public-vs-eng-internal-runbook", "role": "public", "query": "How do I rerun the nightly payments reconciliation job with the ledger repair flag?",
+     "forbidden_sources": ["agent/fixtures/permission_docs/payments-reconciliation-runbook.md"], "unfiltered_top_role": "eng-internal"},
+    {"id": "pm-03-public-vs-eng-internal-postmortem", "role": "public", "query": "What was the root cause of the checkout outage and connection pool exhaustion?",
+     "forbidden_sources": ["agent/fixtures/permission_docs/checkout-incident-postmortem.md"], "unfiltered_top_role": "eng-internal"},
+    {"id": "pm-04-eng-internal-vs-private", "role": "eng-internal", "query": "What is the salary band for a Level 3 engineer and how are compensation review decisions made?",
+     "forbidden_sources": ["agent/fixtures/permission_docs/compensation-bands-fixture.md"], "unfiltered_top_role": "private"},
+    {"id": "pm-05-public-vs-private-redundancy", "role": "public", "query": "Redundancy planning and headcount reduction notes",
+     "forbidden_sources": ["agent/fixtures/permission_docs/compensation-bands-fixture.md"], "unfiltered_top_role": "private"},
+    {"id": "pm-06-unknown-role-denied", "role": "admin", "query": "salary band compensation review", "expect_empty": true},
+    {"id": "pm-07-missing-role-denied", "role": null, "query": "salary band compensation review", "expect_empty": true},
+    {"id": "pm-08-case-variant-role-denied", "role": "PRIVATE", "query": "salary band compensation review", "expect_empty": true},
+    {"id": "pm-09-eng-internal-can-see-runbook", "role": "eng-internal", "query": "How do I rerun the nightly payments reconciliation job with the ledger repair flag?",
+     "must_see_top": "agent/fixtures/permission_docs/payments-reconciliation-runbook.md"},
+    {"id": "pm-10-private-can-see-compensation", "role": "private", "query": "What is the salary band for a Level 3 engineer and how are compensation review decisions made?",
+     "must_see_top": "agent/fixtures/permission_docs/compensation-bands-fixture.md"},
+    {"id": "pm-11-public-can-see-public-fixture", "role": "public", "query": "How do I request a laptop from the IT helpdesk?",
+     "must_see_top": "agent/fixtures/permission_docs/onboarding-faq.md"}
+  ]
+}

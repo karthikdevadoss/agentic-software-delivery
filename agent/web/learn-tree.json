@@ -5917,7 +5917,7 @@
             "why": "An application calling an LLM as part of a pipeline needs the response to be reliably parseable -- free-form prose requires fragile ad-hoc parsing and is a real source of production bugs when the model's phrasing varies unexpectedly.",
             "how": "Approaches range from explicit prompting ('respond with only valid JSON matching this schema') to API-level structured output/tool-use features that constrain the model's generation to conform to a provided schema.",
             "when": "Any time the model's output feeds directly into code (not just a human reader) -- data extraction, classification labels, structured recommendations.",
-            "real_experience": "agent/backend_planning.py's analyze_with_llm expects a structured JSON response (distinct from reasoning_gateway.py's plain stripped-text contract, deliberately, per its own documented scope decision) -- a real, working example of designing for a materially different response contract based on the actual downstream need.",
+            "real_experience": "agent/backend_planning.py's analyze_with_llm expects a structured JSON response (routed through reasoning_gateway.converse(), which returns the raw response so this module keeps its own structured-JSON parsing) -- a real, working example of designing for a materially different response contract based on the actual downstream need.",
             "evidence": [
               "agent/backend_planning.py",
               "agent/reasoning_gateway.py"
@@ -6496,7 +6496,7 @@
             "interview": {
               "question": "What's the real difference between a single function call and an agentic tool-calling loop?",
               "short_answer": "A single call answers one predetermined question; a loop lets the model decide, turn by turn, what information it still needs and which tool gets it there -- genuinely adaptive investigation, not a fixed script.",
-              "deep_answer": "This project explicitly documents why its reasoning_gateway.py (single-shot advisory calls) and agent_loop.py (a genuine multi-turn tool-calling loop) are architecturally distinct rather than unified -- a multi-turn loop cannot be flattened into a single-call gateway's shape without a much larger, riskier redesign, a real, considered scope decision recorded rather than silently conflated."
+              "deep_answer": "This project's reasoning_gateway.py has two entry points: call() for single-shot advisory text and converse() for a caller-owned multi-turn tool-calling loop. The gateway makes one request per converse() call and returns the raw response, so agent_loop.py keeps its own loop and replays thinking/tool_use blocks intact while every request still passes the purpose check, kill switch and usage recording -- a loop is not flattened into a text blob, it is metered per request."
             }
           },
           "status": "RUNTIME VERIFIED",
@@ -6873,7 +6873,7 @@
             "why": "The agent loop is what turns a single LLM call into an autonomous system capable of multi-step, adaptive work -- understanding its real structure (and its real termination/bounding conditions) is foundational to building or debugging any agentic system.",
             "how": "Typically: observe current state -> the model decides an action (tool call or final answer) -> if a tool call, execute it and add the real result to context -> repeat, bounded by a maximum iteration count, a time limit, or task completion.",
             "when": "Any task requiring multiple adaptive steps where the exact sequence of actions can't be predetermined.",
-            "real_experience": "agent/agent_loop.py implements this project's real, multi-turn tool-calling loop -- explicitly documented as a genuinely different category from reasoning_gateway.py's single-shot advisory calls, since a multi-turn loop cannot be safely flattened into a single-call shape without a much larger redesign.",
+            "real_experience": "agent/agent_loop.py implements this project's real, multi-turn tool-calling loop -- which sends every request through reasoning_gateway.converse(), so the purpose check, LLM_MODE kill switch and usage recording apply to each turn while the loop and message history stay in agent_loop.py.",
             "evidence": [
               "agent/agent_loop.py"
             ],

@@ -1,0 +1,7 @@
+{% extends "ledger/base.html" %}{% block content %}<h1>Ledger spend summary</h1>
+{% if error %}<p class="honest">{{ error }}. Set EVENT_LEDGER_DATABASE_URL to the Postgres ledger (read-only session).</p>{% else %}
+<p>{{ event_count }} ledger event(s). Sums use only the real <code>cost_usd</code> and token columns; rows whose cost exists only inside payload JSONB (pre-column history) are not included, and NULL means "not recorded", not zero.</p>
+{% if totals %}<p><b>Totals:</b> input tokens {{ totals.input_tokens|default_if_none:"n/a" }}, output tokens {{ totals.output_tokens|default_if_none:"n/a" }}, cost_usd {{ totals.cost_usd|default_if_none:"n/a" }}</p>{% endif %}
+<table><tr><th>provider</th><th>model</th><th>events</th><th>input tokens</th><th>output tokens</th><th>cost_usd</th></tr>
+{% for r in by_model %}<tr><td>{{ r.provider|default_if_none:"-" }}</td><td>{{ r.model|default_if_none:"-" }}</td><td>{{ r.events }}</td><td>{{ r.input_tokens|default_if_none:"n/a" }}</td><td>{{ r.output_tokens|default_if_none:"n/a" }}</td><td>{{ r.cost_usd|default_if_none:"n/a" }}</td></tr>
+{% empty %}<tr><td colspan="6">No ledger rows.</td></tr>{% endfor %}</table>{% endif %}{% endblock %}

@@ -11,3 +11,7 @@ tzdata
 reportlab
 pypdf
 pyyaml
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-exporter-otlp-proto-http
+pydantic-ai-slim>=2.71,<3   # item 8: typed Triage diagnose via agent/pydantic_ai_gateway.py (no provider extras; calls go through reasoning_gateway)

@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-23T12:07:30Z",
+  "commit_sha": "d6b738ebcca1b7d71bc29904db5f8960f78523f5",
+  "working_tree_dirty": false,
+  "embedding_model": "local:BAAI/bge-small-en-v1.5",
+  "overall_passed": true,
+  "reproducibility_hash": "a62f3835350b6fa70269aa3e7d2c2c0bd5688d57068e649f54bc06973e395b75",
+  "source": "publish_eval_results.py",
+  "suites": [
+    {
+      "key": "retrieval",
+      "kind": "measured",
+      "score": 0.833,
+      "threshold": 0.4,
+      "comparator": ">=",
+      "passed": true,
+      "dataset_hash": "3193e6b70c35178f79a4cbb4a2adeb47055ad43e32f9401e526485da8ec9e058",
+      "commit_sha": "d6b738ebcca1b7d71bc29904db5f8960f78523f5",
+      "run_at": "2026-11-23T12:07:30Z",
+      "cases": 12,
+      "metrics": {
+        "recall_at_3": 0.833,
+        "mrr": 0.868
+      }
+    },
+    {
+      "key": "routing",
+      "kind": "measured",
+      "score": 1.0,
+      "threshold": 0.85,
+      "comparator": ">=",
+      "passed": true,
+      "dataset_hash": "8a4cf82bcfff0b4a99f9de61c094d4be613fb141037da11d1476f8812d4b39c5",
+      "commit_sha": "d6b738ebcca1b7d71bc29904db5f8960f78523f5",
+      "run_at": "2026-11-23T12:07:30Z",
+      "cases": 14,
+      "metrics": {
+        "routing_accuracy": 1.0
+      }
+    },
+    {
+      "key": "security-routing",
+      "kind": "measured",
+      "score": 1.0,
+      "threshold": 1.0,
+      "comparator": "==",
+      "passed": true,
+      "dataset_hash": "8a4cf82bcfff0b4a99f9de61c094d4be613fb141037da11d1476f8812d4b39c5",
+      "commit_sha": "d6b738ebcca1b7d71bc29904db5f8960f78523f5",
+      "run_at": "2026-11-23T12:07:30Z",
+      "cases": 7,
+      "metrics": {
+        "security_case_accuracy": 1.0
+      }
+    },
+    {
+      "key": "agent-decision",
+      "kind": "recorded",
+      "score": 1.0,
+      "threshold": 1.0,
+      "comparator": ">=",
+      "passed": true,
+      "dataset_hash": "27c22fde174720d01dedbc2d6bb4ed33b3a7f82ca424672a81ab259355e1fbb1",
+      "commit_sha": "983161fa7d684c496c1501b0dc14a1a8062a281a",
+      "run_at": "2026-09-16T09:46:39.181896+00:00",
+      "cases": 6,
+      "metrics": {
+        "agent_decision_pass_rate": 1.0
+      }
+    }
+  ]
+}

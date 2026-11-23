@@ -1,19 +1,21 @@
 {
-  "schema_version": 1,
-  "generated_at": "2026-10-06T10:07:23Z",
-  "commit_sha": "674958abf3ff8437f7a5b874446fd4377b6a9d41",
-  "working_tree_dirty": false,
+  "schema_version": 2,
+  "generated_at": "2026-11-23T13:31:36Z",
+  "commit_sha": "78eb549d7b70bbc6524443edc0bce0d1e2199f1f",
+  "working_tree_dirty": true,
   "embedding_model": "local:BAAI/bge-small-en-v1.5",
   "overall_passed": true,
   "eval_inputs": {
     "files": {
-      "agent/eval_runner.py": "7fc32cc28d1f761ef3a65b20cd5bfbe7de46ffba059c754432e4f12c0c75453d",
+      "agent/eval_runner.py": "092e143295113da72c05a4418ce92e79d222f5042a0fb946783a47af7d9b36e9",
       "agent/evals/retrieval_dataset.json": "3193e6b70c35178f79a4cbb4a2adeb47055ad43e32f9401e526485da8ec9e058",
       "agent/evals/routing_dataset.json": "8a4cf82bcfff0b4a99f9de61c094d4be613fb141037da11d1476f8812d4b39c5",
       "agent/evals/agent_decision_dataset.json": "27c22fde174720d01dedbc2d6bb4ed33b3a7f82ca424672a81ab259355e1fbb1",
-      "agent/evals/agent_decision_results.json": "de3e3804577f2f2cfdcc239e889a99b1f4221f94e21282ff7596735f0de2a4fb"
+      "agent/evals/agent_decision_results.json": "de3e3804577f2f2cfdcc239e889a99b1f4221f94e21282ff7596735f0de2a4fb",
+      "agent/evals/permission_dataset.json": "e6bfd2ec00af48fbb962e328334afb62f29618c69bb8e93196569e213c60960e",
+      "agent/evals/self_eval_dataset.json": "db5996fc86b48fe4a7a860029e562731163880a2950c9c6186ae9b608ef77af6"
     },
-    "thresholds": "4dcbd2be69da87aa409ed2ced07bf71d42081d637beab36253269fafdeca9717",
+    "thresholds": "18d32f79a937ddb06875997b5443a96bfcb7600465d612f4a6c33de216e376c2",
     "not_covered": [
       "curated corpus document contents (agent/backend_rag_corpus.py and the files it lists)",
       "retrieval/routing implementation (agent/backend_rag_index.py, agent/backend_planning.py)",
@@ -23,7 +25,199 @@
   "labelled_set": {
     "retrieval_cases": 12,
     "routing_cases": 14,
-    "security_routing_cases": 7
+    "security_routing_cases": 7,
+    "permission_cases": 11,
+    "self_eval_cases": 12
+  },
+  "suites": [
+    {
+      "key": "retrieval",
+      "label": "Retrieval",
+      "kind": "measured",
+      "cases": 12,
+      "primary_metric": "recall_at_3",
+      "score": 0.833,
+      "threshold": 0.4,
+      "comparator": ">=",
+      "passed": true,
+      "metrics": [
+        {
+          "key": "recall_at_3",
+          "score": 0.833,
+          "threshold": 0.4,
+          "comparator": ">=",
+          "passed": true
+        },
+        {
+          "key": "mrr",
+          "score": 0.868,
+          "threshold": 0.35,
+          "comparator": ">=",
+          "passed": true
+        }
+      ],
+      "dataset_file": "agent/evals/retrieval_dataset.json",
+      "dataset_hash": "3193e6b70c35178f79a4cbb4a2adeb47055ad43e32f9401e526485da8ec9e058",
+      "commit_sha": "78eb549d7b70bbc6524443edc0bce0d1e2199f1f",
+      "run_at": "2026-11-23T13:31:36Z"
+    },
+    {
+      "key": "routing",
+      "label": "Tool routing",
+      "kind": "measured",
+      "cases": 14,
+      "primary_metric": "routing_accuracy",
+      "score": 1.0,
+      "threshold": 0.85,
+      "comparator": ">=",
+      "passed": true,
+      "metrics": [
+        {
+          "key": "routing_accuracy",
+          "score": 1.0,
+          "threshold": 0.85,
+          "comparator": ">=",
+          "passed": true
+        }
+      ],
+      "dataset_file": "agent/evals/routing_dataset.json",
+      "dataset_hash": "8a4cf82bcfff0b4a99f9de61c094d4be613fb141037da11d1476f8812d4b39c5",
+      "commit_sha": "78eb549d7b70bbc6524443edc0bce0d1e2199f1f",
+      "run_at": "2026-11-23T13:31:36Z"
+    },
+    {
+      "key": "security-routing",
+      "label": "Security routing (zero tolerance)",
+      "kind": "measured",
+      "cases": 7,
+      "primary_metric": "security_case_accuracy",
+      "score": 1.0,
+      "threshold": 1.0,
+      "comparator": "==",
+      "passed": true,
+      "metrics": [
+        {
+          "key": "security_case_accuracy",
+          "score": 1.0,
+          "threshold": 1.0,
+          "comparator": "==",
+          "passed": true
+        }
+      ],
+      "dataset_file": "agent/evals/routing_dataset.json",
+      "dataset_hash": "8a4cf82bcfff0b4a99f9de61c094d4be613fb141037da11d1476f8812d4b39c5",
+      "commit_sha": "78eb549d7b70bbc6524443edc0bce0d1e2199f1f",
+      "run_at": "2026-11-23T13:31:36Z"
+    },
+    {
+      "key": "agent-decision",
+      "label": "Agent decisions",
+      "kind": "recorded",
+      "cases": 6,
+      "primary_metric": "agent_decision_pass_rate",
+      "score": 1.0,
+      "threshold": 1.0,
+      "comparator": ">=",
+      "passed": true,
+      "metrics": [
+        {
+          "key": "agent_decision_pass_rate",
+          "score": 1.0,
+          "threshold": 1.0,
+          "comparator": ">=",
+          "passed": true
+        }
+      ],
+      "dataset_file": "agent/evals/agent_decision_dataset.json",
+      "dataset_hash": "27c22fde174720d01dedbc2d6bb4ed33b3a7f82ca424672a81ab259355e1fbb1",
+      "commit_sha": "983161fa7d684c496c1501b0dc14a1a8062a281a",
+      "run_at": "2026-09-16T09:46:39.181896+00:00"
+    },
+    {
+      "note": "Fixture pipeline: clearly fake docs tagged with access levels, not live Notion/Slack, no OAuth or source ACL sync. Filtering is code, not a prompt; judged by code from real retrieval output.",
+      "key": "permission",
+      "label": "Permission-aware retrieval (zero leaks)",
+      "kind": "measured",
+      "cases": 11,
+      "primary_metric": "permission_pass_rate",
+      "score": 1.0,
+      "threshold": 1.0,
+      "comparator": "==",
+      "passed": true,
+      "metrics": [
+        {
+          "key": "permission_pass_rate",
+          "score": 1.0,
+          "threshold": 1.0,
+          "comparator": "==",
+          "passed": true
+        }
+      ],
+      "dataset_file": "agent/evals/permission_dataset.json",
+      "dataset_hash": "e6bfd2ec00af48fbb962e328334afb62f29618c69bb8e93196569e213c60960e",
+      "commit_sha": "78eb549d7b70bbc6524443edc0bce0d1e2199f1f",
+      "run_at": "2026-11-23T13:31:36Z"
+    },
+    {
+      "note": "The system grading itself: a deterministic stand-in scorer replaying hand-labelled fixtures (no model, no API key). Not independent QA, and it cannot judge semantics.",
+      "key": "self-eval",
+      "label": "Agent self-evaluation (replay)",
+      "kind": "measured",
+      "cases": 12,
+      "primary_metric": "self_eval_catch_rate",
+      "score": 1.0,
+      "threshold": 0.85,
+      "comparator": ">=",
+      "passed": true,
+      "metrics": [
+        {
+          "key": "self_eval_catch_rate",
+          "score": 1.0,
+          "threshold": 0.85,
+          "comparator": ">=",
+          "passed": true
+        },
+        {
+          "key": "self_eval_good_pass_rate",
+          "score": 1.0,
+          "threshold": 0.85,
+          "comparator": ">=",
+          "passed": true
+        }
+      ],
+      "dataset_file": "agent/evals/self_eval_dataset.json",
+      "dataset_hash": "db5996fc86b48fe4a7a860029e562731163880a2950c9c6186ae9b608ef77af6",
+      "commit_sha": "78eb549d7b70bbc6524443edc0bce0d1e2199f1f",
+      "run_at": "2026-11-23T13:31:36Z"
+    }
+  ],
+  "reproducibility": {
+    "command": "python eval_runner.py all",
+    "working_directory": "agent",
+    "setup": [
+      "pip install -r requirements.txt",
+      "python backend_rag_index.py"
+    ],
+    "single_suite_commands": [
+      "python eval_runner.py retrieval",
+      "python eval_runner.py routing",
+      "python eval_runner.py security-routing",
+      "python eval_runner.py agent-decision",
+      "python eval_runner.py permission",
+      "python eval_runner.py self-eval"
+    ],
+    "agent_decision_note": "agent-decision is replayed from the committed recorded results (no API key, no network); re-recording it needs agent_decision_eval_runner.py and a billed ANTHROPIC_API_KEY.",
+    "inputs_hash": "93e950846dd275b27b036bf2bc8481c3136715b4380dcfe709fb69c7fb9ca0f3",
+    "hash_covers": [
+      "agent/eval_runner.py",
+      "agent/evals/agent_decision_dataset.json",
+      "agent/evals/agent_decision_results.json",
+      "agent/evals/permission_dataset.json",
+      "agent/evals/retrieval_dataset.json",
+      "agent/evals/routing_dataset.json",
+      "agent/evals/self_eval_dataset.json",
+      "eval_runner.THRESHOLDS"
+    ]
   },
   "metrics": [
     {
@@ -60,6 +254,42 @@
       "score": 1.0,
       "threshold": 1.0,
       "comparator": "==",
+      "passed": true
+    },
+    {
+      "key": "agent_decision_pass_rate",
+      "label": "Agent-decision pass rate (recorded results, zero tolerance)",
+      "eval": "agent_decision",
+      "score": 1.0,
+      "threshold": 1.0,
+      "comparator": ">=",
+      "passed": true
+    },
+    {
+      "key": "permission_pass_rate",
+      "label": "Permission-retrieval pass rate (zero leaks, fixtures)",
+      "eval": "permission",
+      "score": 1.0,
+      "threshold": 1.0,
+      "comparator": "==",
+      "passed": true
+    },
+    {
+      "key": "self_eval_catch_rate",
+      "label": "Self-eval catch rate (replay, deterministic stand-in)",
+      "eval": "self_eval",
+      "score": 1.0,
+      "threshold": 0.85,
+      "comparator": ">=",
+      "passed": true
+    },
+    {
+      "key": "self_eval_good_pass_rate",
+      "label": "Self-eval good-answer pass rate (replay)",
+      "eval": "self_eval",
+      "score": 1.0,
+      "threshold": 0.85,
+      "comparator": ">=",
       "passed": true
     }
   ],
@@ -269,27 +499,25 @@
   },
   "ci_gate": {
     "workflow": ".github/workflows/ci.yml",
-    "step": "RAG/MCP retrieval + routing evals (must meet recorded thresholds)",
+    "step": "RAG/MCP retrieval + routing + agent-decision evals (must meet recorded thresholds)",
     "command": "python eval_runner.py all",
     "behaviour": "exits 1 (fails the build) if any threshold is not met",
     "runs_on": "every pull request to master and every push to master",
     "observed": {
-      "observed_at": "2026-10-06T10:07:23Z",
+      "observed_at": "2026-11-23T12:07:30Z",
       "branch": "master",
       "latest_run": {
-        "created_at": "2026-10-06T06:23:13Z",
-        "head_sha": "12b9f564a819bb9825b971667b98ba34eaeb2457",
-        "eval_step": "skipped",
-        "failed_steps_in_same_job": [
-          "Python hermetic test suite (BLOCKING -- asserts tests really ran)"
-        ]
+        "created_at": "2026-10-21T14:20:33Z",
+        "head_sha": "e93881c37f50ac9d4890c4d4861b017233efe667",
+        "eval_step": "success",
+        "failed_steps_in_same_job": []
       },
-      "runs_since_eval_step_last_passed": 34,
+      "runs_since_eval_step_last_passed": 0,
       "last_eval_step_success": {
-        "created_at": "2026-09-29T17:07:25Z",
-        "head_sha": "af28bb3ac914c59d944fbc43748ff8dd8c6265b6"
+        "created_at": "2026-10-21T14:20:33Z",
+        "head_sha": "e93881c37f50ac9d4890c4d4861b017233efe667"
       },
-      "runs_examined": 35
+      "runs_examined": 1
     }
   },
   "sources": {
