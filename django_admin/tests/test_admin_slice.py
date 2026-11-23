@@ -1,3 +1,4 @@
+import os
 import json
 from pathlib import Path
 
@@ -101,14 +102,71 @@ def test_eval_history_absent_is_stated_not_invented(staff_client, settings, tmp_
 
 
 @pytest.mark.django_db
-def test_budget_page_in_memory_honesty_without_durable_file(staff_client, settings, tmp_path):
+def test_budget_page_without_durable_file_says_so_and_shows_no_remaining(staff_client, settings, tmp_path):
     settings.BUDGET_SQLITE_PATH = str(tmp_path / "missing.sqlite3")
     body = staff_client.get(reverse("budgets")).content.decode()
-    assert "reset on restart" in body
     assert "No durable budget store file" in body
+    assert "remaining (USD)" not in body
     import si_budget, triage_budget
     assert str(triage_budget.DEFAULT_DAILY_MAX) in body
     assert str(si_budget.SI_DAILY_MAX_ANSWERS) in body
+
+
+def test_budget_default_path_is_the_real_store_path():
+    """The admin default must be the file agent/budget_store.py really writes."""
+    import budget_store
+    from django.conf import settings as s
+    if os.environ.get("BUDGET_DB_PATH") or os.environ.get("ADMIN_BUDGET_SQLITE_PATH"):
+        pytest.skip("budget path overridden by env in this shell")
+    assert os.path.normpath(s.BUDGET_SQLITE_PATH) == os.path.normpath(str(budget_store._DEFAULT_PATH))
+
+
+@pytest.mark.django_db
+def test_budget_page_reads_real_durable_store_and_computes_remaining(staff_client, settings, tmp_path, monkeypatch):
+    """Write through the REAL budget_store/gateway_budget code (not a hand-made
+    table), then read it from the admin: remaining = cap - spent."""
+    import budget_store, gateway_budget
+    db = tmp_path / "real.sqlite3"
+    monkeypatch.setenv("BUDGET_DB_PATH", str(db))
+    monkeypatch.setenv("GATEWAY_DAILY_USD_CAP", "2.00")
+    v = gateway_budget.reserve("anthropic", "claude-sonnet-5", "s", "u", 100, run_id="r1")
+    assert v["allowed"]
+    gateway_budget.settle(v["reservation_id"], 0.25)
+    settings.BUDGET_SQLITE_PATH = str(db)
+    body = staff_client.get(reverse("budgets")).content.decode()
+    assert "Platform gateway budget" in body
+    assert "<td>0.25</td>" in body and "<td>1.75</td>" in body and "<td>2.0</td>" in body
+    gateway_budget._reset_for_tests()
+
+
+@pytest.mark.django_db
+def test_budget_page_file_without_ledger_table_is_not_guessed(staff_client, settings, tmp_path):
+    import sqlite3
+    p = tmp_path / "other.sqlite3"
+    c = sqlite3.connect(p); c.execute("CREATE TABLE x (a)"); c.commit(); c.close()
+    settings.BUDGET_SQLITE_PATH = str(p)
+    body = staff_client.get(reverse("budgets")).content.decode()
+    assert "no <code>budget_ledger</code> table" in body and "remaining (USD)" not in body
+
+
+@pytest.mark.django_db
+def test_eval_history_reads_real_committed_index(staff_client):
+    """Uses the committed agent/web/eval-history/ from PR 51 -- not a fixture."""
+    idx = json.loads((REPO / "agent" / "web" / "eval-history" / "index.json").read_text())
+    body = staff_client.get(reverse("evals")).content.decode()
+    newest = max(idx["entries"], key=lambda e: e["generated_at"])
+    assert newest["generated_at"] in body and newest["commit_sha"][:7] in body
+
+
+@pytest.mark.django_db
+def test_eval_history_index_rows_are_rendered_not_invented(staff_client, settings, tmp_path):
+    hist = tmp_path / "h"; hist.mkdir()
+    (hist / "index.json").write_text(json.dumps({"entries": [{
+        "generated_at": "TEST-2099", "commit_sha": "abc1234567", "overall_passed": None,
+        "suites": [{"key": "fixture-suite", "kind": "recorded", "score": None, "passed": None}]}]}))
+    settings.EVAL_HISTORY_DIR = str(hist)
+    body = staff_client.get(reverse("evals")).content.decode()
+    assert "TEST-2099" in body and "fixture-suite: n/a / n/a" in body
 
 
 @pytest.mark.django_db

@@ -29,11 +29,12 @@ policy first (cheap, request-count) and the gateway policy second (dollars and
 rate). They do not share a counter, so they cannot disagree about one number;
 whichever limit is hit first refuses the call.
 
-COVERAGE, honestly: only calls routed through reasoning_gateway.call() are
-covered. On this branch agent_loop.py, backend_planning.py and main.py still
-call Anthropic directly and are NOT capped here until they are migrated to the
-gateway (a separate PR). Calls with an injected create_fn (a test double) are
-not metered unless enforce_budget=True is passed.
+COVERAGE, honestly: every billed path through reasoning_gateway -- call() AND
+converse() (agent_loop.py, backend_planning.py) -- reserves here before the
+provider is contacted. Calls with an injected create_fn (a test double) are not
+metered unless enforce_budget=True is passed. A long agent_loop conversation is
+estimated from its whole message history, so it can be refused by the
+per-request cap (GATEWAY_PER_REQUEST_USD_CAP) even when the daily cap has room.
 
 Defaults are policy values, not measured spend. Override with the env vars
 above; a malformed value falls back to the default (a typo must not lift a

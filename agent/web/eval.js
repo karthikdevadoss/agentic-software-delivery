@@ -74,6 +74,7 @@ function renderSuiteCard(s) {
         <dt>Commit</dt><dd data-field="commit">${shortSha(s.commit_sha)}</dd>
         <dt>Run time</dt><dd data-field="run-time">${runTime(s.run_at)}</dd>
       </dl>
+      ${s.note ? `<p class="hint suite-note" data-field="note">${esc(s.note)}</p>` : ""}
     </div>`;
 }
 
@@ -82,7 +83,7 @@ function renderCards(d) {
   const r5 = d.informational && d.informational.recall_at_5;
   return `<section class="panel" id="suites"><h2>Suites: score vs threshold</h2>
     <div class="metric-grid">${suites.map(renderSuiteCard).join("")}</div>
-    <p class="hint" style="margin-top:0.9rem">White tick = threshold. Recall@5 (not gated): ${fmt(r5)}. <strong>Measured</strong> = this publish ran the suite; <strong>recorded</strong> = replayed from the committed results file (agent-decision needs a billed model API key to re-record, so it is never re-run here). Security routing is zero tolerance: one miss fails the build. Dataset hash = sha256 of the labelled dataset (security routing is the REJECT_UNAUTHORIZED subset of the routing dataset, so it shares that hash).</p>
+    <p class="hint" style="margin-top:0.9rem">White tick = threshold. Recall@5 (not gated): ${fmt(r5)}. <strong>Measured</strong> = this publish ran the suite; <strong>recorded</strong> = replayed from the committed results file (agent-decision needs a billed model API key to re-record, so it is never re-run here). Security routing is zero tolerance: one miss fails the build. Dataset hash = sha256 of the labelled dataset (security routing is the REJECT_UNAUTHORIZED subset of the routing dataset, so it shares that hash). Permission retrieval is zero-leak over clearly fake fixture documents (not live Notion/Slack); self-eval is the system grading itself with a deterministic stand-in scorer over hand-labelled fixtures, not independent QA. Both are measured at publish time from the committed datasets, with no API key.</p>
   </section>`;
 }
 
@@ -156,8 +157,8 @@ function renderAgentDecision(d) {
 // ---- history: table + trend lines, from eval-history/index.json ----------
 // Every row/point is a committed record in eval-history/; nothing is
 // interpolated, smoothed or filled in. A suite absent from a run is a gap.
-const SUITE_ORDER = ["retrieval", "routing", "security-routing", "agent-decision"];
-const SUITE_LABEL = { "retrieval": "Retrieval Recall@3", "routing": "Routing accuracy", "security-routing": "Security routing", "agent-decision": "Agent decision pass rate" };
+const SUITE_ORDER = ["retrieval", "routing", "security-routing", "agent-decision", "permission", "self-eval"];
+const SUITE_LABEL = { "retrieval": "Retrieval Recall@3", "routing": "Routing accuracy", "security-routing": "Security routing", "agent-decision": "Agent decision pass rate", "permission": "Permission retrieval pass rate", "self-eval": "Self-eval catch rate" };
 
 function suiteOf(entry, key) {
   return (entry.suites || []).find((s) => s.key === key);

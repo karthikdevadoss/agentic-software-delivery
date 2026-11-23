@@ -35,7 +35,7 @@ def spend(request):
 @staff_member_required
 def budgets(request):
     return render(request, "ledger/budgets.html", {
-        "in_memory": sources.in_memory_budgets(), "durable": sources.durable_budget_store()})
+        "endpoint_limits": sources.endpoint_budget_limits(), "gateway_limits": sources.gateway_limits(), "durable": sources.durable_budget_store()})
 
 
 @staff_member_required

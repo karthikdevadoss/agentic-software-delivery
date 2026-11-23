@@ -99,6 +99,8 @@ HERMETIC_MODULES = [
     "test_reasoning_gateway_enforcement",
     "test_gateway_budget",            # durable caps, restart, rate limit, LiteLLM routing; hermetic
     "test_tracing",
+    "test_integration_gateway_converse",   # converse() budget + spans, callers metered (hermetic)
+    "test_integration_self_eval_loop",     # SELF_EVAL_ENABLED flag off/on in agent_loop (hermetic)
     "test_pydantic_ai_gateway",   # item 8: fake model only; typed output + gateway routing
     "test_risk_policy",
     # Promoted out of PENDING_OWNER_DECISION 2026-09-25 after a real content

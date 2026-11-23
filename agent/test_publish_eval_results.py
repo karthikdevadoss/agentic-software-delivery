@@ -226,6 +226,54 @@ AD_SECTION = {"cases_total": 6, "summary": {"PASS": 6, "FAIL": 0, "NOT_EXECUTED"
 INPUTS = {"files": {f: f"{i:064d}" for i, f in enumerate(pub.EVAL_INPUT_FILES)}, "thresholds": "t" * 64}
 
 
+PERM = {"summary": {"cases": 10, "passed": 10, "leaks_or_failures": 0}, "per_case": []}
+SELF = {"summary": {"cases": 20, "catch_rate": 0.9, "good_pass_rate": 1.0}, "per_case": []}
+
+
+class IntegrationSuitesTestCase(unittest.TestCase):
+    """Permission-retrieval and self-eval are first-class suite cards, built only
+    from the real eval_runner results passed in -- absent input => absent card."""
+
+    def _suites(self, perm=PERM, selfeval=SELF):
+        out = _build(_retrieval(), _routing(), agent_decision=AD_SECTION, eval_inputs=INPUTS,
+                     permission=perm, self_eval_result=selfeval)
+        return out, {s["key"]: s for s in out["suites"]}
+
+    def test_cards_present_with_required_fields_and_real_thresholds(self):
+        out, suites = self._suites()
+        self.assertEqual([s["key"] for s in out["suites"]][-2:], ["permission", "self-eval"])
+        for key in ("permission", "self-eval"):
+            for f in ("score", "threshold", "passed", "dataset_hash", "commit_sha", "run_at", "kind", "note"):
+                self.assertIsNotNone(suites[key][f], f"{key}.{f}")
+        self.assertEqual(suites["permission"]["threshold"], eval_runner.PERMISSION_THRESHOLDS["permission_pass_rate"])
+        self.assertEqual(suites["self-eval"]["threshold"], eval_runner.SELF_EVAL_THRESHOLDS["catch_rate"])
+        self.assertEqual([m["key"] for m in suites["self-eval"]["metrics"]],
+                         ["self_eval_catch_rate", "self_eval_good_pass_rate"])
+        self.assertEqual(suites["self-eval"]["score"], 0.9)
+
+    def test_dataset_hashes_come_from_the_committed_datasets(self):
+        _, suites = self._suites()
+        self.assertEqual(suites["permission"]["dataset_hash"], INPUTS["files"]["agent/evals/permission_dataset.json"])
+        self.assertEqual(suites["self-eval"]["dataset_hash"], INPUTS["files"]["agent/evals/self_eval_dataset.json"])
+
+    def test_one_leak_fails_the_permission_card_and_overall(self):
+        perm = {"summary": {"cases": 10, "passed": 9, "leaks_or_failures": 1}, "per_case": []}
+        out, suites = self._suites(perm=perm)
+        self.assertEqual(suites["permission"]["score"], 0.9)
+        self.assertFalse(suites["permission"]["passed"])
+        self.assertFalse(out["overall_passed"])
+
+    def test_low_catch_rate_fails_self_eval_card(self):
+        out, suites = self._suites(selfeval={"summary": {"cases": 20, "catch_rate": 0.5, "good_pass_rate": 1.0}, "per_case": []})
+        self.assertFalse(suites["self-eval"]["passed"])
+        self.assertFalse(out["overall_passed"])
+
+    def test_absent_inputs_mean_no_card_not_a_made_up_one(self):
+        out = _build(_retrieval(), _routing(), agent_decision=AD_SECTION, eval_inputs=INPUTS)
+        self.assertNotIn("permission", [s["key"] for s in out["suites"]])
+        self.assertNotIn("self-eval", [s["key"] for s in out["suites"]])
+
+
 class SuitesTestCase(unittest.TestCase):
     def _suites(self, retrieval=None, routing=None, ad=AD_SECTION):
         out = _build(retrieval or _retrieval(), routing or _routing(), agent_decision=ad, eval_inputs=INPUTS)

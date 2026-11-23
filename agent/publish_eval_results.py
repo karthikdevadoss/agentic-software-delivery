@@ -66,6 +66,7 @@ METRIC_SPECS = [
 
 
 AGENT_DECISION_KEY = "agent_decision_pass_rate"
+PERMISSION_KEY = "permission_pass_rate"
 
 # suite key -> (label, primary metric key, other metrics shown on the card,
 # dataset file that defines it). security-routing is the REJECT_UNAUTHORIZED
@@ -76,7 +77,19 @@ SUITE_SPECS = [
     ("security-routing", "Security routing (zero tolerance)", "security_case_accuracy", [],
      "agent/evals/routing_dataset.json"),
     ("agent-decision", "Agent decisions", AGENT_DECISION_KEY, [], "agent/evals/agent_decision_dataset.json"),
+    ("permission", "Permission-aware retrieval (zero leaks)", PERMISSION_KEY, [],
+     "agent/evals/permission_dataset.json"),
+    ("self-eval", "Agent self-evaluation (replay)", "self_eval_catch_rate", ["self_eval_good_pass_rate"],
+     "agent/evals/self_eval_dataset.json"),
 ]
+
+# Honest limits carried on the suite card itself (only the suites that need one).
+SUITE_NOTES = {
+    "permission": "Fixture pipeline: clearly fake docs tagged with access levels, not live Notion/Slack, "
+                  "no OAuth or source ACL sync. Filtering is code, not a prompt; judged by code from real retrieval output.",
+    "self-eval": "The system grading itself: a deterministic stand-in scorer replaying hand-labelled "
+                 "fixtures (no model, no API key). Not independent QA, and it cannot judge semantics.",
+}
 
 
 def metric_passes(score, threshold, comparator: str) -> bool:
@@ -102,7 +115,9 @@ def build_suites(metrics, labelled, eval_inputs, commit_sha, generated_at, agent
     by_key = {m["key"]: m for m in metrics}
     cases = {"retrieval": labelled.get("retrieval_cases"), "routing": labelled.get("routing_cases"),
              "security-routing": labelled.get("security_routing_cases"),
-             "agent-decision": agent_decision["cases_total"] if agent_decision else None}
+             "agent-decision": agent_decision["cases_total"] if agent_decision else None,
+             "permission": labelled.get("permission_cases"),
+             "self-eval": labelled.get("self_eval_cases")}
     suites = []
     for key, label, primary, others, dataset in SUITE_SPECS:
         if key == "agent-decision":
@@ -126,7 +141,9 @@ def build_suites(metrics, labelled, eval_inputs, commit_sha, generated_at, agent
             suite_metrics = [{"key": primary, "score": m["score"], "threshold": m["threshold"],
                               "comparator": m["comparator"], "passed": m["passed"]}]
         passes = [x["passed"] for x in suite_metrics]
+        extra = {"note": SUITE_NOTES[key]} if key in SUITE_NOTES else {}
         suites.append({
+            **extra,
             "key": key,
             "label": label,
             "kind": kind,  # measured = this publish ran it; recorded = replayed from committed results
@@ -155,7 +172,8 @@ def build_reproducibility(eval_inputs):
         "setup": ["pip install -r requirements.txt", "python backend_rag_index.py"],
         "single_suite_commands": [
             "python eval_runner.py retrieval", "python eval_runner.py routing",
-            "python eval_runner.py security-routing", "python eval_runner.py agent-decision"],
+            "python eval_runner.py security-routing", "python eval_runner.py agent-decision",
+            "python eval_runner.py permission", "python eval_runner.py self-eval"],
         "agent_decision_note": "agent-decision is replayed from the committed recorded results "
                                "(no API key, no network); re-recording it needs agent_decision_eval_runner.py "
                                "and a billed ANTHROPIC_API_KEY.",
@@ -179,8 +197,13 @@ def build_eval_results(retrieval: dict, routing: dict, *, commit_sha: str,
                        thresholds: dict = None,
                        ci_observation: dict = None,
                        eval_inputs: dict = None,
-                       agent_decision: dict = None) -> dict:
-    """Pure function: eval_runner output in, publishable dict out."""
+                       agent_decision: dict = None,
+                       permission: dict = None,
+                       self_eval_result: dict = None) -> dict:
+    """Pure function: eval_runner output in, publishable dict out. `permission`
+    / `self_eval_result` are the unmodified eval_runner.run_permission_eval() /
+    run_self_eval() results; when None the suite is simply absent (never a
+    guessed number)."""
     thresholds = eval_runner.THRESHOLDS if thresholds is None else thresholds
     summaries = {"retrieval": retrieval["summary"], "routing": routing["summary"]}
 
@@ -211,12 +234,37 @@ def build_eval_results(retrieval: dict, routing: dict, *, commit_sha: str,
             "passed": metric_passes(ad_score, thresholds[AGENT_DECISION_KEY], ">="),
         })
 
+    if permission is not None:
+        ps = permission["summary"]
+        p_score = round(ps["passed"] / ps["cases"], 3) if ps["cases"] else None
+        p_thr = eval_runner.PERMISSION_THRESHOLDS[PERMISSION_KEY]
+        metrics.append({
+            "key": PERMISSION_KEY,
+            "label": "Permission-retrieval pass rate (zero leaks, fixtures)",
+            "eval": "permission",
+            "score": p_score, "threshold": p_thr, "comparator": "==",
+            "passed": metric_passes(p_score, p_thr, "=="),
+        })
+    if self_eval_result is not None:
+        ss = self_eval_result["summary"]
+        for key, label, field in (
+                ("self_eval_catch_rate", "Self-eval catch rate (replay, deterministic stand-in)", "catch_rate"),
+                ("self_eval_good_pass_rate", "Self-eval good-answer pass rate (replay)", "good_pass_rate")):
+            thr = eval_runner.SELF_EVAL_THRESHOLDS[field]
+            metrics.append({"key": key, "label": label, "eval": "self_eval", "score": ss[field],
+                            "threshold": thr, "comparator": ">=",
+                            "passed": metric_passes(ss[field], thr, ">=")})
+
     labelled = {
         "retrieval_cases": retrieval["summary"]["cases"],
         "routing_cases": routing["summary"]["cases"],
         "security_routing_cases": sum(
             1 for c in routing["per_case"] if c["expected_route"] == "REJECT_UNAUTHORIZED"),
     }
+    if permission is not None:
+        labelled["permission_cases"] = permission["summary"]["cases"]
+    if self_eval_result is not None:
+        labelled["self_eval_cases"] = self_eval_result["summary"]["cases"]
     suites = build_suites(metrics, labelled, eval_inputs, commit_sha, generated_at, agent_decision)
 
     return {
@@ -280,6 +328,9 @@ EVAL_INPUT_FILES = [
     # paid model API key), so the recorded results file is itself the input.
     "agent/evals/agent_decision_dataset.json",
     "agent/evals/agent_decision_results.json",
+    # Integration-branch suites (permission-aware retrieval, agent self-eval).
+    "agent/evals/permission_dataset.json",
+    "agent/evals/self_eval_dataset.json",
 ]
 AGENT_DECISION_RESULTS = "agent/evals/agent_decision_results.json"
 AGENT_DECISION_DATASET = "agent/evals/agent_decision_dataset.json"
@@ -567,6 +618,8 @@ def main(argv: list) -> int:
 
     retrieval = eval_runner.run_retrieval_eval()
     routing = eval_runner.run_routing_eval()
+    permission = eval_runner.run_permission_eval()
+    self_eval_result = eval_runner.run_self_eval()
     now = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
     ci_runs = None if "--no-ci" in argv else fetch_ci_runs()
     results = build_eval_results(
@@ -577,6 +630,7 @@ def main(argv: list) -> int:
         working_tree_dirty=_working_tree_dirty(),
         ci_observation=summarise_ci_runs(ci_runs, now) if ci_runs else None,
         eval_inputs=compute_eval_input_hashes(),
+        permission=permission, self_eval_result=self_eval_result,
         agent_decision=build_agent_decision_section(
             json.loads((REPO_ROOT / AGENT_DECISION_RESULTS).read_text(encoding="utf-8")),
             json.loads((REPO_ROOT / AGENT_DECISION_DATASET).read_text(encoding="utf-8")),

@@ -6,7 +6,7 @@ direct Anthropic client and nothing here is exercised.
 ON when LITELLM_PROXY_URL is set (e.g. http://localhost:4000): the gateway
 builds its Anthropic SDK client with base_url=<proxy>, so the request is a
 POST <proxy>/v1/messages (LiteLLM's Anthropic-compatible route) and never
-goes to api.anthropic.com. The key sent is LITELLM_API_KEY (the proxy's
+goes directly to the provider's public API host. The key sent is LITELLM_API_KEY (the proxy's
 master/virtual key), not the Anthropic key -- that stays inside the proxy
 container (infra/litellm/). There is no fallback: if the proxy mode is
 misconfigured the call is refused, not silently sent direct.

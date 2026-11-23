@@ -43,6 +43,7 @@ auto-continue). `max_retries=0` gives the pure refuse/escalate behaviour.
 """
 
 import json
+import os
 import re
 
 RUBRIC_VERSION = "1"
@@ -143,6 +144,33 @@ def run_with_self_eval(produce, question: str, evidence: list, scorer=determinis
             return {"action": "CONTINUE", "output": output, "attempts": attempts}
         feedback = f"Self-evaluation failed ({ev['overall']}): {ev['reason']}"
     return {"action": "ESCALATE_TO_HUMAN", "output": attempts[-1]["output"], "attempts": attempts}
+
+
+# ---- live-loop gate (agent_loop.py), OFF by default ----
+
+SELF_EVAL_ENV = "SELF_EVAL_ENABLED"
+
+
+def enabled() -> bool:
+    """Live-loop flag. Defaults OFF: unset/empty/0/false/no/off => no behaviour
+    change anywhere. Checked live (env var), not cached at import."""
+    return os.environ.get(SELF_EVAL_ENV, "").strip().lower() in ("1", "true", "yes", "on")
+
+
+def gate_step(question: str, evidence: list, output: str, retries_used: int,
+              scorer=deterministic_scorer, threshold: float = PASS_THRESHOLD,
+              max_retries: int = 1) -> dict:
+    """One decision for a tool-loop that cannot be re-run from a callback.
+    Same policy as run_with_self_eval: pass => CONTINUE; low score with a retry
+    left => RETRY (with feedback to feed back); low score and no retry left =>
+    ESCALATE_TO_HUMAN. Like run_with_self_eval it never writes and never
+    approves; it only decides whether the loop may keep going on its own."""
+    ev = self_evaluate(question, evidence, output, scorer, threshold)
+    if ev["passed"]:
+        return {"action": "CONTINUE", "eval": ev, "feedback": None}
+    feedback = f"Self-evaluation failed ({ev['overall']}): {ev['reason']}"
+    action = "RETRY" if retries_used < max_retries else "ESCALATE_TO_HUMAN"
+    return {"action": action, "eval": ev, "feedback": feedback}
 
 
 # ---- production model scorer plumbing (prompt + parser only; not run in CI) ----

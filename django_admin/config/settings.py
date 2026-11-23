@@ -93,7 +93,13 @@ DATABASE_ROUTERS = ["ledger.routers.LedgerRouter"]
 
 # Optional durable budget store from a *different, unmerged* PR (#53). Read
 # only if the file exists; never required, never created.
-BUDGET_SQLITE_PATH = os.environ.get("ADMIN_BUDGET_SQLITE_PATH", str(AGENT_DIR / "budget_store.sqlite3"))
+# The REAL durable budget store (agent/budget_store.py): BUDGET_DB_PATH, else
+# agent/.budget/budget.sqlite3. ADMIN_BUDGET_SQLITE_PATH overrides for this
+# admin process only. This must resolve to the same file the Starlette process
+# writes, so set BUDGET_DB_PATH identically in both.
+BUDGET_SQLITE_PATH = (os.environ.get("ADMIN_BUDGET_SQLITE_PATH", "").strip()
+                      or os.environ.get("BUDGET_DB_PATH", "").strip()
+                      or str(AGENT_DIR / ".budget" / "budget.sqlite3"))
 EVAL_RESULTS_PATH = os.environ.get("ADMIN_EVAL_RESULTS_PATH", str(AGENT_DIR / "web" / "eval-results.json"))
 EVAL_HISTORY_DIR = os.environ.get("ADMIN_EVAL_HISTORY_DIR", str(AGENT_DIR / "web" / "eval-history"))
 

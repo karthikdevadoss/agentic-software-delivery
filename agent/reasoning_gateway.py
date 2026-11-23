@@ -20,13 +20,20 @@ in agent/ now goes through this module, through one of two entry points:
     the caller keeps its own loop and message history. Used by
     agent_loop.run_agent_loop (tool loop) and
     backend_planning.analyze_with_llm (structured JSON contract).
-Both run the same purpose check, LLM_MODE kill switch, API-key check and
-usage/cost recording. agent/test_reasoning_gateway_enforcement.py fails the
-build if any other agent/ or scripts/ file imports a provider SDK, constructs
-a client, or calls .messages.create. Honest limits: only Anthropic is
-supported (no second provider, no LiteLLM); budgets are not durable; the scan
-covers agent/ and scripts/ Python files, not code outside the repo or
-non-Python services.
+Both run the same purpose check, LLM_MODE kill switch, API-key check, durable
+budget/rate gate (agent/gateway_budget.py; refused BEFORE the provider is
+contacted and before anything is billed), usage/cost recording and one
+`gateway.model_call` OpenTelemetry span (entry="call"|"converse": model,
+tokens, cost, outcome; budget refusals are outcome=denied). With
+LITELLM_PROXY_URL set the real client is pointed at a local LiteLLM proxy
+(opt-in; no silent fallback to a direct call).
+agent/test_reasoning_gateway_enforcement.py fails the build if any other
+agent/ or scripts/ file imports a provider SDK, constructs a client, or calls
+.messages.create. Honest limits: only Anthropic is supported (LiteLLM is an
+opt-in local proxy, not a second provider); budgets are durable on ONE host's
+SQLite file only; calls with an injected create_fn test double are not metered
+unless enforce_budget=True; the scan covers agent/ and scripts/ Python files,
+not code outside the repo or non-Python services.
 
 Non-negotiable rules enforced here (Phase 3 of the directive):
   - DEFAULT DENIED: `purpose` must be one of ADVISORY_PURPOSES or the call
