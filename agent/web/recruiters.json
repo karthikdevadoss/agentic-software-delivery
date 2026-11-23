@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-21T12:23:33Z",
-  "commit_sha": "2cd0769bdda4f76aafa33dfea761ebadda632276",
-  "branch": "p0-fixes-2026-10-21",
-  "working_tree_dirty": false,
+  "generated_at": "2026-11-23T12:37:27Z",
+  "commit_sha": "9534530829a4fe305fc2599a784876a5ec7f3da5",
+  "branch": "feat/permission-aware-retrieval",
+  "working_tree_dirty": true,
   "postings_accessed": "2026-10-06",
   "postings_note": "Thirteen English-language AI engineering job postings that were listed as open on the access date, in this order: remote first, then Berlin hybrid, Berlin on-site and other German cities. Architect-titled roles based in Germany in the same search all required German; the one architect-titled role here is EU-remote.",
   "postings_total": 13,
@@ -123,8 +123,8 @@
       "skip_reason": "needs Docker, which the recording machine did not have"
     },
     "ask": {
-      "generated_at": "2026-10-06T10:09:27Z",
-      "commit_sha": "9afcc1cdf5c3ebd5f3a219d49e879f66a1c50e08",
+      "generated_at": "2026-11-23T12:36:44Z",
+      "commit_sha": "9534530829a4fe305fc2599a784876a5ec7f3da5",
       "examples": 6,
       "strong_evidence": 6,
       "llm_calls": 0
@@ -782,8 +782,8 @@
   "inputs": {
     "agent/recruiters_source.yaml": "fecfc4a66d7d1820a26852b226bac8382385fc413d40af886c1dc20cfee78d59",
     "agent/web/case-study-durable-agent.html": "e6eaf381b8b8936d5f90f6fb2f75d774ea842eb5a226fc609495f320db52c6d7",
-    "agent/web/eval-results.json": "cd47e5ae2d3d2037fdb5ec467ea603e9b0a81b3f60e6563e4f11038fc059bd7a",
+    "agent/web/eval-results.json": "429896c9741ee586fb474bd9278e40bdc60491a5154dbf244d6087aeeb1ab69c",
     "agent/web/triage-evidence.json": "69845e1d9445b44136bc6db1aad2f8518c8889f3e7a9377eb4c6af041c7fb3f7",
-    "agent/web/ask-codebase-examples.json": "ef0c201b37bb33e16e2a69b653f8c9dc12955c0d0973b56b4ca4df16724da74d"
+    "agent/web/ask-codebase-examples.json": "34eab056324d1e58d3b3d6c65e875af613a3779983890614966d14d0c06de0bb"
   }
 }

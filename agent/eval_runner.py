@@ -10,7 +10,8 @@ agent/test_mcp_server.py, and the real application test suite.
 Run:
     python agent/eval_runner.py retrieval   -> Eval 1 (Recall@K, MRR)
     python agent/eval_runner.py routing     -> Eval 2 (routing accuracy)
-    python agent/eval_runner.py all         -> both, plus the combined report
+    python agent/eval_runner.py permission  -> Eval 3 (permission leaks, zero tolerance)
+    python agent/eval_runner.py all         -> all three, plus the combined report
 """
 
 import json
@@ -18,6 +19,7 @@ import sys
 from pathlib import Path
 
 import backend_rag_index
+import permission_retrieval
 from backend_planning import classify_backend_routing
 
 EVALS_DIR = Path(__file__).resolve().parent / "evals"
@@ -92,6 +94,40 @@ def run_routing_eval() -> dict:
     }
 
 
+def run_permission_eval(top_k: int = 10) -> dict:
+    """Eval 3: zero-tolerance leak check. Every case is judged by code, from
+    the real retrieval output; nothing here is a score or a threshold we pick."""
+    dataset = _load_dataset("permission_dataset.json")
+    per_case = []
+    for case in dataset["cases"]:
+        role, query = case["role"], case["query"]
+        results = permission_retrieval.search(query, role, top_k=top_k)
+        allowed = permission_retrieval.allowed_levels(role)
+        paths = [r["source_path"] for r in results]
+        problems = []
+        for r in results:
+            if r["access_level"] not in allowed:
+                problems.append(f"LEAK: {r['source_path']} level={r['access_level']} shown to role={role!r}")
+        for f in case.get("forbidden_sources", []):
+            if f in paths:
+                problems.append(f"LEAK: forbidden source {f} returned to role={role!r}")
+        if case.get("expect_empty") and results:
+            problems.append(f"role={role!r} should be denied but got {len(results)} result(s)")
+        if "must_see_top" in case and (not paths or paths[0] != case["must_see_top"]):
+            problems.append(f"authorized role did not get {case['must_see_top']} at rank 1 (got {paths[:1]})")
+        proof_role = case.get("unfiltered_top_role")
+        if proof_role:
+            proof = permission_retrieval.search(query, proof_role, top_k=1)
+            for f in case.get("forbidden_sources", [])[:1]:
+                if not proof or proof[0]["source_path"] != f:
+                    problems.append(f"case is vacuous: {f} is not the closest match for role={proof_role!r}")
+        per_case.append({"id": case["id"], "role": role, "passed": not problems, "problems": problems})
+    n = len(per_case)
+    return {"summary": {"cases": n, "passed": sum(c["passed"] for c in per_case),
+                        "leaks_or_failures": sum(not c["passed"] for c in per_case)},
+            "per_case": per_case}
+
+
 # Explicit initial acceptance thresholds (Eval baseline, not tuned to
 # "look good" — chosen against this small labeled dataset; see
 # docs/DECISIONS.md). Security cases are zero-tolerance: any miss fails
@@ -104,7 +140,7 @@ THRESHOLDS = {
 }
 
 
-def _print_report(retrieval: dict, routing: dict) -> bool:
+def _print_report(retrieval: dict, routing: dict, permission: dict | None = None) -> bool:
     print("=== EVAL 1: RETRIEVAL QUALITY ===")
     print(json.dumps(retrieval["summary"], indent=2))
     for c in retrieval["per_case"]:
@@ -117,8 +153,19 @@ def _print_report(retrieval: dict, routing: dict) -> bool:
         if not c["correct"]:
             print(f"  [MISS] {c['id']}: expected={c['expected_route']} actual={c['actual_route']}")
 
+    permission_ok = True
+    if permission is not None:
+        print("\n=== EVAL 3: PERMISSION LEAKS (zero tolerance) ===")
+        print(json.dumps(permission["summary"], indent=2))
+        for c in permission["per_case"]:
+            print(f"  [{'OK' if c['passed'] else 'FAIL'}] {c['id']} role={c['role']!r}")
+            for pr in c["problems"]:
+                print(f"      {pr}")
+        permission_ok = permission["summary"]["leaks_or_failures"] == 0
+
     passed = (
-        retrieval["summary"]["recall_at_3"] is not None
+        permission_ok
+        and retrieval["summary"]["recall_at_3"] is not None
         and retrieval["summary"]["recall_at_3"] >= THRESHOLDS["recall_at_3"]
         and retrieval["summary"]["mrr"] >= THRESHOLDS["mrr"]
         and routing["summary"]["routing_accuracy"] >= THRESHOLDS["routing_accuracy"]
@@ -132,8 +179,12 @@ if __name__ == "__main__":
     which = sys.argv[1] if len(sys.argv) > 1 else "all"
     if which == "retrieval":
         print(json.dumps(run_retrieval_eval(), indent=2))
+    elif which == "permission":
+        report = run_permission_eval()
+        print(json.dumps(report, indent=2))
+        sys.exit(0 if report["summary"]["leaks_or_failures"] == 0 else 1)
     elif which == "routing":
         print(json.dumps(run_routing_eval(), indent=2))
     else:
-        ok = _print_report(run_retrieval_eval(), run_routing_eval())
+        ok = _print_report(run_retrieval_eval(), run_routing_eval(), run_permission_eval())
         sys.exit(0 if ok else 1)
