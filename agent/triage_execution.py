@@ -29,6 +29,7 @@ import uuid
 import tools
 import environment_preflight
 import reasoning_gateway
+import pydantic_ai_gateway
 
 CUSTOMER_APP_BASE = "https://agentic-delivery-customer-app-production.up.railway.app"
 APP_DIR = tools.REPO_ROOT / "app"
@@ -435,27 +436,29 @@ def diagnose(reproduction_result: dict, api_key: str | None = None, create_fn=No
         f"request twice):\n{json.dumps(reproduction_result, indent=2)}\n\n"
         f"Defective method source:\n{DEFECTIVE_SOURCE_EXCERPT}"
     )
-    text, unavailable, usage = _call_model_text(
-        DIAGNOSIS_SYSTEM_PROMPT, evidence, 512, api_key, create_fn,
-        purpose="NOVEL_ROOT_CAUSE_HYPOTHESES",
-    )
-    if unavailable is not None:
+    # Pydantic AI slice (docs/PYDANTIC_AI.md): typed, validated output; the
+    # billed call is still reasoning_gateway.call() via pydantic_ai_gateway.GatewayModel.
+    try:
+        diagnosis, usage = pydantic_ai_gateway.run_typed_diagnosis(
+            DIAGNOSIS_SYSTEM_PROMPT, evidence, purpose="NOVEL_ROOT_CAUSE_HYPOTHESES",
+            max_tokens=512, api_key=api_key, create_fn=create_fn)
+    except pydantic_ai_gateway.GatewayDenied as denied:
         return {
             "hypothesis": None, "root_cause": None, "affected_component": None,
             "confidence": None, "model_called": False,
-            "explanation": unavailable["explanation"], "usage": usage,
+            "explanation": denied.reason, "usage": denied.usage,
         }
-    try:
-        parsed = json.loads(text)
-        parsed["model_called"] = True
-        parsed["usage"] = usage
-        return parsed
-    except json.JSONDecodeError:
+    except pydantic_ai_gateway.UnexpectedModelBehavior as bad:
         return {
             "hypothesis": None, "root_cause": None, "affected_component": None, "confidence": None,
-            "model_called": True, "explanation": f"model did not return valid JSON: {text[:300]!r}",
-            "usage": usage,
+            "model_called": True,
+            "explanation": f"model did not return valid JSON matching the typed Diagnosis schema: {str(bad.__cause__ or bad)[:300]!r}",
+            "usage": getattr(bad, "gateway_usage", None),
         }
+    parsed = diagnosis.model_dump()
+    parsed["model_called"] = True
+    parsed["usage"] = usage
+    return parsed
 
 
 # Fallback copy of the exact real diff for commit 2155a8a, captured once
