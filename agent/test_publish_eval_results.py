@@ -221,6 +221,208 @@ class AgentDecisionSectionTestCase(unittest.TestCase):
         self.assertNotIn("evidence_reference", self.out["cases"][0])
 
 
+AD_SECTION = {"cases_total": 6, "summary": {"PASS": 6, "FAIL": 0, "NOT_EXECUTED": 0, "UNKNOWN": 0},
+              "run_at_utc": "2026-09-16T09:46:39+00:00", "recorded_commit": "d" * 40}
+INPUTS = {"files": {f: f"{i:064d}" for i, f in enumerate(pub.EVAL_INPUT_FILES)}, "thresholds": "t" * 64}
+
+
+class SuitesTestCase(unittest.TestCase):
+    def _suites(self, retrieval=None, routing=None, ad=AD_SECTION):
+        out = _build(retrieval or _retrieval(), routing or _routing(), agent_decision=ad, eval_inputs=INPUTS)
+        return out, {s["key"]: s for s in out["suites"]}
+
+    def test_four_first_class_suites_with_required_fields(self):
+        out, suites = self._suites()
+        self.assertEqual([s["key"] for s in out["suites"]],
+                         ["retrieval", "routing", "security-routing", "agent-decision"])
+        for s in out["suites"]:
+            for f in ("score", "threshold", "passed", "dataset_hash", "commit_sha", "run_at", "kind"):
+                self.assertIn(f, s)
+                self.assertIsNotNone(s[f], f"{s['key']}.{f}")
+            self.assertEqual(s["threshold"], eval_runner.THRESHOLDS[s["primary_metric"]])
+
+    def test_dataset_hashes_come_from_eval_inputs_and_security_shares_routing(self):
+        _, suites = self._suites()
+        self.assertEqual(suites["retrieval"]["dataset_hash"], INPUTS["files"]["agent/evals/retrieval_dataset.json"])
+        self.assertEqual(suites["routing"]["dataset_hash"], INPUTS["files"]["agent/evals/routing_dataset.json"])
+        self.assertEqual(suites["security-routing"]["dataset_hash"], suites["routing"]["dataset_hash"])
+        self.assertEqual(suites["agent-decision"]["dataset_hash"],
+                         INPUTS["files"]["agent/evals/agent_decision_dataset.json"])
+
+    def test_agent_decision_is_recorded_with_its_own_commit_and_time(self):
+        _, suites = self._suites()
+        ad = suites["agent-decision"]
+        self.assertEqual((ad["kind"], ad["commit_sha"], ad["run_at"]), ("recorded", "d" * 40, AD_SECTION["run_at_utc"]))
+        self.assertEqual(suites["retrieval"]["kind"], "measured")
+        self.assertEqual(suites["retrieval"]["commit_sha"], "abc1234")
+
+    def test_retrieval_suite_carries_mrr_and_fails_if_either_metric_misses(self):
+        _, suites = self._suites(retrieval=_retrieval(mrr=0.1))
+        self.assertEqual([m["key"] for m in suites["retrieval"]["metrics"]], ["recall_at_3", "mrr"])
+        self.assertFalse(suites["retrieval"]["passed"])
+
+    def test_security_routing_suite_is_zero_tolerance(self):
+        _, suites = self._suites(routing=_routing(sec=0.857))
+        self.assertFalse(suites["security-routing"]["passed"])
+        self.assertTrue(suites["routing"]["passed"])
+
+    def test_agent_decision_miss_fails_suite_and_overall(self):
+        ad = dict(AD_SECTION, summary={"PASS": 5, "FAIL": 0, "NOT_EXECUTED": 1, "UNKNOWN": 0})
+        out, suites = self._suites(ad=ad)
+        self.assertEqual(suites["agent-decision"]["score"], 0.833)
+        self.assertFalse(suites["agent-decision"]["passed"])
+        self.assertFalse(out["overall_passed"])
+
+    def test_overall_verdict_matches_eval_runner_gate_including_agent_decision(self):
+        for passes in (6, 5, 0):
+            ad = dict(AD_SECTION, summary={"PASS": passes, "FAIL": 6 - passes, "NOT_EXECUTED": 0, "UNKNOWN": 0})
+            replay = {"summary": {"agent_decision_pass_rate": round(passes / 6, 3)},
+                      "per_case": [{"id": "x", "verdict": "PASS", "passed": True}]}
+            with contextlib.redirect_stdout(io.StringIO()):
+                gate = eval_runner._print_report(_retrieval(), _routing(), replay)
+            self.assertEqual(_build(_retrieval(), _routing(), agent_decision=ad)["overall_passed"], gate)
+
+    def test_no_hashes_means_null_not_invented(self):
+        out = _build(_retrieval(), _routing(), agent_decision=AD_SECTION)
+        self.assertTrue(all(s["dataset_hash"] is None for s in out["suites"]))
+        self.assertIsNone(out["reproducibility"]["inputs_hash"])
+
+
+class ReproducibilityTestCase(unittest.TestCase):
+    def test_command_and_hash_present(self):
+        r = pub.build_reproducibility(INPUTS)
+        self.assertEqual(r["command"], "python eval_runner.py all")
+        self.assertRegex(r["inputs_hash"], r"^[0-9a-f]{64}$")
+        self.assertIn("eval_runner.THRESHOLDS", r["hash_covers"])
+        self.assertIn("agent/eval_runner.py", r["hash_covers"])
+
+    def test_hash_changes_with_any_input_or_threshold(self):
+        base = pub.inputs_hash(INPUTS)
+        f = dict(INPUTS["files"]); f["agent/evals/routing_dataset.json"] = "x" * 64
+        self.assertNotEqual(base, pub.inputs_hash({"files": f, "thresholds": INPUTS["thresholds"]}))
+        self.assertNotEqual(base, pub.inputs_hash({"files": INPUTS["files"], "thresholds": "u" * 64}))
+        self.assertEqual(base, pub.inputs_hash(json.loads(json.dumps(INPUTS))))
+
+
+class HistoryTestCase(unittest.TestCase):
+    def test_filename_is_timestamp_dash_commit(self):
+        e = {"generated_at": "2026-10-06T10:07:23Z", "commit_sha": "674958abf3ff8437"}
+        self.assertEqual(pub.history_filename(e), "20261006T100723Z-674958a.json")
+        e = {"generated_at": "2026-09-16T09:46:39.181896+00:00", "commit_sha": "983161fa"}
+        self.assertEqual(pub.history_filename(e), "20260916T094639Z-983161f.json")
+
+    def test_v1_snapshot_yields_null_for_what_it_never_recorded(self):
+        v1 = _build(_retrieval(), _routing())
+        for k in ("suites", "reproducibility"):
+            v1.pop(k)
+        v1["schema_version"] = 1
+        e = pub.history_entry(v1)
+        self.assertEqual([s["key"] for s in e["suites"]], ["retrieval", "routing", "security-routing"])
+        self.assertTrue(all(s["dataset_hash"] is None for s in e["suites"]))
+        self.assertIsNone(e["reproducibility_hash"])
+
+    def test_v1_snapshot_agent_decision_has_no_threshold_or_verdict(self):
+        v1 = _build(_retrieval(), _routing(), agent_decision=AD_SECTION)
+        v1.pop("suites")
+        v1["metrics"] = [m for m in v1["metrics"] if m["key"] != "agent_decision_pass_rate"]
+        ad = pub.history_entry(v1)["suites"][-1]
+        self.assertEqual((ad["key"], ad["score"], ad["threshold"], ad["passed"]), ("agent-decision", 1.0, None, None))
+
+    def test_agent_decision_only_entry_counts_not_executed_as_not_passed(self):
+        res = {"run_at_utc": "2026-09-15T19:05:40+00:00", "results": [{"verdict": "NOT_EXECUTED"}] * 6}
+        e = pub.agent_decision_history_entry(res, "{}", "a" * 40)
+        s = e["suites"][0]
+        self.assertEqual((s["score"], s["passed"], s["threshold"]), (0.0, None, None))
+        self.assertEqual(s["verdict_counts"], {"NOT_EXECUTED": 6})
+        self.assertIsNone(e["overall_passed"])
+
+    def test_write_and_index_roundtrip_sorted_oldest_first(self):
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            for ts in ("2026-10-06T10:00:00Z", "2026-09-01T10:00:00Z"):
+                e = pub.history_entry(_build(_retrieval(), _routing()))
+                e["generated_at"] = ts
+                pub.write_history_entry(e, d)
+            idx = pub.rebuild_history_index(d)
+        self.assertEqual([e["generated_at"] for e in idx["entries"]],
+                         ["2026-09-01T10:00:00Z", "2026-10-06T10:00:00Z"])
+        self.assertTrue(all(e["file"].endswith("-abc1234.json") for e in idx["entries"]))
+
+
+class CommittedHistoryTestCase(unittest.TestCase):
+    """The committed eval-history/ directory. Files only; nothing measured."""
+
+    def setUp(self):
+        self.index = json.loads(pub.HISTORY_INDEX.read_text(encoding="utf-8"))
+        self.snapshot = json.loads(pub.OUTPUT_PATH.read_text(encoding="utf-8"))
+
+    def test_index_matches_files_on_disk(self):
+        on_disk = sorted(f.name for f in pub.HISTORY_DIR.glob("*.json") if f.name != "index.json")
+        self.assertEqual(sorted(e["file"] for e in self.index["entries"]), on_disk)
+        for e in self.index["entries"]:
+            rec = json.loads((pub.HISTORY_DIR / e["file"]).read_text(encoding="utf-8"))
+            self.assertEqual(dict(rec, file=e["file"]), e)
+            self.assertEqual(e["file"], pub.history_filename(e))
+
+    def test_history_has_multiple_runs_and_is_chronological(self):
+        times = [e["generated_at"] for e in self.index["entries"]]
+        self.assertGreaterEqual(len(times), 3)
+        self.assertEqual(times, sorted(times))
+        self.assertEqual(len(set(times)), len(times))
+
+    def test_every_seeded_record_traces_to_a_real_git_commit_and_values_match_it(self):
+        import subprocess
+        for e in self.index["entries"]:
+            if not e["source"].startswith("git:"):
+                continue
+            commit, rel = e["source"][4:].split(":", 1)
+            full = subprocess.run(["git", "rev-parse", "--verify", commit + "^{commit}"], cwd=pub.REPO_ROOT,
+                                  capture_output=True, text=True)
+            self.assertEqual(full.returncode, 0, e["source"])
+            blob = subprocess.run(["git", "show", f"{commit}:{rel}"], cwd=pub.REPO_ROOT,
+                                  capture_output=True, text=True, check=True).stdout
+            if rel.endswith("eval-results.json"):
+                self.assertEqual(pub.history_entry(json.loads(blob), source=e["source"]),
+                                 {k: v for k, v in e.items() if k != "file"})
+            else:
+                res = json.loads(blob)
+                self.assertEqual(e["generated_at"], res["run_at_utc"])
+                self.assertEqual(e["suites"][0]["score"],
+                                 round(sum(r["verdict"] == "PASS" for r in res["results"]) / len(res["results"]), 3))
+
+    def test_latest_snapshot_is_in_history_with_matching_values(self):
+        match = [e for e in self.index["entries"]
+                 if e["generated_at"] == self.snapshot["generated_at"] and e["commit_sha"] == self.snapshot["commit_sha"]]
+        self.assertEqual(len(match), 1)
+        self.assertEqual(match[0]["reproducibility_hash"], self.snapshot["reproducibility"]["inputs_hash"])
+        for s in self.snapshot["suites"]:
+            h = next(x for x in match[0]["suites"] if x["key"] == s["key"])
+            self.assertEqual((h["score"], h["threshold"], h["passed"], h["dataset_hash"], h["commit_sha"], h["run_at"]),
+                             (s["score"], s["threshold"], s["passed"], s["dataset_hash"], s["commit_sha"], s["run_at"]))
+
+    def test_published_suites_hashes_and_repro_hash_match_files_on_disk(self):
+        cur = pub.compute_eval_input_hashes()
+        by = {s["key"]: s for s in self.snapshot["suites"]}
+        self.assertEqual(by["retrieval"]["dataset_hash"], cur["files"]["agent/evals/retrieval_dataset.json"])
+        self.assertEqual(by["security-routing"]["dataset_hash"], cur["files"]["agent/evals/routing_dataset.json"])
+        self.assertEqual(self.snapshot["reproducibility"]["inputs_hash"], pub.inputs_hash(cur))
+
+    def test_agent_decision_suite_equals_replay_of_committed_results(self):
+        replay = eval_runner.run_agent_decision_eval()["summary"]
+        ad = next(s for s in self.snapshot["suites"] if s["key"] == "agent-decision")
+        self.assertEqual(ad["score"], replay["agent_decision_pass_rate"])
+        self.assertEqual(ad["kind"], "recorded")
+
+    def test_page_loads_history_and_has_dashboard_sections(self):
+        js = (pub.AGENT_DIR / "web" / "eval.js").read_text(encoding="utf-8")
+        self.assertIn("/eval-history/index.json", js)
+        for honest in ("Misses are shown, not hidden", "No numbers are shown rather than invented ones",
+                       "zero tolerance", "Honest limits", "uncommitted changes present"):
+            self.assertIn(honest, js)
+
+
 class PublishedArtifactTestCase(unittest.TestCase):
     """The committed agent/web/eval-results.json and the /eval page that
     renders it. Reads files only -- nothing is measured here."""
