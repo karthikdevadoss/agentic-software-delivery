@@ -41,7 +41,7 @@ def _strip_comments(html: str) -> str:
 def _visible_text(html: str) -> str:
     html = _strip_comments(html)
     html = re.sub(r"<style.*?</style>", " ", html, flags=re.DOTALL | re.I)
-    html = re.sub(r"<script.*?</script>", " ", html, flags=re.DOTALL | re.I)
+    html = re.sub(r"<script\b[^>]*>.*?</script\b[^>]*>", " ", html, flags=re.DOTALL | re.I)
     html = re.sub(r"<[^>]+>", " ", html)
     return re.sub(r"\s+", " ", html)
 
