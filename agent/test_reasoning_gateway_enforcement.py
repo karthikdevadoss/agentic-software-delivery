@@ -18,6 +18,7 @@ Run: python agent/test_reasoning_gateway_enforcement.py
 import re
 import unittest
 from pathlib import Path
+from urllib.parse import urlparse
 
 AGENT_DIR = Path(__file__).resolve().parent
 
@@ -91,6 +92,30 @@ def _files_with_direct_anthropic_import():
     return found
 
 
+PROVIDER_HOST = "api.anthropic.com"
+_URL_TOKEN = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://[^\s\"'<>)\]}]+")
+_QUOTED_TOKEN = re.compile(r"[\"']([^\"'\s]+)[\"']")
+
+
+def _hostname_of(token: str):
+    try:
+        return urlparse(token if "://" in token else "//" + token).hostname
+    except ValueError:  # e.g. regex/array fragments that look like bad IPv6 URLs
+        return None
+
+
+def _references_provider_host(text: str) -> bool:
+    """True if the text contains a URL or quoted host whose hostname is exactly
+    the provider host (parsed, not substring-matched)."""
+    for token in _URL_TOKEN.findall(text):
+        if _hostname_of(token) == PROVIDER_HOST:
+            return True
+    for token in _QUOTED_TOKEN.findall(text):
+        if _hostname_of(token) == PROVIDER_HOST:
+            return True
+    return False
+
+
 class ReasoningGatewayCentralizationTestCase(unittest.TestCase):
     def test_allowlist_is_the_gateway_only(self):
         self.assertEqual(set(APPROVED_DIRECT_IMPORT_FILES), {"reasoning_gateway.py"})
@@ -115,7 +140,7 @@ class ReasoningGatewayCentralizationTestCase(unittest.TestCase):
                     continue
                 if path.name in APPROVED_DIRECT_IMPORT_FILES:
                     continue
-                if "api.anthropic.com" in path.read_text(encoding="utf-8", errors="ignore"):
+                if _references_provider_host(path.read_text(encoding="utf-8", errors="ignore")):
                     offenders.append(str(path.relative_to(REPO_ROOT)))
         self.assertEqual(offenders, [])
 
