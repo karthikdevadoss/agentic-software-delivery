@@ -2773,7 +2773,47 @@ class ForceRevalidateStaticAssets(BaseHTTPMiddleware):
         return response
 
 
-app = Starlette(routes=routes, middleware=[Middleware(ForceRevalidateStaticAssets)])
+# All assets are first-party (fonts self-hosted at /fonts/fonts.css). 'unsafe-inline'
+# is needed only because several pages carry an inline <style> block and
+# standing-interview.html one inline <script>; no 'unsafe-eval'.
+CONTENT_SECURITY_POLICY = (
+    "default-src 'self'; "
+    "script-src 'self' 'unsafe-inline'; "
+    "style-src 'self' 'unsafe-inline'; "
+    "font-src 'self'; "
+    "img-src 'self' data:; "
+    "connect-src 'self'; "
+    "object-src 'none'; "
+    "base-uri 'self'; "
+    "form-action 'self'; "
+    "frame-ancestors 'none'"
+)
+
+SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+    "Content-Security-Policy": CONTENT_SECURITY_POLICY,
+}
+
+
+class SecurityHeaders(BaseHTTPMiddleware):
+    """Adds baseline security headers to every response. setdefault, so a more
+    specific route can override one deliberately."""
+
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        for name, value in SECURITY_HEADERS.items():
+            response.headers.setdefault(name, value)
+        return response
+
+
+app = Starlette(
+    routes=routes,
+    middleware=[Middleware(ForceRevalidateStaticAssets), Middleware(SecurityHeaders)],
+)
 
 
 if __name__ == "__main__":

@@ -16,13 +16,6 @@ WEB = pathlib.Path(__file__).resolve().parent / "web"
 FONTS = WEB / "fonts"
 GOOGLE = re.compile(r"fonts\.(googleapis|gstatic)\.com")
 
-# Standing Interview is out of scope for automation sprints (Owner rule), so
-# its page still links Google Fonts. Listed here so the exception is visible
-# and deliberate; delete the entry when that page switches to /fonts/fonts.css
-# (the ratchet test below then keeps it switched).
-KNOWN_EXCEPTIONS = {"standing-interview.html"}
-
-
 def _faces():
     css = (FONTS / "fonts.css").read_text(encoding="utf-8")
     return re.findall(r"@font-face\s*\{(.*?)\}", css, re.S)
@@ -31,17 +24,15 @@ def _faces():
 class NoGoogleFontsTestCase(unittest.TestCase):
     def test_no_page_or_stylesheet_requests_google_fonts(self):
         for p in sorted(list(WEB.glob("*.html")) + list(WEB.glob("*.css")) + list(WEB.glob("*.js"))):
-            if p.name in KNOWN_EXCEPTIONS:
-                continue
             with self.subTest(file=p.name):
                 self.assertIsNone(GOOGLE.search(p.read_text(encoding="utf-8")),
                                   f"{p.name} still requests Google Fonts")
 
-    def test_known_exceptions_are_still_exceptions(self):
-        for name in KNOWN_EXCEPTIONS:
-            with self.subTest(file=name):
-                self.assertRegex((WEB / name).read_text(encoding="utf-8"), GOOGLE,
-                                 f"{name} no longer uses Google Fonts: remove it from KNOWN_EXCEPTIONS")
+    def test_every_html_file_is_checked_and_standing_interview_is_local(self):
+        html = sorted(WEB.glob("*.html"))
+        self.assertIn("standing-interview.html", [p.name for p in html])
+        self.assertIn('<link rel="stylesheet" href="/fonts/fonts.css">',
+                      (WEB / "standing-interview.html").read_text(encoding="utf-8"))
 
     def test_pages_that_used_web_fonts_load_the_local_stylesheet(self):
         for name in ("home.html", "case-study-durable-agent.html", "workbench.html", "triage.html",
