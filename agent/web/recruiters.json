@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-23T13:31:38Z",
-  "commit_sha": "b907a94984aab257f30f5a5bdfb5d54a4a578618",
-  "branch": "integration/kraken-showcase",
+  "generated_at": "2026-11-25T07:06:20Z",
+  "commit_sha": "7982f4e75a83454c6e8b3097aca0588119146ef3",
+  "branch": "indra/kraken-interview-platform-updates-2026-11-25",
   "working_tree_dirty": false,
   "postings_accessed": "2026-10-06",
   "postings_note": "Thirteen English-language AI engineering job postings that were listed as open on the access date, in this order: remote first, then Berlin hybrid, Berlin on-site and other German cities. Architect-titled roles based in Germany in the same search all required German; the one architect-titled role here is EU-remote.",
@@ -301,7 +301,7 @@
       ],
       "evidence": [
         {
-          "label": "Retrieval and routing eval results page",
+          "label": "Eval dashboard: six suites, run history and reproducibility hash",
           "url": "/eval",
           "status": "live",
           "metrics": "eval"
@@ -314,6 +314,16 @@
         {
           "label": "Hand-labelled retrieval questions",
           "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/evals/retrieval_dataset.json",
+          "status": "source"
+        },
+        {
+          "label": "Permission retrieval eval set (zero-leak threshold)",
+          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/evals/permission_dataset.json",
+          "status": "source"
+        },
+        {
+          "label": "Self-eval replay dataset",
+          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/evals/self_eval_dataset.json",
           "status": "source"
         },
         {
@@ -436,7 +446,7 @@
       ],
       "evidence": [
         {
-          "label": "Ask the Codebase: cited answers from the repository, no model call",
+          "label": "Ask the Codebase: cited, permission-filtered answers from the repository",
           "url": "/ask-codebase",
           "status": "live"
         },
@@ -447,12 +457,17 @@
           "metrics": "ask"
         },
         {
+          "label": "Permission-aware retrieval filter (code-enforced access levels)",
+          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/permission_retrieval.py",
+          "status": "source"
+        },
+        {
           "label": "Retrieval source",
           "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/ask_codebase.py",
           "status": "source"
         }
       ],
-      "limits": "A local embedding model and plain similarity search over a small curated set of files. No hosted search service."
+      "limits": "A local embedding model and plain similarity search over a small curated set of files, plus code-enforced access-level filtering over fixture documents in tests and evals. No live Notion/Slack ingestion or hosted search service."
     },
     {
       "id": "ops",
@@ -494,8 +509,23 @@
       ],
       "evidence": [
         {
-          "label": "Model gateway with purpose checks and an off switch",
+          "label": "Model gateway with purpose checks, budgets and an off switch",
           "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/reasoning_gateway.py",
+          "status": "source"
+        },
+        {
+          "label": "Usage, cost telemetry and remaining gateway budget panel",
+          "url": "/usage",
+          "status": "live"
+        },
+        {
+          "label": "Durable SQLite budget and rate-limit gate",
+          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/gateway_budget.py",
+          "status": "source"
+        },
+        {
+          "label": "OpenTelemetry spans for gateway, retrieval and approval (/traces/{run_id})",
+          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/tracing.py",
           "status": "source"
         },
         {
@@ -543,9 +573,14 @@
           "label": "MCP server exposing the read-only repository tools",
           "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/mcp_server.py",
           "status": "source"
+        },
+        {
+          "label": "Bearer-token auth and per-tool scopes for Streamable HTTP",
+          "url": "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/mcp_auth.py",
+          "status": "source"
         }
       ],
-      "limits": "Implemented and tested; it runs locally, not as a hosted service."
+      "limits": "Implemented and tested (stdio and local Streamable HTTP with bearer auth); it runs locally, not as a hosted service."
     }
   ],
   "gaps": [
@@ -809,12 +844,12 @@
   "quotes_verified": {
     "quotes": 72,
     "against": "posting text captured on 2026-10-06",
-    "source_sha256": "fecfc4a66d7d1820a26852b226bac8382385fc413d40af886c1dc20cfee78d59",
+    "source_sha256": "c855402f9f66b83a422f4545af12ebaf27c2f7ef2c51f79beb01f7e52b7f50e4",
     "carried_from_source_sha256": "14cd40ae4176adab2217ba7d2fb1e3af5291a388438ffa4c2dac55fd6cc43368",
-    "carried_because": "2026-10-21 edit changed profile and limit text only; all 72 posting quotes are byte-identical to the verified source"
+    "carried_because": "2026-10-21 and 2026-11-25 edits changed profile, evidence links and limit text only; all 72 posting quotes are byte-identical to the verified source"
   },
   "inputs": {
-    "agent/recruiters_source.yaml": "fecfc4a66d7d1820a26852b226bac8382385fc413d40af886c1dc20cfee78d59",
+    "agent/recruiters_source.yaml": "c855402f9f66b83a422f4545af12ebaf27c2f7ef2c51f79beb01f7e52b7f50e4",
     "agent/web/case-study-durable-agent.html": "e6eaf381b8b8936d5f90f6fb2f75d774ea842eb5a226fc609495f320db52c6d7",
     "agent/web/eval-results.json": "f942551d5df9b5a73ff1b088d50cd27dac73ec4cb7f230c5c8fc0a64c96ce374",
     "agent/web/triage-evidence.json": "73a4d9acefb2a5cd7f27f7ca9a39b10a30fca17b2d9dd0ba49a80d54b217c5dd",
