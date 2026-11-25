@@ -37,7 +37,7 @@ function renderVerdict(d) {
       <span class="big ${d.overall_passed ? "pass" : "fail"}">${d.overall_passed ? "All thresholds met" : "Threshold not met"}</span>
       ${passBadge(d.overall_passed)}
     </div>
-    <p class="hint" style="margin-top:0.6rem">Labelled set: ${esc(ls.retrieval_cases)} retrieval questions, ${esc(ls.routing_cases)} routing cases (${esc(ls.security_routing_cases)} security cases). Measured ${esc(whenText)} at commit <code>${esc((d.commit_sha || "").slice(0, 7))}</code>${d.working_tree_dirty ? " (uncommitted changes present)" : ""}, embedding model <code>${esc(d.embedding_model)}</code>.</p>
+    <p class="hint" style="margin-top:0.6rem">Labelled set: ${esc(ls.retrieval_cases)} retrieval questions, ${esc(ls.routing_cases)} routing cases (${esc(ls.security_routing_cases)} security cases), ${esc(ls.permission_cases)} permission cases, ${esc(ls.self_eval_cases)} self-eval cases. Measured ${esc(whenText)} at commit <code>${esc((d.commit_sha || "").slice(0, 7))}</code>${d.working_tree_dirty ? " (uncommitted changes present)" : ""}, embedding model <code>${esc(d.embedding_model)}</code>.</p>
   </section>`;
 }
 
@@ -197,7 +197,7 @@ function renderHistory(index) {
   return `<section class="panel eval-history" id="history"><h2>History (${entries.length} recorded runs)</h2>
     <div class="trend-grid">${trends}</div>
     <p class="hint">Each record is a committed file under <code>eval-history/</code>, named <code>&lt;UTC timestamp&gt;-&lt;commit&gt;.json</code>. History was seeded only from results already committed in this repository (git history of <code>eval-results.json</code> and of the recorded agent-decision results). A dash means that run did not include the suite; <em>n/a</em> means no threshold was recorded for it at that time. Early runs are few and nearly flat, so the trend shows stability across those runs, not improvement.</p>
-    <table class="cap-table"><thead><tr><th>Run time</th><th>Commit</th><th>Retrieval Recall@3</th><th>Routing</th><th>Security routing</th><th>Agent decision</th><th>Repro hash</th><th>Record</th></tr></thead><tbody>${rows}</tbody></table>
+    <table class="cap-table"><thead><tr><th>Run time</th><th>Commit</th><th>Retrieval Recall@3</th><th>Routing</th><th>Security routing</th><th>Agent decision</th><th>Permission</th><th>Self-eval</th><th>Repro hash</th><th>Record</th></tr></thead><tbody>${rows}</tbody></table>
   </section>`;
 }
 

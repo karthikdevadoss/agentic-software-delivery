@@ -50,18 +50,21 @@
     <article class="iv-card">
       <h3>Triage — defect to patch with real tests</h3>
       <p>
-        Work a contained software defect: reproduction, AI diagnosis, a proposed
-        patch, real tests, and a human approval step before anything lands.
+        Work a contained software defect: reproduction, typed Pydantic AI
+        diagnosis (Scenario A, validated through the gateway), a proposed patch,
+        real tests, and a human approval step before anything lands.
       </p>
       <a class="go" href="/triage">Open Triage lab →</a>
       <a class="go2" href="/triage/evidence">Triage evidence snapshot →</a>
     </article>
 
     <article class="iv-card">
-      <h3>Evals — labelled scores, CI gates</h3>
+      <h3>Evals — six suites, history, CI gates</h3>
       <p>
-        Retrieval quality is scored against a hand-labelled question set:
-        Recall@3 0.833 and MRR 0.868. Thresholds are written down, and CI fails the
+        Six labelled suites — retrieval (Recall@3 0.833, MRR 0.868), tool
+        routing, security routing, recorded agent decisions, permission
+        filtering, and self-eval — with committed run history and a
+        reproducibility hash. Thresholds are written down, and CI fails the
         build when a score drops below them.
       </p>
       <a class="go" href="/eval">See eval scores and CI status →</a>
@@ -69,10 +72,12 @@
     </article>
 
     <article class="iv-card">
-      <h3>Ask Codebase — grounded answers</h3>
+      <h3>Ask Codebase — permission-filtered retrieval</h3>
       <p>
-        Ask technical questions against this repository. Answers come from retrieval
-        over the real code and docs.
+        Ask technical questions against this repository. Retrieval runs over real
+        code and docs with code-enforced document access filtering
+        (<code>public</code> on the web page; restricted levels exercised on
+        fixture docs in tests and evals).
       </p>
       <a class="go" href="/ask-codebase">Try Ask Codebase →</a>
       <a class="go2" href="/ask-codebase/examples">Recorded example answers →</a>
@@ -81,12 +86,18 @@
     <article class="iv-card iv-gaps">
       <h3>How it runs</h3>
       <p>
-        Anthropic Claude through a single model gateway with a kill switch. Local
-        cosine retrieval over the repository. A LangGraph workflow that checkpoints
-        to Postgres, and a Postgres event ledger with versioned pricing for token
-        and cost telemetry. Deployed to Railway by script.
+        Anthropic Claude through a single model gateway with a kill switch,
+        durable SQLite daily/per-run/per-request budgets, and an opt-in local
+        LiteLLM proxy. Local cosine retrieval over the repository, a LangGraph
+        workflow that checkpoints to Postgres, a Postgres event ledger with
+        versioned pricing for token and cost telemetry, and OpenTelemetry spans
+        via <code>/traces/{run_id}</code>. Deployed to Railway by script with
+        <code>/healthz</code> and <code>/readyz</code> probes; local Kubernetes
+        manifests, a read-only Django admin slice, and bearer-auth MCP over
+        Streamable HTTP are tested in the repo (not hosted on Railway).
       </p>
       <a class="go" href="/#scope">Same summary on the home page →</a>
+      <a class="go2" href="/usage">Usage, budget &amp; telemetry →</a>
     </article>
 
     <article class="iv-card iv-live">

@@ -259,8 +259,8 @@
     <div class="erow">
       <div>
         <p class="estat">Checked in CI</p>
-        <h3>Retrieval with labelled evaluation</h3>
-        <p>Search quality is scored against a hand-labelled set of questions and expected answers. In CI the evaluation runs after the Python tests on every push and pull request to master, and fails the build if a score drops below its recorded threshold. The eval page shows the current scores and when they last passed.</p>
+        <h3>Six-suite evaluation with history</h3>
+        <p>Retrieval, tool routing, security routing, agent decisions, permission filtering and self-eval are scored against hand-labelled sets with run history and a reproducibility hash. In CI the evaluation runs after the Python tests on every push and pull request to master, and fails the build if a score drops below its recorded threshold. The eval page shows the current scores and when they last passed.</p>
       </div>
       <div class="side"><a href="/eval">See the scores and CI status →</a></div>
     </div>
@@ -269,7 +269,7 @@
       <div>
         <p class="estat">Implemented and tested</p>
         <h3>MCP server for tool integration</h3>
-        <p>The platform's read-only repository tools are also exposed over the Model Context Protocol, so other AI clients can use them. It runs locally, next to the platform.</p>
+        <p>The platform's read-only repository tools are exposed over the Model Context Protocol with bearer-token auth and per-tool scopes on Streamable HTTP. It runs and is tested locally, rather than hosted publicly.</p>
       </div>
       <div class="side"><a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/mcp_server.py">See the MCP server →</a></div>
     </div>
@@ -277,8 +277,8 @@
     <div class="erow">
       <div>
         <p class="estat">Running in production</p>
-        <h3>Single model gateway with a kill switch</h3>
-        <p>Every call to a language model goes through one place, which checks what the call is for and can be switched off entirely. A test fails the build if any code tries to bypass it.</p>
+        <h3>Single model gateway with budgets and a kill switch</h3>
+        <p>Every billed model call goes through one gateway, which checks the purpose, enforces durable SQLite daily/per-run/per-request caps and rate limits, supports an opt-in local LiteLLM proxy, and can be switched off entirely. A test fails the build if any code tries to bypass it.</p>
       </div>
       <div class="side"><a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/reasoning_gateway.py">See the gateway →</a></div>
     </div>
@@ -286,8 +286,8 @@
     <div class="erow">
       <div>
         <p class="estat">Running in production</p>
-        <h3>Durable event ledger with token and cost telemetry</h3>
-        <p>Every meaningful step and every model call is written to a durable log, including real token counts. If the log's database is unreachable the events are held locally and sent later rather than lost.</p>
+        <h3>Durable event ledger, budgets and OpenTelemetry spans</h3>
+        <p>Every meaningful step and every model call is written to a durable log with real token counts, while OpenTelemetry spans record gateway, retrieval and approval events per run. If the log's database is unreachable the events are held locally and sent later rather than lost.</p>
       </div>
       <div class="side"><a href="/usage">Open the telemetry view →</a></div>
     </div>
@@ -296,7 +296,7 @@
 
   <h2 class="sec">How it runs</h2>
   <div class="scope" id="scope">
-    <p>One model provider, Anthropic Claude, reached through a single gateway. Retrieval is local cosine search over the repository and its documents. The platform is deployed to Railway by a script, and a Workbench change reaches the Customer App through the same deploy step once the owner approves it.</p>
+    <p>One model provider, Anthropic Claude, reached through a single gateway with durable SQLite budget/rate caps (per-disk, not shared across replicas) and an opt-in local LiteLLM proxy. Retrieval is local cosine search over the repository and its documents, with code-enforced access-level filtering exercised on fixture docs. The platform is deployed to Railway by a script with <code>/healthz</code> and <code>/readyz</code> probes, and a Workbench change reaches the Customer App through the same deploy step once the owner approves it; OpenTelemetry run spans stay in memory per process, and the local Kubernetes manifests, read-only Django admin slice and bearer-auth MCP server are verified in the repo rather than hosted in production.</p>
   </div>
 
   <h2 class="sec">Explore the live system</h2>

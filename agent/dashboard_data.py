@@ -76,7 +76,7 @@ KNOWN_LIMITATIONS = [
     "No multi-agent architecture — one reasoning agent plus deterministic tools/services, by design, until a measured need justifies more.",
     "No enterprise-scale RAG benchmark — local index is sized for this repo; would need a real vector DB (pgvector/Qdrant) at meaningfully larger scale.",
     "Kafka (transactional outbox) and Redis (cache-aside) are both implemented and integration-tested, but deliberately NOT production-provisioned — no persistent broker/cache instance is running, to avoid paying for infrastructure a portfolio project doesn't yet need under real load.",
-    "MCP Streamable HTTP transport is implemented but not runtime-verified over real HTTP (only stdio / in-process Client tested).",
+    "MCP Streamable HTTP transport with bearer-token auth and per-tool scopes is runtime-verified over local loopback HTTP (`test_mcp_auth.py`), but remains disabled/unhosted on the public Railway deployment.",
     "Cost-per-verified-change is INSUFFICIENT DATA until enough real COMPLETED runs with known cost exist in the event ledger window being queried.",
     "The Dashboard's own data layer (agent/dashboard_data.py) and the showcase factory (agent/showcase_data.py) have no dedicated automated test files yet — verified via live curl checks against the real endpoints and the existing web_server.py route-registration suite, not a unit test suite of their own.",
     "The custom domain (agentic.karthikdevadoss.com) has DNS configured but TLS certificate provisioning is still not confirmed live (independently re-checked 2026-09-14: a direct TLS handshake to the domain fails certificate validation) — the Railway *.up.railway.app URLs remain the correct links to share.",
@@ -212,7 +212,7 @@ def _mcp_summary(state: dict) -> dict:
         "tools_exposed": ["list_repository_files", "read_file", "search_code", "semantic_repository_search"],
         "write_build_deploy_via_mcp": "NOT IMPLEMENTED (read-only tools only, by design)",
         "stdio_transport": "RUNTIME VERIFIED (in-process Client + stdio)",
-        "streamable_http_transport": "IMPLEMENTED / DOCUMENTED — NOT RUNTIME VERIFIED over real HTTP",
+        "streamable_http_transport": "RUNTIME VERIFIED OVER LOCAL HTTP WITH BEARER AUTH (not hosted publicly)",
     }
 
 

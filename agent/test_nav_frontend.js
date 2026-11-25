@@ -28,7 +28,7 @@ function assertDeepEqual(actual, expected, msg) {
 const NAV_PATH = path.join(__dirname, "web", "nav.js");
 const nav = require(NAV_PATH);
 
-// ---- 1. The canonical set is exactly the 7 intended destinations -----
+// ---- 1. The canonical set is exactly the 6 intended destinations -----
 
 const EXPECTED_DESTINATIONS = [
   { href: "/", label: "Home" },
@@ -38,16 +38,18 @@ const EXPECTED_DESTINATIONS = [
   { href: "/recruiters", label: "For Recruiters" },
   { href: "/interviewer", label: "Interviewer Brief" },
 ];
-// BL-079 added a GATED entry (Standing Interview, shown only when the server
-// reports a loaded corpus). The unconditional set is what this guard pins;
-// the gated entry is asserted separately below, with its endpoint.
 const unconditional = nav.CANONICAL_NAV_DESTINATIONS.filter((d) => !d.requiresEndpoint);
 assertDeepEqual(unconditional, EXPECTED_DESTINATIONS,
   "canonical unconditional nav destination set must be exactly the intended public engineering surfaces");
+// 2026-10-21 Owner decision: Standing Interview left the public nav (remains
+// reachable by direct URL), so no gated entry remains in CANONICAL_NAV_DESTINATIONS.
 const gated = nav.CANONICAL_NAV_DESTINATIONS.filter((d) => d.requiresEndpoint);
-assertDeepEqual(gated.map((d) => [d.href, d.label, d.requiresEndpoint, d.requiresKey]),
-  [["/standing-interview", "Standing Interview", "/api/standing-interview/status", "loaded"]],
-  "the only gated destination is Standing Interview, gated on the corpus-status endpoint");
+assertDeepEqual(gated, [],
+  "Standing Interview left public nav (2026-10-21); no gated destination should appear");
+assert(
+  !nav.CANONICAL_NAV_DESTINATIONS.some((d) => d.href === "/standing-interview"),
+  "/standing-interview must NOT be in public navigation (2026-10-21 Owner decision)"
+);
 
 // Automation Sprint 4 (Owner decision, 2026-10-06): Showcase and Usage left
 // the public nav (their routes stay reachable by direct link) and "For
@@ -145,7 +147,8 @@ const PAGES_THAT_MUST_USE_CANONICAL_NAV = [
   // hand-authored nav to reappear, since both use a light theme of their own.
   "home.html", "interviewer.html", "case-study-durable-agent.html",
   "workbench.html", "dashboard.html", "usage.html", "learn.html",
-  "triage.html", "triage-b.html", "triage-c.html", "showcase.html",
+  "triage.html", "triage-b.html", "triage-c.html", "triage-evidence.html",
+  "showcase.html", "recruiters.html", "eval.html", "ask-codebase.html",
 ];
 
 for (const filename of PAGES_THAT_MUST_USE_CANONICAL_NAV) {

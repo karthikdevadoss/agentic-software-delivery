@@ -41,7 +41,7 @@ test.describe("Usage / Session History journey", () => {
     await page.goto(`/usage/session/${KNOWN_COST_SESSION}`);
     const summary = page.locator(".session-summary-panel");
     await expect(summary).toBeVisible(DETAIL_LOAD_TIMEOUT);
-    await expect(summary).toContainText("37340");
+    await expect(summary).toContainText(/37,?340/);
     await expect(summary).toContainText(/ACTUAL COST/i);
 
     // The exact real Owner-found defect: Quality and Evidence Coverage
