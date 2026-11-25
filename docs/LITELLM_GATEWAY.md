@@ -81,10 +81,10 @@ LiteLLM accepts that. LiteLLM's mock route reports synthetic token usage.
 
 ## 3. Honest limits
 
-- **Coverage:** only calls through `reasoning_gateway.call()` are capped. On this
-  branch `agent_loop.py`, `backend_planning.py` and `main.py` still call
-  Anthropic directly and are **not covered** until the separate migration PR
-  lands. JD Match keeps its own in-process cooldown/daily cap (reset on
+- **Coverage:** every billed model call in `agent/` now goes through
+  `reasoning_gateway.call()` or `reasoning_gateway.converse()`, both of which
+  enforce the same durable budget/rate gate (`test_reasoning_gateway_enforcement.py`).
+  JD Match keeps its own in-process cooldown/daily cap (reset on
   restart, as its page says); its model calls are covered by the gateway cap.
 - **Durable on one host's disk.** Railway without a persistent volume replaces
   the file on deploy; set `BUDGET_DB_PATH` to a mounted volume to get that

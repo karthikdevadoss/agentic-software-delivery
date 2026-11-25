@@ -103,9 +103,11 @@ requirements:
       clera: "Develop evaluations for multi-turn workflows so agent quality and reliability can be measured."
       cortea: "build the evaluation and observability foundation for production-grade LLM agents"
     evidence:
-      - {label: "Retrieval and routing eval results page", url: "/eval", metrics: eval}
+      - {label: "Eval dashboard: six suites, run history and reproducibility hash", url: "/eval", metrics: eval}
       - {label: "Eval runner and thresholds", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/eval_runner.py"}
       - {label: "Hand-labelled retrieval questions", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/evals/retrieval_dataset.json"}
+      - {label: "Permission retrieval eval set (zero-leak threshold)", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/evals/permission_dataset.json"}
+      - {label: "Self-eval replay dataset", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/evals/self_eval_dataset.json"}
       - {label: "Agent decision eval runner", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/agent_decision_eval_runner.py"}
     limits: >-
       Small labelled sets. No model-graded scoring and no calibration against
@@ -146,12 +148,15 @@ requirements:
       cortea: "the evaluation systems that power our multimodal retrieval agents"
       ml6: "advanced Retrieval-Augmented Generation (RAG) systems and conversational AI."
     evidence:
-      - {label: "Ask the Codebase: cited answers from the repository, no model call", url: "/ask-codebase"}
+      - {label: "Ask the Codebase: cited, permission-filtered answers from the repository", url: "/ask-codebase"}
       - {label: "All six example questions answered (recorded snapshot)", url: "/ask-codebase/examples", metrics: ask}
+      - {label: "Permission-aware retrieval filter (code-enforced access levels)", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/permission_retrieval.py"}
       - {label: "Retrieval source", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/ask_codebase.py"}
     limits: >-
       A local embedding model and plain similarity search over a small curated
-      set of files. No hosted search service.
+      set of files, plus code-enforced access-level filtering over fixture
+      documents in tests and evals. No live Notion/Slack ingestion or hosted
+      search service.
 
   - id: ops
     title: Cost, observability and safe boundaries
@@ -165,7 +170,10 @@ requirements:
       clera: "sandboxed code execution and permission-aware data access"
       cortea: "directly improve the quality, cost, reliability"
     evidence:
-      - {label: "Model gateway with purpose checks and an off switch", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/reasoning_gateway.py"}
+      - {label: "Model gateway with purpose checks, budgets and an off switch", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/reasoning_gateway.py"}
+      - {label: "Usage, cost telemetry and remaining gateway budget panel", url: "/usage"}
+      - {label: "Durable SQLite budget and rate-limit gate", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/gateway_budget.py"}
+      - {label: "OpenTelemetry spans for gateway, retrieval and approval (/traces/{run_id})", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/tracing.py"}
       - {label: "Durable event log that records token usage", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/event_ledger.py"}
       - {label: "Write boundary: the model can propose a file change but cannot approve it", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/write_tools.py"}
       - {label: "Capability and security model", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/CAPABILITY_SECURITY_MODEL.md"}
@@ -183,7 +191,8 @@ requirements:
       commercetools: "Build the integration layer (via MCP) that lets agents securely call backend systems and business APIs"
     evidence:
       - {label: "MCP server exposing the read-only repository tools", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/mcp_server.py"}
-    limits: Implemented and tested; it runs locally, not as a hosted service.
+      - {label: "Bearer-token auth and per-tool scopes for Streamable HTTP", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/mcp_auth.py"}
+    limits: Implemented and tested (stdio and local Streamable HTTP with bearer auth); it runs locally, not as a hosted service.
 
 # Posting asks kept as data for the build; the page itself does not render
 # this section (Owner wording rule, 2026-10-21).

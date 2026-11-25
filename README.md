@@ -19,20 +19,28 @@ Customer App is deployed only after the owner approves it.
 
 **A tool-calling loop.** `agent/agent_loop.py` runs Claude with a small set of
 repository tools (list, read, search, semantic search), with a cap on tool
-calls and tokens per run. Every model call goes through one gateway,
-`agent/reasoning_gateway.py`, which checks what the call is for and has an
-off switch; a test fails the build if code calls the SDK directly.
+calls and tokens per run. Every billed model call (`call()` and `converse()`)
+goes through one gateway, `agent/reasoning_gateway.py`, which checks the
+purpose, enforces durable SQLite budgets and rate limits (`agent/gateway_budget.py`,
+`agent/budget_store.py`), supports an opt-in local LiteLLM proxy
+(`agent/litellm_route.py`, `infra/litellm/`), and has an off switch; a test
+fails the build if code calls the SDK directly.
 
-**An MCP server with read-only tools.** `agent/mcp_server.py` exposes the same
-repository tools over the Model Context Protocol, so other AI clients can use
-them. All of them are read-only and share the same path checks as the agent.
+**An MCP server with read-only tools and bearer auth.** `agent/mcp_server.py`
+exposes the same repository tools over the Model Context Protocol (`stdio` and
+Streamable HTTP), protected by bearer-token auth and per-tool scopes
+(`agent/mcp_auth.py`, `docs/MCP_AUTH.md`). All tools are read-only and share
+the same path checks as the agent.
 
-**Retrieval with evals.** The repository and a curated set of project docs are
-embedded locally and searched by cosine similarity (`agent/rag_index.py`,
-`agent/backend_rag_index.py`, `agent/ask_codebase.py`). Quality is measured
-against a hand-labelled question set by `agent/eval_runner.py`: Recall@3
-0.833 and MRR 0.868, shown on `/eval`. CI fails the build if a score drops
-below its recorded threshold.
+**Retrieval with permission filtering and six eval suites.** The repository and
+a curated set of project docs are embedded locally and searched by cosine
+similarity (`agent/rag_index.py`, `agent/backend_rag_index.py`,
+`agent/ask_codebase.py`), with code-enforced document access-level filtering
+(`agent/permission_retrieval.py`) before ranking. Quality is measured across
+six suites (retrieval Recall@3 0.833 / MRR 0.868, tool routing, security
+routing, recorded agent decisions, permission filtering, and self-eval) by
+`agent/eval_runner.py`, shown with run history and reproducibility hash on
+`/eval`. CI fails the build if a score drops below its recorded threshold.
 
 **A LangGraph workflow that survives a crash.** `agent/durable_workflow.py`
 runs a software change as a graph — investigate, propose, wait for approval,
@@ -40,11 +48,20 @@ apply, compile, test, verify — and checkpoints each step to Postgres. It can
 pause for a person, survive a restart and resume without repeating the apply
 step. The crash drill is written up at `/case-study/durable-agent`.
 
-**A Postgres ledger with versioned pricing.** Every meaningful step and every
-model call is written to an event ledger (`agent/event_ledger.py`,
-`infra/event-ledger/schema.sql`) with real token counts. Cost comes from
-`agent/pricing_config.py`, where prices are dated entries that are added, never
-edited, so an old run keeps the price that was true when it ran.
+**A Postgres ledger, OpenTelemetry spans, and typed triage.** Every meaningful
+step and every model call is written to an event ledger (`agent/event_ledger.py`,
+`infra/event-ledger/schema.sql`) with real token counts and versioned pricing
+(`agent/pricing_config.py`). `agent/tracing.py` emits OpenTelemetry spans
+(`gateway.model_call`, `retrieval.semantic_search`, `approval.gate`) readable
+via `GET /traces/{run_id}` (`docs/OTEL.md`). Incident Triage Lab Scenario A
+diagnoses run through a typed Pydantic AI slice (`agent/pydantic_ai_gateway.py`,
+`docs/PYDANTIC_AI.md`), and `agent/self_eval.py` adds an opt-in pre-proposal
+self-evaluation check.
+
+**Local Django admin slice and Kubernetes manifests.** `django_admin/` provides
+a small local read-only Django view over the Postgres event ledger. `infra/k8s/`
+holds kubeconform-validated Kubernetes manifests (`docs/KUBERNETES.md`), paired
+with `/healthz` and `/readyz` probes in `agent/web_server.py`.
 
 **The Java side.** `app/` is a Spring Boot 4 / Java 21 Customer App — REST and
 GraphQL, Spring Security with JWT, Flyway on Postgres, Redis caching, and an
@@ -59,10 +76,15 @@ tracing and a multi-process test that starts them together.
 | `/` | Overview |
 | `/workbench` | Enter a requirement and watch the agent work; a recorded end-to-end run |
 | `/triage` | A contained defect: reproduce, diagnose, patch, test, approve |
-| `/ask-codebase` | Questions answered from retrieval over this repository |
-| `/eval` | Retrieval and routing eval scores and CI status |
+| `/ask-codebase` | Questions answered from permission-filtered retrieval over this repository |
+| `/eval` | Six-suite eval scores, run history, reproducibility hash and CI status |
+| `/usage` | Token/cost telemetry and remaining gateway budget |
+| `/dashboard` | Live system capabilities, telemetry and verification snapshot |
+| `/case-study/durable-agent` | Crash-recovery case study (LangGraph Postgres checkpointer) |
 | `/recruiters` | What AI engineering job postings ask for, and where to check it here |
 | `/interviewer` | A short brief for a technical interviewer |
+| `/healthz`, `/readyz` | Liveness and readiness probes |
+| `/traces/{run_id}` | In-memory OpenTelemetry spans for one run (JSON) |
 
 ## Running it locally
 
@@ -84,7 +106,9 @@ cd app
 
 ```bash
 cd agent && python ci_python_tests.py   # hermetic Python suite
-cd agent && python eval_runner.py all   # retrieval and routing evals
+cd agent && python eval_runner.py all   # all 6 eval suites against thresholds
+pytest django_admin/tests/              # local read-only Django admin slice
+cd agent && node test_nav_frontend.js && node test_dashboard_frontend.js && node test_usage_frontend.js && node test_trainer_frontend.js && node test_learn_frontend.js
 cd app && ./mvnw test                   # Java, including Testcontainers Postgres
 npx playwright test                     # browser tests; starts web_server.py
 ```

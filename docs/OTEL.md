@@ -12,8 +12,9 @@ existing Brave tracing is untouched.
 
 `run_id` is attached to every span when bound (`tracing.bind_run_id`; the web
 server binds it per agent run). Nested spans share a trace id.
-Not instrumented: tool calls, ledger writes, `agent_loop.py` and
-`backend_planning.py` (they still call Anthropic directly on this branch).
+`agent_loop.py` and `backend_planning.py` now route through
+`reasoning_gateway.converse()`, so their model calls also emit `gateway.model_call`
+spans. Still not instrumented: tool calls and ledger writes.
 
 ## See traces
 - Console: `OTEL_TRACES_CONSOLE=1 python agent/web_server.py` (spans printed to stdout).

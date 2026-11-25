@@ -269,6 +269,8 @@ jobs:
           node test_trainer_frontend.js
           node test_usage_frontend.js
           node test_learn_frontend.js
+          node test_nav_frontend.js
+          node test_dashboard_frontend.js
 
   # Real microservices decomposition (see docs/MICROSERVICES_ARCHITECTURE.md)
   # -- built alongside app/ (the monolith), not replacing it. Each service
