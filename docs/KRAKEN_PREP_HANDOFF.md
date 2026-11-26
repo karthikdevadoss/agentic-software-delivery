@@ -44,14 +44,27 @@ Live: https://agentic.karthikdevadoss.com (Kraken page: `/kraken`).
 3. ~~Recorded walkthrough on /kraken~~ (#71). Regenerate with
    `node scripts/record_walkthrough.js` while a local `python agent/web_server.py`
    is running (step 3 reads the recorded run from the live site). Needs ffmpeg.
-4. *(only if 2–3 are done early)* Move gateway budgets from SQLite to the existing
-   Postgres, so they survive redeploys. Then update the "Budgets" gap on `/kraken`.
+4. **Skipped on purpose (26 Nov).** Moving gateway budgets to Postgres needs a
+   Postgres implementation of `budget_store.transaction()` with locking, plus a
+   decision on what happens when Postgres is unreachable (refuse every call, or
+   fall back to SQLite). `budget_store.py`'s own header explains why SQLite was
+   chosen. Too much risk on the code every model call uses, this close to the
+   interview. The gap is stated honestly on `/kraken`. Revisit after the interview.
 5. *(optional)* Port one eval suite to Inspect AI, a bonus item in the posting.
 
 Avoid before the interview: hosted MCP gateway, Notion/Slack connectors,
 Kubernetes, site-wide restyle.
 
 ## Open owner decisions (do not act without asking)
+
+- **The featured Workbench run says "build saravanan with care"** (run `trainer-4e68fe81`,
+  the only completed run in the production ledger). Do NOT edit the record or hide the
+  text: that would fake evidence. The honest fix is a new real run. On the Workbench,
+  submit *Change the footer text to "Changes ship only after a person approves them"*
+  with the owner token (`OWNER_API_TOKEN`, Railway → agentic-platform-backend →
+  Variables). That counts as the person's approval. The new run then becomes the
+  featured one. Afterwards re-record the video: `node scripts/record_walkthrough.js`.
+  The owner chose to do this later and declined to share the token on 26 Nov.
 
 - Whether to state openly that the platform was designed by the owner and written
   by Claude Code under his direction.
