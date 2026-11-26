@@ -24,6 +24,8 @@ def make_fetch(si_status, overrides=None):
             return 200, {}, json.dumps(si_status)
         if path == "/api/budget":
             return 200, {}, BUDGET
+        if path == "/api/github-knowledge":
+            return 200, {}, json.dumps({"documents": 73, "source": "live"})
         return 200, dict(HEADERS), "<html></html>"
     return fetch
 

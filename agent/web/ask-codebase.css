@@ -111,3 +111,7 @@
 }
 .ac-how-grid dt:first-child { margin-top: 0; }
 .ac-how-grid dd { margin: 0.25rem 0 0; color: var(--muted); font-size: 0.87rem; line-height: 1.55; }
+
+/* GitHub knowledge panel (2026-11-26). */
+#ac-github-meta { max-width: 70ch; }
+.ac-github-excerpt { color: var(--muted); font-size: 0.86rem; line-height: 1.5; margin: 0.4rem 0 0; }

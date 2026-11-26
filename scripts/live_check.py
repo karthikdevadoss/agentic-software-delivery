@@ -99,6 +99,15 @@ def check_base(base: str, fetch_fn=fetch) -> list[str]:
             f"scripts/deploy_platform_with_si_corpus.sh"
         )
 
+    status, _, body = fetch_fn(base + "/api/github-knowledge")
+    try:
+        gh = json.loads(body) if status == 200 else {}
+    except ValueError:
+        gh = {}
+    if not gh.get("documents"):
+        failures.append(f"{base}: GitHub knowledge index is empty (status={status}, "
+                        f"source={gh.get('source')}, last_error={gh.get('last_error')!r})")
+
     status, _, body = fetch_fn(base + "/api/budget")
     try:
         budget = json.loads(body) if status == 200 else {}

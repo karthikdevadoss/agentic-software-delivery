@@ -62,6 +62,7 @@ import interview_walkthrough_data
 import ask_codebase
 import functools
 import budget_store  # noqa: F401  (durable counters, see agent/budget_store.py)
+import github_knowledge
 import gateway_budget
 import litellm_route
 import si_budget
@@ -2142,6 +2143,42 @@ async def ask_codebase_api(request: Request):
     return JSONResponse(result)
 
 
+# --- GitHub knowledge pipeline (2026-11-26) ---------------------------------
+# Pull requests and issues of this repository, synced into a small index with
+# freshness on every hit (agent/github_knowledge.py). Public data only, no
+# model call. The sync thread starts at boot when GITHUB_KNOWLEDGE_SYNC=1
+# (production), otherwise on the first request, so tests never pay for it.
+_github_sync_started = threading.Lock()
+_github_sync_thread = None
+
+
+def _ensure_github_sync():
+    global _github_sync_thread
+    with _github_sync_started:
+        if _github_sync_thread is None:
+            _github_sync_thread = github_knowledge.start_background_sync()
+
+
+async def github_knowledge_status(request: Request):
+    _ensure_github_sync()
+    return JSONResponse(github_knowledge.STORE.status())
+
+
+async def ask_github_api(request: Request):
+    """Retrieval over synced PRs/issues. Same query bounds as Ask the Codebase."""
+    _ensure_github_sync()
+    try:
+        query = ask_codebase.validate_query(request.query_params.get("q", ""))
+    except ask_codebase.InvalidQuery as exc:
+        return JSONResponse({"error": str(exc), "results": []}, status_code=400)
+
+    def run():
+        _, embed_query = github_knowledge._embed_fns()  # noqa: SLF001
+        return {"results": github_knowledge.search(github_knowledge.STORE, query, embed_query),
+                "status": github_knowledge.STORE.status()}
+    return JSONResponse(await run_in_threadpool(run))
+
+
 # --- Incident Triage & Repair Lab, Scenario A -------------------------------
 #
 # Every handler below is a thin, honest pass-through to agent/
@@ -2638,6 +2675,8 @@ routes = [
     Route("/api/showcase/{slug}", get_showcase_data, methods=["GET"]),
     Route("/api/interview-walkthrough", get_interview_walkthrough_data, methods=["GET"]),
     Route("/api/ask-codebase", ask_codebase_api, methods=["GET"]),
+    Route("/api/ask-github", ask_github_api, methods=["GET"]),
+    Route("/api/github-knowledge", github_knowledge_status, methods=["GET"]),
     *(
         [
             Route("/api/jd-match", jd_match_api, methods=["POST"]),
@@ -2833,5 +2872,7 @@ if __name__ == "__main__":
     # only, port 8420 — so this never changes local-laptop usage.
     port = int(os.environ.get("PORT", "8420"))
     host = "0.0.0.0" if "PORT" in os.environ else "127.0.0.1"
+    if os.environ.get("GITHUB_KNOWLEDGE_SYNC") == "1":
+        _ensure_github_sync()   # production: warm the GitHub index at boot
     print(f"Agentic Software Delivery: http://{host}:{port} (Workbench/Dashboard/Usage/Learn)", file=sys.stderr)
     uvicorn.run(app, host=host, port=port)

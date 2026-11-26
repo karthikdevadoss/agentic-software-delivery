@@ -66,7 +66,77 @@ function renderResult(data) {
   container.appendChild(list);
 }
 
+// GitHub knowledge (2026-11-26): PRs/issues synced from GitHub with freshness.
+// Titles and bodies are EXTERNAL content, so everything here is built with
+// textContent (never innerHTML) and links are only followed to github.com.
+function textEl(tag, className, text) {
+  const e = document.createElement(tag);
+  if (className) e.className = className;
+  if (text !== undefined && text !== null) e.textContent = String(text);
+  return e;
+}
+
+function ago(iso) {
+  const t = Date.parse(iso || "");
+  if (Number.isNaN(t)) return "unknown";
+  const mins = Math.max(0, Math.round((Date.now() - t) / 60000));
+  if (mins < 60) return `${mins} min ago`;
+  const h = Math.round(mins / 60);
+  return h < 48 ? `${h} h ago` : `${Math.round(h / 24)} days ago`;
+}
+
+function renderGithub(data) {
+  const panel = document.getElementById("ac-github-panel");
+  const box = document.getElementById("ac-github");
+  const meta = document.getElementById("ac-github-meta");
+  box.textContent = "";
+  panel.hidden = false;
+  const st = data.status || {};
+  const src = st.source === "live" ? "live sync" : st.source === "snapshot" ? "committed snapshot (live sync pending)" : "not synced yet";
+  meta.textContent = `Synced ${ago(st.synced_at)} from ${src} · ${st.documents || 0} items from ${st.repo || "GitHub"} · `
+    + "only changed items are re-embedded, deleted items are removed · public data, retrieval only, no model call"
+    + (st.last_error ? ` · last sync error: ${st.last_error}` : "");
+  const hits = data.results || [];
+  if (!hits.length) {
+    box.appendChild(textEl("p", "hint", "No pull requests or issues indexed yet."));
+    return;
+  }
+  hits.forEach((h) => {
+    const card = textEl("div", "ac-evidence-card");
+    const head = textEl("div", "ac-evidence-path");
+    const url = String(h.url || "");
+    const title = `${h.kind === "issue" ? "Issue" : "PR"} #${h.number}: ${h.title}`;
+    if (url.startsWith("https://github.com/")) {
+      const a = textEl("a", "ac-source-link", title);
+      a.href = url; a.target = "_blank"; a.rel = "noopener";
+      head.appendChild(a);
+    } else {
+      head.appendChild(textEl("span", "", title));
+    }
+    const state = String(h.state || "").toLowerCase();
+    const pill = textEl("span", "ac-status-pill " + (state === "merged" ? "ac-status-strong" : "ac-status-weak"), state.toUpperCase());
+    pill.style.marginLeft = "0.6rem";
+    head.appendChild(pill);
+    card.appendChild(head);
+    card.appendChild(textEl("p", "hint", `score ${Number(h.score).toFixed(4)} · updated on GitHub ${ago(h.updated_at)} · indexed ${ago(h.indexed_at)}`));
+    const body = String(h.excerpt || "").split("\n").slice(2).join(" ").trim();
+    if (body) card.appendChild(textEl("p", "ac-github-excerpt", body.length > 280 ? body.slice(0, 280) + "…" : body));
+    box.appendChild(card);
+  });
+}
+
+async function fetchGithub(query) {
+  try {
+    const resp = await fetch(`/api/ask-github?q=${encodeURIComponent(query)}`);
+    if (!resp.ok) return;
+    renderGithub(await resp.json());
+  } catch (e) {
+    /* GitHub knowledge is additive; the codebase answer above stands on its own. */
+  }
+}
+
 async function submitQuery(query) {
+  fetchGithub(query);
   const submitBtn = document.getElementById("ac-submit");
   submitBtn.disabled = true;
   submitBtn.textContent = "SEARCHING…";
