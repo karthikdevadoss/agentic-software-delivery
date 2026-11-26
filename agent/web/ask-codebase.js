@@ -169,11 +169,17 @@ async function fetchTrace(traceId) {
   }
 }
 
-async function fetchGithub(query) {
+async function fetchGithub(query, attempt = 0) {
   try {
     const resp = await fetch(`/api/ask-github?q=${encodeURIComponent(query)}`);
     if (!resp.ok) return;
-    renderGithub(await resp.json());
+    const data = await resp.json();
+    renderGithub(data);
+    // Just after a server start the index may still be loading: retry a few
+    // times rather than leaving "No pull requests indexed yet" on screen.
+    if (!(data.status || {}).documents && attempt < 10) {
+      setTimeout(() => fetchGithub(query, attempt + 1), 3000);
+    }
   } catch (e) {
     /* GitHub knowledge is additive; the codebase answer above stands on its own. */
   }

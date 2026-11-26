@@ -119,6 +119,19 @@ class GithubKnowledgeTests(unittest.TestCase):
         self.assertEqual(len(gk.fetch_items(get)), 107)
         self.assertEqual(calls, [1, 2])
 
+    def test_snapshot_with_matching_model_needs_no_embedding(self):
+        with mock.patch.object(gk, "_current_model_id", return_value=json.loads(gk.SNAPSHOT.read_text())["model_id"]):
+            r = gk.load_snapshot(self.store, embed_fns=lambda: (self.emb.texts, FakeEmbedder.query))
+        self.assertTrue(r["precomputed"])
+        self.assertEqual(self.emb.embedded, 0, "boot must not embed when stored vectors match the model")
+        self.assertEqual(len(self.store.docs), r["added"])
+
+    def test_snapshot_from_another_model_is_re_embedded(self):
+        with mock.patch.object(gk, "_current_model_id", return_value="some-other-model"):
+            r = gk.load_snapshot(self.store, embed_fns=lambda: (self.emb.texts, FakeEmbedder.query))
+        self.assertFalse(r["precomputed"])
+        self.assertEqual(self.emb.embedded, len(self.store.docs))
+
     def test_committed_snapshot_is_valid_and_public_repo_only(self):
         snap = json.loads(gk.SNAPSHOT.read_text(encoding="utf-8"))
         self.assertEqual(snap["repo"], gk.REPO)

@@ -178,13 +178,44 @@ def _embed_fns():
     return embed_texts, embed_query
 
 
-def load_snapshot(store: KnowledgeStore = STORE, path: Path = SNAPSHOT) -> dict | None:
+def _precomputed_embedder(vectors: dict, fallback):
+    """embed_fn that serves vectors stored in the snapshot (keyed by content
+    hash) and only embeds texts it has no vector for."""
+    def embed(texts):
+        out, missing = [None] * len(texts), []
+        for i, text in enumerate(texts):
+            v = vectors.get(hashlib.sha256(text.encode("utf-8")).hexdigest())
+            if v is None:
+                missing.append(i)
+            else:
+                out[i] = v
+        if missing:
+            for i, v in zip(missing, fallback([texts[i] for i in missing])):
+                out[i] = v
+        return out
+    return embed
+
+
+def load_snapshot(store: KnowledgeStore = STORE, path: Path = SNAPSHOT, embed_fns=None) -> dict | None:
+    """Start from the committed snapshot. Its stored vectors are used when they
+    were made by the same embedding model, so boot needs no embedding work;
+    otherwise (or for any item without a vector) it embeds as usual."""
     if not path.exists():
         return None
     snap = json.loads(path.read_text(encoding="utf-8"))
-    embed_texts, _ = _embed_fns()
-    report = sync(store, snap["items"], embed_texts, now=snap["captured_at"], source="snapshot")
+    embed_texts, _ = (embed_fns or _embed_fns)()
+    vectors = {}
+    if snap.get("model_id") and snap.get("model_id") == _current_model_id():
+        vectors = snap.get("vectors") or {}
+    report = sync(store, snap["items"], _precomputed_embedder(vectors, embed_texts),
+                  now=snap["captured_at"], source="snapshot")
+    report["precomputed"] = bool(vectors)
     return report
+
+
+def _current_model_id() -> str:
+    from embeddings import model_id
+    return model_id()
 
 
 def sync_live(store: KnowledgeStore = STORE, get_json=_http_get_json) -> dict:
@@ -221,9 +252,16 @@ def write_snapshot(path: Path = SNAPSHOT, get_json=_http_get_json) -> int:
     for s in slim:
         if s.get("pull_request"):
             s["pull_request"] = {"merged_at": s["pull_request"].get("merged_at")}
+    # Store each item's vector (keyed by content hash, rounded to keep the
+    # file small) so a fresh process can serve answers without embedding.
+    embed_texts, _ = _embed_fns()
+    docs = [normalize(s) for s in slim]
+    vecs = embed_texts([d["text"] for d in docs])
+    vectors = {d["content_hash"]: [round(float(x), 5) for x in v] for d, v in zip(docs, vecs)}
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({"repo": REPO, "captured_at": _now_iso(), "items": slim},
-                               indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+    path.write_text(json.dumps({"repo": REPO, "captured_at": _now_iso(), "model_id": _current_model_id(),
+                                "items": slim, "vectors": vectors},
+                               ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
     return len(slim)
 
 
