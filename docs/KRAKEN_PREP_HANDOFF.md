@@ -33,6 +33,8 @@ Read it, then `START_HERE.md`.
 | #68 | README "At a glance" architecture diagram |
 | #69 | "Try it in 60 seconds" tour at the top of `/kraken`; `/ask-codebase?q=...` deep link; this handoff doc |
 | #73 | Gateway/Triage/Standing Interview budgets in Postgres (survive redeploys, fail closed) |
+| #74 | GitHub knowledge pipeline (`agent/github_knowledge.py`): PRs/issues synced every 30 min, re-embeds only changed items, removes deleted ones, freshness on every hit, keep-last-good + committed snapshot (`agent/knowledge/github_snapshot.json`). Panel on Ask the Codebase; `/api/ask-github`, `/api/github-knowledge`. Railway: `GITHUB_KNOWLEDGE_SYNC=1` |
+| #75 | Trace viewer: every Ask the Codebase answer returns a `trace_id`; `/traces/{id}` waterfall (`ask_codebase.request` → `permission.filter`, `embedding.query`, `retrieval.rank`). Question never recorded as text |
 | #71 | 43-second captioned walkthrough video on `/kraken` (`agent/web/media/`), recorded by `scripts/record_walkthrough.js` |
 | #70 | Prompt-injection red-team eval, suite 7 (`agent/injection_eval.py`, `agent/evals/injection_dataset.json`): 10 attacks through the real write dispatcher, all blocked, and the approved control edit is written. Deterministic, no model. Shown on `/eval`; zero-tolerance CI gate |
 
@@ -55,6 +57,9 @@ Live: https://agentic.karthikdevadoss.com (Kraken page: `/kraken`).
    **Gotcha:** after a mutation test, delete `agent/__pycache__`. A restored file with the
    same size and mtime-second can keep running the mutated bytecode.
 5. *(optional)* Port one eval suite to Inspect AI, a bonus item in the posting.
+6. ~~GitHub knowledge pipeline~~ (#74) and ~~trace viewer~~ (#75), both done 26 Nov.
+   Refresh the committed snapshot any time with `cd agent && python github_knowledge.py`.
+   Ideas not built: per-team budget keys; Notion/Slack connectors (need accounts).
 
 Avoid before the interview: hosted MCP gateway, Notion/Slack connectors,
 Kubernetes, site-wide restyle.
