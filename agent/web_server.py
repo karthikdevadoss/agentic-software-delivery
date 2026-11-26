@@ -1748,15 +1748,22 @@ async def budget_status(request: Request):
     estimates until a call settles to its measured cost."""
     def build():
         tri, si = triage_budget.status(), si_budget.status()
+        tri_left = None if tri["calls_today"] is None else max(tri["daily_max"] - tri["calls_today"], 0)
+        si_left = None if si["answers_today"] is None else max(si["daily_max_answers"] - si["answers_today"], 0)
+        store = budget_store.backend()
         return {
             "gateway": gateway_budget.status(),
-            "triage": {**tri, "calls_remaining": max(tri["daily_max"] - tri["calls_today"], 0)},
+            "triage": {**tri, "calls_remaining": tri_left},
             "standing_interview": {
                 "answers_today": si["answers_today"],
                 "daily_max_answers": si["daily_max_answers"],
-                "answers_remaining": max(si["daily_max_answers"] - si["answers_today"], 0)},
+                "answers_remaining": si_left},
             "proxy_mode": "litellm-proxy" if litellm_route.enabled() else "direct-anthropic",
             "durable": True,
+            # 2026-11-26: where the caps live. postgres = survives redeploys and
+            # is shared by replicas; sqlite = survives a restart only.
+            "store": store,
+            "survives_redeploy": store == "postgres",
         }
     return JSONResponse(await run_in_threadpool(build))
 

@@ -32,6 +32,7 @@ Read it, then `START_HERE.md`.
 | #67 | "Evals" in the public nav; Standing Interview labelled "This is an AI assistant, not me"; eval snapshot republished from a clean tree (same scores) |
 | #68 | README "At a glance" architecture diagram |
 | #69 | "Try it in 60 seconds" tour at the top of `/kraken`; `/ask-codebase?q=...` deep link; this handoff doc |
+| #73 | Gateway/Triage/Standing Interview budgets in Postgres (survive redeploys, fail closed) |
 | #71 | 43-second captioned walkthrough video on `/kraken` (`agent/web/media/`), recorded by `scripts/record_walkthrough.js` |
 | #70 | Prompt-injection red-team eval, suite 7 (`agent/injection_eval.py`, `agent/evals/injection_dataset.json`): 10 attacks through the real write dispatcher, all blocked, and the approved control edit is written. Deterministic, no model. Shown on `/eval`; zero-tolerance CI gate |
 
@@ -44,12 +45,15 @@ Live: https://agentic.karthikdevadoss.com (Kraken page: `/kraken`).
 3. ~~Recorded walkthrough on /kraken~~ (#71). Regenerate with
    `node scripts/record_walkthrough.js` while a local `python agent/web_server.py`
    is running (step 3 reads the recorded run from the live site). Needs ffmpeg.
-4. **Skipped on purpose (26 Nov).** Moving gateway budgets to Postgres needs a
-   Postgres implementation of `budget_store.transaction()` with locking, plus a
-   decision on what happens when Postgres is unreachable (refuse every call, or
-   fall back to SQLite). `budget_store.py`'s own header explains why SQLite was
-   chosen. Too much risk on the code every model call uses, this close to the
-   interview. The gap is stated honestly on `/kraken`. Revisit after the interview.
+4. ~~Budgets in Postgres~~ (#73). `budget_store.py` uses Postgres when
+   `BUDGET_DATABASE_URL` is set (Railway: `${{Postgres.DATABASE_URL}}` on
+   agentic-platform-backend, set 26 Nov), otherwise SQLite. A transaction-scoped
+   advisory lock serialises writers. Unreachable store = every billed call refused
+   (fail closed). Proof: `test_budget_store_postgres` (20-thread race against a cap of
+   5 → exactly 5; with the lock removed, 7–11 got through) and `test_budget_fail_closed`.
+   Next idea (not built): per-team keys.
+   **Gotcha:** after a mutation test, delete `agent/__pycache__`. A restored file with the
+   same size and mtime-second can keep running the mutated bytecode.
 5. *(optional)* Port one eval suite to Inspect AI, a bonus item in the posting.
 
 Avoid before the interview: hosted MCP gateway, Notion/Slack connectors,
