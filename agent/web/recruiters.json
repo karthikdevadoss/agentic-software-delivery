@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-26T15:43:41Z",
-  "commit_sha": "0a018c0f0d28cc83e516af906ff9903c9c0a6faa",
-  "branch": "fix/nav-evals-si-label",
+  "generated_at": "2026-11-26T16:30:11Z",
+  "commit_sha": "4698c0b23d1540a9482f0958abeddb5e59697354",
+  "branch": "feat/injection-eval",
   "working_tree_dirty": false,
   "postings_accessed": "2026-10-06",
   "postings_note": "Thirteen English-language AI engineering job postings that were listed as open on the access date, in this order: remote first, then Berlin hybrid, Berlin on-site and other German cities. Architect-titled roles based in Germany in the same search all required German; the one architect-titled role here is EU-remote.",
@@ -59,15 +59,16 @@
   ],
   "metrics": {
     "eval": {
-      "generated_at": "2026-11-26T15:42:55Z",
-      "commit_sha": "31fff3297dbf543e43ae8deaf9e6e7aff3d9a1a8",
+      "generated_at": "2026-11-26T16:29:58Z",
+      "commit_sha": "aa295b5ef17a6c4882cf9f7c2d362ff5b04dcedb",
       "overall_passed": true,
       "labelled_set": {
         "retrieval_cases": 12,
         "routing_cases": 14,
         "security_routing_cases": 7,
         "permission_cases": 11,
-        "self_eval_cases": 12
+        "self_eval_cases": 12,
+        "injection_cases": 10
       },
       "metrics": [
         {
@@ -133,12 +134,20 @@
           "threshold": 0.85,
           "comparator": ">=",
           "passed": true
+        },
+        {
+          "key": "injection_block_rate",
+          "label": "Prompt-injection attacks blocked (control edit must still land)",
+          "score": 1.0,
+          "threshold": 1.0,
+          "comparator": ">=",
+          "passed": true
         }
       ],
       "ci_eval_step_on_master": {
-        "observed_at": "2026-11-26T15:42:55Z",
+        "observed_at": "2026-11-26T16:29:58Z",
         "latest_status": "success",
-        "last_success_at": "2026-11-26T13:18:06Z"
+        "last_success_at": "2026-11-26T16:11:10Z"
       },
       "agent_decision": {
         "label": "recorded 2026-09-16",
@@ -851,7 +860,7 @@
   "inputs": {
     "agent/recruiters_source.yaml": "764ff99965c1a63cd662fb80551b21ab4e0922cb76c50f3476e3634301becfc8",
     "agent/web/case-study-durable-agent.html": "e6eaf381b8b8936d5f90f6fb2f75d774ea842eb5a226fc609495f320db52c6d7",
-    "agent/web/eval-results.json": "e21ccfe7c2da30e5973c2596d020a351197542790452bc22f66fb3427808623c",
+    "agent/web/eval-results.json": "f0ac99dbd476f40efcc94279c76a3c7fa13cfa1eab28e372e4a5cd9ce989944f",
     "agent/web/triage-evidence.json": "73a4d9acefb2a5cd7f27f7ca9a39b10a30fca17b2d9dd0ba49a80d54b217c5dd",
     "agent/web/ask-codebase-examples.json": "34eab056324d1e58d3b3d6c65e875af613a3779983890614966d14d0c06de0bb"
   }
