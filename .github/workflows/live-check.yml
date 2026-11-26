@@ -1,0 +1,25 @@
+name: Live check
+
+# Checks the LIVE site every day and on demand: all pages 200, security
+# headers present, Standing Interview knowledge base loaded, budget caps
+# reported. No model calls, no cost. Added 2026-11-26 after a deploy shipped
+# without the Standing Interview corpus and nothing noticed (see
+# scripts/live_check.py). A failed run emails the repository owner.
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check both live addresses
+        run: python scripts/live_check.py

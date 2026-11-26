@@ -21,7 +21,7 @@ Customer App is deployed only after the owner approves it.
 repository tools (list, read, search, semantic search), with a cap on tool
 calls and tokens per run. Every billed model call (`call()` and `converse()`)
 goes through one gateway, `agent/reasoning_gateway.py`, which checks the
-purpose, enforces durable SQLite budgets and rate limits (`agent/gateway_budget.py`,
+purpose, enforces SQLite budgets (restart-safe, reset on redeploy) and rate limits (`agent/gateway_budget.py`,
 `agent/budget_store.py`), supports an opt-in local LiteLLM proxy
 (`agent/litellm_route.py`, `infra/litellm/`), and has an off switch; a test
 fails the build if code calls the SDK directly.

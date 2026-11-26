@@ -112,6 +112,18 @@ Actual secret values are never committed to this repository. As of this
 writing there is no standardized remote secret manager — see that file's
 `SECRET MANAGER: NOT YET STANDARDIZED` note, which is itself a tracked gap.
 
+## How is the platform backend deployed? (read before ANY deploy)
+
+Deploy the platform backend ONLY with `./scripts/deploy_platform_with_si_corpus.sh`,
+run on the machine that has the private `karthik-ai-context` repo. Never plain
+`railway up`: that ships a container without the Standing Interview corpus, every
+page still returns 200, and the Standing Interview silently cannot answer. This
+happened on the 25 Nov 2026 deploy (PR 64) and nothing noticed it.
+
+After every deploy run `python scripts/live_check.py`. It exits 1 if any page is
+down, a security header is missing, or the Standing Interview has no knowledge
+base. It makes no model calls. The "Live check" GitHub Action runs it daily.
+
 ## How should a new AI/human resume work safely?
 
 Follow **CLAUDE.md**'s "Session startup" checklist exactly — it exists

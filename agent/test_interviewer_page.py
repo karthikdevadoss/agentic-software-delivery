@@ -2,7 +2,7 @@
 
 Static HTML/CSS + route + nav wiring. No network, no model.
 Facts on the page must stay within Owner-confirmed career wording
-(recruiters_source, 2026-10-21): headline "AI Engineer – Full Stack"; NRG since
+(recruiters_source, 2026-10-21): headline "Senior AI Platform Engineer"; NRG since
 March 2022 through Remote; no Architect job title on NRG; the personal platform
 is separate from NRG.
 """
@@ -52,7 +52,7 @@ class InterviewerPageTestCase(unittest.TestCase):
         self.assertIn('data-surface="interviewer"', HTML)
 
     def test_role_framing(self):
-        self.assertIn('<p class="iv-role">AI Engineer – Full Stack</p>', HTML)
+        self.assertIn('<p class="iv-role">Senior AI Platform Engineer</p>', HTML)
         self.assertNotIn("Junior AI Architect", HTML)
         self.assertRegex(HTML, r"(?i)technical interviewer")
 
