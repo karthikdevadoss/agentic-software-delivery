@@ -5,7 +5,37 @@ approving every change before it lands. It reads the codebase, proposes an
 edit, waits for approval, then applies, tests, deploys and checks the result
 in production.
 
-Live: https://agentic-platform-backend-production.up.railway.app
+Live: https://agentic.karthikdevadoss.com (also https://agentic-platform-backend-production.up.railway.app)
+
+## At a glance
+
+```mermaid
+flowchart LR
+  UI["Browser UI<br/>(plain JS)"] --> API["Starlette JSON API<br/>agent/web_server.py"]
+  API --> LOOP["Agent tool loop<br/>agent/agent_loop.py"]
+  API --> WF["LangGraph workflow<br/>agent/durable_workflow.py"]
+  LOOP --> GW["Reasoning gateway<br/>purpose check · budgets ·<br/>rate limit · kill switch"]
+  WF --> GW
+  GW --> LLM["Anthropic Claude<br/>(opt-in LiteLLM route)"]
+  LOOP --> TOOLS["Read-only repo tools<br/>agent/tools.py"]
+  MCP["MCP server<br/>bearer auth + scopes"] --> TOOLS
+  API --> WRITE["Write boundary<br/>propose → human approve → apply<br/>agent/write_tools.py"]
+  WF --> WRITE
+  WRITE --> APP["Customer App<br/>(Java / Spring)"]
+  TOOLS --> RAG["Local retrieval<br/>embeddings + access filtering"]
+  GW --> LEDGER[("Postgres event ledger<br/>tokens · cost · checkpoints")]
+  WF --> LEDGER
+  EVAL["Six eval suites<br/>CI fails below threshold"] -.-> RAG
+  EVAL -.-> TOOLS
+```
+
+**Where to look first (5 minutes):**
+[the approval boundary](agent/write_tools.py) ·
+[the single model gateway](agent/reasoning_gateway.py) ·
+[the durable workflow](agent/durable_workflow.py) ·
+[the eval runner](agent/eval_runner.py) ·
+[the MCP server](agent/mcp_server.py) ·
+[live eval scores](https://agentic.karthikdevadoss.com/eval)
 
 ## What is in here
 
