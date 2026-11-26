@@ -80,6 +80,7 @@ HERMETIC_MODULES = [
     "test_home_claims",  # home CI/deploy wording vs ci.yml and the deploy code path
     "test_self_hosted_fonts",  # no Google Fonts requests; local woff2 files exist, licensed and served
     "test_security_headers",  # baseline security headers on every response
+    "test_live_check",  # scripts/live_check.py: live-site check catches a corpus-less deploy (2026-11-26)
     "test_session_prompt_privacy",  # fake ledger with a sentinel prompt: nothing reaches /api/sessions/history
     "test_publish_recruiters_page",  # link classification, quotes, claims scan, freshness of recruiters.json
     "test_interviewer_page",  # Sprint 14: /interviewer brief route, nav, proof links, no invented claims

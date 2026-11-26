@@ -38,7 +38,7 @@ BANNED = [
     (r"Not in this portfolio|Honest gaps", "gap section"),
 ]
 
-HEADLINE = "AI Engineer – Full Stack"
+HEADLINE = "Senior AI Platform Engineer"
 
 
 class BannedWording(unittest.TestCase):

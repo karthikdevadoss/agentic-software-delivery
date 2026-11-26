@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Karthikeyan Devadoss — Interviewer Brief (AI Engineer – Full Stack)</title>
+<title>Karthikeyan Devadoss — Interviewer Brief (Senior AI Platform Engineer)</title>
 <meta name="description" content="Short brief for the technical interviewer: live proof on Workbench, Triage, evals, Ask Codebase, how the platform runs, and the running platform itself.">
 <link rel="stylesheet" href="/interviewer.css">
 </head>
@@ -13,7 +13,7 @@
 <main class="iv-shell">
   <p class="iv-eyebrow">For the technical interviewer</p>
   <h1>Karthikeyan Devadoss</h1>
-  <p class="iv-role">AI Engineer – Full Stack</p>
+  <p class="iv-role">Senior AI Platform Engineer</p>
   <p class="iv-lede">
     You are past the HR screen. This page is a short map of live proof you can open
     before or during a technical interview.
@@ -87,7 +87,8 @@
       <h3>How it runs</h3>
       <p>
         Anthropic Claude through a single model gateway with a kill switch,
-        durable SQLite daily/per-run/per-request budgets, and an opt-in local
+        SQLite daily/per-run/per-request budgets (they survive a restart and reset
+        on a redeploy, because the host disk is temporary), and an opt-in local
         LiteLLM proxy. Local cosine retrieval over the repository, a LangGraph
         workflow that checkpoints to Postgres, a Postgres event ledger with
         versioned pricing for token and cost telemetry, and OpenTelemetry spans
