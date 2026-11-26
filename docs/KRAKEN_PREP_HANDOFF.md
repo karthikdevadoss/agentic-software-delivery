@@ -32,6 +32,7 @@ Read it, then `START_HERE.md`.
 | #67 | "Evals" in the public nav; Standing Interview labelled "This is an AI assistant, not me"; eval snapshot republished from a clean tree (same scores) |
 | #68 | README "At a glance" architecture diagram |
 | #69 | "Try it in 60 seconds" tour at the top of `/kraken`; `/ask-codebase?q=...` deep link; this handoff doc |
+| #71 | 43-second captioned walkthrough video on `/kraken` (`agent/web/media/`), recorded by `scripts/record_walkthrough.js` |
 | #70 | Prompt-injection red-team eval, suite 7 (`agent/injection_eval.py`, `agent/evals/injection_dataset.json`): 10 attacks through the real write dispatcher, all blocked, and the approved control edit is written. Deterministic, no model. Shown on `/eval`; zero-tolerance CI gate |
 
 Live: https://agentic.karthikdevadoss.com (Kraken page: `/kraken`).
@@ -40,9 +41,9 @@ Live: https://agentic.karthikdevadoss.com (Kraken page: `/kraken`).
 
 1. ~~60-second tour on /kraken~~ (#69).
 2. ~~Prompt-injection safety eval (suite 7)~~ (#70).
-3. **Recorded 2-minute walkthrough** of the Workbench verified run, embedded on
-   `/kraken`, as a fallback if a live demo is slow. Generate it with Playwright from
-   the recorded run, with no model calls.
+3. ~~Recorded walkthrough on /kraken~~ (#71). Regenerate with
+   `node scripts/record_walkthrough.js` while a local `python agent/web_server.py`
+   is running (step 3 reads the recorded run from the live site). Needs ffmpeg.
 4. *(only if 2–3 are done early)* Move gateway budgets from SQLite to the existing
    Postgres, so they survive redeploys. Then update the "Budgets" gap on `/kraken`.
 5. *(optional)* Port one eval suite to Inspect AI, a bonus item in the posting.
