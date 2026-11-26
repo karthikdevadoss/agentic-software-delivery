@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Karthikeyan Devadoss — AI Foundations map (Senior AI Platform Engineer)</title>
+<meta name="description" content="How this live AI platform maps to Kraken AI Foundations: Access, Context, Enablement and Governance, with links to running proof and source, plus honest gaps.">
+<link rel="stylesheet" href="/interviewer.css">
+</head>
+<body data-surface="kraken">
+<div class="navwrap"><nav class="top-nav" id="top-nav" aria-label="Main"></nav></div>
+
+<main class="iv-shell">
+  <p class="iv-eyebrow">For Kraken · Senior Software Engineer – AI Foundations</p>
+  <h1>Karthikeyan Devadoss</h1>
+  <p class="iv-role">Senior AI Platform Engineer</p>
+  <p class="iv-lede">
+    How the platform on this site maps to the four areas AI Foundations owns.
+    Each card quotes the posting, says what I built, and links to something
+    running or to the source, so you can check it rather than take my word for it.
+  </p>
+  <p class="iv-note">
+    Since March 2022 I have worked for NRG Energy through Remote, my employer;
+    NRG is the client. Since early 2026 I have been one of a handful of engineers
+    in the initial core AI team at NRG, and since January 2026 I have led AI
+    adoption in my area, cutting routine work time by about 20%.
+    The platform below is my own system, separate from NRG.
+  </p>
+  <p class="iv-links">
+    <a href="/interviewer">Interviewer Brief</a>
+    <a href="https://github.com/karthikdevadoss/agentic-software-delivery">GitHub repo</a>
+    <a href="/">Home overview</a>
+  </p>
+
+  <h2 class="iv-sec">The four areas</h2>
+  <section class="iv-proof kr-four" aria-label="AI Foundations areas">
+    <article class="iv-card">
+      <h3>Access</h3>
+      <blockquote class="kr-quote">“connecting people and systems to approved AI models and tools”</blockquote>
+      <p>
+        Every billed model call goes through one gateway. It checks the call's
+        purpose, reserves budget <em>before</em> the provider is contacted, enforces
+        daily, per-run and per-request caps and a rate limit, records real token
+        usage, and has a kill switch. An opt-in local LiteLLM proxy route is
+        included, and a test fails the build if code calls the SDK directly.
+      </p>
+      <a class="go" href="/usage">Live budget and usage →</a>
+      <a class="go2" href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/reasoning_gateway.py">Gateway source →</a>
+      <a class="go2" href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/LITELLM_GATEWAY.md">LiteLLM route →</a>
+    </article>
+
+    <article class="iv-card">
+      <h3>Context</h3>
+      <blockquote class="kr-quote">“grounding AI in trusted Kraken knowledge, data and systems”</blockquote>
+      <p>
+        Ask the Codebase answers from retrieval over the real repository, with
+        sources. Retrieval is local cosine search with content-hash indexing,
+        measured on a labelled set (Recall@3 0.833, MRR 0.868). Document access
+        levels are enforced in code, not in a prompt: chunks the caller may not
+        see are removed before similarity is computed, and an unknown role gets
+        nothing. This runs on fixture documents that stand in for Notion- and
+        Slack-style pages.
+      </p>
+      <a class="go" href="/ask-codebase">Try Ask the Codebase →</a>
+      <a class="go2" href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/permission_retrieval.py">Permission filtering source →</a>
+    </article>
+
+    <article class="iv-card">
+      <h3>Enablement</h3>
+      <blockquote class="kr-quote">“reusable building blocks for AI-powered workflows and products”</blockquote>
+      <p>
+        A LangGraph workflow that checkpoints to Postgres, pauses for a human
+        decision, resumes after a crash and does not repeat its one side effect.
+        The same read-only repository tools serve the Anthropic tool-calling agent
+        and an MCP server, so security logic is written once. Typed Pydantic AI
+        output is used in the Triage lab.
+      </p>
+      <a class="go" href="/case-study/durable-agent">Crash-recovery case study →</a>
+      <a class="go2" href="/workbench#verified-run-panel">Workbench verified run →</a>
+      <a class="go2" href="/triage">Triage lab →</a>
+    </article>
+
+    <article class="iv-card">
+      <h3>Governance</h3>
+      <blockquote class="kr-quote">“permissions, safety, quality, cost and visibility across the lifecycle”</blockquote>
+      <p>
+        The model can propose a change but has no code path to approve it; each
+        approval is bound by hash to the exact content. Six eval suites with
+        written thresholds fail CI when quality drops. A Postgres event ledger
+        with versioned pricing records the cost of every run, and OpenTelemetry
+        spans record gateway, retrieval and approval events. The MCP server
+        requires a bearer token with per-tool scopes.
+      </p>
+      <a class="go" href="/eval">Eval scores and CI gate →</a>
+      <a class="go2" href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/write_tools.py">Approval boundary source →</a>
+      <a class="go2" href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/MCP_AUTH.md">MCP auth design →</a>
+    </article>
+  </section>
+
+  <h2 class="iv-sec">The three squads</h2>
+  <section class="iv-proof" aria-label="Squads">
+    <article class="iv-card">
+      <h3>Tooling</h3>
+      <blockquote class="kr-quote">“the LiteLLM gateway behind Claude Code, Codex and Claude Desktop”</blockquote>
+      <p>
+        Closest to what I have built: one gateway with budgets, rate limits and a
+        kill switch, a LiteLLM route, and an MCP server with token auth and scopes.
+      </p>
+      <a class="go2" href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/mcp_server.py">MCP server source →</a>
+    </article>
+
+    <article class="iv-card">
+      <h3>Evals &amp; Observability</h3>
+      <blockquote class="kr-quote">“skill evals, internal benchmarking, agent safety and guardrails, and observability for live AI runs”</blockquote>
+      <p>
+        Labelled suites for retrieval, tool routing, security routing (zero
+        tolerance), recorded agent decisions, permission filtering and self-eval,
+        with run history and a reproducibility hash; per-run cost and spans.
+      </p>
+      <a class="go2" href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/eval_runner.py">Eval runner source →</a>
+    </article>
+
+    <article class="iv-card">
+      <h3>Context</h3>
+      <blockquote class="kr-quote">“pipelines that collect knowledge from tools like Notion, Slack and GitHub”</blockquote>
+      <p>
+        At NRG our production triage retrieves over past tickets and knowledge.
+        Here, retrieval runs over a GitHub repository with access-level filtering.
+        Notion and Slack connectors are not built.
+      </p>
+      <a class="go2" href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/rag_index.py">Index source →</a>
+    </article>
+  </section>
+
+  <h2 class="iv-sec">Honest gaps</h2>
+  <section class="iv-proof" aria-label="Gaps">
+    <article class="iv-card iv-gaps">
+      <h3>What I have not done yet</h3>
+      <p>
+        <strong>Kubernetes in production:</strong> I have local manifests validated
+        in CI (no cluster), and AWS Lambda, SAM and SQS with dead-letter queues
+        from 2025. I would learn your clusters with the squad first.
+        <strong>AWS Bedrock, Inspect AI, Ragas:</strong> not used yet; my evals are
+        my own harness. <strong>Hosted MCP:</strong> the MCP server runs and is
+        tested locally, not on the public site. <strong>Budgets:</strong> the
+        gateway caps are SQLite on the host disk, so they reset on a redeploy;
+        the cost ledger itself is in Postgres.
+      </p>
+      <a class="go2" href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/KUBERNETES.md">Kubernetes notes →</a>
+    </article>
+  </section>
+
+  <p class="iv-footer">
+    Berlin, Germany · English (working language) · German A1–A2.
+    Posting quotes are taken word for word from the AI Foundations posting as
+    published on 26 November 2026.
+    This site sets no cookies and uses no analytics or third-party trackers.
+  </p>
+</main>
+
+<script src="/nav.js"></script>
+</body>
+</html>

@@ -1,0 +1,89 @@
+# Kraken, Senior Software Engineer - AI Foundations. Role text as published on
+# jobs.ashbyhq.com/krakentech/28653f8c-bc4d-4159-a331-3fb6e27743ef, captured 2026-11-26.
+# Used only to check that quotes on /kraken are verbatim.
+
+AI is a key investment area for Kraken Technologies. A crucial part of this is building the shared foundations that let every team use AI well and move faster on our mission.
+
+You'll work in AI Foundations. We build the platform that lets teams across Kraken build and run AI agents. Our work covers four areas:
+
+ - Access: connecting people and systems to approved AI models and tools
+
+ - Context: grounding AI in trusted Kraken knowledge, data and systems
+
+ - Enablement: reusable building blocks for AI-powered workflows and products
+
+ - Governance: permissions, safety, quality, cost and visibility across the lifecycle
+
+
+🏡 Where you'll fit in
+We're hiring Senior Software Engineers to join one of our three squads:
+
+ - Context: Build the Kraken-specific knowledge layer to make LLMs useful. This covers our internal AI assistant, a structured "client brain" that captures client context and decisions, and pipelines that collect knowledge from tools like Notion, Slack and GitHub.
+
+ - Tooling: deliver LLMs into people's hands. We run the AI Hub (usage insights, MCP gateway, self-serve and specialist agents), the LiteLLM gateway behind Claude Code, Codex and Claude Desktop, and secure cloud dev boxes for AI-assisted engineering.
+
+ - Evals & Observability: covers skill evals, internal benchmarking, agent safety and guardrails, and observability for live AI runs.
+
+Squads are flexible: when priorities shift, people move. This is a hands-on senior individual-contributor role. With your squad lead and the wider team, you'll own large parts of our platform, turn ideas into production systems, shape architecture decisions and help raise the engineering bar.
+
+
+👾 What you'll own
+
+ - Build shared AI platform services: Design, build and run Python services that other teams rely on, such as gateways, agent runtimes, knowledge pipelines and eval harnesses.
+
+ - Build and run agents: Work out how agents are triggered, authenticated, monitored and governed across systems like Slack, GitHub, Notion and Asana. Ship both self-serve agents and specialist agents.
+
+ - Ground AI in Kraken context: Collect, structure and serve company knowledge so agents give answers that are correct, current and safe to use.
+
+ - Measure and prove quality: Define meaningful test cases, build evals whose results can be reproduced, and add tracing so we know how AI behaves in real use.
+
+ - Build in safety and governance: Turn permissions, guardrails, budgets and data-access rules into software you can maintain, working with Security and TechOps.
+
+ - Operate in AWS: Deploy and support services on AWS and Kubernetes, and make sound reliability, performance and cost trade-offs.
+
+ - Drive adoption: Work directly with engineers and non-technical teams, run workshops, write clear docs and turn feedback into product.
+
+ - Raise the engineering bar: Review designs and code, mentor others, and create patterns that can be reused across AI Foundations.
+
+
+🧠 What you bring to the party
+
+ - Strong senior-level software engineering: You have owned complex services end to end, from design through testing, deployment and operation.
+
+ - Deep engineering fundamentals: Good judgement on system design, concurrency, security, testing and architecture trade-offs. Strong production Python.
+
+ - Hands-on LLM and agent experience: You have built real things with LLMs, you know where they fail, and you use AI coding tools every day.
+
+ - Cloud experience: You're comfortable running services in AWS and owning their reliability and scalability.
+
+ - Product sense: You care whether people actually use what you build.
+
+ - Clear communication: You can explain trade-offs to technical and non-technical people and challenge ideas constructively.
+
+ - Learning agility: You pick up new tools and domains quickly in a field that changes every month.
+
+
+🚀 What success looks like
+
+ - Adoption: You ship platform features that teams across Kraken adopt and rely on.
+
+ - Solid systems: The services you own are observable, secure, scalable and cost-aware.
+
+ - Trust at scale: Teams can build and trust agents without rebuilding the basics.
+
+ - Team impact: You make your squad, and the teams around it, better.
+
+
+⭐️ Bonus points:
+
+ - AI engineering: Pydantic AI, LiteLLM, LangChain, MCP servers
+
+ - Knowledge and retrieval: RAG, search, embeddings, knowledge graphs
+
+ - Evals and safety: Inspect AI, Ragas, OpenAI Evals, NeMo Guardrails, red teaming
+
+ - Platform: Kubernetes, sandboxed or cloud dev environments, AWS Bedrock
+
+ - Backend: Django
+
+ - Observability: Datadog, OpenTelemetry
