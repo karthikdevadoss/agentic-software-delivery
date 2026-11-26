@@ -44,6 +44,10 @@ const CANONICAL_NAV_DESTINATIONS = [
   { href: "/workbench", label: "Workbench" },
   { href: "/triage", label: "Triage" },
   { href: "/ask-codebase", label: "Ask Codebase" },
+  // 2026-11-26 (Owner go-ahead in session): Evals joins the public nav. It is
+  // the strongest proof of measured AI quality and was never removed by a
+  // decision; Usage, Showcase and Standing Interview stay out (decisions above/below).
+  { href: "/eval", label: "Evals" },
   // Automation Sprint 4 (Owner decision, 2026-10-06): Showcase and Usage
   // left the public nav (both routes stay reachable by direct link), and
   // "For Recruiters" joined it -- the one page built from what real job

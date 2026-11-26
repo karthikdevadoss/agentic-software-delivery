@@ -85,6 +85,7 @@ HERMETIC_MODULES = [
     "test_publish_recruiters_page",  # link classification, quotes, claims scan, freshness of recruiters.json
     "test_interviewer_page",  # Sprint 14: /interviewer brief route, nav, proof links, no invented claims
     "test_kraken_page",  # unlisted /kraken AI Foundations map: verbatim quotes, wired links, real source files (2026-11-26)
+    "test_public_clarity",  # Evals in nav (removals stay out) + Standing Interview AI label (2026-11-26)
     "test_applications_review",  # Sprint 11: /applications gate (no/wrong key 404, right key 200); nav has no Applications
     "test_execution_tools",
     "test_interview_walkthrough_data",

@@ -17,7 +17,8 @@ const { test, expect } = require("@playwright/test");
 // Automation Sprint 4 (Owner decision): Showcase and Usage left the nav, For
 // Recruiters joined. The pages stay in PAGES below: reachable directly, and
 // still rendering the same nav as everything else.
-const CANONICAL_LABELS = ["Home", "Workbench", "Triage", "Ask Codebase", "For Recruiters", "Interviewer Brief"];
+// 2026-11-26: Evals joined the nav.
+const CANONICAL_LABELS = ["Home", "Workbench", "Triage", "Ask Codebase", "Evals", "For Recruiters", "Interviewer Brief"];
 const REMOVED_LABELS = ["Showcase", "Usage"];
 
 // Sprint 14: Learn left public navigation entirely (Owner decision), so the
@@ -37,6 +38,7 @@ const PAGES = [
   "/showcase/senior-java-ai-transformation",
   "/recruiters",
   "/interviewer",
+  "/eval",
 ];
 
 async function visibleNavLabels(page) {
