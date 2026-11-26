@@ -8,7 +8,7 @@
 const { test, expect } = require("@playwright/test");
 const path = require("path");
 
-const SUITES = ["retrieval", "routing", "security-routing", "agent-decision", "permission", "self-eval"];
+const SUITES = ["retrieval", "routing", "security-routing", "agent-decision", "permission", "self-eval", "injection"];
 const fmt = (n) => (typeof n === "number" ? n.toFixed(3) : "n/a");
 
 async function published(request) {

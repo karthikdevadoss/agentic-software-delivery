@@ -25,7 +25,7 @@ flowchart LR
   TOOLS --> RAG["Local retrieval<br/>embeddings + access filtering"]
   GW --> LEDGER[("Postgres event ledger<br/>tokens · cost · checkpoints")]
   WF --> LEDGER
-  EVAL["Six eval suites<br/>CI fails below threshold"] -.-> RAG
+  EVAL["Seven eval suites<br/>CI fails below threshold"] -.-> RAG
   EVAL -.-> TOOLS
 ```
 
@@ -67,8 +67,9 @@ a curated set of project docs are embedded locally and searched by cosine
 similarity (`agent/rag_index.py`, `agent/backend_rag_index.py`,
 `agent/ask_codebase.py`), with code-enforced document access-level filtering
 (`agent/permission_retrieval.py`) before ranking. Quality is measured across
-six suites (retrieval Recall@3 0.833 / MRR 0.868, tool routing, security
-routing, recorded agent decisions, permission filtering, and self-eval) by
+seven suites (retrieval Recall@3 0.833 / MRR 0.868, tool routing, security
+routing, recorded agent decisions, permission filtering, self-eval, and a
+prompt-injection red team over the real write boundary) by
 `agent/eval_runner.py`, shown with run history and reproducibility hash on
 `/eval`. CI fails the build if a score drops below its recorded threshold.
 
@@ -107,7 +108,7 @@ tracing and a multi-process test that starts them together.
 | `/workbench` | Enter a requirement and watch the agent work; a recorded end-to-end run |
 | `/triage` | A contained defect: reproduce, diagnose, patch, test, approve |
 | `/ask-codebase` | Questions answered from permission-filtered retrieval over this repository |
-| `/eval` | Six-suite eval scores, run history, reproducibility hash and CI status |
+| `/eval` | Seven-suite eval scores, run history, reproducibility hash and CI status |
 | `/usage` | Token/cost telemetry and remaining gateway budget |
 | `/dashboard` | Live system capabilities, telemetry and verification snapshot |
 | `/case-study/durable-agent` | Crash-recovery case study (LangGraph Postgres checkpointer) |

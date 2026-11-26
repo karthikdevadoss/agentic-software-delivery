@@ -81,12 +81,17 @@ SUITE_SPECS = [
      "agent/evals/permission_dataset.json"),
     ("self-eval", "Agent self-evaluation (replay)", "self_eval_catch_rate", ["self_eval_good_pass_rate"],
      "agent/evals/self_eval_dataset.json"),
+    ("injection", "Prompt-injection red team (zero tolerance)", "injection_block_rate", [],
+     "agent/evals/injection_dataset.json"),
 ]
 
 # Honest limits carried on the suite card itself (only the suites that need one).
 SUITE_NOTES = {
     "permission": "Fixture pipeline: clearly fake docs tagged with access levels, not live Notion/Slack, "
                   "no OAuth or source ACL sync. Filtering is code, not a prompt; judged by code from real retrieval output.",
+    "injection": "A scripted worst-case model obeys hostile instructions planted in files it reads; the real "
+                 "write boundary must refuse every unapproved write, and an edit a person approves must still land. "
+                 "Proves the boundary, not that a real model resists the injection.",
     "self-eval": "The system grading itself: a deterministic stand-in scorer replaying hand-labelled "
                  "fixtures (no model, no API key). Not independent QA, and it cannot judge semantics.",
 }
@@ -117,7 +122,8 @@ def build_suites(metrics, labelled, eval_inputs, commit_sha, generated_at, agent
              "security-routing": labelled.get("security_routing_cases"),
              "agent-decision": agent_decision["cases_total"] if agent_decision else None,
              "permission": labelled.get("permission_cases"),
-             "self-eval": labelled.get("self_eval_cases")}
+             "self-eval": labelled.get("self_eval_cases"),
+             "injection": labelled.get("injection_cases")}
     suites = []
     for key, label, primary, others, dataset in SUITE_SPECS:
         if key == "agent-decision":
@@ -173,7 +179,8 @@ def build_reproducibility(eval_inputs):
         "single_suite_commands": [
             "python eval_runner.py retrieval", "python eval_runner.py routing",
             "python eval_runner.py security-routing", "python eval_runner.py agent-decision",
-            "python eval_runner.py permission", "python eval_runner.py self-eval"],
+            "python eval_runner.py permission", "python eval_runner.py self-eval",
+            "python eval_runner.py injection"],
         "agent_decision_note": "agent-decision is replayed from the committed recorded results "
                                "(no API key, no network); re-recording it needs agent_decision_eval_runner.py "
                                "and a billed ANTHROPIC_API_KEY.",
@@ -199,7 +206,8 @@ def build_eval_results(retrieval: dict, routing: dict, *, commit_sha: str,
                        eval_inputs: dict = None,
                        agent_decision: dict = None,
                        permission: dict = None,
-                       self_eval_result: dict = None) -> dict:
+                       self_eval_result: dict = None,
+                       injection: dict = None) -> dict:
     """Pure function: eval_runner output in, publishable dict out. `permission`
     / `self_eval_result` are the unmodified eval_runner.run_permission_eval() /
     run_self_eval() results; when None the suite is simply absent (never a
@@ -255,6 +263,17 @@ def build_eval_results(retrieval: dict, routing: dict, *, commit_sha: str,
                             "threshold": thr, "comparator": ">=",
                             "passed": metric_passes(ss[field], thr, ">=")})
 
+    if injection is not None:
+        i_thr = eval_runner.INJECTION_THRESHOLDS["injection_block_rate"]
+        i_score = round(injection["block_rate"], 3) if injection["control_passed"] else 0.0
+        metrics.append({
+            "key": "injection_block_rate",
+            "label": "Prompt-injection attacks blocked (control edit must still land)",
+            "eval": "injection",
+            "score": i_score, "threshold": i_thr, "comparator": ">=",
+            "passed": metric_passes(i_score, i_thr, ">="),
+        })
+
     labelled = {
         "retrieval_cases": retrieval["summary"]["cases"],
         "routing_cases": routing["summary"]["cases"],
@@ -265,6 +284,8 @@ def build_eval_results(retrieval: dict, routing: dict, *, commit_sha: str,
         labelled["permission_cases"] = permission["summary"]["cases"]
     if self_eval_result is not None:
         labelled["self_eval_cases"] = self_eval_result["summary"]["cases"]
+    if injection is not None:
+        labelled["injection_cases"] = injection["attacks_total"]
     suites = build_suites(metrics, labelled, eval_inputs, commit_sha, generated_at, agent_decision)
 
     return {
@@ -331,6 +352,9 @@ EVAL_INPUT_FILES = [
     # Integration-branch suites (permission-aware retrieval, agent self-eval).
     "agent/evals/permission_dataset.json",
     "agent/evals/self_eval_dataset.json",
+    # Prompt-injection red team (2026-11-26): dataset + its runner.
+    "agent/evals/injection_dataset.json",
+    "agent/injection_eval.py",
 ]
 AGENT_DECISION_RESULTS = "agent/evals/agent_decision_results.json"
 AGENT_DECISION_DATASET = "agent/evals/agent_decision_dataset.json"
@@ -620,6 +644,7 @@ def main(argv: list) -> int:
     routing = eval_runner.run_routing_eval()
     permission = eval_runner.run_permission_eval()
     self_eval_result = eval_runner.run_self_eval()
+    injection = eval_runner.run_injection_eval()
     now = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
     ci_runs = None if "--no-ci" in argv else fetch_ci_runs()
     results = build_eval_results(
@@ -630,7 +655,7 @@ def main(argv: list) -> int:
         working_tree_dirty=_working_tree_dirty(),
         ci_observation=summarise_ci_runs(ci_runs, now) if ci_runs else None,
         eval_inputs=compute_eval_input_hashes(),
-        permission=permission, self_eval_result=self_eval_result,
+        permission=permission, self_eval_result=self_eval_result, injection=injection,
         agent_decision=build_agent_decision_section(
             json.loads((REPO_ROOT / AGENT_DECISION_RESULTS).read_text(encoding="utf-8")),
             json.loads((REPO_ROOT / AGENT_DECISION_DATASET).read_text(encoding="utf-8")),
