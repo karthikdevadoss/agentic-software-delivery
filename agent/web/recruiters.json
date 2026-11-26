@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-26T11:17:55Z",
-  "commit_sha": "610d485b1c382eede67f2f0e86497858290520c1",
-  "branch": "fix/platform-ready-2026-11-26",
+  "generated_at": "2026-11-26T15:43:41Z",
+  "commit_sha": "0a018c0f0d28cc83e516af906ff9903c9c0a6faa",
+  "branch": "fix/nav-evals-si-label",
   "working_tree_dirty": false,
   "postings_accessed": "2026-10-06",
   "postings_note": "Thirteen English-language AI engineering job postings that were listed as open on the access date, in this order: remote first, then Berlin hybrid, Berlin on-site and other German cities. Architect-titled roles based in Germany in the same search all required German; the one architect-titled role here is EU-remote.",
@@ -59,8 +59,8 @@
   ],
   "metrics": {
     "eval": {
-      "generated_at": "2026-11-23T13:31:36Z",
-      "commit_sha": "78eb549d7b70bbc6524443edc0bce0d1e2199f1f",
+      "generated_at": "2026-11-26T15:42:55Z",
+      "commit_sha": "31fff3297dbf543e43ae8deaf9e6e7aff3d9a1a8",
       "overall_passed": true,
       "labelled_set": {
         "retrieval_cases": 12,
@@ -136,9 +136,9 @@
         }
       ],
       "ci_eval_step_on_master": {
-        "observed_at": "2026-11-23T12:07:30Z",
+        "observed_at": "2026-11-26T15:42:55Z",
         "latest_status": "success",
-        "last_success_at": "2026-10-21T14:20:33Z"
+        "last_success_at": "2026-11-26T13:18:06Z"
       },
       "agent_decision": {
         "label": "recorded 2026-09-16",
@@ -851,7 +851,7 @@
   "inputs": {
     "agent/recruiters_source.yaml": "764ff99965c1a63cd662fb80551b21ab4e0922cb76c50f3476e3634301becfc8",
     "agent/web/case-study-durable-agent.html": "e6eaf381b8b8936d5f90f6fb2f75d774ea842eb5a226fc609495f320db52c6d7",
-    "agent/web/eval-results.json": "f942551d5df9b5a73ff1b088d50cd27dac73ec4cb7f230c5c8fc0a64c96ce374",
+    "agent/web/eval-results.json": "e21ccfe7c2da30e5973c2596d020a351197542790452bc22f66fb3427808623c",
     "agent/web/triage-evidence.json": "73a4d9acefb2a5cd7f27f7ca9a39b10a30fca17b2d9dd0ba49a80d54b217c5dd",
     "agent/web/ask-codebase-examples.json": "34eab056324d1e58d3b3d6c65e875af613a3779983890614966d14d0c06de0bb"
   }
