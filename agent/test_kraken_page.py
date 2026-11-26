@@ -87,7 +87,7 @@ class KrakenPageTestCase(unittest.TestCase):
     def test_honest_gaps_are_stated(self):
         compact = _squash(HTML)
         for phrase in ("Kubernetes in production:", "AWS Bedrock, Inspect AI, Ragas:",
-                       "not on the public site", "reset on a redeploy",
+                       "not on the public site", "Per-team budgets:", "survive redeploys",
                        "Notion and Slack connectors are not built",
                        "re-embeds only what changed", "removes deleted items"):
             self.assertIn(phrase, compact)

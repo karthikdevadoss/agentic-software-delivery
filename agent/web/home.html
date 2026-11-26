@@ -278,7 +278,7 @@
       <div>
         <p class="estat">Running in production</p>
         <h3>Single model gateway with budgets and a kill switch</h3>
-        <p>Every billed model call goes through one gateway, which checks the purpose, enforces SQLite daily/per-run/per-request caps and rate limits that survive a restart (they reset on a redeploy, because the host disk is temporary; the event ledger is in Postgres), supports an opt-in local LiteLLM proxy, and can be switched off entirely. A test fails the build if any code tries to bypass it.</p>
+        <p>Every billed model call goes through one gateway, which checks the purpose, enforces daily/per-run/per-request caps and rate limits stored in Postgres (they survive redeploys, and if the store cannot be reached every billed call is refused rather than run unchecked), supports an opt-in local LiteLLM proxy, and can be switched off entirely. A test fails the build if any code tries to bypass it.</p>
       </div>
       <div class="side"><a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/reasoning_gateway.py">See the gateway →</a></div>
     </div>
@@ -296,7 +296,7 @@
 
   <h2 class="sec">How it runs</h2>
   <div class="scope" id="scope">
-    <p>One model provider, Anthropic Claude, reached through a single gateway with SQLite budget/rate caps (per-disk: they survive a restart but reset on a redeploy, and are not shared across replicas) and an opt-in local LiteLLM proxy. Retrieval is local cosine search over the repository and its documents, with code-enforced access-level filtering exercised on fixture docs. The platform is deployed to Railway by a script with <code>/healthz</code> and <code>/readyz</code> probes, and a Workbench change reaches the Customer App through the same deploy step once the owner approves it; OpenTelemetry run spans stay in memory per process, and the local Kubernetes manifests, read-only Django admin slice and bearer-auth MCP server are verified in the repo rather than hosted in production.</p>
+    <p>One model provider, Anthropic Claude, reached through a single gateway with Postgres-backed budget/rate caps (they survive redeploys, are shared by replicas, and fail closed) and an opt-in local LiteLLM proxy. Retrieval is local cosine search over the repository and its documents, with code-enforced access-level filtering exercised on fixture docs. The platform is deployed to Railway by a script with <code>/healthz</code> and <code>/readyz</code> probes, and a Workbench change reaches the Customer App through the same deploy step once the owner approves it; OpenTelemetry run spans stay in memory per process, and the local Kubernetes manifests, read-only Django admin slice and bearer-auth MCP server are verified in the repo rather than hosted in production.</p>
   </div>
 
   <h2 class="sec">Explore the live system</h2>
