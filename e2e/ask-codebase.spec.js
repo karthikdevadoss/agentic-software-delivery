@@ -21,6 +21,14 @@ test.describe("Ask the Codebase", () => {
     await expect(examples.first()).toBeVisible();
   });
 
+  test("a ?q= deep link fills the box and shows evidence without a click (used by /kraken's tour)", async ({ page }) => {
+    const q = "Why isn't the LLM allowed to approve its own change?";
+    await page.goto(`/ask-codebase?q=${encodeURIComponent(q)}`);
+    await expect(page.locator("#ac-query")).toHaveValue(q);
+    await expect(page.locator(".ac-status-pill")).toBeVisible({ timeout: 15000 });
+    await expect(page.locator(".ac-evidence-card").first()).toBeVisible();
+  });
+
   test("a real question produces real visible evidence with source links and scores", async ({ page }) => {
     await page.goto("/ask-codebase");
     await page.fill("#ac-query", "How is Redis cache invalidation handled?");
