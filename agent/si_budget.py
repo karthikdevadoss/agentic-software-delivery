@@ -117,6 +117,14 @@ def check(visitor: str) -> dict:
     ..., "retry_after": seconds}. The message is written for a visitor to
     read; it never mentions dollars, budgets or the Owner's account.
     """
+    try:
+        return _check(visitor)
+    except budget_store.StoreUnavailable:
+        return {"allowed": False, "status": "STORE_UNAVAILABLE", "retry_after": 30,
+                "message": "The interview can't take questions for a moment. Please try again shortly."}
+
+
+def _check(visitor: str) -> dict:
     visitor = visitor or "unknown"
     day = _today()
     with budget_store.transaction() as tx:
@@ -166,8 +174,11 @@ def record_answer(visitor: str) -> None:
     two private questions would lock a real recruiter out.
     """
     visitor = visitor or "unknown"
-    with budget_store.transaction() as tx:
-        tx.insert(SCOPE, _today(), _now(), visitor=visitor)
+    try:
+        with budget_store.transaction() as tx:
+            tx.insert(SCOPE, _today(), _now(), visitor=visitor)
+    except budget_store.StoreUnavailable:
+        pass  # the answer was already given; check() refuses further calls while the store is down
 
 
 def _seconds_until_utc_midnight() -> int:
@@ -179,9 +190,13 @@ def status() -> dict:
     """For the Owner, not for visitors. Real counts, and the dollar figure
     labelled as the estimate it is."""
     day = _today()
-    with budget_store.transaction() as tx:
-        answers = tx.count(SCOPE, day)
-        visitors = tx.distinct_visitors(SCOPE, day)
+    try:
+        with budget_store.transaction() as tx:
+            answers = tx.count(SCOPE, day)
+            visitors = tx.distinct_visitors(SCOPE, day)
+    except budget_store.StoreUnavailable:
+        return {"day_utc": day, "store_available": False, "answers_today": None,
+                "daily_max_answers": SI_DAILY_MAX_ANSWERS, "daily_usd_budget": SI_DAILY_USD_BUDGET}
     return {
         "day_utc": day,
         "answers_today": answers,

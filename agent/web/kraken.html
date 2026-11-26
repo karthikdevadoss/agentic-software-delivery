@@ -71,8 +71,10 @@
         Every billed model call goes through one gateway. It checks the call's
         purpose, reserves budget <em>before</em> the provider is contacted, enforces
         daily, per-run and per-request caps and a rate limit, records real token
-        usage, and has a kill switch. An opt-in local LiteLLM proxy route is
-        included, and a test fails the build if code calls the SDK directly.
+        usage, and has a kill switch. Caps live in Postgres behind a transaction
+        lock, so they survive redeploys and twenty racing calls cannot overspend;
+        if the store is unreachable, calls are refused. An opt-in local LiteLLM
+        proxy route is included, and a test fails the build if code calls the SDK directly.
       </p>
       <a class="go" href="/usage">Live budget and usage →</a>
       <a class="go2" href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/reasoning_gateway.py">Gateway source →</a>
@@ -174,9 +176,9 @@
         from 2025. I would learn your clusters with the squad first.
         <strong>AWS Bedrock, Inspect AI, Ragas:</strong> not used yet; my evals are
         my own harness. <strong>Hosted MCP:</strong> the MCP server runs and is
-        tested locally, not on the public site. <strong>Budgets:</strong> the
-        gateway caps are SQLite on the host disk, so they reset on a redeploy;
-        the cost ledger itself is in Postgres.
+        tested locally, not on the public site. <strong>Per-team budgets:</strong>
+        caps are platform-wide today; per-team keys, as a LiteLLM gateway would
+        issue them, are not built.
       </p>
       <a class="go2" href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/KUBERNETES.md">Kubernetes notes →</a>
     </article>

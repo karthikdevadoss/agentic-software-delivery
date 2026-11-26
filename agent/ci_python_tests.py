@@ -86,6 +86,7 @@ HERMETIC_MODULES = [
     "test_interviewer_page",  # Sprint 14: /interviewer brief route, nav, proof links, no invented claims
     "test_kraken_page",  # unlisted /kraken AI Foundations map: verbatim quotes, wired links, real source files (2026-11-26)
     "test_public_clarity",  # Evals in nav (removals stay out) + Standing Interview AI label (2026-11-26)
+    "test_budget_fail_closed",  # BUDGET_DATABASE_URL unreachable -> every budget caller refuses, nothing crashes (2026-11-26)
     "test_injection_eval",  # prompt-injection red team over the real write boundary; goes red when sabotaged (2026-11-26)
     "test_applications_review",  # Sprint 11: /applications gate (no/wrong key 404, right key 200); nav has no Applications
     "test_execution_tools",
@@ -158,6 +159,7 @@ HERMETIC_MODULES = [
 # runner, which deliberately holds no database.
 LIVE_INFRA_MODULES = {
     "test_backend_execution": "spawns a real web_server subprocess",
+    "test_budget_store_postgres": "real Postgres budget store (caps, restart, 20-thread race); runs in the ledger-postgres CI job with BUDGET_REQUIRE_DB=1",
     "test_workflow_checkpointer": "BL-094: real Postgres checkpoint tables via EVENT_LEDGER_DATABASE_URL; runs in the ledger-postgres CI job",
     # --- The four below were MISCLASSIFIED as hermetic and were caught by the
     # first real CI run (2026-09-25, run 36172353680), not by local testing.

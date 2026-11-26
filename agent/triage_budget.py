@@ -79,6 +79,15 @@ def check_and_reserve(visitor: str, *, exempt_from_visitor_limits: bool = False)
     """Reserve one model call or refuse. Returns
     {"allowed": True} or {"allowed": False, "status", "message", "retry_after"}.
     The check and the reservation are one atomic transaction."""
+    try:
+        return _check_and_reserve(visitor, exempt_from_visitor_limits)
+    except budget_store.StoreUnavailable:
+        return {"allowed": False, "status": "STORE_UNAVAILABLE",
+                "message": "The Triage Lab's model steps are paused for a moment. Please try again shortly.",
+                "retry_after": 30}
+
+
+def _check_and_reserve(visitor: str, exempt_from_visitor_limits: bool) -> dict:
     lim = limits()
     day, now = _today(), _now()
     with budget_store.transaction() as tx:
@@ -106,8 +115,11 @@ def check_and_reserve(visitor: str, *, exempt_from_visitor_limits: bool = False)
 
 def status() -> dict:
     day = _today()
-    with budget_store.transaction() as tx:
-        return {"day_utc": day, "calls_today": tx.count(SCOPE, day), **limits()}
+    try:
+        with budget_store.transaction() as tx:
+            return {"day_utc": day, "calls_today": tx.count(SCOPE, day), **limits()}
+    except budget_store.StoreUnavailable:
+        return {"day_utc": day, "calls_today": None, "store_available": False, **limits()}
 
 
 def _reset_for_tests() -> None:
