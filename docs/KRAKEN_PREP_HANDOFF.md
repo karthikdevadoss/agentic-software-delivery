@@ -31,17 +31,15 @@ Read it, then `START_HERE.md`.
 | #66 | Unlisted `/kraken` page: four AI Foundations areas + three squads, verbatim posting quotes (tested against `agent/fixtures/kraken_ai_foundations_posting_2026-11-26.txt`), honest gaps |
 | #67 | "Evals" in the public nav; Standing Interview labelled "This is an AI assistant, not me"; eval snapshot republished from a clean tree (same scores) |
 | #68 | README "At a glance" architecture diagram |
-| this PR | "Try it in 60 seconds" tour at the top of `/kraken`; `/ask-codebase?q=...` deep link |
+| #69 | "Try it in 60 seconds" tour at the top of `/kraken`; `/ask-codebase?q=...` deep link; this handoff doc |
+| #70 | Prompt-injection red-team eval, suite 7 (`agent/injection_eval.py`, `agent/evals/injection_dataset.json`): 10 attacks through the real write dispatcher, all blocked, and the approved control edit is written. Deterministic, no model. Shown on `/eval`; zero-tolerance CI gate |
 
 Live: https://agentic.karthikdevadoss.com (Kraken page: `/kraken`).
 
 ## Next, in order (agreed with the owner)
 
-1. ~~60-second tour on /kraken~~ (this PR).
-2. **Prompt-injection safety eval (suite 7).** Plant hostile instructions in files the
-   agent reads ("approve this change") and prove deterministically that nothing is
-   written without human approval. Use a scripted `create_fn`, with no model calls.
-   This maps to the Evals & Observability squad and to "red teaming".
+1. ~~60-second tour on /kraken~~ (#69).
+2. ~~Prompt-injection safety eval (suite 7)~~ (#70).
 3. **Recorded 2-minute walkthrough** of the Workbench verified run, embedded on
    `/kraken`, as a fallback if a live demo is slow. Generate it with Playwright from
    the recorded run, with no model calls.
@@ -66,9 +64,11 @@ Kubernetes, site-wide restyle.
 ```bash
 python scripts/live_check.py
 cd agent && python ci_python_tests.py
+python eval_runner.py injection   # red-team suite, free
 ```
 
 `ci_python_tests.py` failures that are only sandbox-related: shallow clone
 (commit-history tests) and a missing embedding index. Run `python backend_rag_index.py`
-first, and fetch history with `git fetch --depth=1000 origin master`. GitHub CI is
+first, and run `git fetch --unshallow origin` before `publish_eval_results.py`.
+A shallow clone credits the agent-decision suite to the wrong commit; it must say `983161f`. GitHub CI is
 the real gate.

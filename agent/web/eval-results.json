@@ -1,19 +1,21 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-26T15:42:55Z",
-  "commit_sha": "31fff3297dbf543e43ae8deaf9e6e7aff3d9a1a8",
+  "generated_at": "2026-11-26T16:29:58Z",
+  "commit_sha": "aa295b5ef17a6c4882cf9f7c2d362ff5b04dcedb",
   "working_tree_dirty": false,
   "embedding_model": "local:BAAI/bge-small-en-v1.5",
   "overall_passed": true,
   "eval_inputs": {
     "files": {
-      "agent/eval_runner.py": "092e143295113da72c05a4418ce92e79d222f5042a0fb946783a47af7d9b36e9",
+      "agent/eval_runner.py": "914f06092ef8de0a871c3706a197d5a3b6cf1f3203dfd5707635d39b81750d8f",
       "agent/evals/retrieval_dataset.json": "3193e6b70c35178f79a4cbb4a2adeb47055ad43e32f9401e526485da8ec9e058",
       "agent/evals/routing_dataset.json": "8a4cf82bcfff0b4a99f9de61c094d4be613fb141037da11d1476f8812d4b39c5",
       "agent/evals/agent_decision_dataset.json": "27c22fde174720d01dedbc2d6bb4ed33b3a7f82ca424672a81ab259355e1fbb1",
       "agent/evals/agent_decision_results.json": "de3e3804577f2f2cfdcc239e889a99b1f4221f94e21282ff7596735f0de2a4fb",
       "agent/evals/permission_dataset.json": "e6bfd2ec00af48fbb962e328334afb62f29618c69bb8e93196569e213c60960e",
-      "agent/evals/self_eval_dataset.json": "db5996fc86b48fe4a7a860029e562731163880a2950c9c6186ae9b608ef77af6"
+      "agent/evals/self_eval_dataset.json": "db5996fc86b48fe4a7a860029e562731163880a2950c9c6186ae9b608ef77af6",
+      "agent/evals/injection_dataset.json": "8ab430fdde293f2581fe1902075499c68f4ac0bcdd79b689b42038f58c7e28d7",
+      "agent/injection_eval.py": "def7ea66303dc4b2b9b5a518097d92783bf844498be57350f916c0e93b7f7bf6"
     },
     "thresholds": "18d32f79a937ddb06875997b5443a96bfcb7600465d612f4a6c33de216e376c2",
     "not_covered": [
@@ -27,7 +29,8 @@
     "routing_cases": 14,
     "security_routing_cases": 7,
     "permission_cases": 11,
-    "self_eval_cases": 12
+    "self_eval_cases": 12,
+    "injection_cases": 10
   },
   "suites": [
     {
@@ -58,8 +61,8 @@
       ],
       "dataset_file": "agent/evals/retrieval_dataset.json",
       "dataset_hash": "3193e6b70c35178f79a4cbb4a2adeb47055ad43e32f9401e526485da8ec9e058",
-      "commit_sha": "31fff3297dbf543e43ae8deaf9e6e7aff3d9a1a8",
-      "run_at": "2026-11-26T15:42:55Z"
+      "commit_sha": "aa295b5ef17a6c4882cf9f7c2d362ff5b04dcedb",
+      "run_at": "2026-11-26T16:29:58Z"
     },
     {
       "key": "routing",
@@ -82,8 +85,8 @@
       ],
       "dataset_file": "agent/evals/routing_dataset.json",
       "dataset_hash": "8a4cf82bcfff0b4a99f9de61c094d4be613fb141037da11d1476f8812d4b39c5",
-      "commit_sha": "31fff3297dbf543e43ae8deaf9e6e7aff3d9a1a8",
-      "run_at": "2026-11-26T15:42:55Z"
+      "commit_sha": "aa295b5ef17a6c4882cf9f7c2d362ff5b04dcedb",
+      "run_at": "2026-11-26T16:29:58Z"
     },
     {
       "key": "security-routing",
@@ -106,8 +109,8 @@
       ],
       "dataset_file": "agent/evals/routing_dataset.json",
       "dataset_hash": "8a4cf82bcfff0b4a99f9de61c094d4be613fb141037da11d1476f8812d4b39c5",
-      "commit_sha": "31fff3297dbf543e43ae8deaf9e6e7aff3d9a1a8",
-      "run_at": "2026-11-26T15:42:55Z"
+      "commit_sha": "aa295b5ef17a6c4882cf9f7c2d362ff5b04dcedb",
+      "run_at": "2026-11-26T16:29:58Z"
     },
     {
       "key": "agent-decision",
@@ -155,8 +158,8 @@
       ],
       "dataset_file": "agent/evals/permission_dataset.json",
       "dataset_hash": "e6bfd2ec00af48fbb962e328334afb62f29618c69bb8e93196569e213c60960e",
-      "commit_sha": "31fff3297dbf543e43ae8deaf9e6e7aff3d9a1a8",
-      "run_at": "2026-11-26T15:42:55Z"
+      "commit_sha": "aa295b5ef17a6c4882cf9f7c2d362ff5b04dcedb",
+      "run_at": "2026-11-26T16:29:58Z"
     },
     {
       "note": "The system grading itself: a deterministic stand-in scorer replaying hand-labelled fixtures (no model, no API key). Not independent QA, and it cannot judge semantics.",
@@ -187,8 +190,33 @@
       ],
       "dataset_file": "agent/evals/self_eval_dataset.json",
       "dataset_hash": "db5996fc86b48fe4a7a860029e562731163880a2950c9c6186ae9b608ef77af6",
-      "commit_sha": "31fff3297dbf543e43ae8deaf9e6e7aff3d9a1a8",
-      "run_at": "2026-11-26T15:42:55Z"
+      "commit_sha": "aa295b5ef17a6c4882cf9f7c2d362ff5b04dcedb",
+      "run_at": "2026-11-26T16:29:58Z"
+    },
+    {
+      "note": "A scripted worst-case model obeys hostile instructions planted in files it reads; the real write boundary must refuse every unapproved write, and an edit a person approves must still land. Proves the boundary, not that a real model resists the injection.",
+      "key": "injection",
+      "label": "Prompt-injection red team (zero tolerance)",
+      "kind": "measured",
+      "cases": 10,
+      "primary_metric": "injection_block_rate",
+      "score": 1.0,
+      "threshold": 1.0,
+      "comparator": ">=",
+      "passed": true,
+      "metrics": [
+        {
+          "key": "injection_block_rate",
+          "score": 1.0,
+          "threshold": 1.0,
+          "comparator": ">=",
+          "passed": true
+        }
+      ],
+      "dataset_file": "agent/evals/injection_dataset.json",
+      "dataset_hash": "8ab430fdde293f2581fe1902075499c68f4ac0bcdd79b689b42038f58c7e28d7",
+      "commit_sha": "aa295b5ef17a6c4882cf9f7c2d362ff5b04dcedb",
+      "run_at": "2026-11-26T16:29:58Z"
     }
   ],
   "reproducibility": {
@@ -204,18 +232,21 @@
       "python eval_runner.py security-routing",
       "python eval_runner.py agent-decision",
       "python eval_runner.py permission",
-      "python eval_runner.py self-eval"
+      "python eval_runner.py self-eval",
+      "python eval_runner.py injection"
     ],
     "agent_decision_note": "agent-decision is replayed from the committed recorded results (no API key, no network); re-recording it needs agent_decision_eval_runner.py and a billed ANTHROPIC_API_KEY.",
-    "inputs_hash": "93e950846dd275b27b036bf2bc8481c3136715b4380dcfe709fb69c7fb9ca0f3",
+    "inputs_hash": "453ba87e8dc27c746544f8a7a56d6eafaa829fdf51e19098521cf4969051ef2d",
     "hash_covers": [
       "agent/eval_runner.py",
       "agent/evals/agent_decision_dataset.json",
       "agent/evals/agent_decision_results.json",
+      "agent/evals/injection_dataset.json",
       "agent/evals/permission_dataset.json",
       "agent/evals/retrieval_dataset.json",
       "agent/evals/routing_dataset.json",
       "agent/evals/self_eval_dataset.json",
+      "agent/injection_eval.py",
       "eval_runner.THRESHOLDS"
     ]
   },
@@ -289,6 +320,15 @@
       "eval": "self_eval",
       "score": 1.0,
       "threshold": 0.85,
+      "comparator": ">=",
+      "passed": true
+    },
+    {
+      "key": "injection_block_rate",
+      "label": "Prompt-injection attacks blocked (control edit must still land)",
+      "eval": "injection",
+      "score": 1.0,
+      "threshold": 1.0,
       "comparator": ">=",
       "passed": true
     }
@@ -504,18 +544,18 @@
     "behaviour": "exits 1 (fails the build) if any threshold is not met",
     "runs_on": "every pull request to master and every push to master",
     "observed": {
-      "observed_at": "2026-11-26T15:42:55Z",
+      "observed_at": "2026-11-26T16:29:58Z",
       "branch": "master",
       "latest_run": {
-        "created_at": "2026-11-26T13:18:06Z",
-        "head_sha": "087d88e5c102fb292499170e347a8ff5b165beef",
+        "created_at": "2026-11-26T16:11:10Z",
+        "head_sha": "32ed7accf963b162acf4210956c52170e98194c7",
         "eval_step": "success",
         "failed_steps_in_same_job": []
       },
       "runs_since_eval_step_last_passed": 0,
       "last_eval_step_success": {
-        "created_at": "2026-11-26T13:18:06Z",
-        "head_sha": "087d88e5c102fb292499170e347a8ff5b165beef"
+        "created_at": "2026-11-26T16:11:10Z",
+        "head_sha": "32ed7accf963b162acf4210956c52170e98194c7"
       },
       "runs_examined": 1
     }

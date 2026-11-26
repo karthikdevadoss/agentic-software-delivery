@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-26T16:29:58Z",
+  "commit_sha": "aa295b5ef17a6c4882cf9f7c2d362ff5b04dcedb",
+  "working_tree_dirty": false,
+  "embedding_model": "local:BAAI/bge-small-en-v1.5",
+  "overall_passed": true,
+  "reproducibility_hash": "453ba87e8dc27c746544f8a7a56d6eafaa829fdf51e19098521cf4969051ef2d",
+  "source": "publish_eval_results.py",
+  "suites": [
+    {
+      "key": "retrieval",
+      "kind": "measured",
+      "score": 0.833,
+      "threshold": 0.4,
+      "comparator": ">=",
+      "passed": true,
+      "dataset_hash": "3193e6b70c35178f79a4cbb4a2adeb47055ad43e32f9401e526485da8ec9e058",
+      "commit_sha": "aa295b5ef17a6c4882cf9f7c2d362ff5b04dcedb",
+      "run_at": "2026-11-26T16:29:58Z",
+      "cases": 12,
+      "metrics": {
+        "recall_at_3": 0.833,
+        "mrr": 0.868
+      }
+    },
+    {
+      "key": "routing",
+      "kind": "measured",
+      "score": 1.0,
+      "threshold": 0.85,
+      "comparator": ">=",
+      "passed": true,
+      "dataset_hash": "8a4cf82bcfff0b4a99f9de61c094d4be613fb141037da11d1476f8812d4b39c5",
+      "commit_sha": "aa295b5ef17a6c4882cf9f7c2d362ff5b04dcedb",
+      "run_at": "2026-11-26T16:29:58Z",
+      "cases": 14,
+      "metrics": {
+        "routing_accuracy": 1.0
+      }
+    },
+    {
+      "key": "security-routing",
+      "kind": "measured",
+      "score": 1.0,
+      "threshold": 1.0,
+      "comparator": "==",
+      "passed": true,
+      "dataset_hash": "8a4cf82bcfff0b4a99f9de61c094d4be613fb141037da11d1476f8812d4b39c5",
+      "commit_sha": "aa295b5ef17a6c4882cf9f7c2d362ff5b04dcedb",
+      "run_at": "2026-11-26T16:29:58Z",
+      "cases": 7,
+      "metrics": {
+        "security_case_accuracy": 1.0
+      }
+    },
+    {
+      "key": "agent-decision",
+      "kind": "recorded",
+      "score": 1.0,
+      "threshold": 1.0,
+      "comparator": ">=",
+      "passed": true,
+      "dataset_hash": "27c22fde174720d01dedbc2d6bb4ed33b3a7f82ca424672a81ab259355e1fbb1",
+      "commit_sha": "983161fa7d684c496c1501b0dc14a1a8062a281a",
+      "run_at": "2026-09-16T09:46:39.181896+00:00",
+      "cases": 6,
+      "metrics": {
+        "agent_decision_pass_rate": 1.0
+      }
+    },
+    {
+      "key": "permission",
+      "kind": "measured",
+      "score": 1.0,
+      "threshold": 1.0,
+      "comparator": "==",
+      "passed": true,
+      "dataset_hash": "e6bfd2ec00af48fbb962e328334afb62f29618c69bb8e93196569e213c60960e",
+      "commit_sha": "aa295b5ef17a6c4882cf9f7c2d362ff5b04dcedb",
+      "run_at": "2026-11-26T16:29:58Z",
+      "cases": 11,
+      "metrics": {
+        "permission_pass_rate": 1.0
+      }
+    },
+    {
+      "key": "self-eval",
+      "kind": "measured",
+      "score": 1.0,
+      "threshold": 0.85,
+      "comparator": ">=",
+      "passed": true,
+      "dataset_hash": "db5996fc86b48fe4a7a860029e562731163880a2950c9c6186ae9b608ef77af6",
+      "commit_sha": "aa295b5ef17a6c4882cf9f7c2d362ff5b04dcedb",
+      "run_at": "2026-11-26T16:29:58Z",
+      "cases": 12,
+      "metrics": {
+        "self_eval_catch_rate": 1.0,
+        "self_eval_good_pass_rate": 1.0
+      }
+    },
+    {
+      "key": "injection",
+      "kind": "measured",
+      "score": 1.0,
+      "threshold": 1.0,
+      "comparator": ">=",
+      "passed": true,
+      "dataset_hash": "8ab430fdde293f2581fe1902075499c68f4ac0bcdd79b689b42038f58c7e28d7",
+      "commit_sha": "aa295b5ef17a6c4882cf9f7c2d362ff5b04dcedb",
+      "run_at": "2026-11-26T16:29:58Z",
+      "cases": 10,
+      "metrics": {
+        "injection_block_rate": 1.0
+      }
+    }
+  ]
+}

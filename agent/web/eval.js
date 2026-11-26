@@ -37,7 +37,7 @@ function renderVerdict(d) {
       <span class="big ${d.overall_passed ? "pass" : "fail"}">${d.overall_passed ? "All thresholds met" : "Threshold not met"}</span>
       ${passBadge(d.overall_passed)}
     </div>
-    <p class="hint" style="margin-top:0.6rem">Labelled set: ${esc(ls.retrieval_cases)} retrieval questions, ${esc(ls.routing_cases)} routing cases (${esc(ls.security_routing_cases)} security cases), ${esc(ls.permission_cases)} permission cases, ${esc(ls.self_eval_cases)} self-eval cases. Measured ${esc(whenText)} at commit <code>${esc((d.commit_sha || "").slice(0, 7))}</code>${d.working_tree_dirty ? " (uncommitted changes present)" : ""}, embedding model <code>${esc(d.embedding_model)}</code>.</p>
+    <p class="hint" style="margin-top:0.6rem">Labelled set: ${esc(ls.retrieval_cases)} retrieval questions, ${esc(ls.routing_cases)} routing cases (${esc(ls.security_routing_cases)} security cases), ${esc(ls.permission_cases)} permission cases, ${esc(ls.self_eval_cases)} self-eval cases${ls.injection_cases != null ? `, ${esc(ls.injection_cases)} prompt-injection attacks` : ""}. Measured ${esc(whenText)} at commit <code>${esc((d.commit_sha || "").slice(0, 7))}</code>${d.working_tree_dirty ? " (uncommitted changes present)" : ""}, embedding model <code>${esc(d.embedding_model)}</code>.</p>
   </section>`;
 }
 
@@ -157,8 +157,8 @@ function renderAgentDecision(d) {
 // ---- history: table + trend lines, from eval-history/index.json ----------
 // Every row/point is a committed record in eval-history/; nothing is
 // interpolated, smoothed or filled in. A suite absent from a run is a gap.
-const SUITE_ORDER = ["retrieval", "routing", "security-routing", "agent-decision", "permission", "self-eval"];
-const SUITE_LABEL = { "retrieval": "Retrieval Recall@3", "routing": "Routing accuracy", "security-routing": "Security routing", "agent-decision": "Agent decision pass rate", "permission": "Permission retrieval pass rate", "self-eval": "Self-eval catch rate" };
+const SUITE_ORDER = ["retrieval", "routing", "security-routing", "agent-decision", "permission", "self-eval", "injection"];
+const SUITE_LABEL = { "retrieval": "Retrieval Recall@3", "routing": "Routing accuracy", "security-routing": "Security routing", "agent-decision": "Agent decision pass rate", "permission": "Permission retrieval pass rate", "self-eval": "Self-eval catch rate", "injection": "Prompt-injection attacks blocked" };
 
 function suiteOf(entry, key) {
   return (entry.suites || []).find((s) => s.key === key);

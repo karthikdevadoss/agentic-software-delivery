@@ -46,7 +46,7 @@
       </li>
       <li>
         <a href="/eval">See the eval gate →</a>
-        <span>Six labelled suites with written thresholds. CI fails the build when a score drops below one.</span>
+        <span>Seven labelled suites with written thresholds, including a prompt-injection red team. CI fails the build when a score drops below one.</span>
       </li>
     </ol>
   </section>
@@ -104,7 +104,7 @@
       <blockquote class="kr-quote">“permissions, safety, quality, cost and visibility across the lifecycle”</blockquote>
       <p>
         The model can propose a change but has no code path to approve it; each
-        approval is bound by hash to the exact content. Six eval suites with
+        approval is bound by hash to the exact content. Seven eval suites with
         written thresholds fail CI when quality drops. A Postgres event ledger
         with versioned pricing records the cost of every run, and OpenTelemetry
         spans record gateway, retrieval and approval events. The MCP server
@@ -132,7 +132,9 @@
       <h3>Evals &amp; Observability</h3>
       <blockquote class="kr-quote">“skill evals, internal benchmarking, agent safety and guardrails, and observability for live AI runs”</blockquote>
       <p>
-        Labelled suites for retrieval, tool routing, security routing (zero
+        A prompt-injection red team: hostile instructions in files the agent reads
+        must never produce an unapproved write (10 attacks, all blocked). Plus
+        labelled suites for retrieval, tool routing, security routing (zero
         tolerance), recorded agent decisions, permission filtering and self-eval,
         with run history and a reproducibility hash; per-run cost and spans.
       </p>
