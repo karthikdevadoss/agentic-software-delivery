@@ -25,8 +25,17 @@ HONEST LIMITS
     file is replaced too, so durability there needs BUDGET_DB_PATH pointed at
     a persistent volume. Nothing about production is changed by this module.
   * One file means one host. Two replicas on separate disks do not share
-    counters; sharing them needs a Postgres-backed implementation of the same
-    `transaction()` interface, which is not built here.
+    counters.
+
+POSTGRES BACKEND (2026-11-26)
+Set BUDGET_DATABASE_URL and the same `transaction()` interface runs on
+Postgres instead, so caps survive a redeploy and are shared by replicas.
+Writers are serialised with a transaction-scoped advisory lock, the Postgres
+equivalent of SQLite's BEGIN IMMEDIATE: two callers can never both see room
+under a cap. The trade-off the SQLite design avoided is now explicit: if
+Postgres cannot be reached, transaction() raises StoreUnavailable and every
+caller REFUSES the billed call (fail closed). A cap that cannot be checked is
+treated as reached, never as absent. Unset, nothing changes: SQLite as before.
   * Dollar amounts are reservations (a worst-case estimate) until a real
     usage figure settles them; see gateway_budget.py.
 """
@@ -59,6 +68,36 @@ CREATE INDEX IF NOT EXISTS budget_scope_ts ON budget_ledger (scope, ts);
 _init_lock = threading.Lock()
 _initialised: set[str] = set()
 
+_PG_SCHEMA = """
+CREATE TABLE IF NOT EXISTS budget_ledger (
+    id      BIGSERIAL PRIMARY KEY,
+    ts      DOUBLE PRECISION NOT NULL,
+    day     TEXT    NOT NULL,
+    scope   TEXT    NOT NULL,
+    visitor TEXT,
+    run_id  TEXT,
+    usd     DOUBLE PRECISION NOT NULL DEFAULT 0,
+    settled INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS budget_scope_day ON budget_ledger (scope, day);
+CREATE INDEX IF NOT EXISTS budget_scope_ts ON budget_ledger (scope, ts);
+"""
+# Arbitrary fixed key for pg_advisory_xact_lock; "budget" in ASCII.
+_PG_LOCK_KEY = 0x627564676574
+
+
+class StoreUnavailable(RuntimeError):
+    """The configured budget store cannot be reached. Callers must refuse
+    the billed call: a cap that cannot be checked counts as reached."""
+
+
+def pg_url() -> str:
+    return os.environ.get("BUDGET_DATABASE_URL", "").strip()
+
+
+def backend() -> str:
+    return "postgres" if pg_url() else "sqlite"
+
 
 def db_path() -> str:
     return os.environ.get("BUDGET_DB_PATH", "").strip() or str(_DEFAULT_PATH)
@@ -79,11 +118,24 @@ def _connect() -> sqlite3.Connection:
     return conn
 
 
-class Tx:
-    """Operations valid inside one atomic transaction."""
+class _PgConn:
+    """Adapts a psycopg2 cursor to the sqlite3 `execute(...).fetchone()` shape
+    Tx uses, translating `?` placeholders to `%s`."""
 
-    def __init__(self, conn: sqlite3.Connection):
+    def __init__(self, cur):
+        self._cur = cur
+
+    def execute(self, sql, params=()):
+        self._cur.execute(sql.replace("?", "%s"), params)
+        return self._cur
+
+
+class Tx:
+    """Operations valid inside one atomic transaction (SQLite or Postgres)."""
+
+    def __init__(self, conn, pg: bool = False):
         self._c = conn
+        self._pg = pg
 
     def count(self, scope: str, day: str, visitor: str | None = None) -> int:
         if visitor is None:
@@ -125,20 +177,69 @@ class Tx:
 
     def insert(self, scope: str, day: str, ts: float, visitor: str | None = None,
                run_id: str | None = None, usd: float = 0.0) -> int:
-        cur = self._c.execute(
-            "INSERT INTO budget_ledger (ts, day, scope, visitor, run_id, usd) VALUES (?,?,?,?,?,?)",
-            (ts, day, scope, visitor, run_id, usd))
-        return int(cur.lastrowid)
+        sql = "INSERT INTO budget_ledger (ts, day, scope, visitor, run_id, usd) VALUES (?,?,?,?,?,?)"
+        params = (ts, day, scope, visitor, run_id, usd)
+        if self._pg:
+            return int(self._c.execute(sql + " RETURNING id", params).fetchone()[0])
+        return int(self._c.execute(sql, params).lastrowid)
 
     def settle(self, row_id: int, usd: float) -> None:
         self._c.execute("UPDATE budget_ledger SET usd=?, settled=1 WHERE id=?", (usd, row_id))
 
 
+def _pg_connect():
+    try:
+        import psycopg2
+        conn = psycopg2.connect(
+            pg_url(), connect_timeout=5,
+            options="-c statement_timeout=5000 -c idle_in_transaction_session_timeout=15000")
+    except Exception as exc:  # noqa: BLE001 - any failure to reach the store is the same refusal
+        raise StoreUnavailable(f"budget store (postgres) unreachable: {type(exc).__name__}") from exc
+    key = pg_url()
+    with _init_lock:
+        if key not in _initialised:
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT pg_advisory_xact_lock(%s)", (_PG_LOCK_KEY,))
+                    cur.execute(_PG_SCHEMA)
+                conn.commit()
+            except Exception as exc:  # noqa: BLE001
+                conn.close()
+                raise StoreUnavailable(f"budget store (postgres) schema setup failed: {type(exc).__name__}") from exc
+            _initialised.add(key)
+    return conn
+
+
+@contextmanager
+def _pg_transaction():
+    conn = _pg_connect()
+    try:
+        cur = conn.cursor()
+        try:
+            cur.execute("SELECT pg_advisory_xact_lock(%s)", (_PG_LOCK_KEY,))
+        except Exception as exc:  # noqa: BLE001
+            conn.rollback()
+            raise StoreUnavailable(f"budget store (postgres) lock failed: {type(exc).__name__}") from exc
+        try:
+            yield Tx(_PgConn(cur), pg=True)
+        except BaseException:
+            conn.rollback()
+            raise
+        conn.commit()
+    finally:
+        conn.close()
+
+
 @contextmanager
 def transaction():
-    """Atomic check-then-reserve: BEGIN IMMEDIATE takes the write lock up
-    front, so two concurrent callers cannot both see room under a cap and
+    """Atomic check-then-reserve. SQLite: BEGIN IMMEDIATE takes the write
+    lock up front. Postgres: a transaction-scoped advisory lock does the same.
+    Either way two concurrent callers cannot both see room under a cap and
     both reserve it."""
+    if pg_url():
+        with _pg_transaction() as tx:
+            yield tx
+        return
     conn = _connect()
     try:
         conn.execute("BEGIN IMMEDIATE")

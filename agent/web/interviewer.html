@@ -87,8 +87,8 @@
       <h3>How it runs</h3>
       <p>
         Anthropic Claude through a single model gateway with a kill switch,
-        SQLite daily/per-run/per-request budgets (they survive a restart and reset
-        on a redeploy, because the host disk is temporary), and an opt-in local
+        daily/per-run/per-request budgets in Postgres (they survive redeploys and
+        fail closed if the store is unreachable), and an opt-in local
         LiteLLM proxy. Local cosine retrieval over the repository, a LangGraph
         workflow that checkpoints to Postgres, a Postgres event ledger with
         versioned pricing for token and cost telemetry, and OpenTelemetry spans

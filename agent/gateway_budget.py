@@ -102,6 +102,18 @@ def estimate_usd(provider: str, model: str, system_prompt: str, user_message: st
 
 def reserve(provider: str, model: str, system_prompt: str, user_message: str,
             max_tokens: int, run_id: str | None = None) -> dict:
+    """Fail closed: if the budget store cannot be reached, refuse the call.
+    A cap that cannot be checked counts as reached (see budget_store.py)."""
+    try:
+        return _reserve(provider, model, system_prompt, user_message, max_tokens, run_id)
+    except budget_store.StoreUnavailable as exc:
+        return {"allowed": False, "status": "BUDGET_STORE_UNAVAILABLE",
+                "message": f"{exc}; refusing the call rather than running it unchecked",
+                "retry_after": 30}
+
+
+def _reserve(provider: str, model: str, system_prompt: str, user_message: str,
+             max_tokens: int, run_id: str | None = None) -> dict:
     """Atomically check every limit and, if all pass, record the reservation.
     Returns {"allowed": True, "reservation_id", "reserved_usd"} or
     {"allowed": False, "status", "message", "retry_after"}."""
@@ -136,15 +148,32 @@ def reserve(provider: str, model: str, system_prompt: str, user_message: str,
 
 
 def settle(reservation_id: int, actual_usd: float) -> None:
-    """Replace a reservation's estimate with the measured cost."""
-    with budget_store.transaction() as tx:
-        tx.settle(reservation_id, round(float(actual_usd), 6))
+    """Replace a reservation's estimate with the measured cost. If the store
+    is unreachable the worst-case reservation simply stays in place: spend is
+    over-reported, never under-reported, and the paid call is not failed."""
+    try:
+        with budget_store.transaction() as tx:
+            tx.settle(reservation_id, round(float(actual_usd), 6))
+    except budget_store.StoreUnavailable:
+        pass
 
 
 def status() -> dict:
     """Remaining platform budget for /usage. Spent = settled actuals plus
     outstanding/failed-call reservations, so it never under-reports."""
     lim, day = limits(), _today()
+    try:
+        return _status(lim, day)
+    except budget_store.StoreUnavailable as exc:
+        return {"day_utc": day, "store_available": False, "error": str(exc),
+                "daily_usd_cap": lim["daily_usd_cap"], "per_run_usd_cap": lim["per_run_usd_cap"],
+                "per_request_usd_cap": lim["per_request_usd_cap"],
+                "rate_limit_calls": lim["rate_limit_calls"],
+                "rate_window_seconds": lim["rate_window_seconds"],
+                "figures_are": "unavailable: billed calls are being refused until the store is reachable"}
+
+
+def _status(lim: dict, day: str) -> dict:
     with budget_store.transaction() as tx:
         spent = tx.usd(SCOPE, day)
         calls = tx.count(SCOPE, day)
