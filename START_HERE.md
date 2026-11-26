@@ -112,6 +112,10 @@ Actual secret values are never committed to this repository. As of this
 writing there is no standardized remote secret manager — see that file's
 `SECRET MANAGER: NOT YET STANDARDIZED` note, which is itself a tracked gap.
 
+## Current focus (Nov 2026): Kraken interview
+
+Read **docs/KRAKEN_PREP_HANDOFF.md** first: what is done, what is next, and the rules (site freeze on 2 Dec, deploy only with the corpus script, no model-cost tests).
+
 ## How is the platform backend deployed? (read before ANY deploy)
 
 Deploy the platform backend ONLY with `./scripts/deploy_platform_with_si_corpus.sh`,

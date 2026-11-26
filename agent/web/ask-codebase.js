@@ -105,6 +105,16 @@ function main() {
       submitQuery(textarea.value);
     });
   });
+
+  // Deep link (2026-11-26): /ask-codebase?q=... fills the box and runs the
+  // search once on load, so a guided tour can link straight to an answer.
+  // Same 300-character cap as typing; retrieval only, no model call.
+  const deepLinked = new URLSearchParams(window.location.search).get("q");
+  if (deepLinked && deepLinked.trim()) {
+    textarea.value = deepLinked.trim().slice(0, 300);
+    charcount.textContent = `${textarea.value.length} / 300`;
+    submitQuery(textarea.value);
+  }
 }
 
 main();
