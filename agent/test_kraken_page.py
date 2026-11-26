@@ -106,6 +106,16 @@ class KrakenPageTestCase(unittest.TestCase):
         self.assertIn('new URLSearchParams(window.location.search).get("q")', js)
         self.assertIn(".slice(0, 300)", js)
 
+    def test_walkthrough_video_is_embedded_and_small(self):
+        media = WEB / "media"
+        video, poster = media / "walkthrough.webm", media / "walkthrough-poster.png"
+        self.assertTrue(video.is_file() and poster.is_file())
+        self.assertLess(video.stat().st_size, 8 * 1024 * 1024, "keep the repo and page light")
+        self.assertIn('src="/media/walkthrough.webm"', HTML)
+        self.assertIn('poster="/media/walkthrough-poster.png"', HTML)
+        self.assertIn('preload="none"', HTML)
+        self.assertLess(HTML.index('class="kr-video"'), HTML.index("The four areas"))
+
     def test_no_forbidden_claims(self):
         for pat, name in FORBIDDEN:
             self.assertIsNone(re.search(pat, HTML), f"forbidden claim: {name}")

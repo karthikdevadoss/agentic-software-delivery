@@ -126,3 +126,9 @@ h2.iv-sec {
 .kr-tour a { font-weight: 600; color: var(--accent); text-decoration: none; }
 .kr-tour a:hover { text-decoration: underline; }
 .kr-tour span { display: block; color: var(--soft); font-size: 0.93rem; }
+
+/* /kraken: recorded walkthrough (2026-11-26). */
+.kr-video { max-width: var(--prose); margin: 1.25rem 0 0.5rem; }
+.kr-video h2 { margin: 0 0 0.6rem; font-size: 1.05rem; color: var(--accent-ink); }
+.kr-video video { display: block; width: 100%; height: auto; border: 1px solid var(--line); border-radius: 10px; background: #0b0f14; }
+.kr-video p { margin: 0.5rem 0 0; color: var(--soft); font-size: 0.9rem; }
