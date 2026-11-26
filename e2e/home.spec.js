@@ -24,7 +24,8 @@ const VIEWPORTS = [
 
 // Automation Sprint 4 (Owner decision): Showcase and Usage out, For Recruiters in.
 // Automation Sprint 14: Interviewer Brief joined. 2026-10-21: Standing Interview left.
-const CANONICAL_NAV = ["Home", "Workbench", "Triage", "Ask Codebase", "For Recruiters", "Interviewer Brief"];
+// 2026-11-26: Evals joined the nav after Ask Codebase.
+const CANONICAL_NAV = ["Home", "Workbench", "Triage", "Ask Codebase", "Evals", "For Recruiters", "Interviewer Brief"];
 
 test.describe("Home page — identity and claims", () => {
   test("the first screen names the person, the role and the separation", async ({ page }) => {

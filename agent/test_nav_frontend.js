@@ -28,13 +28,15 @@ function assertDeepEqual(actual, expected, msg) {
 const NAV_PATH = path.join(__dirname, "web", "nav.js");
 const nav = require(NAV_PATH);
 
-// ---- 1. The canonical set is exactly the 6 intended destinations -----
+// ---- 1. The canonical set is exactly the 7 intended destinations -----
 
 const EXPECTED_DESTINATIONS = [
   { href: "/", label: "Home" },
   { href: "/workbench", label: "Workbench" },
   { href: "/triage", label: "Triage" },
   { href: "/ask-codebase", label: "Ask Codebase" },
+  // 2026-11-26: Evals joined the public nav (Owner go-ahead in session).
+  { href: "/eval", label: "Evals" },
   { href: "/recruiters", label: "For Recruiters" },
   { href: "/interviewer", label: "Interviewer Brief" },
 ];

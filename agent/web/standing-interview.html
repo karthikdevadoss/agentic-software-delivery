@@ -50,6 +50,9 @@
   .si-chips button[disabled] { opacity: 0.5; cursor: default; }
   .si-a, .si-q { max-width: var(--prose); }
   .si-intro { color: var(--muted); font-size: 0.95rem; line-height: 1.55; margin: 0 0 1.5rem; }
+  /* 2026-11-26: say plainly that this is an AI, not the owner speaking. */
+  .si-ai-note { max-width: var(--prose); font-size: 0.9rem; line-height: 1.5; margin: 0 0 1rem;
+    padding: 0.6rem 0.85rem; border: 1px solid currentColor; border-radius: 8px; opacity: 0.85; }
   .si-form { display: flex; gap: 0.6rem; align-items: stretch; margin-bottom: 0.5rem; }
   .si-form input[type=text] {
     flex: 1; padding: 0.7rem 0.85rem; font-size: 1rem; font-family: inherit;
@@ -88,6 +91,12 @@
 
 <div class="si-wrap">
   <h1>Standing Interview</h1>
+
+  <p class="si-ai-note" id="si-ai-note">
+    <strong>This is an AI assistant, not me.</strong> It answers in my voice
+    from my own written notes about my work, and it can be wrong. For anything
+    that matters, ask me directly.
+  </p>
 
   <p class="si-intro">
     Ask an interview question about the backend systems I've worked on, or about
