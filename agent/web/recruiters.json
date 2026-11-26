@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-25T07:06:20Z",
-  "commit_sha": "7982f4e75a83454c6e8b3097aca0588119146ef3",
-  "branch": "indra/kraken-interview-platform-updates-2026-11-25",
+  "generated_at": "2026-11-26T11:17:55Z",
+  "commit_sha": "610d485b1c382eede67f2f0e86497858290520c1",
+  "branch": "fix/platform-ready-2026-11-26",
   "working_tree_dirty": false,
   "postings_accessed": "2026-10-06",
   "postings_note": "Thirteen English-language AI engineering job postings that were listed as open on the access date, in this order: remote first, then Berlin hybrid, Berlin on-site and other German cities. Architect-titled roles based in Germany in the same search all required German; the one architect-titled role here is EU-remote.",
   "postings_total": 13,
   "profile": {
     "name": "Karthikeyan Devadoss",
-    "headline": "AI Engineer – Full Stack",
+    "headline": "Senior AI Platform Engineer",
     "location": "Berlin, Germany",
     "work_mode": "Remote-first",
     "languages": "English (working language); German A1–A2",
@@ -844,12 +844,12 @@
   "quotes_verified": {
     "quotes": 72,
     "against": "posting text captured on 2026-10-06",
-    "source_sha256": "c855402f9f66b83a422f4545af12ebaf27c2f7ef2c51f79beb01f7e52b7f50e4",
-    "carried_from_source_sha256": "14cd40ae4176adab2217ba7d2fb1e3af5291a388438ffa4c2dac55fd6cc43368",
-    "carried_because": "2026-10-21 and 2026-11-25 edits changed profile, evidence links and limit text only; all 72 posting quotes are byte-identical to the verified source"
+    "source_sha256": "764ff99965c1a63cd662fb80551b21ab4e0922cb76c50f3476e3634301becfc8",
+    "carried_from_source_sha256": "c855402f9f66b83a422f4545af12ebaf27c2f7ef2c51f79beb01f7e52b7f50e4",
+    "carried_because": "2026-10-21 and 2026-11-25 edits changed profile, evidence links and limit text only; all 72 posting quotes are byte-identical to the verified source; 2026-11-26 edit changed profile.headline only (checked: source YAML identical apart from that key), so all 72 posting quotes are unchanged"
   },
   "inputs": {
-    "agent/recruiters_source.yaml": "c855402f9f66b83a422f4545af12ebaf27c2f7ef2c51f79beb01f7e52b7f50e4",
+    "agent/recruiters_source.yaml": "764ff99965c1a63cd662fb80551b21ab4e0922cb76c50f3476e3634301becfc8",
     "agent/web/case-study-durable-agent.html": "e6eaf381b8b8936d5f90f6fb2f75d774ea842eb5a226fc609495f320db52c6d7",
     "agent/web/eval-results.json": "f942551d5df9b5a73ff1b088d50cd27dac73ec4cb7f230c5c8fc0a64c96ce374",
     "agent/web/triage-evidence.json": "73a4d9acefb2a5cd7f27f7ca9a39b10a30fca17b2d9dd0ba49a80d54b217c5dd",
