@@ -1,8 +1,8 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-23T13:31:36Z",
-  "commit_sha": "78eb549d7b70bbc6524443edc0bce0d1e2199f1f",
-  "working_tree_dirty": true,
+  "generated_at": "2026-11-26T15:42:55Z",
+  "commit_sha": "31fff3297dbf543e43ae8deaf9e6e7aff3d9a1a8",
+  "working_tree_dirty": false,
   "embedding_model": "local:BAAI/bge-small-en-v1.5",
   "overall_passed": true,
   "eval_inputs": {
@@ -58,8 +58,8 @@
       ],
       "dataset_file": "agent/evals/retrieval_dataset.json",
       "dataset_hash": "3193e6b70c35178f79a4cbb4a2adeb47055ad43e32f9401e526485da8ec9e058",
-      "commit_sha": "78eb549d7b70bbc6524443edc0bce0d1e2199f1f",
-      "run_at": "2026-11-23T13:31:36Z"
+      "commit_sha": "31fff3297dbf543e43ae8deaf9e6e7aff3d9a1a8",
+      "run_at": "2026-11-26T15:42:55Z"
     },
     {
       "key": "routing",
@@ -82,8 +82,8 @@
       ],
       "dataset_file": "agent/evals/routing_dataset.json",
       "dataset_hash": "8a4cf82bcfff0b4a99f9de61c094d4be613fb141037da11d1476f8812d4b39c5",
-      "commit_sha": "78eb549d7b70bbc6524443edc0bce0d1e2199f1f",
-      "run_at": "2026-11-23T13:31:36Z"
+      "commit_sha": "31fff3297dbf543e43ae8deaf9e6e7aff3d9a1a8",
+      "run_at": "2026-11-26T15:42:55Z"
     },
     {
       "key": "security-routing",
@@ -106,8 +106,8 @@
       ],
       "dataset_file": "agent/evals/routing_dataset.json",
       "dataset_hash": "8a4cf82bcfff0b4a99f9de61c094d4be613fb141037da11d1476f8812d4b39c5",
-      "commit_sha": "78eb549d7b70bbc6524443edc0bce0d1e2199f1f",
-      "run_at": "2026-11-23T13:31:36Z"
+      "commit_sha": "31fff3297dbf543e43ae8deaf9e6e7aff3d9a1a8",
+      "run_at": "2026-11-26T15:42:55Z"
     },
     {
       "key": "agent-decision",
@@ -155,8 +155,8 @@
       ],
       "dataset_file": "agent/evals/permission_dataset.json",
       "dataset_hash": "e6bfd2ec00af48fbb962e328334afb62f29618c69bb8e93196569e213c60960e",
-      "commit_sha": "78eb549d7b70bbc6524443edc0bce0d1e2199f1f",
-      "run_at": "2026-11-23T13:31:36Z"
+      "commit_sha": "31fff3297dbf543e43ae8deaf9e6e7aff3d9a1a8",
+      "run_at": "2026-11-26T15:42:55Z"
     },
     {
       "note": "The system grading itself: a deterministic stand-in scorer replaying hand-labelled fixtures (no model, no API key). Not independent QA, and it cannot judge semantics.",
@@ -187,8 +187,8 @@
       ],
       "dataset_file": "agent/evals/self_eval_dataset.json",
       "dataset_hash": "db5996fc86b48fe4a7a860029e562731163880a2950c9c6186ae9b608ef77af6",
-      "commit_sha": "78eb549d7b70bbc6524443edc0bce0d1e2199f1f",
-      "run_at": "2026-11-23T13:31:36Z"
+      "commit_sha": "31fff3297dbf543e43ae8deaf9e6e7aff3d9a1a8",
+      "run_at": "2026-11-26T15:42:55Z"
     }
   ],
   "reproducibility": {
@@ -504,18 +504,18 @@
     "behaviour": "exits 1 (fails the build) if any threshold is not met",
     "runs_on": "every pull request to master and every push to master",
     "observed": {
-      "observed_at": "2026-11-23T12:07:30Z",
+      "observed_at": "2026-11-26T15:42:55Z",
       "branch": "master",
       "latest_run": {
-        "created_at": "2026-10-21T14:20:33Z",
-        "head_sha": "e93881c37f50ac9d4890c4d4861b017233efe667",
+        "created_at": "2026-11-26T13:18:06Z",
+        "head_sha": "087d88e5c102fb292499170e347a8ff5b165beef",
         "eval_step": "success",
         "failed_steps_in_same_job": []
       },
       "runs_since_eval_step_last_passed": 0,
       "last_eval_step_success": {
-        "created_at": "2026-10-21T14:20:33Z",
-        "head_sha": "e93881c37f50ac9d4890c4d4861b017233efe667"
+        "created_at": "2026-11-26T13:18:06Z",
+        "head_sha": "087d88e5c102fb292499170e347a8ff5b165beef"
       },
       "runs_examined": 1
     }
