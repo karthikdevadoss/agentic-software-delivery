@@ -45,6 +45,7 @@ PAGES = (
     "/showcase/senior-java-ai-transformation",
     "/case-study/durable-agent",
     "/interviewer",
+    "/kraken",
     "/recruiters",
     "/healthz",
     "/readyz",

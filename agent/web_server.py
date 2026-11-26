@@ -1836,6 +1836,13 @@ async def recruiters_page(request: Request):
     return FileResponse(str(WEB_DIR / "recruiters.html"))
 
 
+async def kraken_page(request: Request):
+    """Kraken AI Foundations map (2026-11-26, Owner-approved). Unlisted: not in
+    the nav, robots noindex. Quotes are verbatim from the posting captured in
+    agent/fixtures/kraken_ai_foundations_posting_2026-11-26.txt (tested)."""
+    return FileResponse(str(WEB_DIR / "kraken.html"))
+
+
 async def interviewer_page(request: Request):
     """Interviewer Brief: one page for the technical interviewer (post-HR).
     Live proof cards (Workbench, Triage, evals, Ask Codebase, honest gaps,
@@ -2688,6 +2695,7 @@ routes = [
     Route("/eval", eval_page, methods=["GET"]),
     Route("/recruiters", recruiters_page, methods=["GET"]),
     Route("/interviewer", interviewer_page, methods=["GET"]),
+    Route("/kraken", kraken_page, methods=["GET"]),
     Route("/applications", applications_page, methods=["GET"]),
     Route("/applications.json", applications_json, methods=["GET"]),
     Route("/applications_pdf/{name}", applications_pdf, methods=["GET"]),

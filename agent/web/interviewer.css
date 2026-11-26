@@ -97,3 +97,19 @@ h2.iv-sec {
   .iv-proof { grid-template-columns: 1fr; }
   .top-nav { padding: 14px 20px; }
 }
+
+/* /kraken: verbatim posting quotes on each card (2026-11-26). */
+.kr-quote {
+  margin: 0 0 0.75rem;
+  padding: 0.15rem 0 0.15rem 0.75rem;
+  border-left: 3px solid var(--accent);
+  color: var(--soft);
+  font-style: italic;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+/* /kraken: four areas as a 2x2 grid instead of 3+1. Applies only above 900px;
+   narrower screens keep the existing two- and one-column rules. */
+@media (min-width: 901px) {
+  .iv-proof.kr-four { grid-template-columns: repeat(2, 1fr); }
+}
