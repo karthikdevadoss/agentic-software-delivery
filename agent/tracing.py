@@ -65,6 +65,11 @@ def bind_run_id(run_id):
     return _run_id_var.set(run_id)
 
 
+def unbind_run_id(token) -> None:
+    """Undo bind_run_id (pass the token it returned)."""
+    _run_id_var.reset(token)
+
+
 def current_run_id():
     return _run_id_var.get()
 
@@ -107,15 +112,18 @@ def finished_spans() -> list:
 
 def spans_for_run(run_id: str) -> list[dict]:
     out = []
-    for s in finished_spans():
-        if (s.attributes or {}).get("run_id") == run_id:
-            out.append({
-                "name": s.name,
-                "trace_id": format(s.context.trace_id, "032x"),
-                "span_id": format(s.context.span_id, "016x"),
-                "parent_span_id": format(s.parent.span_id, "016x") if s.parent else None,
-                "duration_ms": round((s.end_time - s.start_time) / 1e6, 2),
-                "status": s.status.status_code.name,
-                "attributes": dict(s.attributes),
-            })
+    matched = [s for s in finished_spans() if (s.attributes or {}).get("run_id") == run_id]
+    t0 = min((s.start_time for s in matched), default=0)
+    for s in matched:
+        out.append({
+            # 2026-11-26: offset from the run's first span, for a waterfall view.
+            "start_offset_ms": round((s.start_time - t0) / 1e6, 2),
+            "name": s.name,
+            "trace_id": format(s.context.trace_id, "032x"),
+            "span_id": format(s.context.span_id, "016x"),
+            "parent_span_id": format(s.parent.span_id, "016x") if s.parent else None,
+            "duration_ms": round((s.end_time - s.start_time) / 1e6, 2),
+            "status": s.status.status_code.name,
+            "attributes": dict(s.attributes),
+        })
     return out

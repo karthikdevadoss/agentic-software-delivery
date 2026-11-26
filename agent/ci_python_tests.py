@@ -86,6 +86,7 @@ HERMETIC_MODULES = [
     "test_interviewer_page",  # Sprint 14: /interviewer brief route, nav, proof links, no invented claims
     "test_kraken_page",  # unlisted /kraken AI Foundations map: verbatim quotes, wired links, real source files (2026-11-26)
     "test_public_clarity",  # Evals in nav (removals stay out) + Standing Interview AI label (2026-11-26)
+    "test_ask_trace",  # per-request OTel trace for Ask the Codebase: nested spans, offsets, no raw query (2026-11-26)
     "test_github_knowledge",  # GitHub PR/issue pipeline: incremental embed, deletions, freshness, keep-last-good (2026-11-26)
     "test_injection_eval",  # prompt-injection red team over the real write boundary; goes red when sabotaged (2026-11-26)
     "test_applications_review",  # Sprint 11: /applications gate (no/wrong key 404, right key 200); nav has no Applications
