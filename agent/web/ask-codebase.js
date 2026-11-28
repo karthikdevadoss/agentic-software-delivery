@@ -102,12 +102,12 @@ function renderGithub(data) {
     return;
   }
   hits.forEach((h) => {
-    const card = textEl("div", "ac-evidence-card");
-    const head = textEl("div", "ac-evidence-path");
+    const card = textEl("div", "ac-gh-card");
+    const head = textEl("div", "ac-gh-head");
     const url = String(h.url || "");
     const title = `${h.kind === "issue" ? "Issue" : "PR"} #${h.number}: ${h.title}`;
     if (url.startsWith("https://github.com/")) {
-      const a = textEl("a", "ac-source-link", title);
+      const a = textEl("a", "ac-gh-link", title);
       a.href = url; a.target = "_blank"; a.rel = "noopener";
       head.appendChild(a);
     } else {
