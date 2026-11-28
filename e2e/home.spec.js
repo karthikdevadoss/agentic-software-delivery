@@ -340,3 +340,44 @@ test.describe("Home page — first screen layout", () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
 });
+
+// 2026-11-28: shorter page. The detail is one click away, never removed.
+test.describe("Home page — shorter, nothing lost", () => {
+  test("each evidence card shows a one-line summary and keeps the full text behind How it works", async ({ page }) => {
+    await page.goto("/");
+    const rows = page.locator(".ev .erow");
+    await expect(rows).toHaveCount(6);
+    for (let i = 0; i < 6; i++) {
+      await expect(rows.nth(i).locator(".sum")).toBeVisible();
+      const more = rows.nth(i).locator("details.more");
+      await expect(more.locator("p")).toBeHidden();
+      await more.locator("summary").click();
+      await expect(more.locator("p")).toBeVisible();
+    }
+    await expect(rows.nth(2).locator("details.more p")).toContainText("fails the build if a score drops below its recorded threshold");
+  });
+
+  test("how-it-runs keeps the full paragraph one click away", async ({ page }) => {
+    await page.goto("/");
+    const more = page.locator("#scope details.more");
+    await more.locator("summary").click();
+    await expect(more).toContainText("One model provider, Anthropic Claude");
+  });
+
+  test("the page stays short on a laptop screen", async ({ page }) => {
+    await page.setViewportSize({ width: 1366, height: 768 });
+    await page.goto("/");
+    // was 3984px before this change; leave room for small copy edits
+    expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThan(3300);
+  });
+
+  test("on a phone the explore tiles are a compact two-column grid of titles", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/");
+    const tiles = page.locator(".tiles .tile");
+    await expect(tiles).toHaveCount(5);
+    const a = await tiles.nth(0).boundingBox(), b = await tiles.nth(1).boundingBox();
+    expect(Math.abs(a.y - b.y)).toBeLessThan(2);
+    await expect(tiles.nth(0).locator("b")).toBeVisible();
+  });
+});
