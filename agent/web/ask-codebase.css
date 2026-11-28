@@ -57,7 +57,7 @@
 .ac-status-message { color: var(--muted); font-size: 0.88rem; }
 
 .ac-evidence-list { display: grid; gap: 0.9rem; }
-.ac-evidence-card {
+.ac-evidence-card, .ac-gh-card {
   background: #10131b;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -81,9 +81,9 @@
   padding: 0.1rem 0.45rem;
 }
 
-.ac-evidence-path { font-size: 0.88rem; margin-bottom: 0.55rem; }
-.ac-evidence-path a { color: var(--accent); text-decoration: none; font-weight: 600; }
-.ac-evidence-path a:hover { text-decoration: underline; }
+.ac-evidence-path, .ac-gh-head { font-size: 0.88rem; margin-bottom: 0.55rem; }
+.ac-evidence-path a, .ac-gh-head a { color: var(--accent); text-decoration: none; font-weight: 600; }
+.ac-evidence-path a:hover, .ac-gh-head a:hover { text-decoration: underline; }
 .ac-evidence-lines { color: var(--muted); }
 
 .ac-evidence-excerpt {
