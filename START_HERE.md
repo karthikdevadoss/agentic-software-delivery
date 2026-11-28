@@ -114,7 +114,7 @@ writing there is no standardized remote secret manager — see that file's
 
 ## Current focus (Nov 2026): Kraken interview
 
-Read **docs/KRAKEN_PREP_HANDOFF.md** first: what is done, what is next, and the rules (site freeze on 2 Dec, deploy only with the corpus script, no model-cost tests).
+Read **docs/KRAKEN_PREP_HANDOFF.md** first: what is done, what is next, and the rules (site freeze on 2 Dec, deploy only with the corpus script, no model-cost tests). AI Usage Intelligence (28 Nov): docs/AI_USAGE_INTELLIGENCE.md; restore point branch `stable-pre-ai-usage`.
 
 ## How is the platform backend deployed? (read before ANY deploy)
 

@@ -61,6 +61,20 @@ Live: https://agentic.karthikdevadoss.com (Kraken page: `/kraken`).
    Refresh the committed snapshot any time with `cd agent && python github_knowledge.py`.
    Ideas not built: per-team budget keys; Notion/Slack connectors (need accounts).
 
+7. **AI Usage, Cost & Value Intelligence** (`/ai-usage`, branch `feat/ai-usage-intel`,
+   28 Nov). It shows cost, value and recommendations, with per-number provenance.
+   Metered spend and subscription value are kept apart. Public visitors get
+   fictional demo data only; live data needs the owner token.
+   Docs: `docs/AI_USAGE_INTELLIGENCE.md` (architecture, limits, revert steps) and
+   `docs/AI_USAGE_LEARNING_GUIDE.md` (owner study plan; says AI wrote the code).
+   **Restore point:** branch `stable-pre-ai-usage` = master `c9855e3`, deployed and
+   live-checked 28 Nov before this feature. Tags cannot be pushed from the cloud
+   session, so it is a branch. To revert, deploy that branch with the corpus script.
+   Railway CLI in a cloud session: `RAILWAY_API_TOKEN=proxy-injected-placeholder`
+   (the real token is injected by the environment's network secret).
+   Not built yet: an enriched live gateway sink, automatic outcome capture from CI,
+   provider billing reconciliation, logins/SSO and per-scope budget enforcement.
+
 Avoid before the interview: hosted MCP gateway, Notion/Slack connectors,
 Kubernetes, site-wide restyle.
 
@@ -77,6 +91,8 @@ Kubernetes, site-wide restyle.
 
 - Whether to state openly that the platform was designed by the owner and written
   by Claude Code under his direction.
+- Whether the Claude Code hook should stop storing prompt/tool excerpts by default
+  (privacy finding from the AI Usage gap analysis; the new feature does not read them).
 - Whether Usage or Standing Interview should return to the nav (removed by owner
   decisions on 2026-10-06 and 2026-10-21).
 - The Railway token pasted in chat on 26 Nov should be deleted after the last deploy
