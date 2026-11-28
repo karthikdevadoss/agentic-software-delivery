@@ -29,6 +29,38 @@ test.describe("Ask the Codebase", () => {
     await expect(page.locator(".ac-evidence-card").first()).toBeVisible();
   });
 
+  test("GitHub knowledge panel shows synced pull requests with freshness (2026-11-26)", async ({ page }) => {
+    test.setTimeout(150_000); // first request starts the sync; embedding the snapshot is CPU-bound
+    await page.goto(`/ask-codebase?q=${encodeURIComponent("How are budgets enforced?")}`);
+    const panel = page.locator("#ac-github-panel");
+    await expect(panel.locator(".ac-gh-card").first()).toBeVisible({ timeout: 140_000 });
+    await expect(page.locator("#ac-github-meta")).toContainText("Synced");
+    // The answer's status pill must stay unique on the page (PR badges use .ac-gh-state).
+    await expect(page.locator(".ac-status-pill")).toHaveCount(1);
+    // GitHub cards never reuse the codebase-evidence classes other tests rely on.
+    await expect(panel.locator(".ac-evidence-card, .ac-evidence-path")).toHaveCount(0);
+    const link = panel.locator(".ac-gh-card a").first();
+    await expect(link).toHaveAttribute("href", /^https:\/\/github\.com\//);
+  });
+
+  test("GitHub titles are rendered as text, never as HTML, and only github.com links are followed", async ({ page }) => {
+    await page.route("**/api/ask-github*", (route) => route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: { repo: "x/y", documents: 1, synced_at: new Date().toISOString(), source: "live" },
+        results: [{ kind: "pull request", number: 1, title: '<img src=x onerror="window.__pwned=1">evil',
+                    state: "open", url: "javascript:alert(1)", updated_at: null, indexed_at: null,
+                    score: 0.9, excerpt: "a\nb\n<script>window.__pwned=2</script>body" }],
+      }),
+    }));
+    await page.goto(`/ask-codebase?q=${encodeURIComponent("anything at all")}`);
+    const card = page.locator("#ac-github-panel .ac-gh-card").first();
+    await expect(card).toContainText('<img src=x onerror="window.__pwned=1">evil');
+    await expect(page.locator("#ac-github-panel img")).toHaveCount(0);
+    await expect(card.locator("a")).toHaveCount(0);
+    expect(await page.evaluate(() => window.__pwned)).toBeUndefined();
+  });
+
   test("a real question produces real visible evidence with source links and scores", async ({ page }) => {
     await page.goto("/ask-codebase");
     await page.fill("#ac-query", "How is Redis cache invalidation handled?");

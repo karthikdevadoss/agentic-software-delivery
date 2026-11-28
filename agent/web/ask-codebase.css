@@ -57,7 +57,7 @@
 .ac-status-message { color: var(--muted); font-size: 0.88rem; }
 
 .ac-evidence-list { display: grid; gap: 0.9rem; }
-.ac-evidence-card {
+.ac-evidence-card, .ac-gh-card {
   background: #10131b;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -81,9 +81,9 @@
   padding: 0.1rem 0.45rem;
 }
 
-.ac-evidence-path { font-size: 0.88rem; margin-bottom: 0.55rem; }
-.ac-evidence-path a { color: var(--accent); text-decoration: none; font-weight: 600; }
-.ac-evidence-path a:hover { text-decoration: underline; }
+.ac-evidence-path, .ac-gh-head { font-size: 0.88rem; margin-bottom: 0.55rem; }
+.ac-evidence-path a, .ac-gh-head a { color: var(--accent); text-decoration: none; font-weight: 600; }
+.ac-evidence-path a:hover, .ac-gh-head a:hover { text-decoration: underline; }
 .ac-evidence-lines { color: var(--muted); }
 
 .ac-evidence-excerpt {
@@ -111,3 +111,8 @@
 }
 .ac-how-grid dt:first-child { margin-top: 0; }
 .ac-how-grid dd { margin: 0.25rem 0 0; color: var(--muted); font-size: 0.87rem; line-height: 1.55; }
+
+/* GitHub knowledge panel (2026-11-26). */
+#ac-github-meta { max-width: 70ch; }
+.ac-github-excerpt { color: var(--muted); font-size: 0.86rem; line-height: 1.5; margin: 0.4rem 0 0; }
+.ac-gh-state { display: inline-block; padding: 0.15rem 0.55rem; border-radius: 999px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; }

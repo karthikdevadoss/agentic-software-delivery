@@ -88,7 +88,8 @@ class KrakenPageTestCase(unittest.TestCase):
         compact = _squash(HTML)
         for phrase in ("Kubernetes in production:", "AWS Bedrock, Inspect AI, Ragas:",
                        "not on the public site", "Per-team budgets:", "survive redeploys",
-                       "Notion and Slack connectors are not built"):
+                       "Notion and Slack connectors are not built",
+                       "re-embeds only what changed", "removes deleted items"):
             self.assertIn(phrase, compact)
 
     def test_sixty_second_tour_is_first_and_has_three_free_steps(self):

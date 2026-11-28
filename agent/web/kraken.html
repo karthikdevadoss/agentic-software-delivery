@@ -159,10 +159,13 @@
       <blockquote class="kr-quote">“pipelines that collect knowledge from tools like Notion, Slack and GitHub”</blockquote>
       <p>
         At NRG our production triage retrieves over past tickets and knowledge.
-        Here, retrieval runs over a GitHub repository with access-level filtering.
+        Here, a live GitHub pipeline syncs this repository's pull requests and
+        issues every 30 minutes: it lists everything, re-embeds only what
+        changed, removes deleted items, and shows freshness on every answer.
         Notion and Slack connectors are not built.
       </p>
-      <a class="go2" href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/rag_index.py">Index source →</a>
+      <a class="go" href="/ask-codebase?q=How%20are%20budgets%20enforced%3F">See it answer from pull requests →</a>
+      <a class="go2" href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/github_knowledge.py">Pipeline source →</a>
     </article>
   </section>
 
