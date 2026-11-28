@@ -157,12 +157,14 @@ def daily(events: list[UsageEvent], outcomes: list[Outcome] | None = None) -> li
     done_by_day: dict[str, int] = defaultdict(int)
     for o in outcomes or []:
         d = _day(o.timestamp)
+        if d is None:
+            continue  # undated outcomes count in totals, not on the daily chart
         if o.status == "completed":
             done_by_day[d] += 1
         if o.verified_success:
             ver_by_day[d] += 1
     out = []
-    for d in sorted(set(by_day) | set(done_by_day)):
+    for d in sorted(k for k in set(by_day) | set(done_by_day) if k):
         t = totals(by_day.get(d, []))
         ver = ver_by_day.get(d, 0)
         out.append({"day": d, "requests": t["requests"], "cost_estimated": t["cost_estimated"],

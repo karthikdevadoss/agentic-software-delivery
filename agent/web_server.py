@@ -2164,6 +2164,71 @@ async def ask_codebase_api(request: Request):
     return JSONResponse(result)
 
 
+# --- AI Usage Intelligence (2026-11-28) -------------------------------------
+# Thin wrappers over usage_intel.api (pure, tested without a server). Without
+# the owner token a caller is a demo viewer: demo dataset only, read only.
+from usage_intel import api as usage_api  # noqa: E402
+
+_USAGE_VIEWS = {"overview": usage_api.overview, "breakdown": usage_api.breakdown,
+                "sessions": usage_api.sessions, "recommendations": usage_api.recommendations,
+                "models": usage_api.models, "learning": usage_api.learning_view}
+
+
+def _usage_error(exc):
+    return JSONResponse({"error": exc.message}, status_code=exc.status)
+
+
+async def ai_usage_view(request: Request):
+    fn = _USAGE_VIEWS.get(request.path_params["view"])
+    if fn is None:
+        return JSONResponse({"error": "unknown view"}, status_code=404)
+    principal = usage_api.principal_for(owner_auth.is_owner(request.headers))
+    params = dict(request.query_params)
+    try:
+        return JSONResponse(await run_in_threadpool(fn, principal, params))
+    except usage_api.ApiError as exc:
+        return _usage_error(exc)
+
+
+async def ai_usage_session(request: Request):
+    principal = usage_api.principal_for(owner_auth.is_owner(request.headers))
+    try:
+        return JSONResponse(await run_in_threadpool(usage_api.session_detail, principal,
+                                                    dict(request.query_params), request.path_params["session_id"]))
+    except usage_api.ApiError as exc:
+        return _usage_error(exc)
+
+
+async def ai_usage_meta(request: Request):
+    return JSONResponse(usage_api.meta())
+
+
+async def _ai_usage_write(request: Request, fn):
+    principal = usage_api.principal_for(owner_auth.is_owner(request.headers))
+    try:
+        body = await request.json()
+    except Exception:  # noqa: BLE001
+        return JSONResponse({"error": "body must be JSON"}, status_code=400)
+    if not isinstance(body, dict):
+        return JSONResponse({"error": "body must be a JSON object"}, status_code=400)
+    try:
+        return JSONResponse(await run_in_threadpool(fn, principal, body))
+    except usage_api.ApiError as exc:
+        return _usage_error(exc)
+
+
+async def ai_usage_record_outcome(request: Request):
+    return await _ai_usage_write(request, usage_api.record_outcome)
+
+
+async def ai_usage_record_learning(request: Request):
+    return await _ai_usage_write(request, usage_api.record_learning)
+
+
+async def ai_usage_page(request: Request):
+    return FileResponse(str(WEB_DIR / "ai-usage.html"))
+
+
 # --- GitHub knowledge pipeline (2026-11-26) ---------------------------------
 # Pull requests and issues of this repository, synced into a small index with
 # freshness on every hit (agent/github_knowledge.py). Public data only, no
@@ -2697,6 +2762,11 @@ routes = [
     Route("/api/interview-walkthrough", get_interview_walkthrough_data, methods=["GET"]),
     Route("/api/ask-codebase", ask_codebase_api, methods=["GET"]),
     Route("/api/ask-github", ask_github_api, methods=["GET"]),
+    Route("/api/ai-usage/meta", ai_usage_meta, methods=["GET"]),
+    Route("/api/ai-usage/sessions/{session_id}", ai_usage_session, methods=["GET"]),
+    Route("/api/ai-usage/outcomes", ai_usage_record_outcome, methods=["POST"]),
+    Route("/api/ai-usage/learning-records", ai_usage_record_learning, methods=["POST"]),
+    Route("/api/ai-usage/{view}", ai_usage_view, methods=["GET"]),
     Route("/api/github-knowledge", github_knowledge_status, methods=["GET"]),
     *(
         [
@@ -2756,6 +2826,7 @@ routes = [
     Route("/recruiters", recruiters_page, methods=["GET"]),
     Route("/interviewer", interviewer_page, methods=["GET"]),
     Route("/kraken", kraken_page, methods=["GET"]),
+    Route("/ai-usage", ai_usage_page, methods=["GET"]),
     Route("/applications", applications_page, methods=["GET"]),
     Route("/applications.json", applications_json, methods=["GET"]),
     Route("/applications_pdf/{name}", applications_pdf, methods=["GET"]),

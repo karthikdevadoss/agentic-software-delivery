@@ -88,6 +88,7 @@ HERMETIC_MODULES = [
     "test_public_clarity",  # Evals in nav (removals stay out) + Standing Interview AI label (2026-11-26)
     "test_budget_fail_closed",  # BUDGET_DATABASE_URL unreachable -> every budget caller refuses, nothing crashes (2026-11-26)
     "test_usage_intel_core",  # AI Usage Intelligence: normalization, provenance, pricing (hand-computed), analytics, outcomes (2026-11-28)
+    "test_usage_intel_api",  # /api/ai-usage authorization (public=demo only), validation, legends (2026-11-28)
     "test_usage_intel_features",  # demo isolation, access scopes, learning metrics, recommendations, model comparison (2026-11-28)
     "test_ask_trace",  # per-request OTel trace for Ask the Codebase: nested spans, offsets, no raw query (2026-11-26)
     "test_github_knowledge",  # GitHub PR/issue pipeline: incremental embed, deletions, freshness, keep-last-good (2026-11-26)
