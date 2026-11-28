@@ -33,11 +33,13 @@ test.describe("Ask the Codebase", () => {
     test.setTimeout(150_000); // first request starts the sync; embedding the snapshot is CPU-bound
     await page.goto(`/ask-codebase?q=${encodeURIComponent("How are budgets enforced?")}`);
     const panel = page.locator("#ac-github-panel");
-    await expect(panel.locator(".ac-evidence-card").first()).toBeVisible({ timeout: 140_000 });
+    await expect(panel.locator(".ac-gh-card").first()).toBeVisible({ timeout: 140_000 });
     await expect(page.locator("#ac-github-meta")).toContainText("Synced");
     // The answer's status pill must stay unique on the page (PR badges use .ac-gh-state).
     await expect(page.locator(".ac-status-pill")).toHaveCount(1);
-    const link = panel.locator(".ac-evidence-card a").first();
+    // GitHub cards never reuse the codebase-evidence classes other tests rely on.
+    await expect(panel.locator(".ac-evidence-card, .ac-evidence-path")).toHaveCount(0);
+    const link = panel.locator(".ac-gh-card a").first();
     await expect(link).toHaveAttribute("href", /^https:\/\/github\.com\//);
   });
 
@@ -64,7 +66,7 @@ test.describe("Ask the Codebase", () => {
       }),
     }));
     await page.goto(`/ask-codebase?q=${encodeURIComponent("anything at all")}`);
-    const card = page.locator("#ac-github-panel .ac-evidence-card").first();
+    const card = page.locator("#ac-github-panel .ac-gh-card").first();
     await expect(card).toContainText('<img src=x onerror="window.__pwned=1">evil');
     await expect(page.locator("#ac-github-panel img")).toHaveCount(0);
     await expect(card.locator("a")).toHaveCount(0);
