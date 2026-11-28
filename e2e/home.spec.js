@@ -301,3 +301,42 @@ test.describe("Layout, accessibility and browser quality", () => {
     await ctx.close();
   });
 });
+
+// 2026-11-28: two-column hero. The right half of a wide first screen was empty
+// and the only primary action sat at the very bottom of the page.
+test.describe("Home page — first screen layout", () => {
+  test("on a laptop screen the primary action and the start-here guide are above the fold", async ({ page }) => {
+    await page.setViewportSize({ width: 1366, height: 768 });
+    await page.goto("/");
+    const btn = page.locator(".actions .btn");
+    await expect(btn).toHaveText("View the Workbench");
+    await expect(btn).toHaveAttribute("href", "/workbench");
+    expect((await btn.boundingBox()).y + (await btn.boundingBox()).height).toBeLessThan(768);
+    const start = page.locator("aside.start");
+    const box = await start.boundingBox();
+    expect(box.y).toBeLessThan(768);
+    // it sits to the right of the text, using the previously empty half
+    const h1 = await page.locator("h1").boundingBox();
+    expect(box.x).toBeGreaterThan(h1.x + 500);
+  });
+
+  test("every start-here step goes to a page that loads", async ({ page, request }) => {
+    await page.goto("/");
+    const links = page.locator("aside.start ol li > a");
+    await expect(links).toHaveCount(4);
+    for (let i = 0; i < 4; i++) {
+      const href = await links.nth(i).getAttribute("href");
+      const r = await request.get(href.split("#")[0]);
+      expect(r.status(), href).toBe(200);
+    }
+  });
+
+  test("on a phone the hero stacks with no horizontal scroll", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/");
+    const main = await page.locator(".hero-main").boundingBox();
+    const start = await page.locator("aside.start").boundingBox();
+    expect(start.y).toBeGreaterThan(main.y + main.height - 1);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  });
+});

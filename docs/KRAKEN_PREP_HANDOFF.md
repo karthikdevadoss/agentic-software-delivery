@@ -75,6 +75,13 @@ Live: https://agentic.karthikdevadoss.com (Kraken page: `/kraken`).
    Not built yet: an enriched live gateway sink, automatic outcome capture from CI,
    provider billing reconciliation, logins/SSO and per-scope budget enforcement.
 
+8. **Home page hero** (28 Nov): two columns on wide screens. On the right is a
+   "Start here" guide with 4 steps; on the left, "View the Workbench" and the GitHub
+   and LinkedIn links sit above the fold. Colours and type are unchanged.
+   **Restore point:** branch `stable-pre-home-redesign` = `2e37a28`. Not built yet,
+   from the same review: a shorter page, a generic (non-Kraken) visual on Home, and
+   a one-row mobile nav.
+
 Avoid before the interview: hosted MCP gateway, Notion/Slack connectors,
 Kubernetes, site-wide restyle.
 
