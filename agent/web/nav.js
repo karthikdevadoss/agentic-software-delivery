@@ -48,6 +48,9 @@ const CANONICAL_NAV_DESTINATIONS = [
   // the strongest proof of measured AI quality and was never removed by a
   // decision; Usage, Showcase and Standing Interview stay out (decisions above/below).
   { href: "/eval", label: "Evals" },
+  // 2026-11-28 (Owner-approved AI Usage Intelligence feature): the cost/value
+  // dashboard joins the public nav. Public visitors see fictional demo data only.
+  { href: "/ai-usage", label: "AI Usage" },
   // Automation Sprint 4 (Owner decision, 2026-10-06): Showcase and Usage
   // left the public nav (both routes stay reachable by direct link), and
   // "For Recruiters" joined it -- the one page built from what real job

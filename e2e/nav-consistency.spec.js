@@ -18,7 +18,7 @@ const { test, expect } = require("@playwright/test");
 // Recruiters joined. The pages stay in PAGES below: reachable directly, and
 // still rendering the same nav as everything else.
 // 2026-11-26: Evals joined the nav.
-const CANONICAL_LABELS = ["Home", "Workbench", "Triage", "Ask Codebase", "Evals", "For Recruiters", "Interviewer Brief"];
+const CANONICAL_LABELS = ["Home", "Workbench", "Triage", "Ask Codebase", "Evals", "AI Usage", "For Recruiters", "Interviewer Brief"];
 const REMOVED_LABELS = ["Showcase", "Usage"];
 
 // Sprint 14: Learn left public navigation entirely (Owner decision), so the
@@ -39,6 +39,7 @@ const PAGES = [
   "/recruiters",
   "/interviewer",
   "/eval",
+  "/ai-usage",
 ];
 
 async function visibleNavLabels(page) {

@@ -27,6 +27,9 @@ effective on a specific past date instead.
 # Each (provider, model) maps to a list of dated entries, OLDEST FIRST.
 # Never mutate an existing entry once it has ever been used to calculate a
 # real cost — append a new one instead.
+_ANTHROPIC_SRC = "https://platform.claude.com/docs/en/about-claude/pricing (official, accessed 2026-11-28)"
+_OPENAI_SRC = "https://developers.openai.com/api/docs/pricing (official, standard tier, <=272K context, accessed 2026-11-28)"
+
 _PRICING_HISTORY: dict[tuple[str, str], list[dict]] = {
     ("anthropic", "claude-sonnet-5"): [
         {
@@ -37,6 +40,88 @@ _PRICING_HISTORY: dict[tuple[str, str], list[dict]] = {
             "output": 10.00 / 1_000_000,
             "cache_write": 2.50 / 1_000_000,
             "cache_read": 0.20 / 1_000_000,
+        },
+    ],
+    # 2026-11-28: further models for AI Usage Intelligence. Verified verbatim
+    # against the official pages that day (docs/AI_USAGE_SOURCES.md).
+    ("anthropic", "claude-opus-5-5"): [
+        {
+            "effective_date": "2026-11-28",
+            "version": "anthropic-2026-11-28-v1",
+            "source": _ANTHROPIC_SRC,
+            "input": 4.00 / 1_000_000,
+            "output": 20.00 / 1_000_000,
+            "cache_write": 5.00 / 1_000_000,
+            "cache_write_1h": 8.00 / 1_000_000,
+            "cache_read": 0.20 / 1_000_000,
+        },
+    ],
+    ("anthropic", "claude-sonnet-5-5"): [
+        {
+            "effective_date": "2026-11-28",
+            "version": "anthropic-2026-11-28-v1",
+            "source": _ANTHROPIC_SRC,
+            "input": 2.00 / 1_000_000,
+            "output": 10.00 / 1_000_000,
+            "cache_write": 2.50 / 1_000_000,
+            "cache_write_1h": 4.00 / 1_000_000,
+            "cache_read": 0.10 / 1_000_000,
+        },
+    ],
+    ("anthropic", "claude-haiku-5-5"): [
+        {
+            "effective_date": "2026-11-28",
+            "version": "anthropic-2026-11-28-v1",
+            "source": _ANTHROPIC_SRC,
+            "input": 0.10 / 1_000_000,
+            "output": 0.50 / 1_000_000,
+            "cache_write": 0.125 / 1_000_000,
+            "cache_write_1h": 0.20 / 1_000_000,
+            "cache_read": 0.01 / 1_000_000,
+            # Prompts over 100,000 tokens (counting cache reads and writes) use these rates.
+            "long_context_threshold": 100_000,
+            "long_context": {"input": 0.50 / 1_000_000, "output": 2.50 / 1_000_000,
+                             "cache_write": 0.625 / 1_000_000, "cache_write_1h": 1.00 / 1_000_000,
+                             "cache_read": 0.05 / 1_000_000},
+        },
+    ],
+    ("openai", "gpt-6.2-sol"): [
+        {
+            "effective_date": "2026-11-28",
+            "version": "openai-2026-11-28-v1",
+            "source": _OPENAI_SRC,
+            "input": 2.00 / 1_000_000,
+            "output": 10.00 / 1_000_000,
+            "cache_read": 0.10 / 1_000_000,
+            # No separate cache-write rate in the standard table; cache writes
+            # are priced at the input rate (labelled in the cost method).
+            "cache_write": 2.00 / 1_000_000,
+        },
+    ],
+    ("openai", "gpt-6-luna"): [
+        {
+            "effective_date": "2026-11-28",
+            "version": "openai-2026-11-28-v1",
+            "source": _OPENAI_SRC,
+            "input": 0.10 / 1_000_000,
+            "output": 0.50 / 1_000_000,
+            "cache_read": 0.01 / 1_000_000,
+            # No separate cache-write rate in the standard table; cache writes
+            # are priced at the input rate (labelled in the cost method).
+            "cache_write": 0.10 / 1_000_000,
+        },
+    ],
+    ("openai", "gpt-5.4-mini"): [
+        {
+            "effective_date": "2026-11-28",
+            "version": "openai-2026-11-28-v1",
+            "source": _OPENAI_SRC,
+            "input": 0.75 / 1_000_000,
+            "output": 4.50 / 1_000_000,
+            "cache_read": 0.075 / 1_000_000,
+            # No separate cache-write rate in the standard table; cache writes
+            # are priced at the input rate (labelled in the cost method).
+            "cache_write": 0.75 / 1_000_000,
         },
     ],
 }

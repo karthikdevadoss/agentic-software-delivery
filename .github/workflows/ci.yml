@@ -244,7 +244,7 @@ jobs:
           EVENT_LEDGER_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ledger_ci
           # Budget store on Postgres (2026-11-26): a missing DB fails, never skips.
           BUDGET_REQUIRE_DB: '1'
-        run: python -m unittest -v test_knowledge_candidates test_claude_code_hook test_workflow_checkpointer test_budget_store_postgres
+        run: python -m unittest -v test_knowledge_candidates test_claude_code_hook test_workflow_checkpointer test_budget_store_postgres test_usage_intel_store
 
   k8s-manifests:
     name: Kubernetes manifests (kubeconform, static validation only -- no cluster, no deploy)

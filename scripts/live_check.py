@@ -46,6 +46,7 @@ PAGES = (
     "/case-study/durable-agent",
     "/interviewer",
     "/kraken",
+    "/ai-usage",
     "/recruiters",
     "/healthz",
     "/readyz",

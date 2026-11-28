@@ -1,0 +1,57 @@
+/* AI Usage Intelligence (2026-11-28). Builds on style.css tokens. */
+.au-banner { margin: 0 0 var(--s4); padding: var(--s3) var(--s4); border-radius: var(--radius);
+  border: 1px solid var(--amber); background: rgba(230, 180, 80, 0.08); color: var(--text); line-height: 1.5; }
+.au-banner.live { border-color: var(--green); background: rgba(62, 207, 142, 0.08); }
+.au-banner:empty { display: none; }
+.au-row[hidden], .au-row label[hidden] { display: none; }
+.au-row { display: flex; flex-wrap: wrap; gap: var(--s3) var(--s4); align-items: flex-end; }
+.au-row label { display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem; color: var(--muted); }
+.au-row select, .au-row input { background: var(--bg); color: var(--text); border: 1px solid var(--border);
+  border-radius: 8px; padding: 6px 8px; font: inherit; font-size: 0.9rem; min-width: 8rem; }
+.au-row button { background: var(--accent-soft); color: var(--text); border: 1px solid var(--accent);
+  border-radius: 8px; padding: 7px 12px; font: inherit; cursor: pointer; }
+.au-owner { margin-top: var(--s3); }
+.au-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: var(--s3); }
+.au-tile { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: var(--s3) var(--s4); }
+.au-tile .t-label { font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.au-tile .t-value { font-size: 1.55rem; font-weight: 700; margin: 4px 0 2px; font-variant-numeric: tabular-nums; }
+.au-tile .t-note { font-size: 0.76rem; color: var(--muted); line-height: 1.4; }
+.au-chip { display: inline-block; font-size: 0.7rem; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--border);
+  color: var(--muted); margin-left: 4px; vertical-align: middle; white-space: nowrap; }
+.au-charts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s4) var(--s5, 28px); }
+.au-chart { margin: 0; }
+.au-chart figcaption { font-size: 0.85rem; color: var(--text); margin-bottom: var(--s2); }
+.au-chart svg { width: 100%; height: 150px; display: block; }
+.au-chart .bar { fill: var(--accent); }
+.au-chart .bar:hover { fill: #8db4ff; }
+.au-chart .axis { stroke: var(--border); stroke-width: 1; }
+.au-chart .ax-label { fill: var(--muted); font-size: 10px; }
+.au-tip { position: fixed; pointer-events: none; z-index: 50; background: var(--panel); color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px; padding: 6px 9px; font-size: 0.8rem; box-shadow: 0 6px 18px rgba(0,0,0,.35); }
+.au-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; font-variant-numeric: tabular-nums; }
+.au-table th, .au-table td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.au-table th { color: var(--muted); font-weight: 600; font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.03em; }
+.au-table td.num, .au-table th.num { text-align: right; }
+.au-table tr.clickable { cursor: pointer; }
+.au-table tr.clickable:hover td { background: var(--panel-hover); }
+.au-scroll { overflow-x: auto; }
+.au-share { display: inline-block; height: 6px; border-radius: 3px; background: var(--accent); vertical-align: middle; margin-right: 6px; }
+.au-recs { display: grid; gap: var(--s3); }
+.au-rec { min-width: 0; overflow-wrap: anywhere; border: 1px solid var(--border); border-radius: 10px; padding: var(--s3) var(--s4); background: var(--bg); }
+.au-rec h3 { margin: 0 0 6px; font-size: 1rem; }
+.au-rec dl { display: grid; grid-template-columns: 9.5rem minmax(0, 1fr); gap: 4px 12px; margin: 6px 0 0; font-size: 0.85rem; }
+.au-rec dt { color: var(--muted); }
+.au-rec dd { margin: 0; line-height: 1.45; }
+.au-detail { margin-top: var(--s4); border: 1px solid var(--accent); border-radius: 10px; padding: var(--s4); }
+.au-kv { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: var(--s2) var(--s4); margin: var(--s2) 0 var(--s3); }
+.au-kv div { font-size: 0.85rem; }
+.au-kv span { display: block; color: var(--muted); font-size: 0.75rem; }
+.au-suggest { margin: 6px 0 var(--s4); font-size: 0.86rem; }
+.au-table-toggle summary { cursor: pointer; color: var(--accent); margin-top: var(--s3); font-size: 0.88rem; }
+@media (max-width: 760px) { .au-charts { grid-template-columns: 1fr; } }
+@media (max-width: 560px) {
+  .au-row label { flex: 1 1 45%; }
+  .au-row select, .au-row input { min-width: 0; width: 100%; }
+  .au-rec dl { grid-template-columns: 1fr; }
+}
+#au-status { margin: var(--s3) 0 0; }

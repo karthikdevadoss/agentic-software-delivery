@@ -117,3 +117,56 @@ CREATE TABLE IF NOT EXISTS workflow_checkpoint_writes (
 );
 CREATE INDEX IF NOT EXISTS workflow_checkpoints_thread_latest
     ON workflow_checkpoints (thread_id, checkpoint_ns, checkpoint_id DESC);
+
+-- ---------------------------------------------------------------------------
+-- AI Usage Intelligence (2026-11-28). Additive only: new tables, no change to
+-- delivery_events. Usage itself stays in delivery_events (model_usage rows);
+-- these hold what usage alone cannot say: outcomes, learning evidence and an
+-- audit trail of data entry and policy changes. Metadata only: no prompts,
+-- responses or source code are stored here.
+CREATE TABLE IF NOT EXISTS usage_outcomes (
+    outcome_id            TEXT PRIMARY KEY,
+    task_id               TEXT NOT NULL,
+    outcome_type          TEXT NOT NULL,
+    status                TEXT NOT NULL,
+    evidence              TEXT NOT NULL,
+    recorded_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
+    org_id                TEXT, team_id TEXT, user_id TEXT, project_id TEXT, workflow_id TEXT,
+    activity_category     TEXT,
+    difficulty            TEXT,
+    attempts              INTEGER,
+    corrections           INTEGER,
+    human_review_minutes  DOUBLE PRECISION,
+    time_saved_minutes    DOUBLE PRECISION,
+    time_saved_source     TEXT,
+    feedback              TEXT,
+    recorded_by           TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_usage_outcomes_task ON usage_outcomes (task_id);
+CREATE INDEX IF NOT EXISTS idx_usage_outcomes_org_time ON usage_outcomes (org_id, recorded_at);
+
+CREATE TABLE IF NOT EXISTS learning_records (
+    record_id     TEXT PRIMARY KEY,
+    session_id    TEXT NOT NULL,
+    section       TEXT NOT NULL,
+    concept       TEXT NOT NULL,
+    event         TEXT NOT NULL,
+    recorded_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    user_id       TEXT,
+    correct       BOOLEAN,
+    attempt       INTEGER,
+    evidence      TEXT,
+    minutes       DOUBLE PRECISION,
+    source        TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_learning_records_user_time ON learning_records (user_id, recorded_at);
+
+CREATE TABLE IF NOT EXISTS usage_audit_log (
+    audit_id      TEXT PRIMARY KEY,
+    at            TIMESTAMPTZ NOT NULL DEFAULT now(),
+    actor         TEXT NOT NULL,
+    action        TEXT NOT NULL,
+    target        TEXT,
+    detail        JSONB
+);
+CREATE INDEX IF NOT EXISTS idx_usage_audit_log_at ON usage_audit_log (at);

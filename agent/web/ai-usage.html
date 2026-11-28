@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agentic Software Delivery — AI Usage Intelligence</title>
+<meta name="description" content="AI usage, cost and value: what AI activity costs, what it achieved, and where to improve. Every number shows how it was measured.">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/dashboard.css">
+<link rel="stylesheet" href="/ai-usage.css">
+</head>
+<body data-surface="ai-usage">
+
+<header>
+  <h1>Agentic Software Delivery <span class="sub">— AI Usage Intelligence</span></h1>
+  <p class="tagline">What AI activity costs, what it achieved, and where to improve. The goal is more verified value per dollar, not fewer tokens. Every number says how it was measured; unknown values are shown as unknown, never as zero.</p>
+  <p class="fold-actions"><a href="#methodology">How numbers are measured ↓</a> <a href="/eval">Evals →</a> <a href="/usage">Platform usage →</a></p>
+  <nav class="top-nav" id="top-nav"></nav>
+</header>
+
+<main id="au-main">
+  <div class="au-banner" id="au-banner" role="note"></div>
+
+  <section class="panel au-controls" aria-label="Filters">
+    <div class="au-row">
+      <label>Data
+        <select id="f-dataset">
+          <option value="demo">Demo (fictional)</option>
+          <option value="live">Live (owner only)</option>
+        </select>
+      </label>
+      <label>Period
+        <select id="f-range">
+          <option value="today">Today</option>
+          <option value="yesterday">Yesterday</option>
+          <option value="7d">Last 7 days</option>
+          <option value="30d" selected>Last 30 days</option>
+          <option value="month">This month</option>
+          <option value="custom">Custom…</option>
+        </select>
+      </label>
+      <label class="au-custom" hidden>From <input type="date" id="f-start"></label>
+      <label class="au-custom" hidden>To <input type="date" id="f-end"></label>
+      <label>Team <select id="f-team_id"><option value="">All</option></select></label>
+      <label>Person <select id="f-user_id"><option value="">All</option></select></label>
+      <label>Project <select id="f-project_id"><option value="">All</option></select></label>
+      <label>Model <select id="f-model"><option value="">All</option></select></label>
+      <label>Activity <select id="f-activity_category"><option value="">All</option></select></label>
+    </div>
+    <div class="au-row au-owner" id="au-owner" hidden>
+      <label>Owner token <input type="password" id="f-token" autocomplete="off" placeholder="kept in this tab only"></label>
+      <button type="button" id="f-token-apply">Use token</button>
+      <span class="hint">Sent only as a request header to this site; stored in this browser tab's session storage, never in a URL.</span>
+    </div>
+    <p class="hint" id="au-status" aria-live="polite">Loading…</p>
+  </section>
+
+  <section class="panel" aria-labelledby="h-exec">
+    <h2 id="h-exec">Executive overview</h2>
+    <div class="au-tiles" id="au-tiles"></div>
+    <div id="au-billing"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-trends">
+    <h2 id="h-trends">Trends</h2>
+    <div class="au-charts">
+      <figure class="au-chart"><figcaption>List-price cost per day, all usage (USD)</figcaption><div id="ch-cost"></div></figure>
+      <figure class="au-chart"><figcaption>Verified successful tasks per day</figcaption><div id="ch-verified"></div></figure>
+      <figure class="au-chart"><figcaption>Requests per day</figcaption><div id="ch-requests"></div></figure>
+      <figure class="au-chart"><figcaption>Cost per verified success, per day (USD)</figcaption><div id="ch-cpv"></div></figure>
+    </div>
+    <details class="au-table-toggle"><summary>Show the numbers behind these charts</summary><div id="au-daily-table"></div></details>
+  </section>
+
+  <section class="panel" aria-labelledby="h-break">
+    <h2 id="h-break">Where the cost goes</h2>
+    <div class="au-row"><label>Break down by
+      <select id="f-by">
+        <option value="model">Model</option><option value="provider">Provider</option>
+        <option value="activity_category">Activity</option><option value="user_id">Person</option>
+        <option value="team_id">Team</option><option value="project_id">Project</option>
+        <option value="workflow_id">Workflow</option><option value="agent_id">Agent</option>
+        <option value="feature">Application feature</option><option value="session_id">Session</option>
+        <option value="task_id">Task</option><option value="billing_category">Billing category</option>
+      </select></label></div>
+    <div id="au-breakdown"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-value">
+    <h2 id="h-value">Value and outcomes</h2>
+    <p class="hint">Only objective checks (tests, assertions, assessments) and human approvals count as verified. Estimates and an AI's own judgement are shown, never counted as verified.</p>
+    <div id="au-value"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-recs">
+    <h2 id="h-recs">Recommendations</h2>
+    <p class="hint" id="au-recs-note"></p>
+    <div id="au-recs"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-models">
+    <h2 id="h-models">Model comparison by activity</h2>
+    <div id="au-models"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-sessions">
+    <h2 id="h-sessions">Sessions</h2>
+    <p class="hint">Most expensive first. Select a session to see which requests drove its cost.</p>
+    <div id="au-sessions"></div>
+    <div id="au-session-detail" class="au-detail" hidden></div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-learn">
+    <h2 id="h-learn">AI learning efficiency</h2>
+    <p class="hint">A concept counts as verified only after a correct assessment or a reviewed exercise, never because an explanation was generated.</p>
+    <div id="au-learning"></div>
+  </section>
+
+  <section class="panel" id="methodology" aria-labelledby="h-method">
+    <h2 id="h-method">How the numbers are measured</h2>
+    <div id="au-method"></div>
+  </section>
+</main>
+
+<div class="au-tip" id="au-tip" role="tooltip" hidden></div>
+<script src="/nav.js"></script>
+<script src="/ai-usage.js"></script>
+</body>
+</html>
