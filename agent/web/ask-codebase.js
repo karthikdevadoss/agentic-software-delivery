@@ -114,7 +114,9 @@ function renderGithub(data) {
       head.appendChild(textEl("span", "", title));
     }
     const state = String(h.state || "").toLowerCase();
-    const pill = textEl("span", "ac-status-pill " + (state === "merged" ? "ac-status-strong" : "ac-status-weak"), state.toUpperCase());
+    // Own class (not .ac-status-pill): the page's single answer-status pill
+    // stays unique, so nothing that reads "the status" picks up a PR badge.
+    const pill = textEl("span", "ac-gh-state " + (state === "merged" ? "ac-status-strong" : "ac-status-weak"), state.toUpperCase());
     pill.style.marginLeft = "0.6rem";
     head.appendChild(pill);
     card.appendChild(head);

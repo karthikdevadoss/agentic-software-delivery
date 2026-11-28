@@ -126,3 +126,4 @@
 .ac-trace-ms { text-align: right; font-size: 0.82rem; color: var(--muted); font-variant-numeric: tabular-nums; }
 .ac-trace-attrs { grid-column: 1 / -1; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.74rem; color: var(--muted); margin-top: -0.25rem; overflow-wrap: anywhere; }
 @media (max-width: 560px) { .ac-trace-row { grid-template-columns: 1fr 4.5rem; } .ac-trace-track { grid-column: 1 / -1; grid-row: 2; } }
+.ac-gh-state { display: inline-block; padding: 0.15rem 0.55rem; border-radius: 999px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; }
