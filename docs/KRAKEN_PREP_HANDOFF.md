@@ -79,8 +79,8 @@ Live: https://agentic.karthikdevadoss.com (Kraken page: `/kraken`).
    "Start here" guide with 4 steps; on the left, "View the Workbench" and the GitHub
    and LinkedIn links sit above the fold. Colours and type are unchanged.
    **Restore point:** branch `stable-pre-home-redesign` = `2e37a28`. Not built yet,
-   from the same review: a shorter page, a generic (non-Kraken) visual on Home, and
-   a one-row mobile nav.
+   from the same review: a generic (non-Kraken) visual on Home and
+   a one-row mobile nav. Shorter page done 28 Nov (restore point `stable-pre-home-shorten`).
 
 Avoid before the interview: hosted MCP gateway, Notion/Slack connectors,
 Kubernetes, site-wide restyle.
