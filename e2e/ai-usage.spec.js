@@ -41,6 +41,22 @@ test.describe("AI Usage Intelligence", () => {
     await page.selectOption("#f-dataset", "live");
     await expect(page.locator("#au-status")).toContainText("Could not load");
     await expect(page.locator("#au-owner")).toBeVisible();
+    await expect(page.locator("#au-tiles .au-tile")).toHaveCount(0);
+  });
+
+  test("a slow demo response cannot overwrite a later Live selection", async ({ page }) => {
+    // Found on production 2026-11-28: the first (demo) load landed after the switch to Live.
+    let delayed = false;
+    await page.route("**/api/ai-usage/overview?dataset=demo*", async (route) => {
+      if (!delayed) { delayed = true; await new Promise((r) => setTimeout(r, 2500)); }
+      await route.continue();
+    });
+    await page.goto("/ai-usage");
+    await page.selectOption("#f-dataset", "live");
+    await expect(page.locator("#au-status")).toContainText("Could not load");
+    await page.waitForTimeout(3500); // let the delayed demo response arrive
+    await expect(page.locator("#au-status")).toContainText("Could not load");
+    await expect(page.locator("#au-tiles .au-tile")).toHaveCount(0);
   });
 
   test("no horizontal overflow on a phone", async ({ page }) => {
