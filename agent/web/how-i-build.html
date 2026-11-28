@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How I build with AI coding agents — Karthikeyan Devadoss</title>
+<meta name="description" content="How this platform is built with an AI coding agent: the rules it works under, the checks that catch its mistakes, real defects those checks caught, and what the agent's own work costs.">
+<link rel="stylesheet" href="/interviewer.css">
+<style>
+  .hb-rules { counter-reset: rule; list-style: none; padding: 0; margin: 0; }
+  .hb-rules li { counter-increment: rule; position: relative; padding-left: 2.2rem; margin-bottom: 1rem; }
+  .hb-rules li::before { content: counter(rule); position: absolute; left: 0; top: .1rem; width: 1.5rem; height: 1.5rem;
+                         border-radius: 50%; background: #1f4d3d; color: #fff; font-size: .8rem; font-weight: 700;
+                         display: flex; align-items: center; justify-content: center; }
+  .hb-rules b { display: block; }
+  .hb-caught { width: 100%; border-collapse: collapse; font-size: .95rem; }
+  .hb-caught th, .hb-caught td { text-align: left; vertical-align: top; padding: .6rem .5rem; border-bottom: 1px solid #dcdfe3; }
+  .hb-caught th { font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; color: #545a62; }
+  .hb-scroll { overflow-x: auto; }
+</style>
+</head>
+<body data-surface="how-i-build">
+<div class="navwrap"><nav class="top-nav" id="top-nav" aria-label="Main"></nav></div>
+
+<main class="iv-shell">
+  <p class="iv-eyebrow">How this platform is built</p>
+  <h1>How I build with AI coding agents</h1>
+  <p class="iv-lede">
+    Most of the code on this platform is written by Claude Code, an AI coding
+    agent, working under my direction. I decide what gets built and in what
+    order, I set the rules the agent must work under, and no change is accepted
+    until it has been proven, not just claimed. This page shows those rules, the
+    checks behind them, real mistakes they caught, and what the agent's own work
+    costs.
+  </p>
+  <p class="iv-note">
+    The rules below are the project's working instructions, kept in the
+    repository and loaded by the agent at the start of every session. Each
+    claim links to the file or pull request where you can check it.
+  </p>
+  <p class="iv-links">
+    <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/CLAUDE.md">The agent's working rules (CLAUDE.md)</a>
+    <a href="https://github.com/karthikdevadoss/agentic-software-delivery/pulls?q=is%3Apr+is%3Aclosed">All pull requests</a>
+    <a href="/">Home</a>
+  </p>
+
+  <h2 class="iv-sec">The rules the agent works under</h2>
+  <section class="iv-card">
+    <ol class="hb-rules">
+      <li><b>A new test counts only after it has been seen failing.</b>
+        Each new test is run against broken code first, either the old code or a deliberately broken copy. A test that has only ever passed proves nothing.</li>
+      <li><b>Skipped is not passed.</b>
+        Every report states pass, fail and skip counts. A risky change whose required checks could not run is reported as unverified, never as done.</li>
+      <li><b>Never code against a remembered API.</b>
+        Before using a library call the project has not used before, the agent looks up the real signature in the installed package. Models confidently invent function names; this rule stops that reaching the code.</li>
+      <li><b>The builder never signs off its own work.</b>
+        For security-relevant or large changes, a separate reviewer agent checks the result against the original requirement. It can read files and run tests, but it cannot edit anything.
+        <a class="go2" href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/.claude/agents/qa-evaluator.md">The reviewer's definition (no write tools) →</a></li>
+      <li><b>Numbers are computed, never judged.</b>
+        Any rule stated as a number, such as a test threshold or a cost, is decided by a script's real output. The agent may explain the result; it may not make up the verdict.</li>
+      <li><b>Agents that can write work in their own copy.</b>
+        A sub-agent allowed to edit files works in an isolated git worktree, so it cannot collide with the main session's changes.</li>
+      <li><b>Done means live and checked.</b>
+        Work counts as done only after it is merged, deployed and checked on the real site. HTTP 200 alone is not proof; the change must be visible.</li>
+    </ol>
+  </section>
+
+  <h2 class="iv-sec">What the checks actually caught</h2>
+  <section class="iv-card">
+    <p>Real examples from November 2026. In each case the agent's first version looked finished and passed its own tests.</p>
+    <div class="hb-scroll">
+    <table class="hb-caught">
+      <thead><tr><th>Caught by</th><th>What was wrong</th><th>Outcome</th></tr></thead>
+      <tbody>
+        <tr><td>Independent reviewer agent</td>
+            <td>On the AI Usage dashboard, the "record an outcome" endpoint accepted a user and organisation sent by the browser, so a record could be filed under someone else's name.</td>
+            <td>Server now assigns them; 4 new tests seen failing first. <a href="https://github.com/karthikdevadoss/agentic-software-delivery/pull/76">Pull request 76</a></td></tr>
+        <tr><td>Browser tests run against the live site</td>
+            <td>If a visitor switched to Live data before the demo data finished loading, the late demo response overwrote the screen, showing demo numbers under a Live label.</td>
+            <td>Only the newest request may draw; a test delays the response on purpose to prove it. <a href="https://github.com/karthikdevadoss/agentic-software-delivery/pull/77">Pull request 77</a></td></tr>
+        <tr><td>Dead-link gate</td>
+            <td>A new deep link with a <code>?q=</code> question was rejected. The easy fix was to loosen the gate.</td>
+            <td>Instead the gate now checks the path and also proves the target page reads the parameter, and both checks were broken on purpose to show they fail. <a href="https://github.com/karthikdevadoss/agentic-software-delivery/pull/79">Pull request 79</a></td></tr>
+        <tr><td>Hand-checked money fixtures</td>
+            <td>Cost figures are tested against sums worked out by hand from published prices. Where the hand sum and the code disagreed, both were re-checked against the price sheet before either was changed.</td>
+            <td>Long-context pricing tier confirmed in code and fixtures. <a href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/test_usage_intel_core.py">Cost tests</a></td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <h2 class="iv-sec">What the agent's work costs</h2>
+  <section class="iv-proof">
+    <article class="iv-card">
+      <h3>Every session is metered</h3>
+      <p>A hook records each Claude Code session's real token usage, read from the session's own transcript, into the same event ledger as the platform's runtime calls. It is valued at API list price and labelled as subscription usage, never mixed with money actually spent.</p>
+      <a class="go2" href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/claude_code_hook.py">The hook →</a>
+      <a class="go2" href="/ai-usage">The AI Usage dashboard (demo data for visitors) →</a>
+    </article>
+    <article class="iv-card">
+      <h3>The incident that made this matter</h3>
+      <p>In September 2026 a €40 pay-as-you-go API credit ran out in under 7 minutes. A very long session was re-sending its whole history on every turn while running without pauses. Rebuilding that from the session's own transcripts also exposed two defects in the cost telemetry, which were fixed.</p>
+      <a class="go2" href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/interview-scenarios/13-agentic-ai-cost-economics-and-observability-failure.md">The full write-up →</a>
+    </article>
+  </section>
+
+  <h2 class="iv-sec">Honest limits</h2>
+  <section class="iv-proof" aria-label="Limits">
+    <article class="iv-card iv-gaps">
+      <h3>What this process does not solve</h3>
+      <p>
+        <strong>Same-family review:</strong> the reviewer agent is the same kind of model as the builder. It reliably catches skipped checks and unproven claims, but it can share the builder's blind spots on subtle logic. My own review is the independent check.
+        <strong>Explaining the code:</strong> I direct and review the work rather than typing it, so I hold myself to explaining any part of it from the code itself, not from memory.
+      </p>
+    </article>
+  </section>
+
+  <p class="iv-footer">
+    Berlin, Germany. This site sets no cookies and uses no analytics or third-party trackers.
+  </p>
+</main>
+
+<script src="/nav.js"></script>
+</body>
+</html>

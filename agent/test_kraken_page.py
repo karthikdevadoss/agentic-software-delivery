@@ -65,7 +65,7 @@ class KrakenPageTestCase(unittest.TestCase):
 
     def test_quotes_are_verbatim_from_the_posting(self):
         quotes = re.findall(r'<blockquote class="kr-quote">“(.*?)”</blockquote>', HTML, re.S)
-        self.assertEqual(len(quotes), 7, quotes)
+        self.assertEqual(len(quotes), 8, quotes)  # 4 areas, 3 squads, AI coding tools (2026-11-28)
         posting = _squash(POSTING)
         for q in quotes:
             self.assertIn(_squash(html.unescape(q)), posting, f"not verbatim: {q!r}")
@@ -93,14 +93,14 @@ class KrakenPageTestCase(unittest.TestCase):
                        "OpenTelemetry trace as a"):
             self.assertIn(phrase, compact)
 
-    def test_sixty_second_tour_is_first_and_has_three_free_steps(self):
+    def test_sixty_second_tour_is_first_and_has_four_free_steps(self):
         self.assertIn('id="tour"', HTML)
         self.assertLess(HTML.index('id="tour"'), HTML.index("The four areas"))
         tour = HTML.split('id="tour"', 1)[1].split("</section>", 1)[0]
         links = re.findall(r'<li>\s*<a href="([^"]+)"', tour)
         self.assertEqual(links[0].split("?")[0], "/ask-codebase")
         self.assertIn("?q=", links[0])
-        self.assertEqual(links[1:], ["/workbench#verified-run-panel", "/eval"])
+        self.assertEqual(links[1:], ["/workbench#verified-run-panel", "/eval", "/ai-usage"])  # 2026-11-28: AI Usage step (demo data, no model call)
         self.assertIn("no model call", tour)
 
     def test_ask_codebase_supports_the_deep_link(self):

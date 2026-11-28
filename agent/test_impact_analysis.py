@@ -166,6 +166,7 @@ FRONTEND_PATH_TO_SPECS = {
     "agent/web/usage.html": ["e2e/usage.spec.js", _UI_STANDARDS],
     "agent/web/usage.js": ["e2e/usage.spec.js", _UI_STANDARDS],
     "agent/web/ai-usage.html": ["e2e/ai-usage.spec.js", _UI_STANDARDS],
+    "agent/web/how-i-build.html": ["e2e/how-i-build.spec.js", _UI_STANDARDS],
     "agent/web/ai-usage.js": ["e2e/ai-usage.spec.js", _UI_STANDARDS],
     "agent/web/ai-usage.css": ["e2e/ai-usage.spec.js", _UI_STANDARDS],
     # Automation Sprint 3: the /recruiters page (not in the nav). Its data file
