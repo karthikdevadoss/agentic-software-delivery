@@ -35,6 +35,8 @@ test.describe("Ask the Codebase", () => {
     const panel = page.locator("#ac-github-panel");
     await expect(panel.locator(".ac-evidence-card").first()).toBeVisible({ timeout: 140_000 });
     await expect(page.locator("#ac-github-meta")).toContainText("Synced");
+    // The answer's status pill must stay unique on the page (PR badges use .ac-gh-state).
+    await expect(page.locator(".ac-status-pill")).toHaveCount(1);
     const link = panel.locator(".ac-evidence-card a").first();
     await expect(link).toHaveAttribute("href", /^https:\/\/github\.com\//);
   });

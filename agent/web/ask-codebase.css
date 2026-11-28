@@ -115,3 +115,4 @@
 /* GitHub knowledge panel (2026-11-26). */
 #ac-github-meta { max-width: 70ch; }
 .ac-github-excerpt { color: var(--muted); font-size: 0.86rem; line-height: 1.5; margin: 0.4rem 0 0; }
+.ac-gh-state { display: inline-block; padding: 0.15rem 0.55rem; border-radius: 999px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; }
