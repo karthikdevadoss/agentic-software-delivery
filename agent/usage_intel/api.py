@@ -71,7 +71,8 @@ def load(principal: access.Principal, dataset: str, live_loader=None) -> dict:
         label = data["label"]
     return {"events": access.scope(principal, data["events"]),
             "outcomes": access.scope(principal, data["outcomes"]),
-            "learning": data["learning"] if (dataset == "demo" or principal.role == "owner") else [],
+            "learning": [r for r in data["learning"] if (r.source == "demo") == (dataset == "demo")]
+                        if (dataset == "demo" or principal.role == "owner") else [],
             "budgets": data.get("budgets", []), "label": label, "dataset": dataset}
 
 
@@ -123,8 +124,8 @@ def overview(principal, params, live_loader=None) -> dict:
         month_events = analytics.filter_events(data["events"], start=_today().replace(day=1).isoformat(),
                                                end=_today().isoformat())
         # Budgets count metered API spend only; subscription usage is not money spent per call.
-        spent = analytics.totals(month_events)["spend_estimated"] or 0.0
-        budget = {**org_budget, "spent": round(spent, 6)}
+        spent = analytics.totals(month_events)["spend_estimated"]
+        budget = {**org_budget, "spent": round(spent, 6) if spent is not None else None}
     return _envelope(data, start, end, {
         "overview": analytics.overview(events, outcomes, budget),
         "daily": analytics.daily(events, outcomes),
@@ -196,11 +197,27 @@ def record_outcome(principal, body: dict, saver=None) -> dict:
         raise ApiError(400, f"evidence must be one of {[e.value for e in Evidence]}")
     if body.get("time_saved_minutes") is not None and body.get("time_saved_source") not in ("measured", "estimated"):
         raise ApiError(400, "time_saved_minutes needs time_saved_source: measured or estimated")
-    allowed = {f for f in Outcome.__dataclass_fields__} - {"outcome_id", "dataset", "timestamp"}
+    # Who/where is assigned by the server (the authenticated principal), never the client.
+    server_set = {"outcome_id", "dataset", "timestamp", "org_id", "team_id", "user_id"}
+    allowed = {f for f in Outcome.__dataclass_fields__} - server_set
     extra = set(body) - allowed
     if extra:
-        raise ApiError(400, f"unknown fields: {sorted(extra)}")
-    o = Outcome(outcome_id="oc_" + uuid.uuid4().hex[:20], **body)
+        raise ApiError(400, f"unknown or server-assigned fields: {sorted(extra)}")
+    for k in ("attempts", "corrections"):
+        v = body.get(k)
+        if v is not None and (not isinstance(v, int) or isinstance(v, bool) or v < 0):
+            raise ApiError(400, f"{k} must be a non-negative integer")
+    for k in ("human_review_minutes", "time_saved_minutes"):
+        v = body.get(k)
+        if v is not None and (not isinstance(v, (int, float)) or isinstance(v, bool) or v < 0):
+            raise ApiError(400, f"{k} must be a non-negative number")
+    for k in allowed - {"attempts", "corrections", "human_review_minutes", "time_saved_minutes"}:
+        v = body.get(k)
+        if v is not None and (not isinstance(v, str) or len(v) > (280 if k == "feedback" else 120)):
+            raise ApiError(400, f"{k} must be a short string")
+    from .store import OWNER_ORG, OWNER_TEAM, OWNER_USER
+    o = Outcome(outcome_id="oc_" + uuid.uuid4().hex[:20], org_id=OWNER_ORG, team_id=OWNER_TEAM,
+                user_id=OWNER_USER, **body)
     (saver or _save_outcome)(o, "owner")
     return {"recorded": o.to_dict()}
 

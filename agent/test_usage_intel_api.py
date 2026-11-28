@@ -110,6 +110,38 @@ class ApiTests(unittest.TestCase):
         self.assertAlmostEqual(o["budget"]["spent"], round(t["spend_estimated"], 6))
         self.assertLess(o["budget"]["spent"], t["cost_estimated"])
 
+    def test_outcome_attribution_is_server_assigned(self):
+        # QA finding 2026-11-28: a client-set user_id/org_id/team_id was accepted.
+        for field in ("user_id", "org_id", "team_id"):
+            with self.assertRaises(api.ApiError) as cm:
+                api.record_outcome(OWNER, {"task_id": "t", "outcome_type": "x", "status": "completed",
+                                           "evidence": "human", field: "mallory"}, saver=lambda o, a: None)
+            self.assertEqual(cm.exception.status, 400)
+        saved = []
+        api.record_outcome(OWNER, {"task_id": "t", "outcome_type": "x", "status": "completed", "evidence": "human"},
+                           saver=lambda o, a: saved.append(o))
+        self.assertEqual((saved[0].user_id, saved[0].org_id), ("owner", "org_platform_owner"))
+
+    def test_outcome_types_checked(self):
+        for extra in ({"attempts": "abc"}, {"attempts": -1}, {"attempts": True}, {"human_review_minutes": "5"},
+                      {"feedback": "x" * 281}, {"project_id": 7}):
+            with self.assertRaises(api.ApiError) as cm:
+                api.record_outcome(OWNER, {"task_id": "t", "outcome_type": "x", "status": "completed",
+                                           "evidence": "human", **extra}, saver=lambda o, a: None)
+            self.assertEqual(cm.exception.status, 400, extra)
+
+    def test_live_learning_never_contains_demo_records(self):
+        demo_data = api._demo_for(api._today().isoformat())
+        leaked = api.load(OWNER, "live", live_loader=lambda: {**demo_data, "budgets": []})
+        self.assertEqual(leaked["learning"], [])
+        self.assertTrue(api.load(PUBLIC, "demo")["learning"])
+
+    def test_unknown_budget_spend_is_not_zero(self):
+        from usage_intel import analytics
+        o = analytics.overview([], [], {"scope": "org", "limit": 100.0, "spent": None})
+        self.assertIsNone(o["budget"]["consumed_ratio"])
+        self.assertIsNone(o["budget"]["remaining"])
+
 
 if __name__ == "__main__":
     unittest.main()

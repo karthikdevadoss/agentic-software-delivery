@@ -252,8 +252,9 @@ def overview(events: list[UsageEvent], outcomes: list[Outcome] | None = None,
     out["avg_cost_per_task"] = val["cost_per_task"]
     out["cost_per_verified_success"] = val["cost_per_verified_success"]
     if budget:
-        spent = budget.get("spent") or 0.0
+        spent = budget.get("spent")  # None = unknown, never treated as 0
         limit = budget.get("limit")
-        out["budget"] = {**budget, "consumed_ratio": round(spent / limit, 4) if limit else None,
-                         "remaining": round(max(limit - spent, 0), 6) if limit is not None else None}
+        known = spent is not None and limit is not None
+        out["budget"] = {**budget, "consumed_ratio": round(spent / limit, 4) if (known and limit) else None,
+                         "remaining": round(max(limit - spent, 0), 6) if known else None}
     return out
