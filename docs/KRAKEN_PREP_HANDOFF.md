@@ -61,7 +61,7 @@ Live: https://agentic.karthikdevadoss.com (Kraken page: `/kraken`).
    Refresh the committed snapshot any time with `cd agent && python github_knowledge.py`.
    Ideas not built: per-team budget keys; Notion/Slack connectors (need accounts).
 
-7. **AI Usage, Cost & Value Intelligence** (`/ai-usage`, branch `feat/ai-usage-intel`,
+7. **AI Usage, Cost & Value Intelligence** (`/ai-usage`, #76 + race fix #77, merged and live
    28 Nov). It shows cost, value and recommendations, with per-number provenance.
    Metered spend and subscription value are kept apart. Public visitors get
    fictional demo data only; live data needs the owner token.
