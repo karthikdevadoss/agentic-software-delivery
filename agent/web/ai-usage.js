@@ -432,13 +432,22 @@ function renderMethod(data) {
 }
 
 // --- orchestration -------------------------------------------------------------------
+// Each load gets a number; only the newest may draw. Without this a slow demo
+// response could land after the user switched to Live and show demo numbers
+// under a Live selection.
+let loadSeq = 0;
+const SECTIONS = ["au-tiles", "au-billing", "ch-cost", "ch-verified", "ch-requests", "ch-cpv", "au-daily-table",
+  "au-breakdown", "au-value", "au-recs", "au-models", "au-sessions", "au-learning"];
+
 async function load() {
+  const mine = ++loadSeq;
   const status = $("au-status");
   status.textContent = "Loading…";
   try {
     const [ov, br, recs, models, sess, learn] = await Promise.all([
       api("overview"), api("breakdown", { by: $("f-by").value }), api("recommendations"),
       api("models"), api("sessions"), api("learning")]);
+    if (mine !== loadSeq) return;
     renderBanner(ov);
     fillFilters(ov.filters_available);
     renderOverview(ov);
@@ -453,6 +462,11 @@ async function load() {
     const w = ov.window;
     status.textContent = `${ov.dataset === "demo" ? "Demo data" : "Live data"} · ${w.start || "all time"} to ${w.end || "today"}`;
   } catch (e) {
+    if (mine !== loadSeq) return;
+    // Never leave the previous dataset's numbers on screen under a failed selection.
+    SECTIONS.forEach((id) => { $(id).textContent = ""; });
+    $("au-session-detail").hidden = true;
+    lastDaily = null;
     status.textContent = `Could not load: ${e.message}`;
     if ($("f-dataset").value === "live") $("au-banner").textContent = "Live data needs the owner token. The demo dataset is open to everyone.";
   }
