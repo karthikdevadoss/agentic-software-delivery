@@ -103,7 +103,7 @@ requirements:
       clera: "Develop evaluations for multi-turn workflows so agent quality and reliability can be measured."
       cortea: "build the evaluation and observability foundation for production-grade LLM agents"
     evidence:
-      - {label: "Eval dashboard: six suites, run history and reproducibility hash", url: "/eval", metrics: eval}
+      - {label: "Eval dashboard: seven suites, run history and reproducibility hash", url: "/eval", metrics: eval}
       - {label: "Eval runner and thresholds", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/eval_runner.py"}
       - {label: "Hand-labelled retrieval questions", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/evals/retrieval_dataset.json"}
       - {label: "Permission retrieval eval set (zero-leak threshold)", url: "https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/evals/permission_dataset.json"}
