@@ -122,7 +122,8 @@ def overview(principal, params, live_loader=None) -> dict:
     if org_budget:
         month_events = analytics.filter_events(data["events"], start=_today().replace(day=1).isoformat(),
                                                end=_today().isoformat())
-        spent = analytics.totals(month_events)["cost_estimated"] or 0.0
+        # Budgets count metered API spend only; subscription usage is not money spent per call.
+        spent = analytics.totals(month_events)["spend_estimated"] or 0.0
         budget = {**org_budget, "spent": round(spent, 6)}
     return _envelope(data, start, end, {
         "overview": analytics.overview(events, outcomes, budget),

@@ -60,14 +60,14 @@ function barChart(container, rows, key, fmt) {
   const vals = rows.map((r) => r[key]);
   const known = vals.filter((v) => v !== null && v !== undefined);
   if (!known.length) { container.appendChild(el("p", "hint", "No data in this period.")); return; }
-  const W = 600, H = 150, padL = 4, padB = 18, gap = 2;
+  // viewBox = rendered size, so text and bars are never stretched.
+  const W = Math.max(Math.round(container.clientWidth) || 600, 200), H = 150, padL = 4, padB = 18, gap = 2;
   const max = Math.max(...known, 0) || 1;
   const n = rows.length;
   const bw = Math.max((W - padL) / n - gap, 1);
   const ns = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(ns, "svg");
   svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
-  svg.setAttribute("preserveAspectRatio", "none");
   svg.setAttribute("role", "img");
   svg.setAttribute("aria-label", `${container.previousElementSibling ? container.previousElementSibling.textContent : "chart"}: ${n} days, maximum ${fmt(max)}`);
   const base = document.createElementNS(ns, "line");
@@ -179,7 +179,10 @@ function renderOverview(data) {
   const t = $("au-tiles");
   t.textContent = "";
   const costChip = data.dataset === "demo" ? "demo" : "list-price estimate";
-  t.appendChild(tile("Estimated API cost", usd(o.cost_estimated), o.cost_coverage, costChip));
+  t.appendChild(tile("Metered API spend", usd(o.spend_estimated), `estimate; ${o.spend_estimated_coverage}`, costChip));
+  t.appendChild(tile("Subscription usage at API prices", usd(o.equivalent_api_value),
+    `not money spent; ${o.equivalent_api_value_coverage}`, "equivalent value"));
+  t.appendChild(tile("List-price cost, all usage", usd(o.cost_estimated), `basis for cost per outcome; ${o.cost_coverage}`));
   t.appendChild(tile("Provider-reported cost", usd(o.cost_reported), `${o.cost_reported_coverage} calls`, "billing data not connected"));
   t.appendChild(tile("Requests", num(o.requests), `${num(o.successful_requests)} successful`));
   t.appendChild(tile("Input tokens", num(o.input_tokens), `uncached; ${o.input_tokens_coverage} reported`));
@@ -210,11 +213,23 @@ function renderOverview(data) {
   ], data.by_billing_category));
 }
 
-function renderTrends(daily) {
+let lastDaily = null;
+let resizeTimer = null;
+window.addEventListener("resize", () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => { if (lastDaily) renderCharts(lastDaily); }, 150);
+});
+
+function renderCharts(daily) {
+  lastDaily = daily;
   barChart($("ch-cost"), daily, "cost_estimated", (v) => `$${v.toFixed(2)}`);
   barChart($("ch-verified"), daily, "verified_successes", (v) => `${v}`);
   barChart($("ch-requests"), daily, "requests", (v) => `${v}`);
   barChart($("ch-cpv"), daily, "cost_per_verified_success", (v) => `$${v.toFixed(4)}`);
+}
+
+function renderTrends(daily) {
+  renderCharts(daily);
   const box = $("au-daily-table");
   box.textContent = "";
   box.appendChild(table([

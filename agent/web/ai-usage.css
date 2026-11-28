@@ -3,6 +3,7 @@
   border: 1px solid var(--amber); background: rgba(230, 180, 80, 0.08); color: var(--text); line-height: 1.5; }
 .au-banner.live { border-color: var(--green); background: rgba(62, 207, 142, 0.08); }
 .au-banner:empty { display: none; }
+.au-row[hidden], .au-row label[hidden] { display: none; }
 .au-row { display: flex; flex-wrap: wrap; gap: var(--s3) var(--s4); align-items: flex-end; }
 .au-row label { display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem; color: var(--muted); }
 .au-row select, .au-row input { background: var(--bg); color: var(--text); border: 1px solid var(--border);
@@ -17,7 +18,7 @@
 .au-tile .t-note { font-size: 0.76rem; color: var(--muted); line-height: 1.4; }
 .au-chip { display: inline-block; font-size: 0.7rem; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--border);
   color: var(--muted); margin-left: 4px; vertical-align: middle; white-space: nowrap; }
-.au-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--s4); }
+.au-charts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s4) var(--s5, 28px); }
 .au-chart { margin: 0; }
 .au-chart figcaption { font-size: 0.85rem; color: var(--text); margin-bottom: var(--s2); }
 .au-chart svg { width: 100%; height: 150px; display: block; }
@@ -47,8 +48,10 @@
 .au-kv span { display: block; color: var(--muted); font-size: 0.75rem; }
 .au-suggest { margin: 6px 0 var(--s4); font-size: 0.86rem; }
 .au-table-toggle summary { cursor: pointer; color: var(--accent); margin-top: var(--s3); font-size: 0.88rem; }
+@media (max-width: 760px) { .au-charts { grid-template-columns: 1fr; } }
 @media (max-width: 560px) {
   .au-row label { flex: 1 1 45%; }
   .au-row select, .au-row input { min-width: 0; width: 100%; }
   .au-rec dl { grid-template-columns: 1fr; }
 }
+#au-status { margin: var(--s3) 0 0; }

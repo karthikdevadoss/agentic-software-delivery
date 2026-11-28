@@ -21,6 +21,10 @@ Scenarios:
   learning         AI-assisted learning sessions (see learning.py)
   agent_retries    an invoice-dispute agent with excessive retries in the
                    first half of the period, fixed in the second half
+  subscription     a developer's coding-assistant SUBSCRIPTION sessions: shown
+                   as equivalent API value (what the tokens would cost at list
+                   price), never added to metered API spend or budgets. It has
+                   its own random stream so the other scenarios are unchanged.
 """
 from __future__ import annotations
 
@@ -47,7 +51,7 @@ def _ts(day: date, minute: int) -> str:
 
 def _call(rng, *, day, minute, n, model, provider, user, project, feature, category, session, task,
           workflow=None, agent=None, inp, out, cache_read=0, attempt=1, success=True, tools=None,
-          parent=None, components=None, error=None):
+          parent=None, components=None, error=None, billing="metered_api"):
     ev = UsageEvent(event_id=make_event_id(provider, f"demo-{n}", attempt), timestamp=_ts(day, minute),
                     request_id=f"demo-{n}", provider=provider, requested_model=model, response_model=model,
                     org_id=ORG, team_id=USER_TEAM.get(user), user_id=user, project_id=project, feature=feature,
@@ -55,7 +59,8 @@ def _call(rng, *, day, minute, n, model, provider, user, project, feature, categ
                     workflow_id=workflow, agent_id=agent, parent_event_id=parent, attempt=attempt,
                     is_retry=attempt > 1, input_tokens=inp, output_tokens=out, cache_read_tokens=cache_read,
                     cache_write_tokens=0, duration_ms=round(rng.uniform(600, 2600) + out * 6, 1),
-                    tool_calls=tools, success=success, error_category=error, dataset="demo")
+                    tool_calls=tools, success=success, error_category=error, dataset="demo",
+                    billing_category=billing)
     ev.provenance = {f: Source.DEMO.value for f in ("input_tokens", "output_tokens", "cache_read_tokens",
                                                     "cache_write_tokens", "duration_ms", "tool_calls")}
     ev.provenance["reasoning_tokens"] = Source.UNAVAILABLE.value
@@ -69,6 +74,7 @@ def build(today: date | None = None, days: int = 30) -> dict:
     `days` ending on `today` (default: today, so date filters behave)."""
     today = today or datetime.now(timezone.utc).date()
     rng = random.Random(20261128)
+    sub_rng = random.Random(20261129)
     events, outcomes, learning = [], [], []
     n = 0
 
@@ -183,6 +189,18 @@ def build(today: date | None = None, days: int = 30) -> dict:
                                                    timestamp=_ts(day, 700), user_id="ivo",
                                                    correct=rng.random() < 0.8, evidence="assessment",
                                                    minutes=1.5, source="demo"))
+
+        # --- subscription coding assistant (equivalent API value, not spend) ----------------
+        if day.weekday() < 5:
+            sess = f"sub-{day.isoformat()}-hana"
+            for c in range(sub_rng.randint(3, 8)):
+                n += 1
+                events.append(_call(sub_rng, day=day, minute=480 + c * 6, n=n, model="claude-opus-5-5",
+                                    provider="anthropic", user="hana", project="customer-portal",
+                                    feature="coding-assistant-subscription", category="code_generation",
+                                    session=sess, task=None, inp=sub_rng.randint(2000, 9000),
+                                    out=sub_rng.randint(300, 1800), cache_read=sub_rng.randint(20000, 90000),
+                                    tools=sub_rng.randint(1, 6), billing="equivalent_api_value"))
 
     budgets = [
         {"scope": "org", "scope_id": ORG, "period": "month", "limit": 400.0, "currency": "USD",

@@ -99,6 +99,17 @@ class ApiTests(unittest.TestCase):
                                                       "event": "introduced", "source": "platform"}]},
                                 saver=lambda recs, a: 0)
 
+    def test_budget_counts_metered_spend_only(self):
+        from usage_intel import analytics
+        r = api.overview(PUBLIC, {"dataset": "demo", "range": "month"})
+        o = r["overview"]
+        self.assertGreater(o["equivalent_api_value"], 0)  # demo has subscription usage
+        month = analytics.filter_events(api._demo_for(api._today().isoformat())["events"],
+                                        start=api._today().replace(day=1).isoformat(), end=api._today().isoformat())
+        t = analytics.totals(month)
+        self.assertAlmostEqual(o["budget"]["spent"], round(t["spend_estimated"], 6))
+        self.assertLess(o["budget"]["spent"], t["cost_estimated"])
+
 
 if __name__ == "__main__":
     unittest.main()

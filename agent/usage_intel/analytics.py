@@ -96,6 +96,14 @@ def totals(events: list[UsageEvent]) -> dict:
     cost, k = _sum_known(e.cost_estimated for e in calls)
     out["cost_estimated"] = round(cost, 6) if cost is not None else None
     out["cost_coverage"] = f"{k} of {n} calls priced"
+    # Money actually at stake vs. list-price value of subscription usage: never
+    # added together as "spend". cost_estimated above is the list-price cost of
+    # ALL usage (used for cost-per-outcome); these two split it by how it is paid.
+    for name, cat in (("spend_estimated", "metered_api"), ("equivalent_api_value", "equivalent_api_value")):
+        group = [e for e in calls if e.billing_category == cat]
+        v, kv = _sum_known(e.cost_estimated for e in group)
+        out[name] = round(v, 6) if v is not None else (0.0 if not group else None)
+        out[name + "_coverage"] = f"{kv} of {len(group)} calls priced"
     rep, kr = _sum_known(e.cost_reported for e in calls)
     out["cost_reported"] = round(rep, 6) if rep is not None else None
     out["cost_reported_coverage"] = f"{kr} of {n}"

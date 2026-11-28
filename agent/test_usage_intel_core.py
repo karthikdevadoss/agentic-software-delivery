@@ -226,3 +226,27 @@ class OutcomeTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BillingSplitTests(unittest.TestCase):
+    """Metered spend and subscription equivalent value are reported apart (2026-11-28)."""
+
+    def test_split_hand_computed(self):
+        from usage_intel import analytics
+        evs = [UsageEvent(event_id="m1", timestamp="2026-11-20T10:00:00Z", provider="anthropic", requested_model="x", input_tokens=1, output_tokens=1,
+                          cost_estimated=0.30, billing_category="metered_api"),
+               UsageEvent(event_id="m2", timestamp="2026-11-20T10:00:00Z", provider="anthropic", requested_model="x", input_tokens=1, output_tokens=1,
+                          cost_estimated=0.20, billing_category="metered_api"),
+               UsageEvent(event_id="s1", timestamp="2026-11-20T10:00:00Z", provider="anthropic", requested_model="x", input_tokens=1, output_tokens=1,
+                          cost_estimated=1.50, billing_category="equivalent_api_value")]
+        t = analytics.totals(evs)
+        self.assertAlmostEqual(t["cost_estimated"], 2.00)        # list-price cost of all usage
+        self.assertAlmostEqual(t["spend_estimated"], 0.50)       # 0.30 + 0.20 metered only
+        self.assertAlmostEqual(t["equivalent_api_value"], 1.50)  # subscription, not spend
+        self.assertEqual(t["spend_estimated_coverage"], "2 of 2 calls priced")
+
+    def test_no_subscription_usage_is_zero_not_unknown(self):
+        from usage_intel import analytics
+        t = analytics.totals([UsageEvent(event_id="m", timestamp="2026-11-20T10:00:00Z", provider="anthropic", requested_model="x", cost_estimated=0.1)])
+        self.assertEqual(t["equivalent_api_value"], 0.0)
+        self.assertEqual(t["equivalent_api_value_coverage"], "0 of 0 calls priced")
