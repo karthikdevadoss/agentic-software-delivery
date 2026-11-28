@@ -1,5 +1,5 @@
 // AI Usage Intelligence page (2026-11-28). Renders /api/ai-usage/*.
-// All data is written with textContent (never innerHTML). Unknown values are
+// All data is written with textContent, never parsed as markup. Unknown values are
 // shown as "unknown", never as 0.
 
 const $ = (id) => document.getElementById(id);
