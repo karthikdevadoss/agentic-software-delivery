@@ -82,6 +82,24 @@
   .sep { font-size: 15px; color: var(--soft); border-left: 3px solid var(--line);
          padding: 6px 0 6px 14px; margin: 0 0 8px; max-width: 62ch; }
 
+  /* 2026-11-28: two-column hero (stacks below 980px). */
+  .hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 400px); gap: 56px;
+          align-items: start; }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin: 4px 0 24px; }
+  .actions .lnk { font-size: 15.5px; font-weight: 600; text-decoration: none; }
+  .actions .lnk:hover { text-decoration: underline; }
+  .start { background: var(--card); border: 1px solid var(--line); border-top: 3px solid var(--accent);
+           padding: 22px 24px 8px; margin-top: 8px; }
+  .start h2 { font-size: 17px; line-height: 1.3; margin: 0 0 14px; font-weight: 650; letter-spacing: -.01em; }
+  .start ol { margin: 0; padding: 0; list-style: none; counter-reset: step; }
+  .start li { counter-increment: step; position: relative; padding: 0 0 16px 38px; max-width: none; }
+  .start li::before { content: counter(step); position: absolute; left: 0; top: 1px; width: 24px; height: 24px;
+                      border-radius: 50%; background: var(--accent); color: #fff; font-size: 13px; font-weight: 700;
+                      display: flex; align-items: center; justify-content: center; }
+  .start a { font-weight: 640; font-size: 15.5px; text-decoration: none; }
+  .start a:hover { text-decoration: underline; }
+  .start span { display: block; color: var(--soft); font-size: 14.5px; line-height: 1.5; margin-top: 2px; }
+
   /* proof cards */
   .proof { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin: 40px 0 0; }
   .pcard { background: var(--card); border: 1px solid var(--line); padding: 22px 20px;
@@ -150,6 +168,10 @@
   @media (max-width: 1100px) {
     .tiles { grid-template-columns: repeat(3, 1fr); }
   }
+  @media (max-width: 980px) {
+    .hero { grid-template-columns: 1fr; gap: 28px; }
+    .start { max-width: 640px; }
+  }
   @media (max-width: 820px) {
     .proof { grid-template-columns: 1fr; }
     .tiles { grid-template-columns: 1fr 1fr; }
@@ -159,7 +181,7 @@
     header { padding-top: 34px; }
     .tiles { grid-template-columns: 1fr; }
     .erow { grid-template-columns: 1fr; gap: 8px; }
-    .bottom .btn { flex: 1 1 100%; text-align: center; }
+    .bottom .btn, .actions .btn { flex: 1 1 100%; text-align: center; }
   }
 </style>
 </head>
@@ -169,12 +191,44 @@
 
 <div class="wrap">
 
-  <header>
-    <h1>Karthikeyan Devadoss</h1>
-    <p class="role">Senior AI Platform Engineer</p>
-    <p class="lede">I build AI agents end to end: Java and Python backends, the web front end, retrieval, evaluation, and the controls that keep a person in charge of every change. The platform on this site is one I designed, built and run in production.</p>
-    <p class="meta"><b>Berlin, Germany</b> · English</p>
-    <p class="sep">Since March 2022 I have worked for NRG Energy through Remote, my employer; NRG is the client. Since early 2026 I have been one of a handful of engineers in the initial core AI team at NRG, and since January 2026 I have led AI adoption in my area, cutting routine work time by about 20%. The AI platform shown here is my own system, separate from NRG.</p>
+  <!-- 2026-11-28: two-column hero. On wide screens the right half of the first
+       screen was empty; it now holds a guided "start here" path, and the
+       primary action sits above the fold instead of only at the very bottom.
+       Text, colours and type are unchanged. -->
+  <header class="hero">
+    <div class="hero-main">
+      <h1>Karthikeyan Devadoss</h1>
+      <p class="role">Senior AI Platform Engineer</p>
+      <p class="lede">I build AI agents end to end: Java and Python backends, the web front end, retrieval, evaluation, and the controls that keep a person in charge of every change. The platform on this site is one I designed, built and run in production.</p>
+      <p class="meta"><b>Berlin, Germany</b> · English</p>
+      <div class="actions" aria-label="Primary actions">
+        <a class="btn" href="/workbench">View the Workbench</a>
+        <a class="lnk" href="https://github.com/karthikdevadoss/agentic-software-delivery">Source on GitHub</a>
+        <a class="lnk" href="https://www.linkedin.com/in/karthikeyan-devdoss/">LinkedIn</a>
+      </div>
+      <p class="sep">Since March 2022 I have worked for NRG Energy through Remote, my employer; NRG is the client. Since early 2026 I have been one of a handful of engineers in the initial core AI team at NRG, and since January 2026 I have led AI adoption in my area, cutting routine work time by about 20%. The AI platform shown here is my own system, separate from NRG.</p>
+    </div>
+    <aside class="start" aria-labelledby="start-h">
+      <h2 id="start-h">Start here: see it working in a minute</h2>
+      <ol>
+        <li>
+          <a href="/ask-codebase?q=Why%20isn%27t%20the%20LLM%20allowed%20to%20approve%20its%20own%20change%3F">Ask the codebase a question&nbsp;→</a>
+          <span>An answer in seconds from the real repository, with the source files it used.</span>
+        </li>
+        <li>
+          <a href="/workbench#verified-run-panel">Watch the agent wait for a person&nbsp;→</a>
+          <span>A recorded run: the agent proposes a change and nothing is applied until a person approves it.</span>
+        </li>
+        <li>
+          <a href="/eval">See how AI quality is measured&nbsp;→</a>
+          <span>Seven labelled evaluation suites with thresholds that fail the build.</span>
+        </li>
+        <li>
+          <a href="/ai-usage">See what AI costs and achieves&nbsp;→</a>
+          <span>Cost per verified result, on clearly labelled demo data.</span>
+        </li>
+      </ol>
+    </aside>
   </header>
 
   <section class="proof" aria-label="Three proof points">

@@ -232,13 +232,28 @@ class DeadLinkAndPlaceholderTestCase(unittest.TestCase):
 
         for path in (HOME, CASE_STUDY):
             html = _strip_comments(path.read_text(encoding="utf-8"))
-            for href in re.findall(r'href="(/[^"#]*)(?:#[^"]*)?"', html):
+            # 2026-11-28: the query string is not part of the route. A deep link
+            # such as /ask-codebase?q=... is checked by its path here, and the
+            # page reading the parameter is asserted separately below.
+            for href in re.findall(r'href="(/[^"#?]*)(?:[?#][^"]*)?"', html):
                 with self.subTest(page=path.name, href=href):
                     if is_existing_static_asset(href):
                         continue
                     self.assertIn(
                         href, served,
                         f"{path.name} links to {href}, which no route serves")
+
+    def test_query_deep_links_are_read_by_their_page(self):
+        """A ?q= deep link is only real if the target page reads the parameter."""
+        for path in (HOME, CASE_STUDY):
+            html = _strip_comments(path.read_text(encoding="utf-8"))
+            for route, params in re.findall(r'href="(/[^"#?]+)\?([^"#]*)', html):
+                page_js = WEB_DIR / (route.strip("/") + ".js")
+                with self.subTest(page=path.name, route=route):
+                    self.assertTrue(page_js.is_file(), f"{route} has no page script to read {params}")
+                    src = page_js.read_text(encoding="utf-8")
+                    for name in re.findall(r'(?:^|&)([^=&]+)=', html.split(route + "?", 1)[1].split('"', 1)[0]):
+                        self.assertIn(f'.get("{name}")', src, f"{route} never reads ?{name}=")
 
     def test_workbench_anchor_target_actually_exists(self):
         """The first proof card deep-links into Workbench. An anchor that does
