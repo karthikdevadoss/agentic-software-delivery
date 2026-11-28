@@ -82,6 +82,17 @@ Live: https://agentic.karthikdevadoss.com (Kraken page: `/kraken`).
    from the same review: a generic (non-Kraken) visual on Home and
    a one-row mobile nav. Shorter page done 28 Nov (restore point `stable-pre-home-shorten`).
 
+9. **Rounds 2 and 3 (28 Nov review vs CV, cover letter and posting).** Every CV
+   platform claim was checked against code and the live site, and all hold. Data
+   fixes: the recruiters page said six suites (now seven); the /kraken video is 43 s,
+   not 45. New: `/how-i-build` (how Claude Code builds the platform under rules,
+   real defects the checks caught, and its cost). It is linked from Home, /kraken
+   and the Interviewer Brief. /kraken gained a fourth tour step (AI Usage), usage
+   insights under Tooling, an "AI coding tools, every day" card and an honest
+   Django line. Remaining items, in order: replace the featured Workbench run (needs
+   the owner token); a reviewer's code tour in the README (problem, decisions,
+   trade-offs, how to test); port one eval suite to Inspect AI (new dependency).
+
 Avoid before the interview: hosted MCP gateway, Notion/Slack connectors,
 Kubernetes, site-wide restyle.
 

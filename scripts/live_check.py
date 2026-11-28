@@ -47,6 +47,7 @@ PAGES = (
     "/interviewer",
     "/kraken",
     "/ai-usage",
+    "/how-i-build",
     "/recruiters",
     "/healthz",
     "/readyz",

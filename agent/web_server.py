@@ -1844,6 +1844,13 @@ async def recruiters_page(request: Request):
     return FileResponse(str(WEB_DIR / "recruiters.html"))
 
 
+async def how_i_build_page(request: Request):
+    """How the platform is built with an AI coding agent (2026-11-28): the
+    rules, the checks, real defects they caught, and the agent's own cost.
+    Every claim links to a file or pull request (agent/test_how_i_build_page.py)."""
+    return FileResponse(str(WEB_DIR / "how-i-build.html"))
+
+
 async def kraken_page(request: Request):
     """Kraken AI Foundations map (2026-11-26, Owner-approved). Unlisted: not in
     the nav, robots noindex. Quotes are verbatim from the posting captured in
@@ -2826,6 +2833,7 @@ routes = [
     Route("/recruiters", recruiters_page, methods=["GET"]),
     Route("/interviewer", interviewer_page, methods=["GET"]),
     Route("/kraken", kraken_page, methods=["GET"]),
+    Route("/how-i-build", how_i_build_page, methods=["GET"]),
     Route("/ai-usage", ai_usage_page, methods=["GET"]),
     Route("/applications", applications_page, methods=["GET"]),
     Route("/applications.json", applications_json, methods=["GET"]),

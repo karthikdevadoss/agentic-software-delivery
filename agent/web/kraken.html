@@ -31,6 +31,7 @@
     <a href="/interviewer">Interviewer Brief</a>
     <a href="https://github.com/karthikdevadoss/agentic-software-delivery">GitHub repo</a>
     <a href="/">Home overview</a>
+    <a href="/how-i-build">How I build with AI agents</a>
   </p>
 
   <section class="kr-tour" id="tour" aria-label="Try it in 60 seconds">
@@ -48,11 +49,15 @@
         <a href="/eval">See the eval gate →</a>
         <span>Seven labelled suites with written thresholds, including a prompt-injection red team. CI fails the build when a score drops below one.</span>
       </li>
+      <li>
+        <a href="/ai-usage">See what AI costs and achieves →</a>
+        <span>Cost per verified result by team, model and workflow, with metered spend kept apart from subscription usage. Visitors see labelled demo data.</span>
+      </li>
     </ol>
   </section>
 
   <section class="kr-video" aria-label="Recorded walkthrough">
-    <h2>Prefer to watch? 45-second walkthrough</h2>
+    <h2>Prefer to watch? 43-second walkthrough</h2>
     <video controls preload="none" playsinline poster="/media/walkthrough-poster.png" width="1280" height="720">
       <source src="/media/walkthrough.webm" type="video/webm">
       Your browser cannot play this video. The tour above has the same steps.
@@ -138,8 +143,11 @@
       <p>
         Closest to what I have built: one gateway with budgets, rate limits and a
         kill switch, a LiteLLM route, and an MCP server with token auth and scopes.
+        For usage insights, an AI Usage dashboard shows cost per verified result
+        and recommendations backed by the data, and labels every number with where it came from.
       </p>
       <a class="go2" href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/agent/mcp_server.py">MCP server source →</a>
+      <a class="go2" href="/ai-usage">AI Usage dashboard →</a>
     </article>
 
     <article class="iv-card">
@@ -173,6 +181,24 @@
     </article>
   </section>
 
+  <h2 class="iv-sec">AI coding tools, every day</h2>
+  <section class="iv-proof" aria-label="AI coding tools">
+    <article class="iv-card">
+      <h3>How this platform is built</h3>
+      <blockquote class="kr-quote">“you know where they fail, and you use AI coding tools every day”</blockquote>
+      <p>
+        Most of the code here is written by Claude Code under my direction, inside
+        rules that assume the agent will make mistakes. A test counts only after it
+        has been seen failing. A reviewer agent with no write access checks risky
+        changes. Every Claude Code session's token usage goes into the same cost
+        ledger as the platform's own calls. The page lists real defects these
+        checks caught this month.
+      </p>
+      <a class="go" href="/how-i-build">How I build with AI agents →</a>
+      <a class="go2" href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/CLAUDE.md">The agent's working rules →</a>
+    </article>
+  </section>
+
   <h2 class="iv-sec">Honest gaps</h2>
   <section class="iv-proof" aria-label="Gaps">
     <article class="iv-card iv-gaps">
@@ -185,9 +211,12 @@
         my own harness. <strong>Hosted MCP:</strong> the MCP server runs and is
         tested locally, not on the public site. <strong>Per-team budgets:</strong>
         caps are platform-wide today; per-team keys, as a LiteLLM gateway would
-        issue them, are not built.
+        issue them, are not built. <strong>Django:</strong> the platform's API is
+        Python on Starlette; there is a small read-only Django admin slice over the
+        same event ledger, run locally rather than hosted.
       </p>
       <a class="go2" href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/docs/KUBERNETES.md">Kubernetes notes →</a>
+      <a class="go2" href="https://github.com/karthikdevadoss/agentic-software-delivery/blob/master/django_admin/README.md">Django admin slice →</a>
     </article>
   </section>
 

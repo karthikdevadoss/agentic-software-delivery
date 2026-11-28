@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-26T18:59:16Z",
-  "commit_sha": "144f626d3c6c884ab7bea6a6e66e6d9a33b6b3fe",
-  "branch": "feat/trace-viewer",
+  "generated_at": "2026-11-28T12:21:49Z",
+  "commit_sha": "83d200661f7f848a00134002dcb69c531c7b7ef3",
+  "branch": "feat/interview-round-2",
   "working_tree_dirty": false,
   "postings_accessed": "2026-10-06",
   "postings_note": "Thirteen English-language AI engineering job postings that were listed as open on the access date, in this order: remote first, then Berlin hybrid, Berlin on-site and other German cities. Architect-titled roles based in Germany in the same search all required German; the one architect-titled role here is EU-remote.",
@@ -310,7 +310,7 @@
       ],
       "evidence": [
         {
-          "label": "Eval dashboard: six suites, run history and reproducibility hash",
+          "label": "Eval dashboard: seven suites, run history and reproducibility hash",
           "url": "/eval",
           "status": "live",
           "metrics": "eval"
@@ -853,12 +853,12 @@
   "quotes_verified": {
     "quotes": 72,
     "against": "posting text captured on 2026-10-06",
-    "source_sha256": "764ff99965c1a63cd662fb80551b21ab4e0922cb76c50f3476e3634301becfc8",
-    "carried_from_source_sha256": "c855402f9f66b83a422f4545af12ebaf27c2f7ef2c51f79beb01f7e52b7f50e4",
-    "carried_because": "2026-10-21 and 2026-11-25 edits changed profile, evidence links and limit text only; all 72 posting quotes are byte-identical to the verified source; 2026-11-26 edit changed profile.headline only (checked: source YAML identical apart from that key), so all 72 posting quotes are unchanged"
+    "source_sha256": "6e93e2be9b5840bff606e6fc119a13b6dfbd28c73d46797302a9e449becc7359",
+    "carried_from_source_sha256": "764ff99965c1a63cd662fb80551b21ab4e0922cb76c50f3476e3634301becfc8",
+    "carried_because": "2026-10-21 and 2026-11-25 edits changed profile, evidence links and limit text only; all 72 posting quotes are byte-identical to the verified source; 2026-11-26 edit changed profile.headline only (checked: source YAML identical apart from that key), so all 72 posting quotes are unchanged; 2026-11-28 edit changed one evidence label only ('six suites' -> 'seven suites'; checked: the parsed YAML differs in that one value), so all 72 posting quotes are unchanged"
   },
   "inputs": {
-    "agent/recruiters_source.yaml": "764ff99965c1a63cd662fb80551b21ab4e0922cb76c50f3476e3634301becfc8",
+    "agent/recruiters_source.yaml": "6e93e2be9b5840bff606e6fc119a13b6dfbd28c73d46797302a9e449becc7359",
     "agent/web/case-study-durable-agent.html": "e6eaf381b8b8936d5f90f6fb2f75d774ea842eb5a226fc609495f320db52c6d7",
     "agent/web/eval-results.json": "f0ac99dbd476f40efcc94279c76a3c7fa13cfa1eab28e372e4a5cd9ce989944f",
     "agent/web/triage-evidence.json": "73a4d9acefb2a5cd7f27f7ca9a39b10a30fca17b2d9dd0ba49a80d54b217c5dd",

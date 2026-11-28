@@ -85,6 +85,7 @@ HERMETIC_MODULES = [
     "test_publish_recruiters_page",  # link classification, quotes, claims scan, freshness of recruiters.json
     "test_interviewer_page",  # Sprint 14: /interviewer brief route, nav, proof links, no invented claims
     "test_ai_usage_page",  # /ai-usage page + /api/ai-usage routes: demo-only public, 403 live, textContent only (2026-11-28)
+    "test_how_i_build_page",  # /how-i-build: every linked file exists, route wired, honest authorship (2026-11-28)
     "test_kraken_page",  # unlisted /kraken AI Foundations map: verbatim quotes, wired links, real source files (2026-11-26)
     "test_public_clarity",  # Evals in nav (removals stay out) + Standing Interview AI label (2026-11-26)
     "test_budget_fail_closed",  # BUDGET_DATABASE_URL unreachable -> every budget caller refuses, nothing crashes (2026-11-26)
