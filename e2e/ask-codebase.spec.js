@@ -43,6 +43,18 @@ test.describe("Ask the Codebase", () => {
     await expect(link).toHaveAttribute("href", /^https:\/\/github\.com\//);
   });
 
+  test("each answer shows its OpenTelemetry trace as a waterfall (2026-11-26)", async ({ page }) => {
+    await page.goto(`/ask-codebase?q=${encodeURIComponent("How does the approval gate work?")}`);
+    const rows = page.locator("#ac-trace-panel .ac-trace-row");
+    await expect(rows.first()).toBeVisible({ timeout: 30_000 });
+    const names = await page.locator("#ac-trace-panel .ac-trace-name").allTextContents();
+    for (const n of ["ask_codebase.request", "permission.filter", "embedding.query", "retrieval.rank"]) {
+      expect(names).toContain(n);
+    }
+    await expect(page.locator("#ac-trace-meta")).toContainText("never as text");
+    await expect(page.locator("#ac-trace-panel")).not.toContainText("approval gate");
+  });
+
   test("GitHub titles are rendered as text, never as HTML, and only github.com links are followed", async ({ page }) => {
     await page.route("**/api/ask-github*", (route) => route.fulfill({
       contentType: "application/json",

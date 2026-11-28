@@ -132,31 +132,42 @@ def _candidates(levels: frozenset) -> list[dict]:
 def search(query: str, role, top_k: int = 5) -> list[dict]:
     """Ranked, permission-filtered chunks for `role`. Same result shape as
     backend_rag_index.semantic_search plus `source` and `access_level`."""
+    import tracing
     start = time.monotonic()
     levels = allowed_levels(role)
     if not levels:
         return []
-    cands = _candidates(levels)
+    # Spans (2026-11-26): the filter, the embedding and the ranking are timed
+    # separately so /ask-codebase can show where the time goes. Counts and
+    # levels only -- never query text or document content.
+    with tracing.span("permission.filter", **{"permission.allowed_levels": ",".join(sorted(levels))}) as sp:
+        cands = _candidates(levels)
+        sp.set_attribute("permission.candidates", len(cands))
     if not cands:
         return []
 
-    query_vec = np.array(embed_query(query))
-    matrix = np.array([c["vector"] for c in cands])
-    norms = np.linalg.norm(matrix, axis=1) * np.linalg.norm(query_vec)
-    norms[norms == 0] = 1e-10
-    scores = (matrix @ query_vec) / norms
+    with tracing.span("embedding.query", **{"embedding.model": model_id()}):
+        query_vec = np.array(embed_query(query))
+    with tracing.span("retrieval.rank", top_k=top_k, **{"retrieval.candidates": len(cands)}) as sp:
+        matrix = np.array([c["vector"] for c in cands])
+        norms = np.linalg.norm(matrix, axis=1) * np.linalg.norm(query_vec)
+        norms[norms == 0] = 1e-10
+        scores = (matrix @ query_vec) / norms
 
-    results = []
-    for rank, pos in enumerate(np.argsort(-scores)[:top_k], start=1):
-        c = cands[pos]
-        if c["access_level"] not in levels:  # defense in depth; unreachable by construction
-            raise AssertionError("permission filter violated")
-        results.append({
-            "rank": rank, "score": round(float(scores[pos]), 4), "chunk_id": c["chunk_id"],
-            "source_path": c["source_path"], "source_type": c["source_type"],
-            "symbol": c["symbol"], "start_line": c["start_line"], "end_line": c["end_line"],
-            "content": c["content"], "source": c["source"], "access_level": c["access_level"],
-        })
+        results = []
+        for rank, pos in enumerate(np.argsort(-scores)[:top_k], start=1):
+            c = cands[pos]
+            if c["access_level"] not in levels:  # defense in depth; unreachable by construction
+                raise AssertionError("permission filter violated")
+            results.append({
+                "rank": rank, "score": round(float(scores[pos]), 4), "chunk_id": c["chunk_id"],
+                "source_path": c["source_path"], "source_type": c["source_type"],
+                "symbol": c["symbol"], "start_line": c["start_line"], "end_line": c["end_line"],
+                "content": c["content"], "source": c["source"], "access_level": c["access_level"],
+            })
+        sp.set_attribute("retrieval.hit_count", len(results))
+        if results:
+            sp.set_attribute("retrieval.top_score", results[0]["score"])
     metrics.record_retrieval(
         query=query, top_k=top_k, candidates_count=len(results),
         duration_ms=round((time.monotonic() - start) * 1000, 1),

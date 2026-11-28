@@ -2133,6 +2133,15 @@ def _log_si_event(event_type: str, question: str, result: dict) -> None:
         pass
 
 
+def _traced_call(trace_id: str, fn, *args):
+    """Run fn(*args) with every span it opens tagged with trace_id."""
+    token = tracing.bind_run_id(trace_id)
+    try:
+        return fn(*args)
+    finally:
+        tracing.unbind_run_id(token)
+
+
 async def ask_codebase_api(request: Request):
     """GET-only, idempotent, no request body -- the query is the only
     input, already bounded (agent/ask_codebase.MAX_QUERY_LEN) before any
@@ -2146,7 +2155,12 @@ async def ask_codebase_api(request: Request):
     # unauthenticated, so any role/header/param a caller sends is ignored and
     # the role is hard-wired to `public`. Elevated roles exist only as a
     # function argument (tests/evals) until real authentication exists.
-    result = await run_in_threadpool(ask_codebase.ask, query, "public")
+    # Trace (2026-11-26): each answer gets its own trace id, bound inside the
+    # worker thread so every span of this request carries it. /traces/{id}
+    # then returns the waterfall the page draws. In-memory, per process.
+    trace_id = "ask-" + uuid.uuid4().hex[:12]
+    result = await run_in_threadpool(_traced_call, trace_id, ask_codebase.ask, query, "public")
+    result["trace_id"] = trace_id
     return JSONResponse(result)
 
 

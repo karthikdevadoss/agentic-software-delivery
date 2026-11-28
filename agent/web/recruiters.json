@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-26T16:30:11Z",
-  "commit_sha": "4698c0b23d1540a9482f0958abeddb5e59697354",
-  "branch": "feat/injection-eval",
+  "generated_at": "2026-11-26T18:59:16Z",
+  "commit_sha": "144f626d3c6c884ab7bea6a6e66e6d9a33b6b3fe",
+  "branch": "feat/trace-viewer",
   "working_tree_dirty": false,
   "postings_accessed": "2026-10-06",
   "postings_note": "Thirteen English-language AI engineering job postings that were listed as open on the access date, in this order: remote first, then Berlin hybrid, Berlin on-site and other German cities. Architect-titled roles based in Germany in the same search all required German; the one architect-titled role here is EU-remote.",
@@ -166,8 +166,8 @@
       "skip_reason": "needs Docker, which the recording machine did not have"
     },
     "ask": {
-      "generated_at": "2026-11-23T12:36:44Z",
-      "commit_sha": "9534530829a4fe305fc2599a784876a5ec7f3da5",
+      "generated_at": "2026-11-26T18:53:41Z",
+      "commit_sha": "a590ea54354d9e3ac7eac934e4e51bd641e7df8e",
       "examples": 6,
       "strong_evidence": 6,
       "llm_calls": 0
@@ -862,6 +862,6 @@
     "agent/web/case-study-durable-agent.html": "e6eaf381b8b8936d5f90f6fb2f75d774ea842eb5a226fc609495f320db52c6d7",
     "agent/web/eval-results.json": "f0ac99dbd476f40efcc94279c76a3c7fa13cfa1eab28e372e4a5cd9ce989944f",
     "agent/web/triage-evidence.json": "73a4d9acefb2a5cd7f27f7ca9a39b10a30fca17b2d9dd0ba49a80d54b217c5dd",
-    "agent/web/ask-codebase-examples.json": "34eab056324d1e58d3b3d6c65e875af613a3779983890614966d14d0c06de0bb"
+    "agent/web/ask-codebase-examples.json": "331fed542b645f70c4a24c6cc006cbfe238761889affb68c23ad7d8622c12d33"
   }
 }

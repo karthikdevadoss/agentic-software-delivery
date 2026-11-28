@@ -94,6 +94,18 @@ def validate_query(raw_query: str) -> str:
 
 
 def ask(raw_query: str, role: str | None = permission_retrieval.DEFAULT_PUBLIC_ROLE) -> dict:
+    """Traced wrapper (2026-11-26): one `ask_codebase.request` span around
+    the whole request, with the outcome status. Query recorded as length +
+    short hash only, never raw text."""
+    import tracing
+    with tracing.span("ask_codebase.request", **tracing.query_fingerprint(raw_query or "")) as sp:
+        result = _ask(raw_query, role)
+        sp.set_attribute("ask.status", result.get("status"))
+        sp.set_attribute("ask.evidence_count", len(result.get("evidence") or []))
+        return result
+
+
+def _ask(raw_query: str, role: str | None = permission_retrieval.DEFAULT_PUBLIC_ROLE) -> dict:
     """Top-level entry point. Returns a JSON-ready dict; never raises for
     a genuinely bad/adversarial query -- validation failures and
     insufficient-evidence cases are both real, honest OUTCOMES, not

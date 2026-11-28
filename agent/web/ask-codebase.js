@@ -127,6 +127,50 @@ function renderGithub(data) {
   });
 }
 
+// Trace waterfall (2026-11-26): the OpenTelemetry spans this request
+// produced, fetched from /traces/{trace_id}. Built with textContent only.
+const TRACE_HIDDEN_ATTRS = new Set(["run_id", "query.sha256_12"]);
+
+function renderTrace(traceId, spans) {
+  const panel = document.getElementById("ac-trace-panel");
+  const box = document.getElementById("ac-trace");
+  const meta = document.getElementById("ac-trace-meta");
+  box.textContent = "";
+  if (!spans.length) { panel.hidden = true; return; }
+  panel.hidden = false;
+  spans.sort((a, b) => a.start_offset_ms - b.start_offset_ms);
+  const total = Math.max(...spans.map((s) => s.start_offset_ms + s.duration_ms), 1);
+  meta.textContent = `${spans.length} OpenTelemetry spans, ${total.toFixed(1)} ms in total · trace ${traceId} · `
+    + "the question is recorded only as its length and a short hash, never as text";
+  spans.forEach((s) => {
+    const row = textEl("div", "ac-trace-row");
+    row.appendChild(textEl("div", "ac-trace-name", s.name));
+    const track = textEl("div", "ac-trace-track");
+    const bar = textEl("div", "ac-trace-bar" + (s.status === "ERROR" ? " ac-trace-error" : ""));
+    bar.style.left = `${(s.start_offset_ms / total) * 100}%`;
+    bar.style.width = `${Math.max((s.duration_ms / total) * 100, 0.6)}%`;
+    track.appendChild(bar);
+    row.appendChild(track);
+    row.appendChild(textEl("div", "ac-trace-ms", `${s.duration_ms.toFixed(1)} ms`));
+    const attrs = Object.entries(s.attributes || {}).filter(([k]) => !TRACE_HIDDEN_ATTRS.has(k))
+      .map(([k, v]) => `${k}=${v}`).join("  ");
+    if (attrs) row.appendChild(textEl("div", "ac-trace-attrs", attrs));
+    box.appendChild(row);
+  });
+}
+
+async function fetchTrace(traceId) {
+  if (!traceId) return;
+  try {
+    const resp = await fetch(`/traces/${encodeURIComponent(traceId)}`);
+    if (!resp.ok) return;
+    const data = await resp.json();
+    renderTrace(traceId, data.spans || []);
+  } catch (e) {
+    /* The trace is additive; the answer above stands on its own. */
+  }
+}
+
 async function fetchGithub(query, attempt = 0) {
   try {
     const resp = await fetch(`/api/ask-github?q=${encodeURIComponent(query)}`);
@@ -152,6 +196,7 @@ async function submitQuery(query) {
     const resp = await fetch(`/api/ask-codebase?q=${encodeURIComponent(query)}`);
     const data = await resp.json();
     renderResult(data);
+    fetchTrace(data.trace_id);
   } catch (e) {
     renderResult({ status: "INDEX_UNAVAILABLE", message: "Request failed — the server may be unreachable.", evidence: [] });
   } finally {
